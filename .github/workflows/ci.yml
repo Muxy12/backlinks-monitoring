@@ -132,6 +132,30 @@ jobs:
       - if: steps.check.outputs.exists == 'true'
         run: pnpm --filter web build
 
+  # ── Dependency vulnerability audit (docs/11 Phase-7 checklist) ──────────────
+  # Rust advisories via cargo-audit; JS advisories via pnpm audit. Catches a
+  # vulnerable transitive dep (e.g. a Next.js CVE) automatically on every push.
+  security-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Rust: RustSec advisory DB against Cargo.lock.
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit
+      - name: cargo audit
+        run: cargo audit
+      # JS: pnpm workspace audit, high severity and up. Patched transitive
+      # versions are pinned via `pnpm.overrides` in the root package.json.
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: pnpm audit (high+)
+        run: pnpm audit --audit-level high
+
   # ── Full LTO release build — the actual shipping profile ────────────────────
   # Slow (LTO + codegen-units=1), so it does NOT run on every push. It runs on
   # version tags (v*) and on manual dispatch, which is when the shipping binary

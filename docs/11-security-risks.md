@@ -185,7 +185,7 @@ added without a gate.
 
 - [ ] SSRF suite passes, including the redirect-to-private and DNS-rebinding cases
 - [ ] Tenant isolation suite covers 100% of tenant-owned routes (enforced by the route table)
-- [ ] `cargo audit` / `cargo deny` clean; `pnpm audit` clean
+- [~] `pnpm audit` clean (high+; patched via pnpm.overrides) and both `cargo audit` + `pnpm audit` wired as a CI gate (`security-audit` job)
 - [ ] Argon2 parameters re-benchmarked on production hardware
 - [~] Security headers set + tested on API responses (`api::security`); web-app CSP without `unsafe-inline` still to do
 - [~] Rate limits enforced + integration-tested (S3); load verification still outstanding
