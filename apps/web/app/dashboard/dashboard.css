@@ -98,7 +98,9 @@
 .muted { color: var(--muted); font-size: 14px; }
 
 /* ── Stat tiles ─────────────────────────────────────────────────────────── */
-.tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 18px; }
+/* padding:0 overrides globals.css `section { padding: 110px 0 }`, which leaks
+   onto this <section> because .tiles sets no padding of its own. */
+.tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 18px; padding: 0; }
 .tile {
   position: relative;
   background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 92%, transparent), var(--surface));
