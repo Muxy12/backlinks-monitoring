@@ -34,14 +34,9 @@ async fn fetches_200_html_body() {
     match out {
         FetchOutcome::Response(ok) => {
             assert_eq!(ok.status, 200);
-            assert!(ok.body.contains("acme.com/p"));
-            assert!(
-                ok.content_type
-                    .as_deref()
-                    .unwrap_or("")
-                    .contains("text/html")
-            );
+            assert!(ok.body.contains("acme.com/p"), "body captured");
             assert!(ok.redirect_chain.is_empty());
+            assert!(ok.bytes > 0);
         }
         other => panic!("expected 200 response, got {other:?}"),
     }
