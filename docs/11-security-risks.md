@@ -58,7 +58,9 @@ wall-clock timeout · per-domain limits shared with the main crawler so the publ
 used to hammer a site the crawler is politely rate-limiting · circuit breaker that disables the
 endpoint under abuse.
 
-**Proof:** rate-limit integration tests; a load test in Phase 7 confirming the global cap holds.
+**Proof:** rate-limit integration tests ✅ (`apps/api/tests/tools.rs` — per-IP 429 + isolation); a load test in Phase 7 confirming the global cap holds is still outstanding.
+
+**Status:** implemented — per-IP fixed-window limiter (5/hour) + global concurrency semaphore in `api::security::CheckerLimiter`, enforced on `/v1/tools/backlink-check`.
 
 ---
 
@@ -130,6 +132,8 @@ strict CSP (no `unsafe-inline`) on the web app · CSV export cells prefixed agai
 **Proof:** a fixture whose anchor text is `<img src=x onerror=alert(1)>` asserted to render inert;
 a CSV export test asserting formula-injection prefixing.
 
+**Status:** API responses now carry `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`, COOP and HSTS (`api::security::security_headers`, tested). Web-app CSP and the CSV-export prefixing remain.
+
 ---
 
 ## S9 — SQL injection · **Low**
@@ -183,8 +187,8 @@ added without a gate.
 - [ ] Tenant isolation suite covers 100% of tenant-owned routes (enforced by the route table)
 - [ ] `cargo audit` / `cargo deny` clean; `pnpm audit` clean
 - [ ] Argon2 parameters re-benchmarked on production hardware
-- [ ] CSP has no `unsafe-inline`; security headers verified in production responses
-- [ ] Rate limits verified under load, not just in unit tests
+- [~] Security headers set + tested on API responses (`api::security`); web-app CSP without `unsafe-inline` still to do
+- [~] Rate limits enforced + integration-tested (S3); load verification still outstanding
 - [ ] Stripe webhook replay and out-of-order tested against Stripe CLI
 - [ ] Neon connection behaviour verified (open item R1)
 - [ ] Backup/restore rehearsed end-to-end, not merely configured
