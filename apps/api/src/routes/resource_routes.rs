@@ -216,6 +216,10 @@ impl From<db::entities::Backlink> for BacklinkView {
 #[derive(Debug, Deserialize)]
 pub struct CreateBacklinkBody {
     pub project_id: Uuid,
+    /// Optional campaign/publisher assignment (§22, §31). Each is validated to
+    /// belong to this org before use, so a cross-tenant id yields 404.
+    pub campaign_id: Option<Uuid>,
+    pub publisher_id: Option<Uuid>,
     pub source_url: String,
     pub target_url: String,
     pub expected_anchor_text: Option<String>,
@@ -266,6 +270,14 @@ pub async fn create_backlink(
     };
     // The project must belong to this org (returns 404 otherwise).
     db::repositories::projects::get(&state.pool, &scope, body.project_id).await?;
+    // Same for an optional campaign/publisher — validate org membership so a
+    // cross-tenant id can never be stitched onto a backlink (404, not FK error).
+    if let Some(cid) = body.campaign_id {
+        db::repositories::campaigns::get(&state.pool, &scope, cid).await?;
+    }
+    if let Some(pid) = body.publisher_id {
+        db::repositories::publishers::get(&state.pool, &scope, pid).await?;
+    }
 
     // Plan limit (§39): block a new backlink over the cap; existing links keep
     // being monitored. Free/new orgs default to Starter.
@@ -278,6 +290,8 @@ pub async fn create_backlink(
         .filter(|s| !s.is_empty());
     let new = db::repositories::backlinks::NewBacklink {
         project_id: body.project_id,
+        campaign_id: body.campaign_id,
+        publisher_id: body.publisher_id,
         source_url: body.source_url.trim(),
         target_url: body.target_url.trim(),
         expected_anchor_text: anchor,
@@ -523,6 +537,8 @@ pub async fn import_csv(
             backlio_core::csv_import::RowResult::Ok(r) => {
                 let new = db::repositories::backlinks::NewBacklink {
                     project_id: body.project_id,
+                    campaign_id: None,
+                    publisher_id: None,
                     source_url: &r.source_url,
                     target_url: &r.target_url,
                     expected_anchor_text: r.anchor.as_deref(),

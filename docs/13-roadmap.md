@@ -30,8 +30,10 @@ Postgres · schema-check · `next build`). Local Rust pure-crate suite: 114 test
 | **Phase 3** monitoring | ✅ automatic: scheduler (advisory-locked, deduped by source URL, in-flight lease) enqueues due checks; worker claims (SKIP LOCKED) + runs the check engine (fetch → observation → state machine → atomic check+events+state) + retries/reaps; the deduped `check_source_page` handler checks N backlinks from one fetch (§27) |
 | crates | ✅ core, common, db, crawler, auth, billing, jobs — built + tested |
 | **Phase 5** imports | ✅ CSV import (§38): pure parser (generic + Ahrefs/Semrush headers, per-row validation) + bulk-create API with dedup + per-row errors. Async chunking for huge files is future work |
+| **Phase 4** operations | 🟡 campaigns + publishers CRUD with **read-time rollups** — status counts, spend by currency (never merged), campaign target progress, publisher removal rate + average lifespan; backlinks assignable to a campaign/publisher (org-validated). Verified over real routes in CI. Remaining: warranty expiry job, dashboard wiring for the new metrics |
+| **Phase 6** billing | 🟡 plan/entitlements + **plan-limit enforcement** on create/import (402 over cap) + **Stripe webhook** (signature verify + idempotent receipt), fixture-tested. Remaining: Checkout/Portal + subscription-state mutation (needs Stripe keys) |
 | **Frontend** | 🟡 marketing homepage + login/register + dashboard (counters, value-at-risk, backlinks table, history-timeline drawer). Remaining: import screen, campaigns/publishers, public tools |
-| Phases 4/6/7 | plan/entitlements + job model landed; events API + dashboard done. Remaining: Stripe webhooks/checkout (6), notifications (§37), publishers/campaigns rollups (4), hardening (7) |
+| Phase 7 | Remaining: notifications (§37), hardening/audit (§11) |
 
 **Monitoring works**: `apps/worker/tests/engine_live.rs` proves a present dofollow link goes
 `live` with a `BACKLINK_FOUND` event, and a single absence never marks it `lost` — all against

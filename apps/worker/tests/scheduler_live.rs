@@ -80,6 +80,8 @@ async fn scheduler_dedupes_by_source_and_handler_checks_all() {
     // Two backlinks sharing the same source page, different targets.
     let new = |target: &'static str| backlinks::NewBacklink {
         project_id: project.id,
+        campaign_id: None,
+        publisher_id: None,
         source_url: &source_url,
         target_url: target,
         expected_anchor_text: None,

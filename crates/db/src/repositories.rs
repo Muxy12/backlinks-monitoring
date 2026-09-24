@@ -364,6 +364,8 @@ pub mod backlinks {
     /// discovered link compare identically.
     pub struct NewBacklink<'a> {
         pub project_id: Uuid,
+        pub campaign_id: Option<Uuid>,
+        pub publisher_id: Option<Uuid>,
         pub source_url: &'a str,
         pub target_url: &'a str,
         pub expected_anchor_text: Option<&'a str>,
@@ -390,16 +392,19 @@ pub mod backlinks {
         // first check via the scheduler (§49 "schedule initial monitoring").
         sqlx::query_as::<_, Backlink>(concat!(
             "INSERT INTO backlinks (id, organization_id, project_id, \
+                campaign_id, publisher_id, \
                 source_url, source_url_normalized, source_domain, \
                 target_url, target_url_normalized, target_domain, \
                 expected_anchor_text, expected_rel_type, cost, currency, next_check_at) \
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::rel_type,$12::numeric,$13, now()) \
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::rel_type,$14::numeric,$15, now()) \
              RETURNING ",
             cols!()
         ))
         .bind(id)
         .bind(scope.organization_id())
         .bind(new.project_id)
+        .bind(new.campaign_id)
+        .bind(new.publisher_id)
         .bind(new.source_url)
         .bind(&source_norm)
         .bind(&source_domain)
@@ -962,3 +967,249 @@ pub mod billing {
         Ok(row.is_some())
     }
 }
+
+// ─── Campaigns (§22) — tenant-scoped, with read-time rollups ──────────────────
+pub mod campaigns {
+    use super::*;
+    use crate::entities::{Campaign, RollupCounts};
+
+    // status/budget cast to text so no custom sqlx type mapping is needed.
+    macro_rules! cols {
+        () => {
+            "id, organization_id, project_id, name, description, \
+             status::text AS status, start_date, end_date, target_backlinks, \
+             budget::text AS budget, currency, created_at, updated_at"
+        };
+    }
+
+    pub struct NewCampaign<'a> {
+        pub project_id: Uuid,
+        pub name: &'a str,
+        pub description: Option<&'a str>,
+        pub target_backlinks: Option<i32>,
+        pub budget: Option<&'a str>,
+        pub currency: Option<&'a str>,
+    }
+
+    pub async fn create(
+        pool: &PgPool,
+        scope: &OrgScope,
+        id: Uuid,
+        new: NewCampaign<'_>,
+    ) -> Result<Campaign, DbError> {
+        sqlx::query_as::<_, Campaign>(concat!(
+            "INSERT INTO campaigns \
+                (id, organization_id, project_id, name, description, \
+                 target_backlinks, budget, currency) \
+             VALUES ($1,$2,$3,$4,$5,$6,$7::numeric,$8) \
+             RETURNING ",
+            cols!()
+        ))
+        .bind(id)
+        .bind(scope.organization_id())
+        .bind(new.project_id)
+        .bind(new.name)
+        .bind(new.description)
+        .bind(new.target_backlinks)
+        .bind(new.budget)
+        .bind(new.currency)
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_insert)
+    }
+
+    pub async fn list(pool: &PgPool, scope: &OrgScope) -> Result<Vec<Campaign>, DbError> {
+        Ok(sqlx::query_as::<_, Campaign>(concat!(
+            "SELECT ",
+            cols!(),
+            " FROM campaigns WHERE organization_id = $1 ORDER BY created_at DESC"
+        ))
+        .bind(scope.organization_id())
+        .fetch_all(pool)
+        .await?)
+    }
+
+    pub async fn get(pool: &PgPool, scope: &OrgScope, id: Uuid) -> Result<Campaign, DbError> {
+        sqlx::query_as::<_, Campaign>(concat!(
+            "SELECT ",
+            cols!(),
+            " FROM campaigns WHERE id = $1 AND organization_id = $2"
+        ))
+        .bind(id)
+        .bind(scope.organization_id())
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_fetch)
+    }
+
+    /// Scalar rollup over the campaign's non-archived backlinks (§22).
+    pub async fn rollup(
+        pool: &PgPool,
+        scope: &OrgScope,
+        campaign_id: Uuid,
+    ) -> Result<RollupCounts, DbError> {
+        Ok(
+            sqlx::query_as::<_, RollupCounts>(super::rollup_sql("campaign_id"))
+                .bind(scope.organization_id())
+                .bind(campaign_id)
+                .fetch_one(pool)
+                .await?,
+        )
+    }
+
+    /// Recorded spend for the campaign's backlinks, grouped by currency and
+    /// never summed across (§34). `(currency, sum-as-text)`.
+    pub async fn spend(
+        pool: &PgPool,
+        scope: &OrgScope,
+        campaign_id: Uuid,
+    ) -> Result<Vec<(String, String)>, DbError> {
+        Ok(sqlx::query_as::<_, (String, String)>(
+            "SELECT currency, sum(cost)::text FROM backlinks \
+             WHERE organization_id = $1 AND archived_at IS NULL AND campaign_id = $2 \
+               AND cost IS NOT NULL GROUP BY currency",
+        )
+        .bind(scope.organization_id())
+        .bind(campaign_id)
+        .fetch_all(pool)
+        .await?)
+    }
+}
+
+// ─── Publishers (§31) — tenant-scoped, with lifespan/removal-rate rollups ─────
+pub mod publishers {
+    use super::*;
+    use crate::entities::{Publisher, RollupCounts};
+
+    macro_rules! cols {
+        () => {
+            "id, organization_id, name, domain, contact_name, \
+             contact_email, notes, created_at, updated_at"
+        };
+    }
+
+    pub struct NewPublisher<'a> {
+        pub name: &'a str,
+        pub domain: &'a str,
+        pub contact_name: Option<&'a str>,
+        pub contact_email: Option<&'a str>,
+    }
+
+    pub async fn create(
+        pool: &PgPool,
+        scope: &OrgScope,
+        id: Uuid,
+        new: NewPublisher<'_>,
+    ) -> Result<Publisher, DbError> {
+        sqlx::query_as::<_, Publisher>(concat!(
+            "INSERT INTO publishers \
+                (id, organization_id, name, domain, contact_name, contact_email) \
+             VALUES ($1,$2,$3,$4,$5,$6) \
+             RETURNING ",
+            cols!()
+        ))
+        .bind(id)
+        .bind(scope.organization_id())
+        .bind(new.name)
+        .bind(new.domain)
+        .bind(new.contact_name)
+        .bind(new.contact_email)
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_insert)
+    }
+
+    pub async fn list(pool: &PgPool, scope: &OrgScope) -> Result<Vec<Publisher>, DbError> {
+        Ok(sqlx::query_as::<_, Publisher>(concat!(
+            "SELECT ",
+            cols!(),
+            " FROM publishers WHERE organization_id = $1 ORDER BY name"
+        ))
+        .bind(scope.organization_id())
+        .fetch_all(pool)
+        .await?)
+    }
+
+    pub async fn get(pool: &PgPool, scope: &OrgScope, id: Uuid) -> Result<Publisher, DbError> {
+        sqlx::query_as::<_, Publisher>(concat!(
+            "SELECT ",
+            cols!(),
+            " FROM publishers WHERE id = $1 AND organization_id = $2"
+        ))
+        .bind(id)
+        .bind(scope.organization_id())
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_fetch)
+    }
+
+    /// Scalar rollup over the publisher's non-archived backlinks (§31):
+    /// live/lost counts plus average lifespan of lost links. Removal rate is
+    /// `lost / total`, derived by the caller so it need not be recomputed here.
+    pub async fn rollup(
+        pool: &PgPool,
+        scope: &OrgScope,
+        publisher_id: Uuid,
+    ) -> Result<RollupCounts, DbError> {
+        Ok(
+            sqlx::query_as::<_, RollupCounts>(super::rollup_sql("publisher_id"))
+                .bind(scope.organization_id())
+                .bind(publisher_id)
+                .fetch_one(pool)
+                .await?,
+        )
+    }
+
+    /// Recorded spend for the publisher's backlinks, grouped by currency (§34).
+    pub async fn spend(
+        pool: &PgPool,
+        scope: &OrgScope,
+        publisher_id: Uuid,
+    ) -> Result<Vec<(String, String)>, DbError> {
+        Ok(sqlx::query_as::<_, (String, String)>(
+            "SELECT currency, sum(cost)::text FROM backlinks \
+             WHERE organization_id = $1 AND archived_at IS NULL AND publisher_id = $2 \
+               AND cost IS NOT NULL GROUP BY currency",
+        )
+        .bind(scope.organization_id())
+        .bind(publisher_id)
+        .fetch_all(pool)
+        .await?)
+    }
+}
+
+/// The shared rollup aggregate, selected by the grouping FK column. The column
+/// name is a fixed `&'static str` (`"campaign_id"`/`"publisher_id"`), never user
+/// input, so the resulting SQL is still an audited literal (S9). `$1` =
+/// organization_id, `$2` = the fk id.
+fn rollup_sql(fk: &'static str) -> &'static str {
+    match fk {
+        "campaign_id" => ROLLUP_CAMPAIGN,
+        "publisher_id" => ROLLUP_PUBLISHER,
+        _ => unreachable!("rollup_sql called with a non-literal fk"),
+    }
+}
+
+macro_rules! rollup_query {
+    ($fk:literal) => {
+        concat!(
+            "SELECT \
+                count(*)::bigint AS total, \
+                count(*) FILTER (WHERE status = 'live')::bigint AS live, \
+                count(*) FILTER (WHERE status = 'lost')::bigint AS lost, \
+                count(*) FILTER (WHERE status IN \
+                    ('changed','nofollow','redirected','source_error','target_error','blocked') \
+                )::bigint AS attention, \
+                avg(EXTRACT(EPOCH FROM (last_seen_at - created_at)) / 86400.0) \
+                    FILTER (WHERE status = 'lost' AND last_seen_at IS NOT NULL) \
+                    AS avg_lifespan_days \
+             FROM backlinks \
+             WHERE organization_id = $1 AND archived_at IS NULL AND ",
+            $fk,
+            " = $2"
+        )
+    };
+}
+
+const ROLLUP_CAMPAIGN: &str = rollup_query!("campaign_id");
+const ROLLUP_PUBLISHER: &str = rollup_query!("publisher_id");

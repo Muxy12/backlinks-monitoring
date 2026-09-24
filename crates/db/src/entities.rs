@@ -139,3 +139,50 @@ pub struct BacklinkEvent {
     pub current_data: Option<serde_json::Value>,
     pub detected_at: DateTime<Utc>,
 }
+
+/// A campaign row (§22). `budget`/`status` are read as text so no custom sqlx
+/// mapping is needed; dates are plain `NaiveDate`.
+#[derive(Debug, Clone, FromRow)]
+pub struct Campaign {
+    pub id: Uuid,
+    pub organization_id: Uuid,
+    pub project_id: Uuid,
+    pub name: String,
+    pub description: Option<String>,
+    pub status: String,
+    pub start_date: Option<chrono::NaiveDate>,
+    pub end_date: Option<chrono::NaiveDate>,
+    pub target_backlinks: Option<i32>,
+    pub budget: Option<String>,
+    pub currency: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+/// A publisher row (§31) — the site a backlink is bought from.
+#[derive(Debug, Clone, FromRow)]
+pub struct Publisher {
+    pub id: Uuid,
+    pub organization_id: Uuid,
+    pub name: String,
+    pub domain: String,
+    pub contact_name: Option<String>,
+    pub contact_email: Option<String>,
+    pub notes: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+/// Scalar aggregates for a campaign/publisher rollup (§22, §31), computed on
+/// read (docs/03 §3.3). Spend is fetched separately, grouped by currency, and
+/// never summed across currencies. `avg_lifespan_days` is the average time a
+/// now-lost link stayed live (`last_seen_at - created_at`); `None` when no link
+/// has been lost yet.
+#[derive(Debug, Clone, FromRow)]
+pub struct RollupCounts {
+    pub total: i64,
+    pub live: i64,
+    pub lost: i64,
+    pub attention: i64,
+    pub avg_lifespan_days: Option<f64>,
+}

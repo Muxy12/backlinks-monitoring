@@ -78,6 +78,8 @@ async fn check_makes_a_present_backlink_live_with_check_and_event() {
         Uuid::now_v7(),
         backlinks::NewBacklink {
             project_id: project.id,
+            campaign_id: None,
+            publisher_id: None,
             source_url: &source_url,
             target_url: "https://acme.com/product",
             expected_anchor_text: Some("great tool"),
@@ -172,6 +174,8 @@ async fn check_of_absent_link_does_not_lose_it_on_first_miss() {
         Uuid::now_v7(),
         backlinks::NewBacklink {
             project_id: project.id,
+            campaign_id: None,
+            publisher_id: None,
             source_url: &format!("{}/empty", server.uri()),
             target_url: "https://acme.com/product",
             expected_anchor_text: None,

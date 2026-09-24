@@ -41,6 +41,30 @@ pub fn app(state: AppState) -> Router {
             get(routes::resource_routes::get_project),
         )
         .route(
+            "/v1/organizations/{org_id}/campaigns",
+            get(routes::ops_routes::list_campaigns).post(routes::ops_routes::create_campaign),
+        )
+        .route(
+            "/v1/organizations/{org_id}/campaigns/{campaign_id}",
+            get(routes::ops_routes::get_campaign),
+        )
+        .route(
+            "/v1/organizations/{org_id}/campaigns/{campaign_id}/rollup",
+            get(routes::ops_routes::campaign_rollup),
+        )
+        .route(
+            "/v1/organizations/{org_id}/publishers",
+            get(routes::ops_routes::list_publishers).post(routes::ops_routes::create_publisher),
+        )
+        .route(
+            "/v1/organizations/{org_id}/publishers/{publisher_id}",
+            get(routes::ops_routes::get_publisher),
+        )
+        .route(
+            "/v1/organizations/{org_id}/publishers/{publisher_id}/rollup",
+            get(routes::ops_routes::publisher_rollup),
+        )
+        .route(
             "/v1/organizations/{org_id}/backlinks",
             get(routes::resource_routes::list_backlinks)
                 .post(routes::resource_routes::create_backlink),
