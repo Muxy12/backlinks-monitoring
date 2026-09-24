@@ -40,6 +40,17 @@ export interface MeResponse {
   organizations: OrgView[];
 }
 
+export interface BacklinkCheckResult {
+  found: boolean;
+  http_status: number | null;
+  final_url: string | null;
+  anchor_text: string | null;
+  rel: string[] | null;
+  is_dofollow: boolean | null;
+  source_noindex: boolean | null;
+  error: string | null;
+}
+
 export const api = {
   register: (email: string, password: string, name: string) =>
     request<UserView>("/v1/auth/register", { method: "POST", body: JSON.stringify({ email, password, name }) }),
@@ -47,6 +58,12 @@ export const api = {
     request<{ user: UserView }>("/v1/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
   logout: () => request<null>("/v1/auth/logout", { method: "POST" }),
   me: () => request<MeResponse>("/v1/me"),
+  // Public, no auth (§50).
+  checkBacklink: (sourceUrl: string, targetUrl: string) =>
+    request<BacklinkCheckResult>("/v1/tools/backlink-check", {
+      method: "POST",
+      body: JSON.stringify({ source_url: sourceUrl, target_url: targetUrl }),
+    }),
 };
 
 export interface DashboardResponse {
@@ -74,6 +91,10 @@ export interface BacklinkView {
   status: string;
   cost: string | null;
   currency: string | null;
+  warranty_type?: string;
+  warranty_value?: number | null;
+  warranty_expiration?: string | null;
+  warranty_status?: string;
 }
 
 export const orgApi = {
