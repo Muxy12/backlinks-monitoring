@@ -80,6 +80,7 @@ dependencies = [
  "tracing-subscriber",
  "uuid",
  "wiremock",
+ "worker",
 ]
 
 [[package]]
