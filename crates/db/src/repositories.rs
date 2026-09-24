@@ -339,6 +339,39 @@ pub mod projects {
         .await
         .map_err(DbError::from_fetch)
     }
+
+    /// Partial update (§21): rename and/or change the check frequency. A `None`
+    /// argument keeps the current value (COALESCE), so this is a real PATCH in
+    /// one statement. `NotFound` if the project is not in the org.
+    pub async fn update(
+        pool: &PgPool,
+        scope: &OrgScope,
+        id: Uuid,
+        name: Option<&str>,
+        check_frequency_secs: Option<i64>,
+    ) -> Result<Project, DbError> {
+        sqlx::query_as::<_, Project>(
+            "WITH updated AS ( \
+                UPDATE projects SET \
+                    name = COALESCE($3, name), \
+                    default_check_frequency = \
+                        COALESCE(make_interval(secs => $4), default_check_frequency) \
+                WHERE id = $1 AND organization_id = $2 \
+                RETURNING * \
+             ) \
+             SELECT id, organization_id, client_id, name, domain, \
+                    EXTRACT(EPOCH FROM default_check_frequency)::bigint AS check_frequency_secs, \
+                    timezone, status::text AS status, created_at, updated_at, archived_at \
+             FROM updated",
+        )
+        .bind(id)
+        .bind(scope.organization_id())
+        .bind(name)
+        .bind(check_frequency_secs.map(|s| s as f64))
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_fetch)
+    }
 }
 
 // ─── Backlinks (§23) — tenant-scoped ─────────────────────────────────────────

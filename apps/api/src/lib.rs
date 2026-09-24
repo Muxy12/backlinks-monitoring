@@ -55,7 +55,8 @@ pub fn app(state: AppState) -> Router {
         )
         .route(
             "/v1/organizations/{org_id}/projects/{project_id}",
-            get(routes::resource_routes::get_project),
+            get(routes::resource_routes::get_project)
+                .patch(routes::resource_routes::update_project),
         )
         .route(
             "/v1/organizations/{org_id}/campaigns",

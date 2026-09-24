@@ -159,6 +159,46 @@ pub async fn create_project(
     Ok((StatusCode::CREATED, Json(project.into())))
 }
 
+#[derive(Debug, Deserialize)]
+pub struct UpdateProjectBody {
+    pub name: Option<String>,
+    pub check_frequency_hours: Option<i64>,
+}
+
+pub async fn update_project(
+    State(state): State<AppState>,
+    Path((org_id, project_id)): Path<(Uuid, Uuid)>,
+    jar: CookieJar,
+    headers: HeaderMap,
+    Json(body): Json<UpdateProjectBody>,
+) -> Result<Json<ProjectView>, ApiError> {
+    let (user, session) = current(&state, &jar).await?;
+    check_csrf(&jar, &headers, &session)?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Member)?;
+
+    let name = match body.name.as_deref().map(str::trim) {
+        Some(n) if n.is_empty() || n.len() > 200 => {
+            return Err(ApiError::Validation("name must be 1–200 characters".into()));
+        }
+        other => other,
+    };
+    let secs = match body.check_frequency_hours {
+        Some(h) if !(1..=24 * 180).contains(&h) => {
+            return Err(ApiError::Validation(
+                "check frequency must be 1 hour – 180 days".into(),
+            ));
+        }
+        Some(h) => Some(h * 3600),
+        None => None,
+    };
+    if name.is_none() && secs.is_none() {
+        return Err(ApiError::Validation("nothing to update".into()));
+    }
+    let project = projects::update(&state.pool, &scope, project_id, name, secs).await?;
+    Ok(Json(project.into()))
+}
+
 pub async fn list_projects(
     State(state): State<AppState>,
     Path(org_id): Path<Uuid>,
