@@ -29,8 +29,9 @@ Postgres · schema-check · `next build`). Local Rust pure-crate suite: 114 test
 | **Phase 2** backlink core | ✅ backlink CRUD + normalization + "check now"; crawler parse/matching + **SSRF-safe fetch** (DNS-pin, redirect re-validation, size cap) + state machine — all verified. Remaining: events/history API + timeline UI |
 | **Phase 3** monitoring | ✅ automatic: scheduler (advisory-locked, deduped by source URL, in-flight lease) enqueues due checks; worker claims (SKIP LOCKED) + runs the check engine (fetch → observation → state machine → atomic check+events+state) + retries/reaps; the deduped `check_source_page` handler checks N backlinks from one fetch (§27) |
 | crates | ✅ core, common, db, crawler, auth, billing, jobs — built + tested |
-| **Frontend** | 🟡 Next.js app: marketing homepage + login/register/dashboard (wired to API). Remaining: backlinks table, campaigns, §34 dashboard, public tools |
-| Phases 4–7 | pure pieces landed (job model, plan/entitlements); Stripe webhooks, imports, notifications, hardening remaining |
+| **Phase 5** imports | ✅ CSV import (§38): pure parser (generic + Ahrefs/Semrush headers, per-row validation) + bulk-create API with dedup + per-row errors. Async chunking for huge files is future work |
+| **Frontend** | 🟡 marketing homepage + login/register + dashboard (counters, value-at-risk, backlinks table, history-timeline drawer). Remaining: import screen, campaigns/publishers, public tools |
+| Phases 4/6/7 | plan/entitlements + job model landed; events API + dashboard done. Remaining: Stripe webhooks/checkout (6), notifications (§37), publishers/campaigns rollups (4), hardening (7) |
 
 **Monitoring works**: `apps/worker/tests/engine_live.rs` proves a present dofollow link goes
 `live` with a `BACKLINK_FOUND` event, and a single absence never marks it `lost` — all against
