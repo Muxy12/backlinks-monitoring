@@ -428,17 +428,26 @@ export default function DashboardPage() {
             ) : (
               <table className="bl-table">
                 <thead>
-                  <tr><th>Status</th><th>Source</th><th>Target</th><th>Anchor</th><th>Rel</th><th>Cost</th></tr>
+                  <tr>
+                    <th>Status</th>
+                    <th>Source</th>
+                    <th>Target</th>
+                    <th>Anchor</th>
+                    <th>Rel</th>
+                    <th>HTTP</th>
+                    <th>Checked</th>
+                  </tr>
                 </thead>
                 <tbody>
                   {backlinks.map((b) => (
                     <tr key={b.id} className="row-click" onClick={() => void openDetail(b)}>
                       <td><span className="badge" style={{ "--st": statusColor(b.status) } as CSSProperties}><span className="dot" />{statusLabel(b.status)}</span></td>
-                      <td className="mono">{b.source_domain}</td>
-                      <td className="mono">{b.target_domain}</td>
-                      <td>{b.expected_anchor_text ?? "—"}</td>
-                      <td>{b.expected_rel_type}</td>
-                      <td className="mono">{b.cost ? `${b.cost} ${b.currency ?? ""}` : "—"}</td>
+                      <td className="mono" title={b.source_url}>{b.source_domain}</td>
+                      <td className="mono" title={b.target_url}>{b.target_domain}</td>
+                      <td className="cell-anchor" title={b.detected_anchor_text ?? b.expected_anchor_text ?? ""}>{b.detected_anchor_text ?? b.expected_anchor_text ?? "—"}</td>
+                      <td><RelChips b={b} /></td>
+                      <td className="mono">{httpPair(b)}</td>
+                      <td className="mono">{fmtShort(b.last_checked_at)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -572,11 +581,25 @@ export default function DashboardPage() {
                 <button className="btn" onClick={() => setSelected(null)}>Close</button>
               </div>
             </div>
-            <p className="muted mono">{selected.source_url}</p>
-            <p className="muted mono">→ {selected.target_url}</p>
-            <p style={{ margin: "10px 0" }}>
+            <p style={{ margin: "6px 0 14px" }}>
               <span className="badge" style={{ "--st": statusColor(selected.status) } as CSSProperties}><span className="dot" />{statusLabel(selected.status)}</span>
             </p>
+            <dl className="detail-grid">
+              <div><dt>Source</dt><dd className="mono br">{selected.source_url}</dd></div>
+              <div><dt>Target</dt><dd className="mono br">{selected.target_url}</dd></div>
+              <div><dt>Link URL (found)</dt><dd className="mono br">{selected.detected_target_url ?? "—"}</dd></div>
+              <div><dt>Anchor (found)</dt><dd>{selected.detected_anchor_text ?? "—"}</dd></div>
+              <div><dt>Anchor (expected)</dt><dd>{selected.expected_anchor_text ?? "—"}</dd></div>
+              <div><dt>Rel (found)</dt><dd className="mono">{selected.detected_rel?.join(" ") || "—"}</dd></div>
+              <div><dt>dofollow / nofollow</dt><dd>{yn(selected.is_dofollow)} / {yn(selected.is_nofollow)}</dd></div>
+              <div><dt>sponsored / ugc</dt><dd>{yn(selected.is_sponsored)} / {yn(selected.is_ugc)}</dd></div>
+              <div><dt>Link type / image alt</dt><dd className="muted">not captured yet</dd></div>
+              <div><dt>HTTP source / target</dt><dd className="mono">{httpPair(selected)}</dd></div>
+              <div><dt>First seen</dt><dd>{fmtLong(selected.first_checked_at)}</dd></div>
+              <div><dt>Last seen</dt><dd>{fmtLong(selected.last_seen_at)}</dd></div>
+              <div><dt>Last checked</dt><dd>{fmtLong(selected.last_checked_at)}</dd></div>
+              <div><dt>Cost</dt><dd>{selected.cost ? `${selected.cost} ${selected.currency ?? ""}` : "—"}</dd></div>
+            </dl>
             <div className="tags-row">
               {blTags.map((t) => (
                 <span key={t.id} className="tag-chip" style={t.color ? { borderColor: t.color, color: t.color } : undefined}>
@@ -627,6 +650,39 @@ export default function DashboardPage() {
         </div>
       )}
     </main>
+  );
+}
+
+function fmtShort(s?: string | null): string {
+  if (!s) return "—";
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+function fmtLong(s?: string | null): string {
+  if (!s) return "—";
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleString();
+}
+function httpPair(b: BacklinkView): string {
+  const s = b.source_http_status ?? null;
+  const t = b.target_http_status ?? null;
+  if (s == null && t == null) return "—";
+  return `${s ?? "—"} / ${t ?? "—"}`;
+}
+function yn(v?: boolean | null): string {
+  return v == null ? "—" : v ? "yes" : "no";
+}
+function RelChips({ b }: { b: BacklinkView }) {
+  const rel = b.detected_rel;
+  if (!rel || rel.length === 0) {
+    return <span className="rel-chip rel-expected" title="Expected (not yet observed)">{b.expected_rel_type}</span>;
+  }
+  return (
+    <span className="rel-chips">
+      {rel.map((r) => (
+        <span key={r} className={`rel-chip rel-${r}`}>{r}</span>
+      ))}
+    </span>
   );
 }
 

@@ -448,7 +448,10 @@ pub mod backlinks {
              expected_anchor_text, expected_rel_type::text AS expected_rel_type, \
              status::text AS status, cost::text AS cost, currency, \
              warranty_type::text AS warranty_type, warranty_value, warranty_expiration, \
-             created_at, updated_at, next_check_at, last_checked_at"
+             created_at, updated_at, next_check_at, last_checked_at, \
+             detected_anchor_text, detected_target_url, detected_rel_attributes, \
+             detected_is_dofollow, source_http_status, target_http_status, \
+             first_checked_at, last_seen_at"
         };
     }
 

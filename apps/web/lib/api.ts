@@ -110,6 +110,19 @@ export interface BacklinkView {
   warranty_value?: number | null;
   warranty_expiration?: string | null;
   warranty_status?: string;
+  // Observed on the last crawl (docs/06). Absent until first checked.
+  detected_anchor_text?: string | null;
+  detected_target_url?: string | null;
+  detected_rel?: string[] | null;
+  is_dofollow?: boolean | null;
+  is_nofollow?: boolean | null;
+  is_sponsored?: boolean | null;
+  is_ugc?: boolean | null;
+  source_http_status?: number | null;
+  target_http_status?: number | null;
+  first_checked_at?: string | null;
+  last_seen_at?: string | null;
+  last_checked_at?: string | null;
 }
 
 export interface NotificationItem {

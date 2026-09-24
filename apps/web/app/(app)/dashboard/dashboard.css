@@ -213,6 +213,28 @@
 }
 .badge .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 
+/* Rel tokens in the backlinks table */
+.rel-chips { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.rel-chip {
+  display: inline-block; padding: 1px 7px; font-size: 11px; font-weight: 600;
+  border-radius: 999px; border: 1px solid var(--border);
+  color: var(--muted); background: var(--surface-2); white-space: nowrap;
+}
+.rel-chip.rel-dofollow { color: var(--green); border-color: color-mix(in srgb, var(--green) 35%, transparent); background: color-mix(in srgb, var(--green) 12%, transparent); }
+.rel-chip.rel-nofollow { color: var(--yellow); border-color: color-mix(in srgb, var(--yellow) 35%, transparent); background: color-mix(in srgb, var(--yellow) 12%, transparent); }
+.rel-chip.rel-sponsored, .rel-chip.rel-ugc { color: var(--blue); border-color: color-mix(in srgb, var(--blue) 35%, transparent); background: color-mix(in srgb, var(--blue) 12%, transparent); }
+.rel-chip.rel-expected { opacity: .7; font-style: italic; }
+
+/* Anchor cell: keep long anchors from blowing out the row */
+.cell-anchor { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Backlink detail drawer: label/value grid */
+.detail-grid { display: grid; gap: 0; margin: 6px 0 18px; }
+.detail-grid > div { display: grid; grid-template-columns: 130px 1fr; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--border); align-items: baseline; }
+.detail-grid dt { font-size: 12px; color: var(--muted-2); text-transform: uppercase; letter-spacing: .03em; }
+.detail-grid dd { font-size: 13px; color: var(--text); min-width: 0; }
+.detail-grid dd.br { word-break: break-all; }
+
 .client-badge {
   margin-left: 10px; padding: 2px 9px; font-size: 12px; font-weight: 500;
   color: var(--accent-2); background: color-mix(in srgb, var(--accent) 12%, transparent);

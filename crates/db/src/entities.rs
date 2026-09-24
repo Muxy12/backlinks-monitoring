@@ -108,6 +108,15 @@ pub struct Backlink {
     pub updated_at: DateTime<Utc>,
     pub next_check_at: Option<DateTime<Utc>>,
     pub last_checked_at: Option<DateTime<Utc>>,
+    // ─── What we last actually observed on the source page (docs/06, docs/08) ──
+    pub detected_anchor_text: Option<String>,
+    pub detected_target_url: Option<String>,
+    pub detected_rel_attributes: Option<Vec<String>>,
+    pub detected_is_dofollow: Option<bool>,
+    pub source_http_status: Option<i32>,
+    pub target_http_status: Option<i32>,
+    pub first_checked_at: Option<DateTime<Utc>>,
+    pub last_seen_at: Option<DateTime<Utc>>,
 }
 
 /// The fields the state machine reads for one backlink (docs/08). Enum/array

@@ -303,6 +303,23 @@ pub struct BacklinkView {
     pub warranty_expiration: Option<String>,
     /// Computed at read against today: none/lifetime/active/expiring_soon/expired.
     pub warranty_status: String,
+    // ─── What we last actually observed (docs/06, docs/08) ────────────────────
+    /// Anchor text found in the link on the source page.
+    pub detected_anchor_text: Option<String>,
+    /// The exact href found (important for redirects/params).
+    pub detected_target_url: Option<String>,
+    /// Raw `rel` tokens found on the link.
+    pub detected_rel: Option<Vec<String>>,
+    pub is_dofollow: Option<bool>,
+    pub is_nofollow: Option<bool>,
+    pub is_sponsored: Option<bool>,
+    pub is_ugc: Option<bool>,
+    pub source_http_status: Option<i32>,
+    pub target_http_status: Option<i32>,
+    /// RFC3339 timestamps.
+    pub first_checked_at: Option<String>,
+    pub last_seen_at: Option<String>,
+    pub last_checked_at: Option<String>,
 }
 
 impl From<db::entities::Backlink> for BacklinkView {
@@ -313,6 +330,10 @@ impl From<db::entities::Backlink> for BacklinkView {
             backlio_core::warranty_status(kind, b.warranty_expiration, today, WARRANTY_SOON_DAYS)
                 .as_str()
                 .to_string();
+        let rel = b.detected_rel_attributes;
+        let is_nofollow = rel.as_ref().map(|a| a.iter().any(|r| r == "nofollow"));
+        let is_sponsored = rel.as_ref().map(|a| a.iter().any(|r| r == "sponsored"));
+        let is_ugc = rel.as_ref().map(|a| a.iter().any(|r| r == "ugc"));
         BacklinkView {
             id: b.id,
             source_url: b.source_url,
@@ -330,6 +351,18 @@ impl From<db::entities::Backlink> for BacklinkView {
             warranty_value: b.warranty_value,
             warranty_expiration: b.warranty_expiration.map(|d| d.to_string()),
             warranty_status,
+            detected_anchor_text: b.detected_anchor_text,
+            detected_target_url: b.detected_target_url,
+            is_dofollow: b.detected_is_dofollow,
+            is_nofollow,
+            is_sponsored,
+            is_ugc,
+            detected_rel: rel,
+            source_http_status: b.source_http_status,
+            target_http_status: b.target_http_status,
+            first_checked_at: b.first_checked_at.map(|d| d.to_rfc3339()),
+            last_seen_at: b.last_seen_at.map(|d| d.to_rfc3339()),
+            last_checked_at: b.last_checked_at.map(|d| d.to_rfc3339()),
         }
     }
 }
