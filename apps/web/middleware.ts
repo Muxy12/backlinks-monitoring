@@ -1,0 +1,67 @@
+import { NextRequest, NextResponse } from "next/server";
+
+// Content-Security-Policy with a per-request nonce (docs/11 S8).
+//
+// The important lock is **script-src**: 'self' + a fresh nonce + 'strict-dynamic'
+// and NO 'unsafe-inline'/'unsafe-eval' in production — so even if attacker text
+// from a crawled page reached the DOM, an injected <script> could not run. Next
+// automatically stamps the nonce onto its own hydration scripts.
+//
+// **style-src keeps 'unsafe-inline'** on purpose: the app uses React inline
+// `style={{}}` props (status colors, tiles, …), which render as inline style
+// attributes that no nonce can cover. That is the standard, low-risk concession;
+// the script vector is the one that matters for XSS and it is fully locked.
+
+const API_ORIGIN = (() => {
+  try {
+    return new URL(process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080").origin;
+  } catch {
+    return "http://localhost:8080";
+  }
+})();
+
+export function middleware(request: NextRequest) {
+  const dev = process.env.NODE_ENV !== "production";
+  const nonce = btoa(crypto.randomUUID());
+
+  // Dev needs eval + websockets for React Refresh / HMR; prod does not.
+  const scriptExtra = dev ? " 'unsafe-eval'" : "";
+  const connectExtra = dev ? " ws: http://localhost:*" : "";
+
+  const csp = [
+    `default-src 'self'`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${scriptExtra}`,
+    `style-src 'self' 'unsafe-inline'`,
+    `img-src 'self' data: https:`,
+    `font-src 'self' data:`,
+    `connect-src 'self' ${API_ORIGIN}${connectExtra}`,
+    `object-src 'none'`,
+    `base-uri 'self'`,
+    `form-action 'self'`,
+    `frame-ancestors 'none'`,
+    `upgrade-insecure-requests`,
+  ].join("; ");
+
+  // Pass the nonce + CSP to the render on the request, so Next nonces its
+  // scripts; also set the CSP on the response the browser enforces.
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-nonce", nonce);
+  requestHeaders.set("content-security-policy", csp);
+
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
+  response.headers.set("content-security-policy", csp);
+  return response;
+}
+
+export const config = {
+  // Run on pages, not on Next's static assets or the image optimizer.
+  matcher: [
+    {
+      source: "/((?!_next/static|_next/image|favicon.ico).*)",
+      missing: [
+        { type: "header", key: "next-router-prefetch" },
+        { type: "header", key: "purpose", value: "prefetch" },
+      ],
+    },
+  ],
+};
