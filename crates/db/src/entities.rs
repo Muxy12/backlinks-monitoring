@@ -127,3 +127,15 @@ pub struct MonitorState {
     pub source_url: String,
     pub target_url: String,
 }
+
+/// A change event on a backlink's timeline (§30). `previous_data`/`current_data`
+/// are JSON snapshots.
+#[derive(Debug, Clone, FromRow)]
+pub struct BacklinkEvent {
+    pub id: Uuid,
+    pub backlink_id: Uuid,
+    pub event_type: String,
+    pub previous_data: Option<serde_json::Value>,
+    pub current_data: Option<serde_json::Value>,
+    pub detected_at: DateTime<Utc>,
+}

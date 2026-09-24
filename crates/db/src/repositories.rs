@@ -847,3 +847,79 @@ pub mod scheduler {
         Ok((jobs_enqueued, all_ids.len()))
     }
 }
+
+// ─── Backlink events / timeline (§30) ────────────────────────────────────────
+pub mod events {
+    use super::*;
+    use crate::entities::BacklinkEvent;
+
+    /// The event timeline for one backlink, newest first. Tenant-scoped.
+    pub async fn list_for_backlink(
+        pool: &PgPool,
+        scope: &OrgScope,
+        backlink_id: Uuid,
+        limit: i64,
+    ) -> Result<Vec<BacklinkEvent>, DbError> {
+        Ok(sqlx::query_as::<_, BacklinkEvent>(
+            "SELECT id, backlink_id, event_type::text AS event_type, previous_data, current_data, detected_at \
+             FROM backlink_events WHERE organization_id = $1 AND backlink_id = $2 \
+             ORDER BY detected_at DESC LIMIT $3",
+        )
+        .bind(scope.organization_id())
+        .bind(backlink_id)
+        .bind(limit.clamp(1, 500))
+        .fetch_all(pool)
+        .await?)
+    }
+}
+
+// ─── Dashboard summary (§33, §34) ────────────────────────────────────────────
+pub mod dashboard {
+    use super::*;
+
+    /// (status, count) for every non-archived backlink in the org.
+    pub async fn status_counts(
+        pool: &PgPool,
+        scope: &OrgScope,
+    ) -> Result<Vec<(String, i64)>, DbError> {
+        Ok(sqlx::query_as::<_, (String, i64)>(
+            "SELECT status::text, count(*) FROM backlinks \
+             WHERE organization_id = $1 AND archived_at IS NULL GROUP BY status",
+        )
+        .bind(scope.organization_id())
+        .fetch_all(pool)
+        .await?)
+    }
+
+    /// (currency, sum(cost)) for links needing attention — Value at Risk (§33).
+    /// Grouped by currency; never summed across (that would be a lie).
+    pub async fn value_at_risk(
+        pool: &PgPool,
+        scope: &OrgScope,
+    ) -> Result<Vec<(String, String)>, DbError> {
+        Ok(sqlx::query_as::<_, (String, String)>(
+            "SELECT currency, sum(cost)::text FROM backlinks \
+             WHERE organization_id = $1 AND archived_at IS NULL AND cost IS NOT NULL \
+               AND status IN ('lost','changed','nofollow','source_error','target_error','redirected') \
+             GROUP BY currency",
+        )
+        .bind(scope.organization_id())
+        .fetch_all(pool)
+        .await?)
+    }
+
+    /// (currency, sum(cost)) for all tracked spend (§34).
+    pub async fn tracked_spend(
+        pool: &PgPool,
+        scope: &OrgScope,
+    ) -> Result<Vec<(String, String)>, DbError> {
+        Ok(sqlx::query_as::<_, (String, String)>(
+            "SELECT currency, sum(cost)::text FROM backlinks \
+             WHERE organization_id = $1 AND archived_at IS NULL AND cost IS NOT NULL \
+             GROUP BY currency",
+        )
+        .bind(scope.organization_id())
+        .fetch_all(pool)
+        .await?)
+    }
+}

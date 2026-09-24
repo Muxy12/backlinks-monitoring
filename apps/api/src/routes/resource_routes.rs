@@ -340,3 +340,98 @@ pub async fn check_backlink_now(
         Json(serde_json::json!({ "queued": true, "job_id": job_id })),
     ))
 }
+
+// ─── Backlink events (§30) + dashboard (§34) ─────────────────────────────────
+#[derive(Debug, Serialize)]
+pub struct EventView {
+    pub event_type: String,
+    pub previous_data: Option<serde_json::Value>,
+    pub current_data: Option<serde_json::Value>,
+    pub detected_at: String,
+}
+
+pub async fn get_backlink_events(
+    State(state): State<AppState>,
+    Path((org_id, backlink_id)): Path<(Uuid, Uuid)>,
+    jar: CookieJar,
+) -> Result<Json<Vec<EventView>>, ApiError> {
+    let (user, _s) = current(&state, &jar).await?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    // Confirm the backlink is in scope first (404 otherwise).
+    db::repositories::backlinks::get(&state.pool, &scope, backlink_id).await?;
+    let rows =
+        db::repositories::events::list_for_backlink(&state.pool, &scope, backlink_id, 200).await?;
+    Ok(Json(
+        rows.into_iter()
+            .map(|e| EventView {
+                event_type: e.event_type,
+                previous_data: e.previous_data,
+                current_data: e.current_data,
+                detected_at: e.detected_at.to_rfc3339(),
+            })
+            .collect(),
+    ))
+}
+
+#[derive(Debug, Serialize)]
+pub struct MoneyByCurrency {
+    pub currency: String,
+    pub amount: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct DashboardView {
+    /// status -> count for every non-archived backlink.
+    pub counts: std::collections::BTreeMap<String, i64>,
+    pub monitored: i64,
+    pub needs_attention: i64,
+    pub value_at_risk: Vec<MoneyByCurrency>,
+    pub tracked_spend: Vec<MoneyByCurrency>,
+}
+
+pub async fn dashboard(
+    State(state): State<AppState>,
+    Path(org_id): Path<Uuid>,
+    jar: CookieJar,
+) -> Result<Json<DashboardView>, ApiError> {
+    let (user, _s) = current(&state, &jar).await?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+
+    let counts_rows = db::repositories::dashboard::status_counts(&state.pool, &scope).await?;
+    let mut counts = std::collections::BTreeMap::new();
+    let mut monitored = 0i64;
+    let mut needs_attention = 0i64;
+    const ATTENTION: &[&str] = &[
+        "lost",
+        "changed",
+        "nofollow",
+        "source_error",
+        "target_error",
+        "redirected",
+    ];
+    for (status, n) in counts_rows {
+        monitored += n;
+        if ATTENTION.contains(&status.as_str()) {
+            needs_attention += n;
+        }
+        counts.insert(status, n);
+    }
+
+    let to_money = |rows: Vec<(String, String)>| {
+        rows.into_iter()
+            .map(|(currency, amount)| MoneyByCurrency { currency, amount })
+            .collect::<Vec<_>>()
+    };
+    let value_at_risk =
+        to_money(db::repositories::dashboard::value_at_risk(&state.pool, &scope).await?);
+    let tracked_spend =
+        to_money(db::repositories::dashboard::tracked_spend(&state.pool, &scope).await?);
+
+    Ok(Json(DashboardView {
+        counts,
+        monitored,
+        needs_attention,
+        value_at_risk,
+        tracked_spend,
+    }))
+}
