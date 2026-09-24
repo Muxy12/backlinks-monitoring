@@ -11,8 +11,12 @@
 //! The SSRF *classification* already lives in `backlio_core::net`; the fetch
 //! layer is the I/O around it.
 
+pub mod config;
+pub mod fetch;
 pub mod matching;
 pub mod parse;
 
+pub use config::CrawlerConfig;
+pub use fetch::{FetchError, FetchOk, FetchOutcome, fetch};
 pub use matching::{LinkMatch, best_match, evaluate, find_matches};
 pub use parse::{ExtractedLink, ParsedPage, parse_page};
