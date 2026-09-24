@@ -9,6 +9,7 @@
 //!
 //! — is enforced here as a property of the types, not as a convention.
 
+pub mod csv_export;
 pub mod csv_import;
 pub mod event;
 pub mod net;
