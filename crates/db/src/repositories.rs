@@ -466,6 +466,46 @@ pub mod backlinks {
         .map_err(DbError::from_fetch)
     }
 
+    /// Backlinks for CSV export (§36): the whole org, or one project, newest
+    /// first, capped. Tenant-scoped. Two literal queries so sqlx keeps its
+    /// audited-literal guarantee (S9).
+    pub async fn list_for_export(
+        pool: &PgPool,
+        scope: &OrgScope,
+        project_id: Option<Uuid>,
+        limit: i64,
+    ) -> Result<Vec<Backlink>, DbError> {
+        let limit = limit.clamp(1, 50_000);
+        let rows = match project_id {
+            Some(pid) => {
+                sqlx::query_as::<_, Backlink>(concat!(
+                    "SELECT ",
+                    cols!(),
+                    " FROM backlinks WHERE organization_id = $1 AND project_id = $2 \
+                      AND archived_at IS NULL ORDER BY created_at DESC LIMIT $3"
+                ))
+                .bind(scope.organization_id())
+                .bind(pid)
+                .bind(limit)
+                .fetch_all(pool)
+                .await?
+            }
+            None => {
+                sqlx::query_as::<_, Backlink>(concat!(
+                    "SELECT ",
+                    cols!(),
+                    " FROM backlinks WHERE organization_id = $1 \
+                      AND archived_at IS NULL ORDER BY created_at DESC LIMIT $2"
+                ))
+                .bind(scope.organization_id())
+                .bind(limit)
+                .fetch_all(pool)
+                .await?
+            }
+        };
+        Ok(rows)
+    }
+
     /// Count active backlinks in an org — for plan-limit enforcement (§39).
     pub async fn count_active(pool: &PgPool, scope: &OrgScope) -> Result<i64, DbError> {
         let (n,): (i64,) = sqlx::query_as(

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { api, orgApi, type BacklinkView, type DashboardResponse, type EventView, type MeResponse, type NotificationsResponse, type ProjectView } from "../../lib/api";
+import { api, orgApi, backlinksExportUrl, type BacklinkView, type DashboardResponse, type EventView, type MeResponse, type NotificationsResponse, type ProjectView } from "../../lib/api";
 import { statusColor, statusLabel } from "../../lib/status";
 import "../auth.css";
 import "./dashboard.css";
@@ -136,13 +136,20 @@ export default function DashboardPage() {
           <section className="panel">
             <div className="panel-head">
               <h2>Backlinks</h2>
-              {projects.length > 0 && (
-                <select value={projectId ?? ""} onChange={(e) => setProjectId(e.target.value)}>
-                  {projects.map((p) => (
-                    <option key={p.id} value={p.id}>{p.name} — {p.domain}</option>
-                  ))}
-                </select>
-              )}
+              <div className="panel-actions">
+                {projects.length > 0 && (
+                  <select value={projectId ?? ""} onChange={(e) => setProjectId(e.target.value)}>
+                    {projects.map((p) => (
+                      <option key={p.id} value={p.id}>{p.name} — {p.domain}</option>
+                    ))}
+                  </select>
+                )}
+                {orgId && (
+                  <a className="btn sm" href={backlinksExportUrl(orgId, projectId ?? undefined)}>
+                    Export CSV
+                  </a>
+                )}
+              </div>
             </div>
             {warranties.length > 0 && (
               <div className="warranty-note">

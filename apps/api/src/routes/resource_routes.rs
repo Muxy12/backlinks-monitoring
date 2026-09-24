@@ -642,6 +642,83 @@ pub async fn read_notification(
     Ok(StatusCode::NO_CONTENT)
 }
 
+// ─── CSV export (§36) ─────────────────────────────────────────────────────────
+#[derive(Debug, Deserialize)]
+pub struct ExportQuery {
+    /// Optional project filter; omitted exports the whole org.
+    pub project_id: Option<Uuid>,
+}
+
+/// Stream a CSV of the org's backlinks. Cells are guarded against CSV/formula
+/// injection (docs/11 S8) — a crawled anchor like `=cmd` cannot execute in a
+/// spreadsheet. The header row matches the importer's generic layout, so an
+/// export re-imports; extra columns (status, warranty, last check) are ignored
+/// on import.
+pub async fn export_backlinks(
+    State(state): State<AppState>,
+    Path(org_id): Path<Uuid>,
+    axum::extract::Query(q): axum::extract::Query<ExportQuery>,
+    jar: CookieJar,
+) -> Result<axum::response::Response, ApiError> {
+    use axum::http::header;
+    use axum::response::IntoResponse;
+
+    let (user, _s) = current(&state, &jar).await?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    let rows =
+        db::repositories::backlinks::list_for_export(&state.pool, &scope, q.project_id, 50_000)
+            .await?;
+
+    const HEADERS: &[&str] = &[
+        "source_url",
+        "target_url",
+        "anchor",
+        "rel",
+        "cost",
+        "currency",
+        "status",
+        "warranty_type",
+        "warranty_value",
+        "warranty_expiration",
+        "last_checked_at",
+    ];
+    let records: Vec<Vec<String>> = rows
+        .into_iter()
+        .map(|b| {
+            vec![
+                b.source_url,
+                b.target_url,
+                b.expected_anchor_text.unwrap_or_default(),
+                b.expected_rel_type,
+                b.cost.unwrap_or_default(),
+                b.currency.unwrap_or_default(),
+                b.status,
+                b.warranty_type,
+                b.warranty_value.map(|v| v.to_string()).unwrap_or_default(),
+                b.warranty_expiration
+                    .map(|d| d.to_string())
+                    .unwrap_or_default(),
+                b.last_checked_at
+                    .map(|t| t.to_rfc3339())
+                    .unwrap_or_default(),
+            ]
+        })
+        .collect();
+
+    let csv = backlio_core::csv_export::write_csv(HEADERS, &records);
+    Ok((
+        [
+            (header::CONTENT_TYPE, "text/csv; charset=utf-8"),
+            (
+                header::CONTENT_DISPOSITION,
+                "attachment; filename=\"backlinks.csv\"",
+            ),
+        ],
+        csv,
+    )
+        .into_response())
+}
+
 // ─── CSV import (§38) ────────────────────────────────────────────────────────
 #[derive(Debug, Deserialize)]
 pub struct ImportBody {

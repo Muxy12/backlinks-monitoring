@@ -107,6 +107,10 @@ pub fn app(state: AppState) -> Router {
             post(routes::resource_routes::read_notification),
         )
         .route(
+            "/v1/organizations/{org_id}/backlinks/export",
+            get(routes::resource_routes::export_backlinks),
+        )
+        .route(
             "/v1/organizations/{org_id}/imports",
             post(routes::resource_routes::import_csv),
         )
