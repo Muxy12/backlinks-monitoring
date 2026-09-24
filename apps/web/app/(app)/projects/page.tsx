@@ -2,9 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { api, orgApi, type ClientView, type MeResponse, type ProjectView } from "../../lib/api";
-import { AppNav } from "../../components/AppNav";
-import "../auth.css";
+import { api, orgApi, type ClientView, type MeResponse, type ProjectView } from "@/lib/api";
+import "@/app/auth.css";
 import "../dashboard/dashboard.css";
 import "../operations/operations.css";
 
@@ -82,13 +81,9 @@ export default function ProjectsPage() {
 
   return (
     <main className="dash">
-      <header className="dash-head">
-        <div className="dash-id">
-          <div className="brand"><span className="brand-mark" />Backlio</div>
-          <h1>Projects</h1>
-          <p className="muted">The sites you monitor backlinks for.</p>
-        </div>
-        <AppNav active="projects" />
+      <header className="page-head">
+        <h1>Projects</h1>
+        <p className="muted">The sites you monitor backlinks for.</p>
       </header>
 
       {!orgId ? (

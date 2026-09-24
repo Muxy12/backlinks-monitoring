@@ -2,9 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { api, orgApi, type MeResponse, type PreferenceItem } from "../../../lib/api";
-import { AppNav } from "../../../components/AppNav";
-import "../../auth.css";
+import { api, orgApi, type MeResponse, type PreferenceItem } from "@/lib/api";
+import "@/app/auth.css";
 import "../../dashboard/dashboard.css";
 
 // The events worth surfacing, and the channels we let users toggle here.
@@ -92,13 +91,9 @@ export default function NotificationSettingsPage() {
 
   return (
     <main className="dash">
-      <header className="dash-head">
-        <div className="dash-id">
-          <div className="brand"><span className="brand-mark" />Backlio</div>
-          <h1>Notification settings</h1>
-          <p className="muted">Choose which changes notify you, and where.</p>
-        </div>
-        <AppNav />
+      <header className="page-head">
+        <h1>Notification settings</h1>
+        <p className="muted">Choose which changes notify you, and where.</p>
       </header>
 
       {!orgId ? (

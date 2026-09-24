@@ -2,10 +2,9 @@
 
 import { useCallback, useEffect, useState, type CSSProperties, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { api, orgApi, backlinksExportUrl, type BacklinkView, type ClientView, type DashboardResponse, type EventView, type MeResponse, type NotificationsResponse, type ProjectView, type TagView } from "../../lib/api";
-import { statusColor, statusLabel } from "../../lib/status";
-import { AppNav } from "../../components/AppNav";
-import "../auth.css";
+import { api, orgApi, backlinksExportUrl, type BacklinkView, type ClientView, type DashboardResponse, type EventView, type MeResponse, type NotificationsResponse, type ProjectView, type TagView } from "@/lib/api";
+import { statusColor, statusLabel } from "@/lib/status";
+import "@/app/auth.css";
 import "./dashboard.css";
 
 export default function DashboardPage() {
@@ -32,6 +31,18 @@ export default function DashboardPage() {
   const [wsName, setWsName] = useState("");
   const [wsBusy, setWsBusy] = useState(false);
   const [wsErr, setWsErr] = useState<string | null>(null);
+  const [showAdd, setShowAdd] = useState(false);
+  const [addBusy, setAddBusy] = useState(false);
+  const [addErr, setAddErr] = useState<string | null>(null);
+  const [addForm, setAddForm] = useState({
+    project_id: "",
+    source_url: "",
+    target_url: "",
+    expected_rel_type: "dofollow",
+    expected_anchor_text: "",
+    cost: "",
+    currency: "",
+  });
 
   const STATUSES = ["live", "lost", "changed", "nofollow", "redirected", "source_error", "target_error", "blocked", "pending"];
 
@@ -203,6 +214,54 @@ export default function DashboardPage() {
     }
   }
 
+  function openAdd() {
+    setAddErr(null);
+    setAddForm((f) => ({ ...f, project_id: projectId ?? projects[0]?.id ?? "" }));
+    setShowAdd(true);
+  }
+
+  async function submitBacklink(e: FormEvent) {
+    e.preventDefault();
+    if (!orgId) return;
+    const f = addForm;
+    if (!f.project_id) {
+      setAddErr("Pick a project for this backlink.");
+      return;
+    }
+    const src = f.source_url.trim();
+    const tgt = f.target_url.trim();
+    if (!/^https?:\/\//.test(src) || !/^https?:\/\//.test(tgt)) {
+      setAddErr("Source and target must start with http:// or https://.");
+      return;
+    }
+    setAddErr(null);
+    setAddBusy(true);
+    const res = await orgApi.createBacklink(orgId, {
+      project_id: f.project_id,
+      source_url: src,
+      target_url: tgt,
+      expected_rel_type: f.expected_rel_type,
+      ...(f.expected_anchor_text.trim() ? { expected_anchor_text: f.expected_anchor_text.trim() } : {}),
+      ...(f.cost.trim() ? { cost: Number(f.cost), currency: f.currency.trim() || "USD" } : {}),
+    });
+    setAddBusy(false);
+    if (!res.ok) {
+      setAddErr(res.detail || "Could not add the backlink.");
+      return;
+    }
+    setShowAdd(false);
+    setAddForm({ project_id: f.project_id, source_url: "", target_url: "", expected_rel_type: "dofollow", expected_anchor_text: "", cost: "", currency: "" });
+    // Show the project we just added to, and refresh the numbers + list.
+    setClientFilter("");
+    setProjectId(f.project_id);
+    const [dash, list] = await Promise.all([
+      orgApi.dashboard(orgId),
+      orgApi.searchBacklinks(orgId, { projectId: f.project_id }),
+    ]);
+    if (dash.ok) setSummary(dash.data);
+    if (list.ok) setBacklinks(list.data);
+  }
+
   // Segments for the status-breakdown bar (only statuses that actually occur).
   const distSegments = STATUSES.map((st) => ({ st, n: summary?.counts[st] ?? 0 })).filter((s) => s.n > 0);
   const distTotal = distSegments.reduce((acc, s) => acc + s.n, 0);
@@ -211,19 +270,18 @@ export default function DashboardPage() {
     <main className="dash">
       <header className="dash-head">
         <div className="dash-id">
-          <div className="brand"><span className="brand-mark" />Backlio</div>
           <h1>
             {me.organizations[0]?.name ?? "Dashboard"}
             {me.organizations[0]?.role && <span className="role-pill">{me.organizations[0].role}</span>}
           </h1>
           <p className="muted">{me.user.email}</p>
         </div>
-        <AppNav active="dashboard">
+        <div className="head-actions">
           <button className="btn bell" onClick={() => setShowNotifs((v) => !v)} aria-label="Notifications">
             🔔
             {notifs && notifs.unread > 0 && <span className="bell-badge">{notifs.unread}</span>}
           </button>
-        </AppNav>
+        </div>
       </header>
 
       {me.organizations.length === 0 ? (
@@ -322,7 +380,10 @@ export default function DashboardPage() {
                     <option key={st} value={st}>{statusLabel(st)}</option>
                   ))}
                 </select>
-                <a className="btn sm primary" href="/import">+ Add backlinks</a>
+                {projects.length > 0 && (
+                  <button className="btn sm primary" onClick={openAdd}>+ Add backlink</button>
+                )}
+                <a className="btn sm" href="/import">Import</a>
                 {orgId && (
                   <a className="btn sm" href={backlinksExportUrl(orgId, projectId ?? undefined, clientFilter || undefined)}>
                     Export CSV
@@ -352,11 +413,16 @@ export default function DashboardPage() {
                 </p>
                 <div className="empty-cta">
                   {projects.length === 0 ? (
-                    <a className="btn primary" href="/projects">Create a project</a>
+                    <>
+                      <a className="btn primary" href="/projects">Create a project</a>
+                      <a className="btn" href="/projects">Manage projects</a>
+                    </>
                   ) : (
-                    <a className="btn primary" href="/import">Import backlinks</a>
+                    <>
+                      <button className="btn primary" onClick={openAdd}>+ Add backlink</button>
+                      <a className="btn" href="/import">Import CSV</a>
+                    </>
                   )}
-                  <a className="btn" href="/projects">Manage projects</a>
                 </div>
               </div>
             ) : (
@@ -380,6 +446,93 @@ export default function DashboardPage() {
             )}
           </section>
         </>
+      )}
+      {showAdd && (
+        <div className="drawer-backdrop" onClick={() => setShowAdd(false)}>
+          <aside className="drawer" onClick={(e) => e.stopPropagation()}>
+            <div className="panel-head">
+              <h2>Add a backlink</h2>
+              <button className="btn" onClick={() => setShowAdd(false)}>Close</button>
+            </div>
+            <form onSubmit={submitBacklink} className="add-form">
+              <label>
+                <span>Project</span>
+                <select
+                  value={addForm.project_id}
+                  onChange={(e) => setAddForm((f) => ({ ...f, project_id: e.target.value }))}
+                >
+                  {projects.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name} — {p.domain}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Source URL (the page that links to you)</span>
+                <input
+                  placeholder="https://blog.example.com/post"
+                  value={addForm.source_url}
+                  onChange={(e) => setAddForm((f) => ({ ...f, source_url: e.target.value }))}
+                  autoFocus
+                />
+              </label>
+              <label>
+                <span>Target URL (your page)</span>
+                <input
+                  placeholder="https://yourdomain.com/landing"
+                  value={addForm.target_url}
+                  onChange={(e) => setAddForm((f) => ({ ...f, target_url: e.target.value }))}
+                />
+              </label>
+              <div className="add-row">
+                <label>
+                  <span>Rel</span>
+                  <select
+                    value={addForm.expected_rel_type}
+                    onChange={(e) => setAddForm((f) => ({ ...f, expected_rel_type: e.target.value }))}
+                  >
+                    <option value="dofollow">dofollow</option>
+                    <option value="nofollow">nofollow</option>
+                    <option value="sponsored">sponsored</option>
+                    <option value="ugc">ugc</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Anchor text (optional)</span>
+                  <input
+                    placeholder="e.g. best SEO tools"
+                    value={addForm.expected_anchor_text}
+                    onChange={(e) => setAddForm((f) => ({ ...f, expected_anchor_text: e.target.value }))}
+                  />
+                </label>
+              </div>
+              <div className="add-row">
+                <label>
+                  <span>Cost (optional)</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={addForm.cost}
+                    onChange={(e) => setAddForm((f) => ({ ...f, cost: e.target.value }))}
+                  />
+                </label>
+                <label>
+                  <span>Currency</span>
+                  <input
+                    placeholder="USD"
+                    value={addForm.currency}
+                    onChange={(e) => setAddForm((f) => ({ ...f, currency: e.target.value }))}
+                  />
+                </label>
+              </div>
+              {addErr && <p className="error">{addErr}</p>}
+              <button className="btn primary" type="submit" disabled={addBusy}>
+                {addBusy ? "Adding…" : "Add backlink"}
+              </button>
+            </form>
+          </aside>
+        </div>
       )}
       {showNotifs && (
         <div className="drawer-backdrop" onClick={() => setShowNotifs(false)}>

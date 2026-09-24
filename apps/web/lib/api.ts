@@ -315,6 +315,23 @@ export const orgApi = {
     }),
   publisherRollup: (org: string, id: string) =>
     request<PublisherRollup>(`/v1/organizations/${org}/publishers/${id}/rollup`),
+  createBacklink: (
+    org: string,
+    body: {
+      project_id: string;
+      source_url: string;
+      target_url: string;
+      expected_rel_type?: string;
+      expected_anchor_text?: string;
+      cost?: number;
+      currency?: string;
+    },
+  ) =>
+    request<BacklinkView>(`/v1/organizations/${org}/backlinks`, {
+      method: "POST",
+      headers: csrfHeader(),
+      body: JSON.stringify(body),
+    }),
   importCsv: (org: string, projectId: string, csv: string) =>
     request<ImportResult>(`/v1/organizations/${org}/imports`, {
       method: "POST",

@@ -11,9 +11,8 @@ import {
   type ProjectView,
   type PublisherRollup,
   type PublisherView,
-} from "../../lib/api";
-import { AppNav } from "../../components/AppNav";
-import "../auth.css";
+} from "@/lib/api";
+import "@/app/auth.css";
 import "../dashboard/dashboard.css";
 import "./operations.css";
 
@@ -61,13 +60,9 @@ export default function OperationsPage() {
 
   return (
     <main className="dash">
-      <header className="dash-head">
-        <div className="dash-id">
-          <div className="brand"><span className="brand-mark" />Backlio</div>
-          <h1>Operations</h1>
-          <p className="muted">Campaigns &amp; publishers · {me.organizations[0]?.name ?? "No workspace"}</p>
-        </div>
-        <AppNav active="operations" />
+      <header className="page-head">
+        <h1>Operations</h1>
+        <p className="muted">Campaigns &amp; publishers · {me.organizations[0]?.name ?? "No workspace"}</p>
       </header>
 
       {!orgId ? (
