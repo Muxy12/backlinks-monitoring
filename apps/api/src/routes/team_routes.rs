@@ -97,11 +97,13 @@ pub async fn create_invitation(
         &state.pool,
         &scope,
         Uuid::now_v7(),
-        email,
-        role.as_str(),
-        user.id,
-        &token.hash,
-        expires_at,
+        invitations::NewInvitation {
+            email,
+            role: role.as_str(),
+            invited_by: user.id,
+            token_hash: &token.hash,
+            expires_at,
+        },
     )
     .await?;
 

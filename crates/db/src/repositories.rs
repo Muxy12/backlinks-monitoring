@@ -1683,15 +1683,20 @@ pub mod invitations {
         };
     }
 
+    /// Fields for a new invitation (keeps `create` to a few arguments).
+    pub struct NewInvitation<'a> {
+        pub email: &'a str,
+        pub role: &'a str,
+        pub invited_by: Uuid,
+        pub token_hash: &'a [u8],
+        pub expires_at: DateTime<Utc>,
+    }
+
     pub async fn create(
         pool: &PgPool,
         scope: &OrgScope,
         id: Uuid,
-        email: &str,
-        role: &str,
-        invited_by: Uuid,
-        token_hash: &[u8],
-        expires_at: DateTime<Utc>,
+        new: NewInvitation<'_>,
     ) -> Result<Invitation, DbError> {
         sqlx::query_as::<_, Invitation>(concat!(
             "INSERT INTO organization_invitations \
@@ -1701,11 +1706,11 @@ pub mod invitations {
         ))
         .bind(id)
         .bind(scope.organization_id())
-        .bind(email)
-        .bind(role)
-        .bind(invited_by)
-        .bind(token_hash)
-        .bind(expires_at)
+        .bind(new.email)
+        .bind(new.role)
+        .bind(new.invited_by)
+        .bind(new.token_hash)
+        .bind(new.expires_at)
         .fetch_one(pool)
         .await
         .map_err(DbError::from_insert)
