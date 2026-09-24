@@ -109,7 +109,7 @@ async fn scheduler_dedupes_by_source_and_handler_checks_all() {
     .unwrap();
     assert_eq!(count, 1, "one deduped job for the shared source page");
 
-    let (ids_len,): (i64,) = sqlx::query_as(
+    let (ids_len,): (i32,) = sqlx::query_as(
         "SELECT jsonb_array_length(payload->'backlink_ids') FROM jobs \
          WHERE job_type='check_source_page' AND payload->>'source_url' = $1",
     )
@@ -117,7 +117,7 @@ async fn scheduler_dedupes_by_source_and_handler_checks_all() {
     .fetch_one(pool)
     .await
     .unwrap();
-    assert_eq!(ids_len, 2, "the one job covers both backlinks");
+    assert_eq!(ids_len, 2i32, "the one job covers both backlinks");
 
     // The deduped handler checks both from a single fetch -> both live.
     let applied = worker::engine::check_source_group(
