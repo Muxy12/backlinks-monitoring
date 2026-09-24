@@ -1,0 +1,12 @@
+{
+  "name": "backlio-schema-check",
+  "private": true,
+  "type": "module",
+  "description": "Toolchain-free schema smoke test: applies migrations/ into PGlite (Postgres 17, WASM) and asserts the design's key constraints.",
+  "scripts": {
+    "check": "node verify.mjs"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.5.8"
+  }
+}

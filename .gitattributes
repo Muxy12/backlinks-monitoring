@@ -1,0 +1,6 @@
+* text=auto eol=lf
+*.sql text eol=lf
+*.md  text eol=lf
+*.rs  text eol=lf
+*.png binary
+*.jpg binary

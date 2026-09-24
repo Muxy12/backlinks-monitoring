@@ -35,6 +35,14 @@ Axum skeleton with middleware (request id, body limit, CSRF, rate limit, error m
 clients · projects · `OrgScope` · Next.js app with auth flows and app shell · Docker Postgres ·
 CI · first Vercel deploy.
 
+**Started early (before the Rust toolchain — blocked on local disk space):**
+
+- [x] All 12 SQLx migrations written (`/migrations`), covering every spec §41 table.
+- [x] Schema verified in PGlite (Postgres 17 WASM) via `tools/schema-check` — 54 assertions green,
+      covering composite-FK tenant isolation, business-rule CHECKs, idempotency indexes, the
+      scheduler query plan and the job claim query. Caught and fixed a NULL-logic bug in the
+      warranty constraint. **Not** a substitute for the SQLx/Neon tests below.
+
 **Exit criteria**
 
 - [ ] Full gate green
