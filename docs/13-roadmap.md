@@ -32,8 +32,9 @@ Postgres · schema-check · `next build`). Local Rust pure-crate suite: 114 test
 | **Phase 5** imports | ✅ CSV import (§38): pure parser (generic + Ahrefs/Semrush headers, per-row validation) + bulk-create API with dedup + per-row errors. Async chunking for huge files is future work |
 | **Phase 4** operations | 🟡 campaigns + publishers CRUD with **read-time rollups** — status counts, spend by currency (never merged), campaign target progress, publisher removal rate + average lifespan; backlinks assignable to a campaign/publisher (org-validated). **Warranty tracking (§32)**: pure core computation (none/days/months/lifetime, month-end clamping) + materialized expiration on write + computed status + expiring-warranties API + the daily `check_warranties` sweep emitting idempotent alerts. All verified over real Postgres in CI. Remaining: dashboard wiring for the new metrics + a recurring trigger for the daily job |
 | **Phase 6** billing | 🟡 plan/entitlements + **plan-limit enforcement** on create/import (402 over cap) + **Stripe webhook** (signature verify + idempotent receipt), fixture-tested. Remaining: Checkout/Portal + subscription-state mutation (needs Stripe keys) |
-| **Frontend** | 🟡 marketing homepage + login/register + dashboard (counters, value-at-risk, backlinks table, history-timeline drawer). Remaining: import screen, campaigns/publishers, public tools |
-| Phase 7 | Remaining: notifications (§37), hardening/audit (§11) |
+| **Frontend** | 🟡 marketing homepage + login/register + dashboard (counters, value-at-risk, backlinks table, history-timeline drawer, **warranty-attention banner**, **notifications bell + feed drawer with mark-read**) + **public backlink-checker page** (§50). Remaining: import screen, campaigns/publishers management UI |
+| **Phase 7** | 🟡 **notifications feed API** (list + unread badge + idempotent CSRF-protected mark-read) done. Remaining: email delivery (needs provider key), preferences API (§37), security hardening/audit (§11) |
+| §50 public tool | ✅ SSRF-safe backlink checker: API (`POST /v1/tools/backlink-check`) + web page. Proven to block loopback on the public endpoint |
 
 **Monitoring works**: `apps/worker/tests/engine_live.rs` proves a present dofollow link goes
 `live` with a `BACKLINK_FOUND` event, and a single absence never marks it `lost` — all against
