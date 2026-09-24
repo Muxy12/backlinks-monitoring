@@ -103,6 +103,10 @@ pub fn app(state: AppState) -> Router {
             get(routes::resource_routes::get_backlink),
         )
         .route(
+            "/v1/organizations/{org_id}/backlinks/bulk",
+            post(routes::resource_routes::bulk_create_backlinks),
+        )
+        .route(
             "/v1/organizations/{org_id}/backlinks/{backlink_id}/check",
             post(routes::resource_routes::check_backlink_now),
         )

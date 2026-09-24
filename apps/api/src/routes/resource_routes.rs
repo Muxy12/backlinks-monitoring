@@ -358,6 +358,152 @@ pub async fn create_backlink(
     Ok((StatusCode::CREATED, Json(backlink.into())))
 }
 
+// ─── Bulk create (§35) ────────────────────────────────────────────────────────
+const BULK_MAX: usize = 1000;
+
+#[derive(Debug, Deserialize)]
+pub struct BulkBacklinkRow {
+    pub source_url: String,
+    pub target_url: String,
+    pub expected_anchor_text: Option<String>,
+    pub expected_rel_type: Option<String>,
+    pub cost: Option<f64>,
+    pub currency: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BulkCreateBody {
+    pub project_id: Uuid,
+    pub backlinks: Vec<BulkBacklinkRow>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct BulkRowError {
+    pub index: usize,
+    pub message: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct BulkResult {
+    pub total: usize,
+    pub created: usize,
+    pub duplicates: usize,
+    pub errors: Vec<BulkRowError>,
+}
+
+/// POST /v1/organizations/{org}/backlinks/bulk — create many backlinks in one
+/// call (§35), capped at 1000. Per-row: dedup collapses to `duplicates`, a bad
+/// row goes to `errors` (never aborting the batch), and everything else is
+/// created. The whole valid batch is checked against the plan cap up front.
+pub async fn bulk_create_backlinks(
+    State(state): State<AppState>,
+    Path(org_id): Path<Uuid>,
+    jar: CookieJar,
+    headers: HeaderMap,
+    Json(body): Json<BulkCreateBody>,
+) -> Result<Json<BulkResult>, ApiError> {
+    let (user, session) = current(&state, &jar).await?;
+    check_csrf(&jar, &headers, &session)?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Member)?;
+
+    if body.backlinks.is_empty() {
+        return Err(ApiError::Validation("no backlinks provided".into()));
+    }
+    if body.backlinks.len() > BULK_MAX {
+        return Err(ApiError::Validation(format!(
+            "at most {BULK_MAX} backlinks per call"
+        )));
+    }
+    // The project must belong to this org (404 otherwise).
+    db::repositories::projects::get(&state.pool, &scope, body.project_id).await?;
+
+    // Validate rows first so the plan-cap check counts only creatable ones.
+    let mut errors = Vec::new();
+    let mut valid = Vec::new();
+    for (i, row) in body.backlinks.iter().enumerate() {
+        match validate_bulk_row(row) {
+            Ok(prepared) => valid.push((i, prepared)),
+            Err(message) => errors.push(BulkRowError { index: i, message }),
+        }
+    }
+    enforce_backlink_quota(&state, &scope, valid.len() as u32).await?;
+
+    let mut created = 0usize;
+    let mut duplicates = 0usize;
+    for (i, p) in &valid {
+        let new = db::repositories::backlinks::NewBacklink {
+            project_id: body.project_id,
+            campaign_id: None,
+            publisher_id: None,
+            source_url: &p.source_url,
+            target_url: &p.target_url,
+            expected_anchor_text: p.anchor.as_deref(),
+            expected_rel_type: &p.rel,
+            cost: p.cost.as_deref(),
+            currency: p.currency.as_deref(),
+            warranty_type: "none",
+            warranty_value: None,
+            warranty_expiration: None,
+        };
+        match db::repositories::backlinks::create(&state.pool, &scope, Uuid::now_v7(), new).await {
+            Ok(_) => created += 1,
+            Err(db::DbError::Conflict(_)) => duplicates += 1,
+            Err(db::DbError::Config(_)) => errors.push(BulkRowError {
+                index: *i,
+                message: "could not parse a URL".into(),
+            }),
+            Err(e) => return Err(e.into()),
+        }
+    }
+
+    Ok(Json(BulkResult {
+        total: body.backlinks.len(),
+        created,
+        duplicates,
+        errors,
+    }))
+}
+
+struct PreparedRow {
+    source_url: String,
+    target_url: String,
+    anchor: Option<String>,
+    rel: String,
+    cost: Option<String>,
+    currency: Option<String>,
+}
+
+fn validate_bulk_row(row: &BulkBacklinkRow) -> Result<PreparedRow, String> {
+    if !is_http_url(&row.source_url) || !is_http_url(&row.target_url) {
+        return Err("source_url and target_url must be http(s) URLs".into());
+    }
+    let rel = row.expected_rel_type.as_deref().unwrap_or("dofollow");
+    if !matches!(rel, "dofollow" | "nofollow" | "sponsored" | "ugc") {
+        return Err("expected_rel_type must be dofollow/nofollow/sponsored/ugc".into());
+    }
+    let cost = match (row.cost, row.currency.as_deref()) {
+        (Some(_), None) => return Err("currency is required when cost is set".into()),
+        (Some(c), Some(_)) if c < 0.0 => return Err("cost cannot be negative".into()),
+        (Some(c), Some(_)) => Some(format!("{c:.2}")),
+        (None, _) => None,
+    };
+    let anchor = row
+        .expected_anchor_text
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(str::to_string);
+    Ok(PreparedRow {
+        source_url: row.source_url.trim().to_string(),
+        target_url: row.target_url.trim().to_string(),
+        anchor,
+        rel: rel.to_string(),
+        cost,
+        currency: row.currency.clone(),
+    })
+}
+
 #[derive(Debug, Deserialize)]
 pub struct ListBacklinksQuery {
     /// Optional now: omit to list the whole org (§35).
