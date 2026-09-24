@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type CSSProperties, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { api, orgApi, backlinksExportUrl, type BacklinkView, type ClientView, type DashboardResponse, type EventView, type MeResponse, type NotificationsResponse, type ProjectView, type TagView } from "../../lib/api";
 import { statusColor, statusLabel } from "../../lib/status";
@@ -202,14 +202,22 @@ export default function DashboardPage() {
     }
   }
 
+  // Segments for the status-breakdown bar (only statuses that actually occur).
+  const distSegments = STATUSES.map((st) => ({ st, n: summary?.counts[st] ?? 0 })).filter((s) => s.n > 0);
+  const distTotal = distSegments.reduce((acc, s) => acc + s.n, 0);
+
   return (
     <main className="dash">
       <header className="dash-head">
-        <div>
-          <h1>Dashboard</h1>
-          <p className="muted">{me.organizations[0]?.name ?? "No workspace"} · {me.user.email}</p>
+        <div className="dash-id">
+          <div className="brand"><span className="brand-mark" />Backlio</div>
+          <h1>
+            {me.organizations[0]?.name ?? "Dashboard"}
+            {me.organizations[0]?.role && <span className="role-pill">{me.organizations[0].role}</span>}
+          </h1>
+          <p className="muted">{me.user.email}</p>
         </div>
-        <div className="head-actions">
+        <nav className="head-actions">
           <a className="btn" href="/projects">Projects</a>
           <a className="btn" href="/clients">Clients</a>
           <a className="btn" href="/operations">Operations</a>
@@ -220,11 +228,12 @@ export default function DashboardPage() {
             {notifs && notifs.unread > 0 && <span className="bell-badge">{notifs.unread}</span>}
           </button>
           <button className="btn" onClick={async () => { await api.logout(); router.push("/login"); }}>Log out</button>
-        </div>
+        </nav>
       </header>
 
       {me.organizations.length === 0 ? (
         <section className="panel create-ws">
+          <div className="empty-icon">🚀</div>
           <h2>Create your workspace</h2>
           <p className="muted">A workspace holds your clients, projects and backlinks. Name it after your agency or your own site.</p>
           <form onSubmit={createWorkspace} className="ws-form">
@@ -245,11 +254,39 @@ export default function DashboardPage() {
       ) : (
         <>
           <section className="tiles">
-            <Tile label="MONITORED" value={summary?.monitored ?? 0} />
-            <Tile label="LIVE" value={summary?.counts["live"] ?? 0} color="var(--green)" />
-            <Tile label="NEEDS ATTENTION" value={summary?.needs_attention ?? 0} color="var(--yellow)" />
-            <Tile label="VALUE AT RISK" value={money(summary?.value_at_risk ?? [])} />
+            <Tile label="Monitored" value={summary?.monitored ?? 0} icon="📡" hint="Active backlinks" />
+            <Tile label="Live" value={summary?.counts["live"] ?? 0} accent="var(--green)" icon="✓" hint="Confirmed present" />
+            <Tile label="Needs attention" value={summary?.needs_attention ?? 0} accent="var(--yellow)" icon="!" hint="Lost, changed or errored" />
+            <Tile label="Value at risk" value={money(summary?.value_at_risk ?? [])} accent="var(--red)" icon="⚠" hint="Cost of at-risk links" />
           </section>
+
+          {distTotal > 0 && (
+            <section className="dist">
+              <div className="dist-head">
+                <h2>Status breakdown</h2>
+                <span className="dist-total">{distTotal} link{distTotal > 1 ? "s" : ""}</span>
+              </div>
+              <div className="dist-bar">
+                {distSegments.map((s) => (
+                  <div
+                    key={s.st}
+                    className="dist-seg"
+                    style={{ flexGrow: s.n, background: statusColor(s.st) }}
+                    title={`${statusLabel(s.st)}: ${s.n}`}
+                  />
+                ))}
+              </div>
+              <div className="legend">
+                {distSegments.map((s) => (
+                  <span key={s.st} className="legend-item" style={{ color: statusColor(s.st) }}>
+                    <span className="legend-dot" />
+                    <span style={{ color: "var(--muted)" }}>{statusLabel(s.st)}</span>
+                    <b>{s.n}</b>
+                  </span>
+                ))}
+              </div>
+            </section>
+          )}
 
           <section className="panel">
             <div className="panel-head">
@@ -290,6 +327,7 @@ export default function DashboardPage() {
                     <option key={st} value={st}>{statusLabel(st)}</option>
                   ))}
                 </select>
+                <a className="btn sm primary" href="/import">+ Add backlinks</a>
                 {orgId && (
                   <a className="btn sm" href={backlinksExportUrl(orgId, projectId ?? undefined, clientFilter || undefined)}>
                     Export CSV
@@ -309,7 +347,23 @@ export default function DashboardPage() {
               </div>
             )}
             {backlinks.length === 0 ? (
-              <p className="muted">No backlinks in this project yet.</p>
+              <div className="empty">
+                <div className="empty-icon">🔗</div>
+                <h3>{projectId || clientFilter ? "No backlinks here yet" : "Pick a project to view its backlinks"}</h3>
+                <p>
+                  {projects.length === 0
+                    ? "Create a project first, then import the backlinks you want to monitor."
+                    : "Import a CSV of backlinks and Backlio will track their status, anchors, rel and warranties."}
+                </p>
+                <div className="empty-cta">
+                  {projects.length === 0 ? (
+                    <a className="btn primary" href="/projects">Create a project</a>
+                  ) : (
+                    <a className="btn primary" href="/import">Import backlinks</a>
+                  )}
+                  <a className="btn" href="/projects">Manage projects</a>
+                </div>
+              </div>
             ) : (
               <table className="bl-table">
                 <thead>
@@ -318,7 +372,7 @@ export default function DashboardPage() {
                 <tbody>
                   {backlinks.map((b) => (
                     <tr key={b.id} className="row-click" onClick={() => void openDetail(b)}>
-                      <td><span className="badge" style={{ color: statusColor(b.status) }}>● {statusLabel(b.status)}</span></td>
+                      <td><span className="badge" style={{ "--st": statusColor(b.status) } as CSSProperties}><span className="dot" />{statusLabel(b.status)}</span></td>
                       <td className="mono">{b.source_domain}</td>
                       <td className="mono">{b.target_domain}</td>
                       <td>{b.expected_anchor_text ?? "—"}</td>
@@ -373,7 +427,7 @@ export default function DashboardPage() {
             <p className="muted mono">{selected.source_url}</p>
             <p className="muted mono">→ {selected.target_url}</p>
             <p style={{ margin: "10px 0" }}>
-              <span className="badge" style={{ color: statusColor(selected.status) }}>● {statusLabel(selected.status)}</span>
+              <span className="badge" style={{ "--st": statusColor(selected.status) } as CSSProperties}><span className="dot" />{statusLabel(selected.status)}</span>
             </p>
             <div className="tags-row">
               {blTags.map((t) => (
@@ -428,11 +482,27 @@ export default function DashboardPage() {
   );
 }
 
-function Tile({ label, value, color }: { label: string; value: number | string; color?: string }) {
+function Tile({
+  label,
+  value,
+  accent,
+  icon,
+  hint,
+}: {
+  label: string;
+  value: number | string;
+  accent?: string;
+  icon?: string;
+  hint?: string;
+}) {
   return (
-    <div className="tile">
-      <div className="tile-label">{label}</div>
-      <div className="tile-value" style={color ? { color } : undefined}>{value}</div>
+    <div className="tile" style={accent ? ({ "--tile-accent": accent } as CSSProperties) : undefined}>
+      <div className="tile-top">
+        <div className="tile-label">{label}</div>
+        {icon && <div className="tile-icon">{icon}</div>}
+      </div>
+      <div className="tile-value">{value}</div>
+      {hint && <div className="tile-hint">{hint}</div>}
     </div>
   );
 }
