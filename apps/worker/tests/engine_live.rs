@@ -36,11 +36,12 @@ async fn check_makes_a_present_backlink_live_with_check_and_event() {
     Mock::given(method("GET"))
         .and(path("/article"))
         .respond_with(
-            ResponseTemplate::new(200)
-                .insert_header("content-type", "text/html")
-                .set_body_string(
-                    "<html><body><p>see <a href=\"https://acme.com/product\">great tool</a></p></body></html>",
-                ),
+            ResponseTemplate::new(200).set_body_raw(
+                "<html><body><p>see <a href=\"https://acme.com/product\">great tool</a></p></body></html>"
+                    .as_bytes()
+                    .to_vec(),
+                "text/html",
+            ),
         )
         .mount(&server)
         .await;
@@ -135,11 +136,10 @@ async fn check_of_absent_link_does_not_lose_it_on_first_miss() {
     let server = MockServer::start().await;
     Mock::given(method("GET"))
         .and(path("/empty"))
-        .respond_with(
-            ResponseTemplate::new(200)
-                .insert_header("content-type", "text/html")
-                .set_body_string("<html><body>nothing here</body></html>"),
-        )
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            b"<html><body>nothing here</body></html>".to_vec(),
+            "text/html",
+        ))
         .mount(&server)
         .await;
 
