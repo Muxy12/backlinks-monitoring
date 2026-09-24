@@ -135,6 +135,10 @@ pub fn app(state: AppState) -> Router {
             post(routes::resource_routes::read_notification),
         )
         .route(
+            "/v1/organizations/{org_id}/notification-preferences",
+            get(routes::prefs_routes::list_preferences).put(routes::prefs_routes::set_preferences),
+        )
+        .route(
             "/v1/organizations/{org_id}/backlinks/export",
             get(routes::resource_routes::export_backlinks),
         )

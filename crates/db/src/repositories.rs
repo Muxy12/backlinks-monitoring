@@ -1794,3 +1794,58 @@ pub mod invitations {
         Ok(())
     }
 }
+
+// ─── Notification preferences (§37) ──────────────────────────────────────────
+pub mod notification_prefs {
+    use super::*;
+    use crate::entities::NotificationPreference;
+
+    /// The user's stored preferences for one org. A missing row means the
+    /// default (enabled, immediate) for that event/channel.
+    pub async fn list(
+        pool: &PgPool,
+        user_id: Uuid,
+        organization_id: Uuid,
+    ) -> Result<Vec<NotificationPreference>, DbError> {
+        Ok(sqlx::query_as::<_, NotificationPreference>(
+            "SELECT event_type::text AS event_type, channel, enabled, digest \
+             FROM notification_preferences \
+             WHERE user_id = $1 AND organization_id = $2 \
+             ORDER BY event_type, channel",
+        )
+        .bind(user_id)
+        .bind(organization_id)
+        .fetch_all(pool)
+        .await?)
+    }
+
+    /// Upsert one preference (unique on user+org+event+channel).
+    pub async fn upsert(
+        pool: &PgPool,
+        user_id: Uuid,
+        organization_id: Uuid,
+        event_type: &str,
+        channel: &str,
+        enabled: bool,
+        digest: &str,
+    ) -> Result<(), DbError> {
+        sqlx::query(
+            "INSERT INTO notification_preferences \
+                (id, user_id, organization_id, event_type, channel, enabled, digest) \
+             VALUES ($1, $2, $3, $4::event_type, $5, $6, $7) \
+             ON CONFLICT (user_id, organization_id, event_type, channel) \
+             DO UPDATE SET enabled = EXCLUDED.enabled, digest = EXCLUDED.digest",
+        )
+        .bind(Uuid::now_v7())
+        .bind(user_id)
+        .bind(organization_id)
+        .bind(event_type)
+        .bind(channel)
+        .bind(enabled)
+        .bind(digest)
+        .execute(pool)
+        .await
+        .map_err(DbError::from_insert)?;
+        Ok(())
+    }
+}

@@ -234,3 +234,12 @@ pub struct Member {
     pub role: String,
     pub created_at: DateTime<Utc>,
 }
+
+/// A user's notification preference for one event type + channel (§37).
+#[derive(Debug, Clone, FromRow)]
+pub struct NotificationPreference {
+    pub event_type: String,
+    pub channel: String,
+    pub enabled: bool,
+    pub digest: String,
+}
