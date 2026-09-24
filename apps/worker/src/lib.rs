@@ -62,9 +62,38 @@ async fn dispatch(ctx: &WorkerCtx, job: &ClaimedJob) -> anyhow::Result<()> {
             engine::process_backlink_check(&ctx.pool, &ctx.crawler, &ctx.policy, id).await?;
             Ok(())
         }
+        JobKind::CheckSourcePage => {
+            let source_url = job
+                .payload
+                .get("source_url")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| anyhow::anyhow!("payload missing source_url"))?;
+            let ids = job
+                .payload
+                .get("backlink_ids")
+                .and_then(|v| v.as_array())
+                .ok_or_else(|| anyhow::anyhow!("payload missing backlink_ids"))?
+                .iter()
+                .filter_map(|v| v.as_str().and_then(|s| Uuid::parse_str(s).ok()))
+                .collect::<Vec<_>>();
+            engine::check_source_group(&ctx.pool, &ctx.crawler, &ctx.policy, source_url, &ids)
+                .await?;
+            Ok(())
+        }
         // Other job types wire in as their handlers land (docs/07 §5).
         other => Err(anyhow::anyhow!("no handler for {other:?} yet")),
     }
+}
+
+/// Run one scheduler tick: enqueue due checks, deduped by source URL (docs/07
+/// §6). Safe to call from both the worker's timer and a cron-driven binary —
+/// the advisory lock makes a double fire a no-op. Returns (jobs, backlinks).
+pub async fn schedule_tick(
+    ctx: &WorkerCtx,
+    batch: i64,
+    lease_secs: i64,
+) -> anyhow::Result<(usize, usize)> {
+    Ok(db::repositories::scheduler::enqueue_due(&ctx.pool, batch, lease_secs).await?)
 }
 
 fn payload_uuid(payload: &serde_json::Value, key: &str) -> anyhow::Result<Uuid> {

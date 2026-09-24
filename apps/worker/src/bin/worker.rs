@@ -54,8 +54,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or(900);
 
     tracing::info!(worker_id = %ctx.worker_id, "worker started");
+    let sched_batch: i64 = std::env::var("SCHEDULER_BATCH_SIZE")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(500);
     let mut since_reap = std::time::Instant::now();
+    let mut since_sched = std::time::Instant::now() - Duration::from_secs(60);
     loop {
+        // The worker also runs the scheduler on a timer so monitoring keeps
+        // going even if the cron path is unavailable (ADR-0002). Both take the
+        // same advisory lock, so a double fire is a no-op.
+        if since_sched.elapsed() > Duration::from_secs(30) {
+            match worker::schedule_tick(&ctx, sched_batch, lease_secs).await {
+                Ok((jobs, n)) if jobs > 0 => {
+                    tracing::info!(jobs, backlinks = n, "scheduled due checks")
+                }
+                Ok(_) => {}
+                Err(e) => tracing::error!(error = %e, "schedule tick failed"),
+            }
+            since_sched = std::time::Instant::now();
+        }
         match tick(&ctx, 10).await {
             Ok(0) => tokio::time::sleep(poll * 5).await, // idle backoff
             Ok(n) => tracing::debug!(processed = n, "batch done"),

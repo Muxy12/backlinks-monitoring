@@ -386,12 +386,14 @@ pub mod backlinks {
         let source_domain = host_of(&source_norm).unwrap_or_default();
         let target_domain = host_of(&target_norm).unwrap_or_default();
 
+        // next_check_at = now() so a new backlink is immediately due for its
+        // first check via the scheduler (§49 "schedule initial monitoring").
         sqlx::query_as::<_, Backlink>(concat!(
             "INSERT INTO backlinks (id, organization_id, project_id, \
                 source_url, source_url_normalized, source_domain, \
                 target_url, target_url_normalized, target_domain, \
-                expected_anchor_text, expected_rel_type, cost, currency) \
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::rel_type,$12::numeric,$13) \
+                expected_anchor_text, expected_rel_type, cost, currency, next_check_at) \
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::rel_type,$12::numeric,$13, now()) \
              RETURNING ",
             cols!()
         ))
@@ -763,5 +765,85 @@ pub mod job_queue {
         .execute(pool)
         .await?;
         Ok(requeued.rows_affected())
+    }
+}
+
+// ─── Scheduler: enqueue due checks, deduped by source URL (docs/07 §6) ───────
+pub mod scheduler {
+    use super::*;
+    use ::jobs::JobKind;
+    use std::collections::BTreeMap;
+
+    /// Transaction-scoped advisory lock so only one scheduler runs at a time.
+    /// `pg_advisory_xact_lock` works through Neon's transaction pooler, unlike
+    /// session-level locks (docs/01 §2.2).
+    const LOCK_KEY: i64 = 4_200_042;
+
+    /// Find due backlinks, group them by normalized source URL, enqueue one
+    /// `check_source_page` job per group, and bump `next_check_at` on the claimed
+    /// rows by `lease_secs` so they are not re-enqueued before the checks run —
+    /// all in one transaction (docs/07 §6). Returns (jobs enqueued, backlinks
+    /// scheduled).
+    pub async fn enqueue_due(
+        pool: &PgPool,
+        batch: i64,
+        lease_secs: i64,
+    ) -> Result<(usize, usize), DbError> {
+        let mut tx = pool.begin().await?;
+        sqlx::query("SELECT pg_advisory_xact_lock($1)")
+            .bind(LOCK_KEY)
+            .execute(&mut *tx)
+            .await?;
+
+        let due: Vec<(Uuid, String, String)> = sqlx::query_as(
+            "SELECT id, source_url, source_url_normalized FROM backlinks \
+             WHERE archived_at IS NULL AND next_check_at IS NOT NULL AND next_check_at <= now() \
+             ORDER BY next_check_at LIMIT $1 FOR UPDATE SKIP LOCKED",
+        )
+        .bind(batch)
+        .fetch_all(&mut *tx)
+        .await?;
+
+        if due.is_empty() {
+            tx.commit().await?;
+            return Ok((0, 0));
+        }
+
+        // Group by normalized source URL; keep one representative raw URL to
+        // fetch (any in the group normalizes the same, §27).
+        let mut groups: BTreeMap<String, (String, Vec<Uuid>)> = BTreeMap::new();
+        let mut all_ids: Vec<Uuid> = Vec::with_capacity(due.len());
+        for (id, src, norm) in &due {
+            all_ids.push(*id);
+            groups
+                .entry(norm.clone())
+                .or_insert_with(|| (src.clone(), Vec::new()))
+                .1
+                .push(*id);
+        }
+
+        for (src, ids) in groups.values() {
+            let payload = serde_json::json!({ "source_url": src, "backlink_ids": ids });
+            sqlx::query("INSERT INTO jobs (id, job_type, payload, priority) VALUES ($1,$2,$3,$4)")
+                .bind(Uuid::now_v7())
+                .bind(JobKind::CheckSourcePage.as_str())
+                .bind(payload)
+                .bind(JobKind::CheckSourcePage.priority())
+                .execute(&mut *tx)
+                .await?;
+        }
+
+        sqlx::query(
+            "UPDATE backlinks SET next_check_at = now() + make_interval(secs => $2), updated_at = now() \
+             WHERE id = ANY($1)",
+        )
+        .bind(&all_ids)
+        .bind(lease_secs as f64)
+        .execute(&mut *tx)
+        .await?;
+
+        let jobs_enqueued = groups.len();
+        tx.commit().await?;
+        Ok((jobs_enqueued, all_ids.len()))
     }
 }

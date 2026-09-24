@@ -1,12 +1,14 @@
-//! The check engine: fetch a backlink's source, classify the result into an
-//! [`Observation`], run the pure state machine, and persist the check + events +
-//! new state atomically (docs/06, docs/07, docs/08). This is where the crawler,
-//! the core domain, and the database meet — the orchestration is here so each of
-//! those stays independently testable.
+//! The check engine: fetch a source page, classify the result into an
+//! [`Observation`] per backlink, run the pure state machine, and persist the
+//! check + events + new state atomically (docs/06, docs/07, docs/08).
+//!
+//! The unit of work is a **source group** (§27, docs/06 §4): one HTTP fetch and
+//! one parse serve every backlink that shares that source page. A single-backlink
+//! "check now" is just a group of one.
 
 use backlio_core::{
-    BacklinkState, ConnErrorKind, DetectedFields, NormalizeOptions, Observation, RelType,
-    TransitionPolicy, transition,
+    BacklinkState, BlockReason, ConnErrorKind, DetectedFields, NormalizeOptions, Observation,
+    ParsedPage, RelType, TransitionPolicy, transition,
 };
 use crawler::{CrawlerConfig, FetchError, FetchOutcome, fetch, parse_page};
 use db::repositories::monitor::{self, CheckWrite, EventWrite, TransitionWrite};
@@ -14,8 +16,102 @@ use serde_json::json;
 use sqlx::PgPool;
 use uuid::Uuid;
 
-/// Check one backlink end to end. Returns `true` when a check was applied,
-/// `false` when it was a no-op (idempotent replay of the same crawl).
+/// The fetch metadata shared by every backlink in a source group.
+struct FetchMeta {
+    source_status: Option<i32>,
+    final_url: Option<String>,
+    duration_ms: Option<i32>,
+    bytes: Option<i32>,
+    error_kind: Option<String>,
+}
+
+/// Check every backlink that shares one source page: fetch + parse **once**,
+/// then evaluate each backlink's target against that single result (§27).
+/// Returns how many checks were applied.
+pub async fn check_source_group(
+    pool: &PgPool,
+    cfg: &CrawlerConfig,
+    policy: &TransitionPolicy,
+    source_url: &str,
+    backlink_ids: &[Uuid],
+) -> anyhow::Result<usize> {
+    let outcome = fetch(cfg, source_url).await;
+    let crawl_id = Uuid::now_v7(); // shared: ties the group's checks together
+    let meta = fetch_meta(&outcome);
+
+    // Parse once when we have an HTML 2xx; otherwise all backlinks share the
+    // same target-independent failure observation.
+    let parsed: Option<(ParsedPage, String)> = match &outcome {
+        FetchOutcome::Response(ok) if (200..300).contains(&ok.status) && is_html(ok) => {
+            let mut page = parse_page(&ok.body);
+            if ok.header_noindex {
+                page.robots_noindex = true;
+            }
+            Some((page, ok.final_url.clone()))
+        }
+        _ => None,
+    };
+    let shared_failure = failure_observation(&outcome);
+
+    let opts = NormalizeOptions::default();
+    let now = chrono::Utc::now();
+    let mut applied = 0usize;
+
+    for &id in backlink_ids {
+        let st = monitor::load_state(pool, id).await?;
+        let current = build_state(&st);
+        let obs = match &parsed {
+            Some((page, final_url)) => crawler::evaluate(page, &st.target_url, final_url, opts),
+            None => shared_failure.clone(),
+        };
+        let t = transition(&current, &obs, now, policy);
+        let found = matches!(obs, Observation::Present(_));
+
+        let check = CheckWrite {
+            crawl_id,
+            found,
+            status_after: t.status.as_str().to_string(),
+            source_status: meta.source_status,
+            anchor_text: t.detected.anchor_text.clone(),
+            rel_attributes: Some(t.detected.rel_attributes.clone()),
+            is_dofollow: t.detected.is_dofollow,
+            final_url: meta.final_url.clone(),
+            duration_ms: meta.duration_ms,
+            bytes: meta.bytes,
+            error_kind: if found { None } else { meta.error_kind.clone() },
+        };
+        let tw = TransitionWrite {
+            status: t.status.as_str().to_string(),
+            previous_status: t.previous_status.as_str().to_string(),
+            consecutive_failure_count: t.consecutive_failure_count,
+            next_check_at: t.next_check_at,
+            last_seen_at: t.last_seen_at,
+            detected_anchor_text: t.detected.anchor_text.clone(),
+            detected_target_url: t.detected.target_url.clone(),
+            detected_rel_attributes: Some(t.detected.rel_attributes.clone()),
+            detected_is_dofollow: t.detected.is_dofollow,
+            source_canonical: t.detected.canonical.clone(),
+            source_robots_noindex: t.detected.noindex,
+            source_http_status: meta.source_status,
+        };
+        let events: Vec<EventWrite> = t
+            .events
+            .iter()
+            .map(|e| EventWrite {
+                event_type: e.event_type.as_str().to_string(),
+                previous_data: e.previous.clone().map(|v| json!(v)),
+                current_data: e.current.clone().map(|v| json!(v)),
+            })
+            .collect();
+
+        if monitor::apply_check(pool, st.organization_id, id, check, tw, events).await? {
+            applied += 1;
+        }
+    }
+    Ok(applied)
+}
+
+/// Check a single backlink (the "check now" path, §36) — a source group of one.
 pub async fn process_backlink_check(
     pool: &PgPool,
     cfg: &CrawlerConfig,
@@ -23,57 +119,79 @@ pub async fn process_backlink_check(
     backlink_id: Uuid,
 ) -> anyhow::Result<bool> {
     let st = monitor::load_state(pool, backlink_id).await?;
-    let current = build_state(&st);
-    let crawl_id = Uuid::now_v7();
+    let n = check_source_group(pool, cfg, policy, &st.source_url, &[backlink_id]).await?;
+    Ok(n > 0)
+}
 
-    let outcome = fetch(cfg, &st.source_url).await;
-    let (obs, source_status, final_url, duration_ms, bytes, error_kind) =
-        classify(&outcome, &st.target_url);
+fn is_html(ok: &crawler::FetchOk) -> bool {
+    ok.content_type
+        .as_deref()
+        .map(|c| c.contains("html"))
+        .unwrap_or(true) // no content-type: attempt a parse
+}
 
-    let now = chrono::Utc::now();
-    let t = transition(&current, &obs, now, policy);
+fn fetch_meta(outcome: &FetchOutcome) -> FetchMeta {
+    match outcome {
+        FetchOutcome::Response(ok) => FetchMeta {
+            source_status: Some(ok.status as i32),
+            final_url: Some(ok.final_url.clone()),
+            duration_ms: Some(ok.duration_ms as i32),
+            bytes: Some(ok.bytes as i32),
+            error_kind: if (200..300).contains(&ok.status) {
+                None
+            } else {
+                Some(format!("http_{}", ok.status))
+            },
+        },
+        FetchOutcome::Failed(err) => FetchMeta {
+            source_status: None,
+            final_url: None,
+            duration_ms: None,
+            bytes: None,
+            error_kind: Some(format!("{err:?}")),
+        },
+    }
+}
 
-    let found = matches!(obs, Observation::Present(_));
-    let check = CheckWrite {
-        crawl_id,
-        found,
-        status_after: t.status.as_str().to_string(),
-        source_status,
-        anchor_text: t.detected.anchor_text.clone(),
-        rel_attributes: Some(t.detected.rel_attributes.clone()),
-        is_dofollow: t.detected.is_dofollow,
-        final_url,
-        duration_ms,
-        bytes,
-        error_kind,
-    };
-    let tw = TransitionWrite {
-        status: t.status.as_str().to_string(),
-        previous_status: t.previous_status.as_str().to_string(),
-        consecutive_failure_count: t.consecutive_failure_count,
-        next_check_at: t.next_check_at,
-        last_seen_at: t.last_seen_at,
-        detected_anchor_text: t.detected.anchor_text.clone(),
-        detected_target_url: t.detected.target_url.clone(),
-        detected_rel_attributes: Some(t.detected.rel_attributes.clone()),
-        detected_is_dofollow: t.detected.is_dofollow,
-        source_canonical: t.detected.canonical.clone(),
-        source_robots_noindex: t.detected.noindex,
-        source_http_status: source_status,
-    };
-    let events: Vec<EventWrite> = t
-        .events
-        .iter()
-        .map(|e| EventWrite {
-            event_type: e.event_type.as_str().to_string(),
-            previous_data: e.previous.clone().map(|v| json!(v)),
-            current_data: e.current.clone().map(|v| json!(v)),
-        })
-        .collect();
-
-    let applied =
-        monitor::apply_check(pool, st.organization_id, backlink_id, check, tw, events).await?;
-    Ok(applied)
+/// The observation shared by every backlink when the fetch did not yield an
+/// HTML 2xx (target-independent: it is about the source page, not the link).
+fn failure_observation(outcome: &FetchOutcome) -> Observation {
+    match outcome {
+        FetchOutcome::Response(ok) => {
+            if (200..300).contains(&ok.status) && is_html(ok) {
+                // Parsed path handles this per-backlink; placeholder unused.
+                Observation::Absent
+            } else if ok.status == 404 || ok.status == 410 {
+                Observation::SourceGone { status: ok.status }
+            } else if ok.status >= 400 {
+                Observation::SourceHttpError { status: ok.status }
+            } else {
+                Observation::SourceBlocked {
+                    reason: BlockReason::NonHtmlContent,
+                }
+            }
+        }
+        FetchOutcome::Failed(err) => match err {
+            FetchError::Timeout => Observation::SourceUnreachable {
+                kind: ConnErrorKind::Timeout,
+            },
+            FetchError::TooManyRedirects => Observation::SourceUnreachable {
+                kind: ConnErrorKind::TooManyRedirects,
+            },
+            FetchError::Connect(_) => Observation::SourceUnreachable {
+                kind: ConnErrorKind::ConnectionRefused,
+            },
+            FetchError::Blocked(_) => Observation::SourceBlocked {
+                reason: BlockReason::SsrfGuard,
+            },
+            FetchError::Oversized => Observation::SourceBlocked {
+                reason: BlockReason::OversizedBody,
+            },
+            FetchError::BadUrl => Observation::SourceBlocked {
+                reason: BlockReason::SsrfGuard,
+            },
+        },
+    }
 }
 
 /// Build the state-machine input from the persisted row.
@@ -93,102 +211,5 @@ fn build_state(st: &db::entities::MonitorState) -> BacklinkState {
         },
         consecutive_failure_count: st.consecutive_failure_count,
         last_seen_at: st.last_seen_at,
-    }
-}
-
-type Classified = (
-    Observation,
-    Option<i32>,    // source_status
-    Option<String>, // final_url
-    Option<i32>,    // duration_ms
-    Option<i32>,    // bytes
-    Option<String>, // error_kind
-);
-
-/// Map a fetch outcome to an [`Observation`] plus the raw fields the check row
-/// records. Followed redirects are transparent (we evaluate the final page);
-/// `SourceRedirected` is reserved for a future explicit-redirect signal.
-fn classify(outcome: &FetchOutcome, target_url: &str) -> Classified {
-    let opts = NormalizeOptions::default();
-    match outcome {
-        FetchOutcome::Response(ok) => {
-            let status = ok.status as i32;
-            let dur = Some(ok.duration_ms as i32);
-            let bytes = Some(ok.bytes as i32);
-            let is_html = ok
-                .content_type
-                .as_deref()
-                .map(|c| c.contains("html"))
-                .unwrap_or(true); // no content-type: attempt a parse
-            if (200..300).contains(&ok.status) && is_html {
-                let mut page = parse_page(&ok.body);
-                // Fold in a header-level X-Robots-Tag noindex (docs/06 §3.5).
-                if ok.header_noindex {
-                    page.robots_noindex = true;
-                }
-                let obs = crawler::evaluate(&page, target_url, &ok.final_url, opts);
-                (
-                    obs,
-                    Some(status),
-                    Some(ok.final_url.clone()),
-                    dur,
-                    bytes,
-                    None,
-                )
-            } else if ok.status == 404 || ok.status == 410 {
-                (
-                    Observation::SourceGone { status: ok.status },
-                    Some(status),
-                    Some(ok.final_url.clone()),
-                    dur,
-                    bytes,
-                    Some("gone".into()),
-                )
-            } else if ok.status >= 400 {
-                (
-                    Observation::SourceHttpError { status: ok.status },
-                    Some(status),
-                    Some(ok.final_url.clone()),
-                    dur,
-                    bytes,
-                    Some("http_error".into()),
-                )
-            } else {
-                // 2xx non-HTML: we cannot verify the link on this content.
-                (
-                    Observation::SourceBlocked {
-                        reason: backlio_core::BlockReason::NonHtmlContent,
-                    },
-                    Some(status),
-                    Some(ok.final_url.clone()),
-                    dur,
-                    bytes,
-                    Some("non_html".into()),
-                )
-            }
-        }
-        FetchOutcome::Failed(err) => {
-            let obs = match err {
-                FetchError::Timeout => Observation::SourceUnreachable {
-                    kind: ConnErrorKind::Timeout,
-                },
-                FetchError::TooManyRedirects => Observation::SourceUnreachable {
-                    kind: ConnErrorKind::TooManyRedirects,
-                },
-                FetchError::Connect(_) => Observation::SourceUnreachable {
-                    kind: ConnErrorKind::ConnectionRefused,
-                },
-                FetchError::Blocked(_) => Observation::SourceBlocked {
-                    reason: backlio_core::BlockReason::SsrfGuard,
-                },
-                FetchError::Oversized => Observation::SourceBlocked {
-                    reason: backlio_core::BlockReason::OversizedBody,
-                },
-                FetchError::BadUrl => Observation::SourceBlocked {
-                    reason: backlio_core::BlockReason::SsrfGuard,
-                },
-            };
-            (obs, None, None, None, None, Some(format!("{err:?}")))
-        }
     }
 }
