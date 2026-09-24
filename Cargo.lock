@@ -64,6 +64,7 @@ dependencies = [
  "billing",
  "chrono",
  "common",
+ "crawler",
  "db",
  "hmac",
  "http-body-util",
@@ -78,6 +79,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "uuid",
+ "wiremock",
 ]
 
 [[package]]

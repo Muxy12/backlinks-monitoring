@@ -111,6 +111,13 @@ export interface NotificationsResponse {
   unread: number;
 }
 
+// A direct URL to the CSV export. It is a top-level GET navigation (an <a>
+// download), so the SameSite=Lax session cookie is sent — no fetch needed.
+export function backlinksExportUrl(org: string, projectId?: string): string {
+  const base = `${BASE}/v1/organizations/${org}/backlinks/export`;
+  return projectId ? `${base}?project_id=${encodeURIComponent(projectId)}` : base;
+}
+
 // The CSRF cookie is not httpOnly (double-submit), so echo it on mutations.
 function csrfHeader(): Record<string, string> {
   if (typeof document === "undefined") return {};

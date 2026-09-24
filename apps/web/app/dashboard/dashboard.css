@@ -94,3 +94,13 @@
   font-size: 14px;
   margin-bottom: 2px;
 }
+
+.panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.panel-actions .btn.sm {
+  text-decoration: none;
+  white-space: nowrap;
+}
