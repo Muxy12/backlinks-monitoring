@@ -1,0 +1,12 @@
+{
+  "name": "backlio",
+  "private": true,
+  "packageManager": "pnpm@9.12.0",
+  "scripts": {
+    "schema:check": "pnpm --filter backlio-schema-check check",
+    "web:dev": "pnpm --filter web dev",
+    "web:lint": "pnpm --filter web lint",
+    "web:typecheck": "pnpm --filter web typecheck",
+    "web:test": "pnpm --filter web test"
+  }
+}

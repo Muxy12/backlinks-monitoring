@@ -1,0 +1,7 @@
+# Pinned so cargo clippy gives identical results locally, in CI and in Docker
+# (docs/02 §Toolchain pinning). A lint that appears only in CI is a tax on
+# every PR. Bump deliberately, in its own commit.
+[toolchain]
+channel = "1.98.1"
+components = ["rustfmt", "clippy"]
+profile = "minimal"

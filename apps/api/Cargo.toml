@@ -1,0 +1,49 @@
+[package]
+name = "api"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[features]
+# The Vercel native Rust runtime adapter (ADR-0002). Off by default so its
+# deps stay out of the container build; the container uses the `server` binary.
+vercel-runtime = ["dep:vercel_axum", "dep:vercel_runtime"]
+
+[[bin]]
+name = "server"
+path = "src/bin/server.rs"
+
+[[bin]]
+name = "api-vercel"
+path = "src/bin/vercel.rs"
+required-features = ["vercel-runtime"]
+
+[dependencies]
+tokio = { workspace = true }
+axum = { workspace = true }
+axum-extra = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
+tower_governor = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+validator = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+common = { workspace = true }
+backlio-core = { workspace = true }
+db = { workspace = true }
+jobs = { workspace = true }
+auth = { workspace = true }
+billing = { workspace = true }
+notifications = { workspace = true }
+
+# Enabled only with the `vercel-runtime` feature.
+vercel_axum = { version = "1.1", optional = true }
+vercel_runtime = { version = "2.4", optional = true }

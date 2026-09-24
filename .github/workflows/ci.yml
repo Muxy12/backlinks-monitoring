@@ -1,0 +1,113 @@
+name: CI
+
+# The real gate (docs/13-roadmap.md). Runs on every push and PR.
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  # No query! macros exist against a live DB in CI; build offline. The
+  # migrations job below verifies the schema separately against real Postgres.
+  SQLX_OFFLINE: "true"
+
+jobs:
+  # ── Schema smoke test — no Rust toolchain, always runs (tools/schema-check) ──
+  schema-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Apply migrations into PGlite and assert design invariants
+        working-directory: tools/schema-check
+        run: |
+          npm install --no-audit --no-fund
+          node verify.mjs
+
+  # ── Rust: format, lint, test, build ─────────────────────────────────────────
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned toolchain
+        run: |
+          rustup show active-toolchain || rustup toolchain install
+          rustup component add rustfmt clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: cargo fmt
+        run: cargo fmt --all --check
+      - name: cargo clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: cargo test
+        run: cargo test --workspace
+      - name: cargo build (release, container target)
+        run: cargo build --workspace --release
+      - name: No format!-built SQL (S9 guard, docs/11)
+        run: |
+          if grep -rnE 'query(_as)?\(&?format!' crates apps --include='*.rs'; then
+            echo "::error::Dynamic SQL via format! is forbidden (docs/11 S9). Use parameters."
+            exit 1
+          fi
+
+  # ── Migrations against real Postgres (docs/10 §4, docs/adr/0005) ────────────
+  migrations:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: backlio
+          POSTGRES_PASSWORD: backlio
+          POSTGRES_DB: backlio
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U backlio -d backlio"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      # Migrations use the DIRECT connection, never a pooler (docs/adr/0005).
+      DATABASE_URL: postgres://backlio:backlio@localhost:5432/backlio
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - name: Install sqlx-cli
+        run: cargo install sqlx-cli --version ^0.9 --no-default-features --features rustls,postgres --locked
+      - name: Apply migrations from empty
+        run: sqlx migrate run --source migrations
+      - name: Migration state is clean
+        run: sqlx migrate info --source migrations
+      - name: Re-apply is a no-op (idempotent)
+        run: sqlx migrate run --source migrations
+
+  # ── Frontend — runs only once apps/web exists ───────────────────────────────
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: check
+        run: |
+          if [ -f apps/web/package.json ]; then echo "exists=true" >> "$GITHUB_OUTPUT";
+          else echo "exists=false" >> "$GITHUB_OUTPUT"; echo "apps/web not present yet — skipping"; fi
+      - uses: pnpm/action-setup@v4
+        if: steps.check.outputs.exists == 'true'
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        if: steps.check.outputs.exists == 'true'
+        with:
+          node-version: 22
+          cache: pnpm
+      - if: steps.check.outputs.exists == 'true'
+        run: pnpm install --frozen-lockfile
+      - if: steps.check.outputs.exists == 'true'
+        run: pnpm --filter web lint
+      - if: steps.check.outputs.exists == 'true'
+        run: pnpm --filter web typecheck
+      - if: steps.check.outputs.exists == 'true'
+        run: pnpm --filter web test

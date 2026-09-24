@@ -1,0 +1,29 @@
+# Local development database (docs/15 option A). Production is Neon — this is
+# only for local work, and needs no Neon credentials.
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: backlio
+      POSTGRES_PASSWORD: backlio
+      POSTGRES_DB: backlio
+    ports:
+      - "5432:5432"
+    volumes:
+      - backlio_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U backlio -d backlio"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Catches outbound email locally so a dev never sends to a real address
+  # (docs/10 §1). Web UI on :8025, SMTP on :1025.
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+
+volumes:
+  backlio_pg:

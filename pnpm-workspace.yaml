@@ -1,0 +1,5 @@
+packages:
+  # Globs, so the workspace is valid before apps/web exists (only dirs with a
+  # package.json are picked up — the Rust apps are ignored).
+  - "apps/*"
+  - "tools/*"

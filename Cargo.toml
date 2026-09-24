@@ -1,0 +1,110 @@
+# Backlio — Cargo workspace root (docs/02-monorepo.md, ADR-0001)
+#
+# Every shared dependency is pinned here in [workspace.dependencies] so crates
+# cannot drift to different versions. Versions were verified as current stable
+# on 2026-09-24 (docs/01 §3). Individual crates opt in with
+# `foo = { workspace = true }` and add their own feature flags there.
+
+[workspace]
+resolver = "3"
+members = [
+    "crates/common",
+    "crates/core",
+    "crates/db",
+    "crates/crawler",
+    "crates/jobs",
+    "crates/auth",
+    "crates/billing",
+    "crates/notifications",
+    "apps/api",
+    "apps/worker",
+]
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.98"
+license = "UNLICENSED"
+publish = false
+
+[workspace.dependencies]
+# ─── Async runtime & web ─────────────────────────────────────────────────────
+tokio       = { version = "1.53", features = ["full"] }
+tokio-util  = "0.7"
+axum        = { version = "0.8", features = ["macros"] }
+axum-extra  = { version = "0.12", features = ["cookie", "typed-header"] }
+tower       = "0.5"
+tower-http  = { version = "0.7", features = ["trace", "cors", "limit", "request-id", "timeout"] }
+tower_governor = "0.8"
+
+# ─── Database ────────────────────────────────────────────────────────────────
+# `tls-rustls` because Neon requires sslmode=require; no OpenSSL dependency.
+sqlx = { version = "0.9", default-features = false, features = [
+    "runtime-tokio", "tls-rustls", "postgres", "uuid", "chrono", "json", "migrate", "macros",
+] }
+
+# ─── HTTP client & scraping (crawler) ────────────────────────────────────────
+# reqwest with rustls; no default TLS. redirect handling is ours (docs/06 §2.3),
+# but the feature stays available.
+reqwest = { version = "0.13", default-features = false, features = [
+    "rustls-tls", "gzip", "brotli", "stream",
+] }
+scraper          = "0.27"
+hickory-resolver = "0.26"
+publicsuffix     = "2.3"
+ipnet            = "2.12"
+url              = "2.5"
+idna             = "1.1"
+
+# ─── Serde / data ────────────────────────────────────────────────────────────
+serde      = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+csv        = "1.4"
+
+# ─── Types ───────────────────────────────────────────────────────────────────
+uuid      = { version = "1.26", features = ["v7", "serde"] }
+chrono    = { version = "0.4", features = ["serde"] }
+validator = { version = "0.21", features = ["derive"] }
+
+# ─── Auth & crypto ───────────────────────────────────────────────────────────
+argon2  = "0.6"
+sha2    = "0.11"
+hmac    = "0.13"
+rand    = "0.10"
+base64  = "0.23"
+secrecy = "0.10"
+
+# ─── Billing & email ─────────────────────────────────────────────────────────
+async-stripe = { version = "0.41", features = ["runtime-tokio-hyper-rustls"] }
+lettre       = { version = "0.11", default-features = false, features = [
+    "tokio1-rustls-tls", "smtp-transport", "builder",
+] }
+
+# ─── Observability ───────────────────────────────────────────────────────────
+tracing            = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# ─── Errors & misc ───────────────────────────────────────────────────────────
+thiserror   = "2.0"
+anyhow      = "1.0"
+async-trait = "0.1"
+governor    = "0.10"
+dotenvy     = "0.15"
+
+# ─── Internal crates ─────────────────────────────────────────────────────────
+# Aliased as `backlio-core`, not `core`, so it does not shadow std's `core`
+# inside dependent crates.
+common        = { path = "crates/common" }
+backlio-core  = { path = "crates/core" }
+db            = { path = "crates/db" }
+crawler       = { path = "crates/crawler" }
+jobs          = { path = "crates/jobs" }
+auth          = { path = "crates/auth" }
+billing       = { path = "crates/billing" }
+notifications = { path = "crates/notifications" }
+
+# ─── Release profile (also used for the Vercel/Fly container builds) ──────────
+[profile.release]
+opt-level     = 3
+lto           = "thin"
+codegen-units = 1
+strip         = true

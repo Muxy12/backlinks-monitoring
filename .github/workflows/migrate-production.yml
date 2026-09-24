@@ -1,0 +1,38 @@
+name: Migrate production
+
+# Production migrations are an EXPLICIT, manually-approved step — never a side
+# effect of a deploy, and never from a preview (§42, docs/10 §4, docs/adr/0005).
+# The `production` GitHub Environment must require a reviewer; that approval is
+# the gate.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "migrate production" to proceed'
+        required: true
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    environment: production          # <- attach required reviewers to this env
+    steps:
+      - name: Guard on typed confirmation
+        if: ${{ github.event.inputs.confirm != 'migrate production' }}
+        run: |
+          echo "::error::Confirmation text did not match. Aborting."
+          exit 1
+
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - name: Install sqlx-cli
+        run: cargo install sqlx-cli --version ^0.9 --no-default-features --features rustls,postgres --locked
+
+      - name: Show pending migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_DIRECT_URL }}   # DIRECT, not pooled
+        run: sqlx migrate info --source migrations
+
+      - name: Apply
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_DIRECT_URL }}
+        run: sqlx migrate run --source migrations
