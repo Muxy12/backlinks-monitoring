@@ -453,6 +453,67 @@ pub mod backlinks {
         .await?)
     }
 
+    /// Optional filters for the backlink list (§35).
+    #[derive(Debug, Default)]
+    pub struct BacklinkFilter<'a> {
+        pub project_id: Option<Uuid>,
+        /// A `backlink_status` value; the caller validates it against the enum.
+        pub status: Option<&'a str>,
+        pub tag_id: Option<Uuid>,
+        /// Free-text: matches source/target domain or anchor (case-insensitive).
+        pub q: Option<&'a str>,
+    }
+
+    /// Filtered backlink list (§35). Built with sqlx's `QueryBuilder`, so every
+    /// value is a bound parameter (never string-interpolated) — the same
+    /// injection guarantee as the literal queries, for a dynamic WHERE. Archived
+    /// links are always excluded; newest first.
+    pub async fn search(
+        pool: &PgPool,
+        scope: &OrgScope,
+        filter: &BacklinkFilter<'_>,
+        limit: i64,
+    ) -> Result<Vec<Backlink>, DbError> {
+        let mut qb = sqlx::QueryBuilder::<sqlx::Postgres>::new(concat!(
+            "SELECT ",
+            cols!(),
+            " FROM backlinks WHERE organization_id = "
+        ));
+        qb.push_bind(scope.organization_id());
+        qb.push(" AND archived_at IS NULL");
+
+        if let Some(pid) = filter.project_id {
+            qb.push(" AND project_id = ");
+            qb.push_bind(pid);
+        }
+        if let Some(status) = filter.status {
+            qb.push(" AND status = ");
+            qb.push_bind(status.to_string());
+            qb.push("::backlink_status");
+        }
+        if let Some(q) = filter.q.map(str::trim).filter(|s| !s.is_empty()) {
+            let pat = format!("%{}%", q.replace('%', "\\%").replace('_', "\\_"));
+            qb.push(" AND (source_domain ILIKE ");
+            qb.push_bind(pat.clone());
+            qb.push(" OR target_domain ILIKE ");
+            qb.push_bind(pat.clone());
+            qb.push(" OR expected_anchor_text ILIKE ");
+            qb.push_bind(pat);
+            qb.push(")");
+        }
+        if let Some(tag) = filter.tag_id {
+            qb.push(" AND id IN (SELECT backlink_id FROM backlink_tags WHERE organization_id = ");
+            qb.push_bind(scope.organization_id());
+            qb.push(" AND tag_id = ");
+            qb.push_bind(tag);
+            qb.push(")");
+        }
+        qb.push(" ORDER BY created_at DESC LIMIT ");
+        qb.push_bind(limit.clamp(1, 200));
+
+        Ok(qb.build_query_as::<Backlink>().fetch_all(pool).await?)
+    }
+
     pub async fn get(pool: &PgPool, scope: &OrgScope, id: Uuid) -> Result<Backlink, DbError> {
         sqlx::query_as::<_, Backlink>(concat!(
             "SELECT ",

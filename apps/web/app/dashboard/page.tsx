@@ -23,7 +23,11 @@ export default function DashboardPage() {
   const [orgTags, setOrgTags] = useState<TagView[]>([]);
   const [blTags, setBlTags] = useState<TagView[]>([]);
   const [newTag, setNewTag] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [searchQ, setSearchQ] = useState("");
   const [loading, setLoading] = useState(true);
+
+  const STATUSES = ["live", "lost", "changed", "nofollow", "redirected", "source_error", "target_error", "blocked", "pending"];
 
   useEffect(() => {
     api.me().then((res) => {
@@ -75,14 +79,23 @@ export default function DashboardPage() {
   }, [orgId, loadOrg]);
 
   useEffect(() => {
-    if (orgId && projectId) {
-      orgApi.backlinks(orgId, projectId).then((res) => {
-        if (res.ok) setBacklinks(res.data);
-      });
-    } else {
+    if (!orgId || !projectId) {
       setBacklinks([]);
+      return;
     }
-  }, [orgId, projectId]);
+    const t = setTimeout(() => {
+      orgApi
+        .searchBacklinks(orgId, {
+          projectId,
+          status: statusFilter || undefined,
+          q: searchQ.trim() || undefined,
+        })
+        .then((res) => {
+          if (res.ok) setBacklinks(res.data);
+        });
+    }, 200); // debounce the search box
+    return () => clearTimeout(t);
+  }, [orgId, projectId, statusFilter, searchQ]);
 
   async function openDetail(b: BacklinkView) {
     setSelected(b);
@@ -187,6 +200,18 @@ export default function DashboardPage() {
                     ))}
                   </select>
                 )}
+                <input
+                  className="bl-search"
+                  placeholder="Search domain/anchor"
+                  value={searchQ}
+                  onChange={(e) => setSearchQ(e.target.value)}
+                />
+                <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                  <option value="">All statuses</option>
+                  {STATUSES.map((st) => (
+                    <option key={st} value={st}>{statusLabel(st)}</option>
+                  ))}
+                </select>
                 {orgId && (
                   <a className="btn sm" href={backlinksExportUrl(orgId, projectId ?? undefined)}>
                     Export CSV

@@ -148,3 +148,13 @@
   border: 1px solid var(--border);
   border-radius: 6px;
 }
+
+.bl-search {
+  padding: 6px 10px;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  min-width: 160px;
+}

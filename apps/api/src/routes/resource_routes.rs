@@ -360,9 +360,27 @@ pub async fn create_backlink(
 
 #[derive(Debug, Deserialize)]
 pub struct ListBacklinksQuery {
-    pub project_id: Uuid,
+    /// Optional now: omit to list the whole org (§35).
+    pub project_id: Option<Uuid>,
+    pub status: Option<String>,
+    pub tag_id: Option<Uuid>,
+    /// Free-text over source/target domain + anchor.
+    pub q: Option<String>,
     pub limit: Option<i64>,
 }
+
+const BACKLINK_STATUSES: &[&str] = &[
+    "pending",
+    "live",
+    "lost",
+    "changed",
+    "nofollow",
+    "redirected",
+    "source_error",
+    "target_error",
+    "blocked",
+    "unknown",
+];
 
 pub async fn list_backlinks(
     State(state): State<AppState>,
@@ -372,13 +390,21 @@ pub async fn list_backlinks(
 ) -> Result<Json<Vec<BacklinkView>>, ApiError> {
     let (user, _s) = current(&state, &jar).await?;
     let scope = authorize_org(&state.pool, user.id, org_id).await?;
-    let rows = db::repositories::backlinks::list_for_project(
-        &state.pool,
-        &scope,
-        q.project_id,
-        q.limit.unwrap_or(50),
-    )
-    .await?;
+
+    if let Some(status) = q.status.as_deref()
+        && !BACKLINK_STATUSES.contains(&status)
+    {
+        return Err(ApiError::Validation("unknown status filter".into()));
+    }
+    let filter = db::repositories::backlinks::BacklinkFilter {
+        project_id: q.project_id,
+        status: q.status.as_deref(),
+        tag_id: q.tag_id,
+        q: q.q.as_deref(),
+    };
+    let rows =
+        db::repositories::backlinks::search(&state.pool, &scope, &filter, q.limit.unwrap_or(50))
+            .await?;
     Ok(Json(rows.into_iter().map(BacklinkView::from).collect()))
 }
 

@@ -193,6 +193,20 @@ export const orgApi = {
   projects: (org: string) => request<ProjectView[]>(`/v1/organizations/${org}/projects`),
   backlinks: (org: string, projectId: string) =>
     request<BacklinkView[]>(`/v1/organizations/${org}/backlinks?project_id=${projectId}`),
+  searchBacklinks: (
+    org: string,
+    opts: { projectId?: string; status?: string; q?: string; tagId?: string },
+  ) => {
+    const p = new URLSearchParams();
+    if (opts.projectId) p.set("project_id", opts.projectId);
+    if (opts.status) p.set("status", opts.status);
+    if (opts.q) p.set("q", opts.q);
+    if (opts.tagId) p.set("tag_id", opts.tagId);
+    const qs = p.toString();
+    return request<BacklinkView[]>(
+      `/v1/organizations/${org}/backlinks${qs ? `?${qs}` : ""}`,
+    );
+  },
   backlinkEvents: (org: string, id: string) =>
     request<EventView[]>(`/v1/organizations/${org}/backlinks/${id}/events`),
   archiveBacklink: (org: string, id: string) =>
