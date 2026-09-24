@@ -52,14 +52,18 @@ pub enum FetchOutcome {
 
 /// Validate a single URL's scheme/credentials/port/host (steps 1). Returns the
 /// parsed URL, host, and port on success.
-fn validate_url(raw: &str) -> Result<(Url, String, u16), FetchError> {
+fn validate_url(raw: &str, allow_extra_ports: bool) -> Result<(Url, String, u16), FetchError> {
     let url = Url::parse(raw).map_err(|_| FetchError::BadUrl)?;
     let has_credentials = !url.username().is_empty() || url.password().is_some();
     classify_scheme(url.scheme(), has_credentials).map_err(FetchError::Blocked)?;
     let host = url.host_str().ok_or(FetchError::BadUrl)?.to_string();
     classify_host(&host).map_err(FetchError::Blocked)?;
     let port = url.port_or_known_default().ok_or(FetchError::BadUrl)?;
-    classify_port(url.port()).map_err(FetchError::Blocked)?;
+    // The port allowlist (80/443) is part of the SSRF surface; the test escape
+    // hatch relaxes it too so a loopback mock on a random port is reachable.
+    if !allow_extra_ports {
+        classify_port(url.port()).map_err(FetchError::Blocked)?;
+    }
     Ok((url, host, port))
 }
 
@@ -102,7 +106,7 @@ async fn fetch_inner(cfg: &CrawlerConfig, start_url: &str) -> Result<FetchOk, Fe
     let mut header_noindex = false;
 
     for _hop in 0..=cfg.max_redirects {
-        let (url, host, port) = validate_url(&current)?;
+        let (url, host, port) = validate_url(&current, cfg.allow_private_addresses)?;
         let addr = resolve_and_validate(&host, port, cfg.allow_private_addresses).await?;
 
         // Pin the validated IP for this host; drive redirects ourselves.
