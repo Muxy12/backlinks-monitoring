@@ -10,11 +10,15 @@
 //! — is enforced here as a property of the types, not as a convention.
 
 pub mod event;
+pub mod net;
 pub mod observation;
 pub mod state_machine;
 pub mod status;
+pub mod url_normalize;
 
 pub use event::{BacklinkEvent, EventType};
+pub use net::{SsrfBlock, classify_host, classify_ip, classify_port, classify_scheme};
 pub use observation::{BlockReason, ConnErrorKind, Detected, Observation};
 pub use state_machine::{BacklinkState, DetectedFields, Transition, TransitionPolicy, transition};
 pub use status::{BacklinkStatus, RelSet, RelType};
+pub use url_normalize::{NormalizeOptions, host_of, normalize};
