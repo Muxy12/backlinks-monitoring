@@ -7,15 +7,7 @@ license.workspace = true
 publish = false
 
 [dependencies]
-async-stripe = { workspace = true }
-sqlx = { workspace = true }
-uuid = { workspace = true }
-chrono = { workspace = true }
+# Pure plan catalog + entitlement logic. async-stripe + db (Checkout, portal,
+# webhooks, persistence) wire in with the billing service layer.
 serde = { workspace = true }
-serde_json = { workspace = true }
 thiserror = { workspace = true }
-hmac = { workspace = true }
-sha2 = { workspace = true }
-secrecy = { workspace = true }
-db = { workspace = true }
-common = { workspace = true }
