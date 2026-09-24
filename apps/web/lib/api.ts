@@ -48,3 +48,37 @@ export const api = {
   logout: () => request<null>("/v1/auth/logout", { method: "POST" }),
   me: () => request<MeResponse>("/v1/me"),
 };
+
+export interface DashboardResponse {
+  counts: Record<string, number>;
+  monitored: number;
+  needs_attention: number;
+  value_at_risk: { currency: string; amount: string }[];
+  tracked_spend: { currency: string; amount: string }[];
+}
+export interface ProjectView {
+  id: string;
+  name: string;
+  domain: string;
+  check_frequency_secs: number;
+  status: string;
+}
+export interface BacklinkView {
+  id: string;
+  source_url: string;
+  target_url: string;
+  source_domain: string;
+  target_domain: string;
+  expected_anchor_text: string | null;
+  expected_rel_type: string;
+  status: string;
+  cost: string | null;
+  currency: string | null;
+}
+
+export const orgApi = {
+  dashboard: (org: string) => request<DashboardResponse>(`/v1/organizations/${org}/dashboard`),
+  projects: (org: string) => request<ProjectView[]>(`/v1/organizations/${org}/projects`),
+  backlinks: (org: string, projectId: string) =>
+    request<BacklinkView[]>(`/v1/organizations/${org}/backlinks?project_id=${projectId}`),
+};
