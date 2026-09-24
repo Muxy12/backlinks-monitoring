@@ -22,6 +22,7 @@ async fn state() -> Option<AppState> {
         argon: Argon2Params::insecure_fast(),
         session_ttl_hours: 1,
         secure_cookies: false,
+        stripe_webhook_secret: None,
     };
     Some(AppState::new(db.pool, cfg))
 }
