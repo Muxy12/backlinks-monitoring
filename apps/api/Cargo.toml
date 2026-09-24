@@ -30,6 +30,9 @@ db = { workspace = true }
 auth = { workspace = true }
 jobs = { workspace = true }
 crawler = { workspace = true }
+# The API drives monitoring on the free/cron model (docs/17): /internal/tick
+# runs the worker's schedule + process + warranty sweep in-process.
+worker = { path = "../worker" }
 
 [dev-dependencies]
 http-body-util = "0.1"

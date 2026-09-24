@@ -1,0 +1,38 @@
+name: Monitoring tick
+
+# Free "worker" for the cron hosting model (docs/17): every ~10 minutes, poke
+# the API's /internal/tick, which schedules due checks, processes a small batch
+# (the crawl) and runs the warranty sweep — and keeps the free API awake.
+#
+# GitHub cron can be delayed; that's fine, backlink checks default to every
+# 7 days. It's a no-op (green) until you set the repo secrets:
+#   API_URL           = the deployed API origin, e.g. https://backlio-api.onrender.com
+#   SCHEDULER_SECRET  = the same value set on the API service
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: monitor-tick
+  cancel-in-progress: false
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Poke /internal/tick
+        env:
+          API_URL: ${{ secrets.API_URL }}
+          SCHEDULER_SECRET: ${{ secrets.SCHEDULER_SECRET }}
+        run: |
+          if [ -z "$API_URL" ] || [ -z "$SCHEDULER_SECRET" ]; then
+            echo "API_URL / SCHEDULER_SECRET not set — skipping (configure repo secrets to enable)."
+            exit 0
+          fi
+          code=$(curl -sS -o /tmp/tick.out -w "%{http_code}" \
+            --max-time 150 --retry 2 --retry-delay 5 \
+            -X POST "$API_URL/internal/tick" \
+            -H "x-scheduler-secret: $SCHEDULER_SECRET")
+          echo "HTTP $code"; cat /tmp/tick.out || true
+          [ "$code" = "200" ] || { echo "::error::tick returned $code"; exit 1; }

@@ -138,3 +138,27 @@ route returns 404 by design.
 - Scale the API horizontally freely (`fly scale count web=N`) — it is stateless.
 - Keep `min_machines_running = 1` for `web` so the API never cold-starts on a
   health check.
+
+---
+
+## Free-tier deployment (Render + Vercel + cron)
+
+Same structure (front / back / DB separate), zero cost, no always-on worker.
+
+- **Frontend** → **Vercel** (Hobby, free). Import the repo, set the root to
+  `apps/web`, and set `NEXT_PUBLIC_API_URL` to the API origin (and
+  `NEXT_PUBLIC_APP_URL` to the web origin).
+- **API** → **Render** free web service via `render.yaml` (Docker). Set the
+  `sync:false` secrets in the Render dashboard (Neon pooled `DATABASE_URL`,
+  direct `DATABASE_DIRECT_URL`, `SESSION_SECRET`, `SCHEDULER_SECRET`, Stripe/email).
+- **Monitoring** → no worker process. `POST /internal/tick` (auth:
+  `x-scheduler-secret: $SCHEDULER_SECRET`) does one round — schedule due checks,
+  process a batch (crawl), warranty sweep. `.github/workflows/monitor-tick.yml`
+  calls it every ~10 min (also keeps the free API awake). Enable it by setting
+  the repo secrets `API_URL` and `SCHEDULER_SECRET`.
+- **DB** → Neon (already migrated to 0014).
+
+Trade-offs: the free API sleeps when idle (first hit after a long gap is slow;
+the tick limits this), and monitoring runs in ~10-minute waves rather than a
+tight loop — fine for checks that default to weekly. Move the worker back to an
+always-on host (Fly/Render paid/VM) for higher cadence.
