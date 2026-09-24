@@ -23,6 +23,7 @@ async fn state() -> Option<AppState> {
         session_ttl_hours: 1,
         secure_cookies: false,
         stripe_webhook_secret: None,
+        allow_private_fetch: false,
     };
     Some(AppState::new(db.pool, cfg))
 }

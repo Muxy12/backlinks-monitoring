@@ -97,6 +97,10 @@ pub fn app(state: AppState) -> Router {
             "/v1/billing/webhook",
             post(routes::billing_routes::stripe_webhook),
         )
+        .route(
+            "/v1/tools/backlink-check",
+            post(routes::tools_routes::backlink_check),
+        )
         // Global 1 MiB body cap (docs/09 §1, S7). The CSV upload route will
         // raise this locally when it lands.
         .layer(DefaultBodyLimit::max(1024 * 1024))

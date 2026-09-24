@@ -29,8 +29,10 @@ billing = { workspace = true }
 db = { workspace = true }
 auth = { workspace = true }
 jobs = { workspace = true }
+crawler = { workspace = true }
 
 [dev-dependencies]
 http-body-util = "0.1"
 hmac = { workspace = true }
 sha2 = { workspace = true }
+wiremock = "0.6"

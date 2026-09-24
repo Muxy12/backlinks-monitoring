@@ -12,6 +12,9 @@ pub struct ApiConfig {
     pub secure_cookies: bool,
     /// Stripe webhook signing secret; `None` disables the webhook endpoint.
     pub stripe_webhook_secret: Option<String>,
+    /// Let the public backlink-checker fetch private/loopback addresses. MUST
+    /// stay false in production (SSRF); tests flip it to reach a local mock.
+    pub allow_private_fetch: bool,
 }
 
 impl Default for ApiConfig {
@@ -21,6 +24,7 @@ impl Default for ApiConfig {
             session_ttl_hours: 720,
             secure_cookies: true,
             stripe_webhook_secret: None,
+            allow_private_fetch: false,
         }
     }
 }

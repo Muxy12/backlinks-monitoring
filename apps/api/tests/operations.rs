@@ -48,6 +48,7 @@ async fn bootstrap() -> Option<Session> {
         session_ttl_hours: 1,
         secure_cookies: false,
         stripe_webhook_secret: None,
+        allow_private_fetch: false,
     };
     let app = api::app(AppState::new(pool.clone(), cfg));
     let email = format!("ops-{}@example.com", Uuid::now_v7().simple());

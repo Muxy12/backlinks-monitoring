@@ -7,3 +7,4 @@ pub mod me_routes;
 pub mod ops_routes;
 pub mod org_routes;
 pub mod resource_routes;
+pub mod tools_routes;
