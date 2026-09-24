@@ -146,8 +146,12 @@ route returns 404 by design.
 Same structure (front / back / DB separate), zero cost, no always-on worker.
 
 - **Frontend** → **Vercel** (Hobby, free). Import the repo, set the root to
-  `apps/web`, and set `NEXT_PUBLIC_API_URL` to the API origin (and
-  `NEXT_PUBLIC_APP_URL` to the web origin).
+  `apps/web`. Because the front and API are on different domains, use the
+  **same-origin proxy** so the session cookie survives: set
+  `API_PROXY_TARGET` = the API origin (e.g. `https://backlio-api.onrender.com`)
+  and `NEXT_PUBLIC_API_URL` = `/api`. Next then forwards `/api/*` to the API
+  server-side and the cookie stays first-party (no CORS, no custom domain
+  needed). Point Stripe's webhook at `https://<vercel-app>/api/v1/billing/webhook`.
 - **API** → **Render** free web service via `render.yaml` (Docker). Set the
   `sync:false` secrets in the Render dashboard (Neon pooled `DATABASE_URL`,
   direct `DATABASE_DIRECT_URL`, `SESSION_SECRET`, `SCHEDULER_SECRET`, Stripe/email).

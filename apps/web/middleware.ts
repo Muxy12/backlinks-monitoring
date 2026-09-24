@@ -12,12 +12,18 @@ import { NextRequest, NextResponse } from "next/server";
 // attributes that no nonce can cover. That is the standard, low-risk concession;
 // the script vector is the one that matters for XSS and it is fully locked.
 
+// Origin to allow in connect-src. Absolute NEXT_PUBLIC_API_URL -> its origin;
+// a relative value (e.g. "/api" behind the Next proxy) -> "" (same-origin only).
 const API_ORIGIN = (() => {
-  try {
-    return new URL(process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080").origin;
-  } catch {
-    return "http://localhost:8080";
+  const v = process.env.NEXT_PUBLIC_API_URL;
+  if (v && /^https?:\/\//.test(v)) {
+    try {
+      return new URL(v).origin;
+    } catch {
+      /* fall through */
+    }
   }
+  return "";
 })();
 
 export function middleware(request: NextRequest) {
@@ -26,7 +32,9 @@ export function middleware(request: NextRequest) {
 
   // Dev needs eval + websockets for React Refresh / HMR; prod does not.
   const scriptExtra = dev ? " 'unsafe-eval'" : "";
-  const connectExtra = dev ? " ws: http://localhost:*" : "";
+  const connectSrc = ["'self'", API_ORIGIN, ...(dev ? ["ws:", "http://localhost:*"] : [])]
+    .filter(Boolean)
+    .join(" ");
 
   const csp = [
     `default-src 'self'`,
@@ -34,7 +42,7 @@ export function middleware(request: NextRequest) {
     `style-src 'self' 'unsafe-inline'`,
     `img-src 'self' data: https:`,
     `font-src 'self' data:`,
-    `connect-src 'self' ${API_ORIGIN}${connectExtra}`,
+    `connect-src ${connectSrc}`,
     `object-src 'none'`,
     `base-uri 'self'`,
     `form-action 'self'`,
