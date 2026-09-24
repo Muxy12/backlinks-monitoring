@@ -3,8 +3,10 @@
 //! its tenant filter (ADR-0004). The identity tables (`users`, `sessions`) are
 //! not tenant-owned and are keyed by their own ids.
 //!
-//! All queries are runtime (`sqlx::query_as`), so they need no compile-time
-//! database or `.sqlx` cache.
+//! Queries are runtime `sqlx::query_as`, so they need no compile-time database
+//! or `.sqlx` cache. sqlx 0.9 requires the SQL to be a `&'static str` literal
+//! (a guard against injection), so every statement below is a literal — column
+//! lists are spelled out rather than interpolated.
 
 use crate::entities::{Organization, Session, User};
 use crate::error::DbError;
@@ -13,10 +15,6 @@ use chrono::{DateTime, Utc};
 use common::Role;
 use sqlx::PgPool;
 use uuid::Uuid;
-
-const USER_COLS: &str = "id, email, password_hash, name, email_verified_at, created_at, updated_at";
-const ORG_COLS: &str = "id, name, slug, created_at, updated_at";
-const SESSION_COLS: &str = "id, user_id, token_hash, csrf_token_hash, expires_at, revoked_at";
 
 // ─── Users ───────────────────────────────────────────────────────────────────
 pub mod users {
@@ -29,42 +27,49 @@ pub mod users {
         password_hash: &str,
         name: &str,
     ) -> Result<User, DbError> {
-        let sql = format!(
+        sqlx::query_as::<_, User>(
             "INSERT INTO users (id, email, password_hash, name) \
-             VALUES ($1, $2, $3, $4) RETURNING {USER_COLS}"
-        );
-        sqlx::query_as::<_, User>(&sql)
-            .bind(id)
-            .bind(email)
-            .bind(password_hash)
-            .bind(name)
-            .fetch_one(pool)
-            .await
-            .map_err(DbError::from_insert)
+             VALUES ($1, $2, $3, $4) \
+             RETURNING id, email, password_hash, name, email_verified_at, created_at, updated_at",
+        )
+        .bind(id)
+        .bind(email)
+        .bind(password_hash)
+        .bind(name)
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_insert)
     }
 
     pub async fn find_by_email(pool: &PgPool, email: &str) -> Result<Option<User>, DbError> {
-        let sql = format!("SELECT {USER_COLS} FROM users WHERE email = $1");
-        Ok(sqlx::query_as::<_, User>(&sql)
-            .bind(email)
-            .fetch_optional(pool)
-            .await?)
+        Ok(sqlx::query_as::<_, User>(
+            "SELECT id, email, password_hash, name, email_verified_at, created_at, updated_at \
+             FROM users WHERE email = $1",
+        )
+        .bind(email)
+        .fetch_optional(pool)
+        .await?)
     }
 
     pub async fn find_by_id(pool: &PgPool, id: Uuid) -> Result<User, DbError> {
-        let sql = format!("SELECT {USER_COLS} FROM users WHERE id = $1");
-        sqlx::query_as::<_, User>(&sql)
-            .bind(id)
-            .fetch_one(pool)
-            .await
-            .map_err(DbError::from_fetch)
+        sqlx::query_as::<_, User>(
+            "SELECT id, email, password_hash, name, email_verified_at, created_at, updated_at \
+             FROM users WHERE id = $1",
+        )
+        .bind(id)
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_fetch)
     }
 
     pub async fn mark_email_verified(pool: &PgPool, id: Uuid) -> Result<(), DbError> {
-        sqlx::query("UPDATE users SET email_verified_at = now() WHERE id = $1 AND email_verified_at IS NULL")
-            .bind(id)
-            .execute(pool)
-            .await?;
+        sqlx::query(
+            "UPDATE users SET email_verified_at = now() \
+             WHERE id = $1 AND email_verified_at IS NULL",
+        )
+        .bind(id)
+        .execute(pool)
+        .await?;
         Ok(())
     }
 }
@@ -84,16 +89,16 @@ pub mod orgs {
     ) -> Result<Organization, DbError> {
         let mut tx = pool.begin().await?;
 
-        let sql = format!(
-            "INSERT INTO organizations (id, name, slug) VALUES ($1, $2, $3) RETURNING {ORG_COLS}"
-        );
-        let org = sqlx::query_as::<_, Organization>(&sql)
-            .bind(org_id)
-            .bind(name)
-            .bind(slug)
-            .fetch_one(&mut *tx)
-            .await
-            .map_err(DbError::from_insert)?;
+        let org = sqlx::query_as::<_, Organization>(
+            "INSERT INTO organizations (id, name, slug) VALUES ($1, $2, $3) \
+             RETURNING id, name, slug, created_at, updated_at",
+        )
+        .bind(org_id)
+        .bind(name)
+        .bind(slug)
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(DbError::from_insert)?;
 
         sqlx::query(
             "INSERT INTO organization_members (organization_id, user_id, role) \
@@ -109,15 +114,16 @@ pub mod orgs {
         Ok(org)
     }
 
-    /// Fetch an org the caller is scoped to. Scoped by the verified
-    /// `OrgScope`, so this cannot return another tenant's row.
+    /// Fetch an org the caller is scoped to. Scoped by the verified `OrgScope`,
+    /// so this cannot return another tenant's row.
     pub async fn get(pool: &PgPool, scope: &OrgScope) -> Result<Organization, DbError> {
-        let sql = format!("SELECT {ORG_COLS} FROM organizations WHERE id = $1");
-        sqlx::query_as::<_, Organization>(&sql)
-            .bind(scope.organization_id())
-            .fetch_one(pool)
-            .await
-            .map_err(DbError::from_fetch)
+        sqlx::query_as::<_, Organization>(
+            "SELECT id, name, slug, created_at, updated_at FROM organizations WHERE id = $1",
+        )
+        .bind(scope.organization_id())
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_fetch)
     }
 
     /// Every org a user belongs to, with their role — the `/me` org list.
@@ -125,23 +131,18 @@ pub mod orgs {
         pool: &PgPool,
         user_id: Uuid,
     ) -> Result<Vec<(Organization, Role)>, DbError> {
-        let sql = format!(
-            "SELECT {}, m.role::text AS role \
+        let rows =
+            sqlx::query_as::<_, (Uuid, String, String, DateTime<Utc>, DateTime<Utc>, String)>(
+                "SELECT o.id, o.name, o.slug, o.created_at, o.updated_at, m.role::text AS role \
              FROM organizations o \
              JOIN organization_members m ON m.organization_id = o.id \
              WHERE m.user_id = $1 \
              ORDER BY o.created_at",
-            ORG_COLS
-                .split(", ")
-                .map(|c| format!("o.{c}"))
-                .collect::<Vec<_>>()
-                .join(", ")
-        );
-        let rows =
-            sqlx::query_as::<_, (Uuid, String, String, DateTime<Utc>, DateTime<Utc>, String)>(&sql)
-                .bind(user_id)
-                .fetch_all(pool)
-                .await?;
+            )
+            .bind(user_id)
+            .fetch_all(pool)
+            .await?;
+
         rows.into_iter()
             .map(|(id, name, slug, created_at, updated_at, role)| {
                 let role = role
@@ -166,7 +167,6 @@ pub mod orgs {
 pub mod sessions {
     use super::*;
 
-    #[allow(clippy::too_many_arguments)]
     pub async fn create(
         pool: &PgPool,
         id: Uuid,
@@ -175,19 +175,19 @@ pub mod sessions {
         csrf_token_hash: &[u8],
         expires_at: DateTime<Utc>,
     ) -> Result<Session, DbError> {
-        let sql = format!(
+        sqlx::query_as::<_, Session>(
             "INSERT INTO sessions (id, user_id, token_hash, csrf_token_hash, expires_at) \
-             VALUES ($1, $2, $3, $4, $5) RETURNING {SESSION_COLS}"
-        );
-        sqlx::query_as::<_, Session>(&sql)
-            .bind(id)
-            .bind(user_id)
-            .bind(token_hash)
-            .bind(csrf_token_hash)
-            .bind(expires_at)
-            .fetch_one(pool)
-            .await
-            .map_err(DbError::from_insert)
+             VALUES ($1, $2, $3, $4, $5) \
+             RETURNING id, user_id, token_hash, csrf_token_hash, expires_at, revoked_at",
+        )
+        .bind(id)
+        .bind(user_id)
+        .bind(token_hash)
+        .bind(csrf_token_hash)
+        .bind(expires_at)
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_insert)
     }
 
     /// Look up a live session by the token's hash. Returns `NotFound` when
@@ -197,16 +197,15 @@ pub mod sessions {
         token_hash: &[u8],
         now: DateTime<Utc>,
     ) -> Result<Session, DbError> {
-        let sql = format!(
-            "SELECT {SESSION_COLS} FROM sessions \
-             WHERE token_hash = $1 AND revoked_at IS NULL AND expires_at > $2"
-        );
-        sqlx::query_as::<_, Session>(&sql)
-            .bind(token_hash)
-            .bind(now)
-            .fetch_one(pool)
-            .await
-            .map_err(DbError::from_fetch)
+        sqlx::query_as::<_, Session>(
+            "SELECT id, user_id, token_hash, csrf_token_hash, expires_at, revoked_at \
+             FROM sessions WHERE token_hash = $1 AND revoked_at IS NULL AND expires_at > $2",
+        )
+        .bind(token_hash)
+        .bind(now)
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_fetch)
     }
 
     pub async fn revoke(pool: &PgPool, id: Uuid) -> Result<(), DbError> {

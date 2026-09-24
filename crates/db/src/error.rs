@@ -1,7 +1,6 @@
 //! Database error type. Thin wrapper over `sqlx::Error` plus the couple of
 //! domain-shaped variants callers care about.
 
-use sqlx::error::DatabaseError;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
