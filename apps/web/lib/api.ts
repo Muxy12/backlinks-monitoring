@@ -85,6 +85,7 @@ export interface ProjectView {
   domain: string;
   check_frequency_secs: number;
   status: string;
+  client_id: string | null;
 }
 export interface BacklinkView {
   id: string;
@@ -232,6 +233,25 @@ export interface PreferenceItem {
 export const orgApi = {
   dashboard: (org: string) => request<DashboardResponse>(`/v1/organizations/${org}/dashboard`),
   projects: (org: string) => request<ProjectView[]>(`/v1/organizations/${org}/projects`),
+  createProject: (
+    org: string,
+    body: { name: string; domain: string; check_frequency_hours?: number; client_id?: string },
+  ) =>
+    request<ProjectView>(`/v1/organizations/${org}/projects`, {
+      method: "POST",
+      headers: csrfHeader(),
+      body: JSON.stringify(body),
+    }),
+  updateProject: (
+    org: string,
+    id: string,
+    body: { name?: string; check_frequency_hours?: number; client_id?: string | null },
+  ) =>
+    request<ProjectView>(`/v1/organizations/${org}/projects/${id}`, {
+      method: "PATCH",
+      headers: csrfHeader(),
+      body: JSON.stringify(body),
+    }),
   backlinks: (org: string, projectId: string) =>
     request<BacklinkView[]>(`/v1/organizations/${org}/backlinks?project_id=${projectId}`),
   searchBacklinks: (

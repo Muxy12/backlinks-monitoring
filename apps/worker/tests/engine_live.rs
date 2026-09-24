@@ -67,6 +67,7 @@ async fn check_makes_a_present_backlink_live_with_check_and_event() {
         "Site",
         "acme.com",
         7 * 24 * 3600,
+        None,
     )
     .await
     .unwrap();
@@ -168,6 +169,7 @@ async fn check_of_absent_link_does_not_lose_it_on_first_miss() {
         "S",
         "acme.com",
         7 * 24 * 3600,
+        None,
     )
     .await
     .unwrap();

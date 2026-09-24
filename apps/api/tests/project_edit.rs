@@ -223,3 +223,70 @@ async fn patch_project_name_and_frequency() {
         .await;
     assert_eq!(st, StatusCode::NOT_FOUND);
 }
+
+#[tokio::test]
+async fn project_client_wiring() {
+    let Some(s) = bootstrap().await else { return };
+    let org = s.org;
+
+    let client = s
+        .send(
+            "POST",
+            format!("/v1/organizations/{org}/clients"),
+            Some(serde_json::json!({"name":"Client Co"})),
+            true,
+        )
+        .await
+        .1["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+
+    // Create a project filed under the client.
+    let (st, v) = s
+        .send(
+            "POST",
+            format!("/v1/organizations/{org}/projects"),
+            Some(serde_json::json!({"name":"Site","domain":"example.com","client_id": client})),
+            true,
+        )
+        .await;
+    assert_eq!(st, StatusCode::CREATED, "create with client: {v}");
+    assert_eq!(v["client_id"], client);
+    let pid = v["id"].as_str().unwrap().to_string();
+    let path = format!("/v1/organizations/{org}/projects/{pid}");
+
+    // Clear the client (explicit null).
+    let (_, v) = s
+        .send(
+            "PATCH",
+            path.clone(),
+            Some(serde_json::json!({"client_id": null})),
+            true,
+        )
+        .await;
+    assert!(v["client_id"].is_null(), "client cleared");
+
+    // Reassign the client.
+    let (_, v) = s
+        .send(
+            "PATCH",
+            path.clone(),
+            Some(serde_json::json!({"client_id": client})),
+            true,
+        )
+        .await;
+    assert_eq!(v["client_id"], client, "client reassigned");
+
+    // Creating with an unknown client -> 404.
+    let ghost = Uuid::now_v7();
+    let (st, _) = s
+        .send(
+            "POST",
+            format!("/v1/organizations/{org}/projects"),
+            Some(serde_json::json!({"name":"X","domain":"x.com","client_id": ghost})),
+            true,
+        )
+        .await;
+    assert_eq!(st, StatusCode::NOT_FOUND, "unknown client -> 404");
+}

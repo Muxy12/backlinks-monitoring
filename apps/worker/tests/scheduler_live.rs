@@ -73,6 +73,7 @@ async fn scheduler_dedupes_by_source_and_handler_checks_all() {
         "S",
         "acme.com",
         7 * 24 * 3600,
+        None,
     )
     .await
     .unwrap();

@@ -337,11 +337,13 @@ pub mod projects {
         name: &str,
         domain: &str,
         check_frequency_secs: i64,
+        client_id: Option<Uuid>,
     ) -> Result<Project, DbError> {
         sqlx::query_as::<_, Project>(
             "WITH inserted AS ( \
-                INSERT INTO projects (id, organization_id, name, domain, default_check_frequency) \
-                VALUES ($1, $2, $3, $4, make_interval(secs => $5)) \
+                INSERT INTO projects \
+                    (id, organization_id, client_id, name, domain, default_check_frequency) \
+                VALUES ($1, $2, $3, $4, $5, make_interval(secs => $6)) \
                 RETURNING * \
              ) \
              SELECT id, organization_id, client_id, name, domain, \
@@ -351,6 +353,7 @@ pub mod projects {
         )
         .bind(id)
         .bind(scope.organization_id())
+        .bind(client_id)
         .bind(name)
         .bind(domain)
         .bind(check_frequency_secs as f64)
@@ -385,37 +388,48 @@ pub mod projects {
         .map_err(DbError::from_fetch)
     }
 
-    /// Partial update (§21): rename and/or change the check frequency. A `None`
-    /// argument keeps the current value (COALESCE), so this is a real PATCH in
-    /// one statement. `NotFound` if the project is not in the org.
+    /// Partial update (§21): rename, change the check frequency, and/or
+    /// reassign the client. Each argument is "apply if `Some`, keep if `None`";
+    /// `client` is a double option so `Some(None)` clears the client. Built with
+    /// `QueryBuilder` so only the provided columns are written (bound params, so
+    /// still injection-safe — S9). The caller guarantees at least one field.
+    /// `NotFound` if the project is not in the org.
     pub async fn update(
         pool: &PgPool,
         scope: &OrgScope,
         id: Uuid,
         name: Option<&str>,
         check_frequency_secs: Option<i64>,
+        client: Option<Option<Uuid>>,
     ) -> Result<Project, DbError> {
-        sqlx::query_as::<_, Project>(
-            "WITH updated AS ( \
-                UPDATE projects SET \
-                    name = COALESCE($3, name), \
-                    default_check_frequency = \
-                        COALESCE(make_interval(secs => $4), default_check_frequency) \
-                WHERE id = $1 AND organization_id = $2 \
-                RETURNING * \
-             ) \
-             SELECT id, organization_id, client_id, name, domain, \
-                    EXTRACT(EPOCH FROM default_check_frequency)::bigint AS check_frequency_secs, \
-                    timezone, status::text AS status, created_at, updated_at, archived_at \
-             FROM updated",
-        )
-        .bind(id)
-        .bind(scope.organization_id())
-        .bind(name)
-        .bind(check_frequency_secs.map(|s| s as f64))
-        .fetch_one(pool)
-        .await
-        .map_err(DbError::from_fetch)
+        let mut qb = sqlx::QueryBuilder::<sqlx::Postgres>::new("UPDATE projects SET ");
+        let mut sep = qb.separated(", ");
+        if let Some(n) = name {
+            sep.push("name = ");
+            sep.push_bind_unseparated(n);
+        }
+        if let Some(s) = check_frequency_secs {
+            sep.push("default_check_frequency = make_interval(secs => ");
+            sep.push_bind_unseparated(s as f64);
+            sep.push_unseparated(")");
+        }
+        if let Some(c) = client {
+            sep.push("client_id = ");
+            sep.push_bind_unseparated(c); // Option<Uuid> binds NULL to clear
+        }
+        qb.push(" WHERE id = ");
+        qb.push_bind(id);
+        qb.push(" AND organization_id = ");
+        qb.push_bind(scope.organization_id());
+        qb.push(
+            " RETURNING id, organization_id, client_id, name, domain, \
+              EXTRACT(EPOCH FROM default_check_frequency)::bigint AS check_frequency_secs, \
+              timezone, status::text AS status, created_at, updated_at, archived_at",
+        );
+        qb.build_query_as::<Project>()
+            .fetch_one(pool)
+            .await
+            .map_err(DbError::from_fetch)
     }
 }
 

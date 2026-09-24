@@ -47,6 +47,7 @@ async fn warranty_sweep_alerts_once_and_is_idempotent() {
         "Site",
         "acme.com",
         7 * 24 * 3600,
+        None,
     )
     .await
     .unwrap();

@@ -141,6 +141,7 @@ pub struct ProjectView {
     pub domain: String,
     pub check_frequency_secs: i64,
     pub status: String,
+    pub client_id: Option<Uuid>,
 }
 
 impl From<db::entities::Project> for ProjectView {
@@ -151,6 +152,7 @@ impl From<db::entities::Project> for ProjectView {
             domain: p.domain,
             check_frequency_secs: p.check_frequency_secs,
             status: p.status,
+            client_id: p.client_id,
         }
     }
 }
@@ -161,6 +163,8 @@ pub struct CreateProjectBody {
     pub domain: String,
     /// Optional; defaults to 7 days. Bounded to the schema's 1h–180d range.
     pub check_frequency_hours: Option<i64>,
+    /// Optional client to file this project under (§20); validated in-org.
+    pub client_id: Option<Uuid>,
 }
 
 pub async fn create_project(
@@ -189,6 +193,9 @@ pub async fn create_project(
             "check frequency must be 1 hour – 180 days".into(),
         ));
     }
+    if let Some(cid) = body.client_id {
+        clients::get(&state.pool, &scope, cid).await?; // 404 if not in org
+    }
     let project = projects::create(
         &state.pool,
         &scope,
@@ -196,6 +203,7 @@ pub async fn create_project(
         name,
         domain,
         hours * 3600,
+        body.client_id,
     )
     .await?;
     Ok((StatusCode::CREATED, Json(project.into())))
@@ -205,6 +213,9 @@ pub async fn create_project(
 pub struct UpdateProjectBody {
     pub name: Option<String>,
     pub check_frequency_hours: Option<i64>,
+    /// Reassign (or clear via explicit null) the client (§20).
+    #[serde(default, deserialize_with = "de_double_opt")]
+    pub client_id: Option<Option<Uuid>>,
 }
 
 pub async fn update_project(
@@ -234,10 +245,15 @@ pub async fn update_project(
         Some(h) => Some(h * 3600),
         None => None,
     };
-    if name.is_none() && secs.is_none() {
+    if name.is_none() && secs.is_none() && body.client_id.is_none() {
         return Err(ApiError::Validation("nothing to update".into()));
     }
-    let project = projects::update(&state.pool, &scope, project_id, name, secs).await?;
+    // A newly-assigned client must be in the org (a null clears, no check).
+    if let Some(Some(cid)) = body.client_id {
+        clients::get(&state.pool, &scope, cid).await?;
+    }
+    let project =
+        projects::update(&state.pool, &scope, project_id, name, secs, body.client_id).await?;
     Ok(Json(project.into()))
 }
 
