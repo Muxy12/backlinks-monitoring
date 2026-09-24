@@ -278,17 +278,31 @@ pub mod clients {
         .map_err(DbError::from_fetch)
     }
 
-    /// Delete a client (§20). Projects keep working — their `client_id` FK is
-    /// `ON DELETE SET NULL`. `NotFound` if not in the org.
+    /// Delete a client (§20). Its projects are unlinked first (the composite
+    /// `client_id` FK's plain SET NULL would also null the NOT NULL
+    /// `organization_id`). `NotFound` if not in the org.
     pub async fn delete(pool: &PgPool, scope: &OrgScope, id: Uuid) -> Result<(), DbError> {
+        let mut tx = pool.begin().await?;
+        sqlx::query(
+            "UPDATE projects SET client_id = NULL \
+             WHERE client_id = $1 AND organization_id = $2",
+        )
+        .bind(id)
+        .bind(scope.organization_id())
+        .execute(&mut *tx)
+        .await?;
         let row: Option<(Uuid,)> = sqlx::query_as(
             "DELETE FROM clients WHERE id = $1 AND organization_id = $2 RETURNING id",
         )
         .bind(id)
         .bind(scope.organization_id())
-        .fetch_optional(pool)
+        .fetch_optional(&mut *tx)
         .await?;
-        row.map(|_| ()).ok_or(DbError::NotFound)
+        if row.is_none() {
+            return Err(DbError::NotFound);
+        }
+        tx.commit().await?;
+        Ok(())
     }
 }
 
@@ -1303,17 +1317,32 @@ pub mod campaigns {
         .map_err(DbError::from_fetch)
     }
 
-    /// Delete a campaign (§22). Attached backlinks are unassigned (their
-    /// `campaign_id` FK is `ON DELETE SET NULL`). `NotFound` if not in the org.
+    /// Delete a campaign (§22). Attached backlinks are unassigned first — the
+    /// composite FK's plain `SET NULL` would also try to null the NOT NULL
+    /// `organization_id`, so we clear `campaign_id` ourselves in one
+    /// transaction. `NotFound` if not in the org.
     pub async fn delete(pool: &PgPool, scope: &OrgScope, id: Uuid) -> Result<(), DbError> {
+        let mut tx = pool.begin().await?;
+        sqlx::query(
+            "UPDATE backlinks SET campaign_id = NULL \
+             WHERE campaign_id = $1 AND organization_id = $2",
+        )
+        .bind(id)
+        .bind(scope.organization_id())
+        .execute(&mut *tx)
+        .await?;
         let row: Option<(Uuid,)> = sqlx::query_as(
             "DELETE FROM campaigns WHERE id = $1 AND organization_id = $2 RETURNING id",
         )
         .bind(id)
         .bind(scope.organization_id())
-        .fetch_optional(pool)
+        .fetch_optional(&mut *tx)
         .await?;
-        row.map(|_| ()).ok_or(DbError::NotFound)
+        if row.is_none() {
+            return Err(DbError::NotFound); // tx rolls back on drop
+        }
+        tx.commit().await?;
+        Ok(())
     }
 
     /// Scalar rollup over the campaign's non-archived backlinks (§22).
@@ -1417,17 +1446,30 @@ pub mod publishers {
         .map_err(DbError::from_fetch)
     }
 
-    /// Delete a publisher (§31). Attached backlinks are unassigned (their
-    /// `publisher_id` FK is `ON DELETE SET NULL`). `NotFound` if not in the org.
+    /// Delete a publisher (§31). Attached backlinks are unassigned first (same
+    /// composite-FK reason as campaigns). `NotFound` if not in the org.
     pub async fn delete(pool: &PgPool, scope: &OrgScope, id: Uuid) -> Result<(), DbError> {
+        let mut tx = pool.begin().await?;
+        sqlx::query(
+            "UPDATE backlinks SET publisher_id = NULL \
+             WHERE publisher_id = $1 AND organization_id = $2",
+        )
+        .bind(id)
+        .bind(scope.organization_id())
+        .execute(&mut *tx)
+        .await?;
         let row: Option<(Uuid,)> = sqlx::query_as(
             "DELETE FROM publishers WHERE id = $1 AND organization_id = $2 RETURNING id",
         )
         .bind(id)
         .bind(scope.organization_id())
-        .fetch_optional(pool)
+        .fetch_optional(&mut *tx)
         .await?;
-        row.map(|_| ()).ok_or(DbError::NotFound)
+        if row.is_none() {
+            return Err(DbError::NotFound);
+        }
+        tx.commit().await?;
+        Ok(())
     }
 
     /// Scalar rollup over the publisher's non-archived backlinks (§31):
