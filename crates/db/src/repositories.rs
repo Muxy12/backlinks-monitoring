@@ -1200,7 +1200,7 @@ macro_rules! rollup_query {
                 count(*) FILTER (WHERE status IN \
                     ('changed','nofollow','redirected','source_error','target_error','blocked') \
                 )::bigint AS attention, \
-                avg(EXTRACT(EPOCH FROM (last_seen_at - created_at)) / 86400.0) \
+                avg((EXTRACT(EPOCH FROM (last_seen_at - created_at)) / 86400.0)::float8) \
                     FILTER (WHERE status = 'lost' AND last_seen_at IS NOT NULL) \
                     AS avg_lifespan_days \
              FROM backlinks \
