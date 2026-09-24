@@ -42,13 +42,13 @@ pub async fn verify(pool: &PgPool) -> Result<usize, DbError> {
             )));
         }
     }
-    if let Some((newest,)) = applied.last() {
-        if !known.contains(newest) {
-            return Err(DbError::Config(format!(
-                "database schema version {newest} is newer than this binary knows; \
-                 deploy the matching code or roll the schema back"
-            )));
-        }
+    if let Some((newest,)) = applied.last()
+        && !known.contains(newest)
+    {
+        return Err(DbError::Config(format!(
+            "database schema version {newest} is newer than this binary knows; \
+             deploy the matching code or roll the schema back"
+        )));
     }
     Ok(applied.len())
 }

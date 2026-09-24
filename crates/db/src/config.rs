@@ -88,9 +88,7 @@ pub fn resolve_statement_cache_capacity(url: &str, override_: Option<usize>) -> 
 /// (PgBouncer) endpoint (docs/01 §2.1). Parsed from the host specifically, so a
 /// `-pooler` substring elsewhere (path, password) does not trip it.
 pub fn is_pooled_host(url: &str) -> bool {
-    host_of_dsn(url)
-        .map(|h| h.contains("-pooler"))
-        .unwrap_or(false)
+    host_of_dsn(url).is_some_and(|h| h.contains("-pooler"))
 }
 
 /// Extract the host from a `postgres://[user[:pass]@]host[:port]/db?...` DSN
