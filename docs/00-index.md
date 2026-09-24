@@ -26,6 +26,7 @@ document — *then* build.
 | [12](12-observability.md) | Observability and crawler economics | — |
 | [13](13-roadmap.md) | Implementation roadmap | 15 |
 | [14](14-design-system.md) | Design system & frontend, from the supplied homepage | — |
+| [16](16-local-toolchain.md) | Local Rust toolchain setup on this Windows box | — |
 
 ## Decisions
 

@@ -42,6 +42,12 @@ CI · first Vercel deploy.
       covering composite-FK tenant isolation, business-rule CHECKs, idempotency indexes, the
       scheduler query plan and the job claim query. Caught and fixed a NULL-logic bug in the
       warranty constraint. **Not** a substitute for the SQLx/Neon tests below.
+- [x] Rust toolchain installed (1.98.1, GNU host — [docs/16](16-local-toolchain.md)) and the
+      **`crates/core` state machine implemented and compiler-verified**: `cargo fmt --check`,
+      `cargo clippy -D warnings` and `cargo test` all green, 18 tests including the property test
+      `only_absent_can_ever_produce_lost` that mechanically enforces §24 (docs/08 §5). This is the
+      Phase 2 state-machine deliverable, pulled forward because it is pure logic and needs no
+      database.
 
 **Exit criteria**
 
@@ -62,7 +68,8 @@ HTML parse + link matching · `crates/core` state machine · manual "check now" 
 
 - [ ] Every fixture in [06 §7](06-crawler.md#7-test-fixtures) passes
 - [ ] The SSRF suite passes, **including redirect-to-private and DNS-rebinding**
-- [ ] The state machine property test holds: no sequence of non-`Absent` observations reaches `lost`
+- [x] The state machine property test holds: no sequence of non-`Absent` observations reaches `lost`
+      (`crates/core`, done early — 18 tests green)
 - [ ] "Check now" enqueues and returns 202; no crawling happens inside a request
 - [ ] The timeline renders a real multi-event history
 
