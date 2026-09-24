@@ -1,7 +1,7 @@
 //! Shared application state and configuration.
 
 use auth::Argon2Params;
-use sqlx::PgPool;
+use db::sqlx::PgPool;
 
 /// Runtime configuration the handlers need. Cheap to clone.
 #[derive(Debug, Clone)]
