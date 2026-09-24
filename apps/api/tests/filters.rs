@@ -260,4 +260,43 @@ async fn backlink_list_filters() {
         0,
         "tagged link does not match the beta search"
     );
+
+    // Client filter: a second project filed under a client, with one backlink.
+    let client = s
+        .post(
+            format!("/v1/organizations/{org}/clients"),
+            serde_json::json!({"name":"Client A"}),
+        )
+        .await["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let cproject = s
+        .post(
+            format!("/v1/organizations/{org}/projects"),
+            serde_json::json!({"name":"Under client","domain":"c.example.com","client_id": client}),
+        )
+        .await["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    s.post(
+        format!("/v1/organizations/{org}/backlinks"),
+        serde_json::json!({
+            "project_id": cproject,
+            "source_url":"https://gamma.com/z",
+            "target_url":"https://example.com/3",
+            "expected_rel_type":"dofollow"
+        }),
+    )
+    .await;
+    // Only the client's one backlink (the other two are in a project with no client).
+    assert_eq!(
+        s.len(format!(
+            "/v1/organizations/{org}/backlinks?client_id={client}"
+        ))
+        .await,
+        1,
+        "client filter scopes to that client's projects"
+    );
 }

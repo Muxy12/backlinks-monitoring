@@ -191,7 +191,7 @@ async fn export_neutralizes_formula_injection() {
     // Header row present; the malicious anchor is guarded (quoted because of the
     // comma, and prefixed with ' so a spreadsheet won't execute it).
     assert!(
-        body.starts_with("source_url,target_url,anchor,"),
+        body.starts_with("client,source_url,target_url,anchor,"),
         "header: {body}"
     );
     assert!(

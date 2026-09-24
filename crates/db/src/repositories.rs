@@ -594,6 +594,8 @@ pub mod backlinks {
     #[derive(Debug, Default)]
     pub struct BacklinkFilter<'a> {
         pub project_id: Option<Uuid>,
+        /// Filter to backlinks whose project is filed under this client (§20).
+        pub client_id: Option<Uuid>,
         /// A `backlink_status` value; the caller validates it against the enum.
         pub status: Option<&'a str>,
         pub tag_id: Option<Uuid>,
@@ -622,6 +624,13 @@ pub mod backlinks {
         if let Some(pid) = filter.project_id {
             qb.push(" AND project_id = ");
             qb.push_bind(pid);
+        }
+        if let Some(client) = filter.client_id {
+            qb.push(" AND project_id IN (SELECT id FROM projects WHERE organization_id = ");
+            qb.push_bind(scope.organization_id());
+            qb.push(" AND client_id = ");
+            qb.push_bind(client);
+            qb.push(")");
         }
         if let Some(status) = filter.status {
             qb.push(" AND status = ");
@@ -664,44 +673,37 @@ pub mod backlinks {
         .map_err(DbError::from_fetch)
     }
 
-    /// Backlinks for CSV export (§36): the whole org, or one project, newest
-    /// first, capped. Tenant-scoped. Two literal queries so sqlx keeps its
-    /// audited-literal guarantee (S9).
+    /// Backlinks for CSV export (§36): the whole org, one project, or one
+    /// client, newest first, capped. Tenant-scoped. `QueryBuilder`, so the
+    /// optional filters are bound params (S9-safe) rather than string-built.
     pub async fn list_for_export(
         pool: &PgPool,
         scope: &OrgScope,
         project_id: Option<Uuid>,
+        client_id: Option<Uuid>,
         limit: i64,
     ) -> Result<Vec<Backlink>, DbError> {
-        let limit = limit.clamp(1, 50_000);
-        let rows = match project_id {
-            Some(pid) => {
-                sqlx::query_as::<_, Backlink>(concat!(
-                    "SELECT ",
-                    cols!(),
-                    " FROM backlinks WHERE organization_id = $1 AND project_id = $2 \
-                      AND archived_at IS NULL ORDER BY created_at DESC LIMIT $3"
-                ))
-                .bind(scope.organization_id())
-                .bind(pid)
-                .bind(limit)
-                .fetch_all(pool)
-                .await?
-            }
-            None => {
-                sqlx::query_as::<_, Backlink>(concat!(
-                    "SELECT ",
-                    cols!(),
-                    " FROM backlinks WHERE organization_id = $1 \
-                      AND archived_at IS NULL ORDER BY created_at DESC LIMIT $2"
-                ))
-                .bind(scope.organization_id())
-                .bind(limit)
-                .fetch_all(pool)
-                .await?
-            }
-        };
-        Ok(rows)
+        let mut qb = sqlx::QueryBuilder::<sqlx::Postgres>::new(concat!(
+            "SELECT ",
+            cols!(),
+            " FROM backlinks WHERE organization_id = "
+        ));
+        qb.push_bind(scope.organization_id());
+        qb.push(" AND archived_at IS NULL");
+        if let Some(pid) = project_id {
+            qb.push(" AND project_id = ");
+            qb.push_bind(pid);
+        }
+        if let Some(cid) = client_id {
+            qb.push(" AND project_id IN (SELECT id FROM projects WHERE organization_id = ");
+            qb.push_bind(scope.organization_id());
+            qb.push(" AND client_id = ");
+            qb.push_bind(cid);
+            qb.push(")");
+        }
+        qb.push(" ORDER BY created_at DESC LIMIT ");
+        qb.push_bind(limit.clamp(1, 50_000));
+        Ok(qb.build_query_as::<Backlink>().fetch_all(pool).await?)
     }
 
     /// Count active backlinks in an org — for plan-limit enforcement (§39).

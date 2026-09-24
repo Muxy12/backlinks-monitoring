@@ -120,9 +120,13 @@ export interface NotificationsResponse {
 
 // A direct URL to the CSV export. It is a top-level GET navigation (an <a>
 // download), so the SameSite=Lax session cookie is sent — no fetch needed.
-export function backlinksExportUrl(org: string, projectId?: string): string {
+export function backlinksExportUrl(org: string, projectId?: string, clientId?: string): string {
   const base = `${BASE}/v1/organizations/${org}/backlinks/export`;
-  return projectId ? `${base}?project_id=${encodeURIComponent(projectId)}` : base;
+  const p = new URLSearchParams();
+  if (clientId) p.set("client_id", clientId);
+  else if (projectId) p.set("project_id", projectId);
+  const qs = p.toString();
+  return qs ? `${base}?${qs}` : base;
 }
 
 // The CSRF cookie is not httpOnly (double-submit), so echo it on mutations.
@@ -256,10 +260,11 @@ export const orgApi = {
     request<BacklinkView[]>(`/v1/organizations/${org}/backlinks?project_id=${projectId}`),
   searchBacklinks: (
     org: string,
-    opts: { projectId?: string; status?: string; q?: string; tagId?: string },
+    opts: { projectId?: string; clientId?: string; status?: string; q?: string; tagId?: string },
   ) => {
     const p = new URLSearchParams();
     if (opts.projectId) p.set("project_id", opts.projectId);
+    if (opts.clientId) p.set("client_id", opts.clientId);
     if (opts.status) p.set("status", opts.status);
     if (opts.q) p.set("q", opts.q);
     if (opts.tagId) p.set("tag_id", opts.tagId);

@@ -25,6 +25,7 @@ export default function DashboardPage() {
   const [blTags, setBlTags] = useState<TagView[]>([]);
   const [newTag, setNewTag] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [clientFilter, setClientFilter] = useState("");
   const [searchQ, setSearchQ] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -81,14 +82,17 @@ export default function DashboardPage() {
   }, [orgId, loadOrg]);
 
   useEffect(() => {
-    if (!orgId || !projectId) {
+    // A client filter shows that client's backlinks across all its projects;
+    // otherwise the view is scoped to the selected project.
+    if (!orgId || (!clientFilter && !projectId)) {
       setBacklinks([]);
       return;
     }
     const t = setTimeout(() => {
       orgApi
         .searchBacklinks(orgId, {
-          projectId,
+          projectId: clientFilter ? undefined : projectId || undefined,
+          clientId: clientFilter || undefined,
           status: statusFilter || undefined,
           q: searchQ.trim() || undefined,
         })
@@ -97,7 +101,7 @@ export default function DashboardPage() {
         });
     }, 200); // debounce the search box
     return () => clearTimeout(t);
-  }, [orgId, projectId, statusFilter, searchQ]);
+  }, [orgId, projectId, clientFilter, statusFilter, searchQ]);
 
   async function openDetail(b: BacklinkView) {
     setSelected(b);
@@ -162,10 +166,13 @@ export default function DashboardPage() {
   const money = (rows: { currency: string; amount: string }[]) =>
     rows.length === 0 ? "—" : rows.map((r) => `${r.amount} ${r.currency}`).join(" · ");
 
-  // The client the current project (and so these backlinks) is filed under.
+  // The client these backlinks belong to: the explicit client filter, else the
+  // selected project's client.
   const selectedProject = projects.find((p) => p.id === projectId) ?? null;
-  const selectedClient =
-    selectedProject?.client_id ? clients.find((c) => c.id === selectedProject.client_id) ?? null : null;
+  const activeClientId = clientFilter || selectedProject?.client_id || "";
+  const selectedClient = activeClientId
+    ? clients.find((c) => c.id === activeClientId) ?? null
+    : null;
 
   return (
     <main className="dash">
@@ -206,8 +213,21 @@ export default function DashboardPage() {
                 {selectedClient && <span className="client-badge">{selectedClient.name}</span>}
               </h2>
               <div className="panel-actions">
+                {clients.length > 0 && (
+                  <select value={clientFilter} onChange={(e) => setClientFilter(e.target.value)} title="Filter by client">
+                    <option value="">All clients</option>
+                    {clients.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                )}
                 {projects.length > 0 && (
-                  <select value={projectId ?? ""} onChange={(e) => setProjectId(e.target.value)}>
+                  <select
+                    value={projectId ?? ""}
+                    onChange={(e) => setProjectId(e.target.value)}
+                    disabled={!!clientFilter}
+                    title={clientFilter ? "Clear the client filter to pick a project" : "Project"}
+                  >
                     {projects.map((p) => (
                       <option key={p.id} value={p.id}>{p.name} — {p.domain}</option>
                     ))}
@@ -226,7 +246,7 @@ export default function DashboardPage() {
                   ))}
                 </select>
                 {orgId && (
-                  <a className="btn sm" href={backlinksExportUrl(orgId, projectId ?? undefined)}>
+                  <a className="btn sm" href={backlinksExportUrl(orgId, projectId ?? undefined, clientFilter || undefined)}>
                     Export CSV
                   </a>
                 )}

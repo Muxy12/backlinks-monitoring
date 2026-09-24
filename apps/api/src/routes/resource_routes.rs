@@ -720,6 +720,8 @@ fn validate_bulk_row(row: &BulkBacklinkRow) -> Result<PreparedRow, String> {
 pub struct ListBacklinksQuery {
     /// Optional now: omit to list the whole org (§35).
     pub project_id: Option<Uuid>,
+    /// Filter to a client's backlinks (across its projects).
+    pub client_id: Option<Uuid>,
     pub status: Option<String>,
     pub tag_id: Option<Uuid>,
     /// Free-text over source/target domain + anchor.
@@ -756,6 +758,7 @@ pub async fn list_backlinks(
     }
     let filter = db::repositories::backlinks::BacklinkFilter {
         project_id: q.project_id,
+        client_id: q.client_id,
         status: q.status.as_deref(),
         tag_id: q.tag_id,
         q: q.q.as_deref(),
@@ -1031,6 +1034,8 @@ pub async fn read_notification(
 pub struct ExportQuery {
     /// Optional project filter; omitted exports the whole org.
     pub project_id: Option<Uuid>,
+    /// Optional client filter (across the client's projects).
+    pub client_id: Option<Uuid>,
 }
 
 /// Stream a CSV of the org's backlinks. Cells are guarded against CSV/formula
@@ -1049,11 +1054,35 @@ pub async fn export_backlinks(
 
     let (user, _s) = current(&state, &jar).await?;
     let scope = authorize_org(&state.pool, user.id, org_id).await?;
-    let rows =
-        db::repositories::backlinks::list_for_export(&state.pool, &scope, q.project_id, 50_000)
-            .await?;
+    let rows = db::repositories::backlinks::list_for_export(
+        &state.pool,
+        &scope,
+        q.project_id,
+        q.client_id,
+        50_000,
+    )
+    .await?;
+
+    // Map each backlink's project -> its client name (project.client_id -> client).
+    let client_name: std::collections::HashMap<Uuid, String> =
+        db::repositories::clients::list(&state.pool, &scope)
+            .await?
+            .into_iter()
+            .map(|c| (c.id, c.name))
+            .collect();
+    let project_client: std::collections::HashMap<Uuid, String> =
+        db::repositories::projects::list(&state.pool, &scope)
+            .await?
+            .into_iter()
+            .filter_map(|p| {
+                p.client_id
+                    .and_then(|cid| client_name.get(&cid).cloned())
+                    .map(|name| (p.id, name))
+            })
+            .collect();
 
     const HEADERS: &[&str] = &[
+        "client",
         "source_url",
         "target_url",
         "anchor",
@@ -1070,6 +1099,10 @@ pub async fn export_backlinks(
         .into_iter()
         .map(|b| {
             vec![
+                project_client
+                    .get(&b.project_id)
+                    .cloned()
+                    .unwrap_or_default(),
                 b.source_url,
                 b.target_url,
                 b.expected_anchor_text.unwrap_or_default(),
