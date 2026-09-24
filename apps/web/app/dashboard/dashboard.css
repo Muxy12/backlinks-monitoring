@@ -29,3 +29,68 @@
 .timeline li { display: flex; gap: 12px; align-items: flex-start; }
 .tl-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); margin-top: 5px; flex: none; }
 .tl-type { font-size: 14px; }
+
+/* Header actions + notifications bell */
+.head-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.btn.bell {
+  position: relative;
+  font-size: 16px;
+  padding: 6px 10px;
+}
+.bell-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+  color: #fff;
+  background: var(--red);
+  border-radius: 9px;
+}
+.btn.sm {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+/* Warranty attention banner */
+.warranty-note {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--text);
+  background: color-mix(in srgb, var(--yellow) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--yellow) 40%, transparent);
+  border-radius: 8px;
+}
+
+/* Notifications list */
+.notif-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.notif {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.notif.read {
+  opacity: 0.55;
+}
+.notif-title {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 2px;
+}

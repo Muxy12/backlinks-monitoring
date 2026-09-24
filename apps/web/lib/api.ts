@@ -97,6 +97,27 @@ export interface BacklinkView {
   warranty_status?: string;
 }
 
+export interface NotificationItem {
+  id: string;
+  kind: string;
+  title: string;
+  body: string | null;
+  backlink_id: string | null;
+  read: boolean;
+  created_at: string;
+}
+export interface NotificationsResponse {
+  items: NotificationItem[];
+  unread: number;
+}
+
+// The CSRF cookie is not httpOnly (double-submit), so echo it on mutations.
+function csrfHeader(): Record<string, string> {
+  if (typeof document === "undefined") return {};
+  const m = document.cookie.match(/(?:^|;\s*)csrf=([^;]+)/);
+  return m ? { "x-csrf-token": decodeURIComponent(m[1]) } : {};
+}
+
 export const orgApi = {
   dashboard: (org: string) => request<DashboardResponse>(`/v1/organizations/${org}/dashboard`),
   projects: (org: string) => request<ProjectView[]>(`/v1/organizations/${org}/projects`),
@@ -104,6 +125,15 @@ export const orgApi = {
     request<BacklinkView[]>(`/v1/organizations/${org}/backlinks?project_id=${projectId}`),
   backlinkEvents: (org: string, id: string) =>
     request<EventView[]>(`/v1/organizations/${org}/backlinks/${id}/events`),
+  expiringWarranties: (org: string) =>
+    request<BacklinkView[]>(`/v1/organizations/${org}/warranties/expiring`),
+  notifications: (org: string) =>
+    request<NotificationsResponse>(`/v1/organizations/${org}/notifications`),
+  markNotificationRead: (org: string, id: string) =>
+    request<null>(`/v1/organizations/${org}/notifications/${id}/read`, {
+      method: "POST",
+      headers: csrfHeader(),
+    }),
 };
 
 export interface EventView {

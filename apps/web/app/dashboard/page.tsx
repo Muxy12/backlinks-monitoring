@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { api, orgApi, type BacklinkView, type DashboardResponse, type EventView, type MeResponse, type ProjectView } from "../../lib/api";
+import { api, orgApi, type BacklinkView, type DashboardResponse, type EventView, type MeResponse, type NotificationsResponse, type ProjectView } from "../../lib/api";
 import { statusColor, statusLabel } from "../../lib/status";
 import "../auth.css";
 import "./dashboard.css";
@@ -17,6 +17,9 @@ export default function DashboardPage() {
   const [backlinks, setBacklinks] = useState<BacklinkView[]>([]);
   const [selected, setSelected] = useState<BacklinkView | null>(null);
   const [events, setEvents] = useState<EventView[] | null>(null);
+  const [warranties, setWarranties] = useState<BacklinkView[]>([]);
+  const [notifs, setNotifs] = useState<NotificationsResponse | null>(null);
+  const [showNotifs, setShowNotifs] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -32,15 +35,35 @@ export default function DashboardPage() {
     });
   }, [router]);
 
-  const loadOrg = useCallback(async (org: string) => {
-    const [dash, projs] = await Promise.all([orgApi.dashboard(org), orgApi.projects(org)]);
-    if (dash.ok) setSummary(dash.data);
-    if (projs.ok) {
-      setProjects(projs.data);
-      const p = projs.data[0]?.id ?? null;
-      setProjectId(p);
-    }
+  const loadNotifs = useCallback(async (org: string) => {
+    const res = await orgApi.notifications(org);
+    if (res.ok) setNotifs(res.data);
   }, []);
+
+  const loadOrg = useCallback(
+    async (org: string) => {
+      const [dash, projs, warr] = await Promise.all([
+        orgApi.dashboard(org),
+        orgApi.projects(org),
+        orgApi.expiringWarranties(org),
+      ]);
+      if (dash.ok) setSummary(dash.data);
+      if (projs.ok) {
+        setProjects(projs.data);
+        const p = projs.data[0]?.id ?? null;
+        setProjectId(p);
+      }
+      if (warr.ok) setWarranties(warr.data);
+      await loadNotifs(org);
+    },
+    [loadNotifs],
+  );
+
+  async function markRead(id: string) {
+    if (!orgId) return;
+    const res = await orgApi.markNotificationRead(orgId, id);
+    if (res.ok) await loadNotifs(orgId);
+  }
 
   useEffect(() => {
     if (orgId) void loadOrg(orgId);
@@ -78,7 +101,13 @@ export default function DashboardPage() {
           <h1>Dashboard</h1>
           <p className="muted">{me.organizations[0]?.name ?? "No workspace"} · {me.user.email}</p>
         </div>
-        <button className="btn" onClick={async () => { await api.logout(); router.push("/login"); }}>Log out</button>
+        <div className="head-actions">
+          <button className="btn bell" onClick={() => setShowNotifs((v) => !v)} aria-label="Notifications">
+            🔔
+            {notifs && notifs.unread > 0 && <span className="bell-badge">{notifs.unread}</span>}
+          </button>
+          <button className="btn" onClick={async () => { await api.logout(); router.push("/login"); }}>Log out</button>
+        </div>
       </header>
 
       {me.organizations.length === 0 ? (
@@ -103,6 +132,17 @@ export default function DashboardPage() {
                 </select>
               )}
             </div>
+            {warranties.length > 0 && (
+              <div className="warranty-note">
+                ⚠ {warranties.length} backlink{warranties.length > 1 ? "s" : ""} with a warranty
+                expiring soon or lapsed:{" "}
+                {warranties
+                  .slice(0, 5)
+                  .map((w) => `${w.source_domain} (${w.warranty_status ?? "?"})`)
+                  .join(", ")}
+                {warranties.length > 5 ? "…" : ""}
+              </div>
+            )}
             {backlinks.length === 0 ? (
               <p className="muted">No backlinks in this project yet.</p>
             ) : (
@@ -126,6 +166,34 @@ export default function DashboardPage() {
             )}
           </section>
         </>
+      )}
+      {showNotifs && (
+        <div className="drawer-backdrop" onClick={() => setShowNotifs(false)}>
+          <aside className="drawer" onClick={(e) => e.stopPropagation()}>
+            <div className="panel-head">
+              <h2>Notifications</h2>
+              <button className="btn" onClick={() => setShowNotifs(false)}>Close</button>
+            </div>
+            {!notifs || notifs.items.length === 0 ? (
+              <p className="muted">No notifications yet.</p>
+            ) : (
+              <ul className="notif-list">
+                {notifs.items.map((n) => (
+                  <li key={n.id} className={n.read ? "notif read" : "notif"}>
+                    <div>
+                      <div className="notif-title">{n.title}</div>
+                      {n.body && <div className="muted">{n.body}</div>}
+                      <div className="muted mono">{new Date(n.created_at).toLocaleString()}</div>
+                    </div>
+                    {!n.read && (
+                      <button className="btn sm" onClick={() => void markRead(n.id)}>Mark read</button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </aside>
+        </div>
       )}
       {selected && (
         <div className="drawer-backdrop" onClick={() => setSelected(null)}>
