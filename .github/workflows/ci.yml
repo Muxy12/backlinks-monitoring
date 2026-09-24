@@ -114,10 +114,10 @@ jobs:
         run: |
           if [ -f apps/web/package.json ]; then echo "exists=true" >> "$GITHUB_OUTPUT";
           else echo "exists=false" >> "$GITHUB_OUTPUT"; echo "apps/web not present yet — skipping"; fi
+      # pnpm version comes from package.json's "packageManager" field; do not
+      # also pass `version` here or action-setup errors on the conflict.
       - uses: pnpm/action-setup@v4
         if: steps.check.outputs.exists == 'true'
-        with:
-          version: 9
       - uses: actions/setup-node@v4
         if: steps.check.outputs.exists == 'true'
         with:
