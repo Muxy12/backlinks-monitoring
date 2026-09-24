@@ -88,6 +88,16 @@ export default function DashboardPage() {
     }
   }
 
+  async function archiveSelected() {
+    if (!orgId || !selected || !projectId) return;
+    const res = await orgApi.archiveBacklink(orgId, selected.id);
+    if (res.ok) {
+      setSelected(null);
+      const list = await orgApi.backlinks(orgId, projectId);
+      if (list.ok) setBacklinks(list.data);
+    }
+  }
+
   if (loading) return <div className="auth-wrap"><p style={{ color: "var(--muted)" }}>Loading…</p></div>;
   if (!me) return null;
 
@@ -202,7 +212,10 @@ export default function DashboardPage() {
           <aside className="drawer" onClick={(e) => e.stopPropagation()}>
             <div className="panel-head">
               <h2>Backlink history</h2>
-              <button className="btn" onClick={() => setSelected(null)}>Close</button>
+              <div className="panel-actions">
+                <button className="btn sm" onClick={() => void archiveSelected()}>Archive</button>
+                <button className="btn" onClick={() => setSelected(null)}>Close</button>
+              </div>
             </div>
             <p className="muted mono">{selected.source_url}</p>
             <p className="muted mono">→ {selected.target_url}</p>

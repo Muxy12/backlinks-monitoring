@@ -427,6 +427,41 @@ pub async fn check_backlink_now(
     ))
 }
 
+/// POST /v1/organizations/{org_id}/backlinks/{backlink_id}/archive — soft delete
+/// (§36). Stops monitoring but keeps the row + history; the link drops out of
+/// lists and stops counting toward the plan cap. 204 on success, 404 if not in
+/// scope or already archived.
+pub async fn archive_backlink(
+    State(state): State<AppState>,
+    Path((org_id, backlink_id)): Path<(Uuid, Uuid)>,
+    jar: CookieJar,
+    headers: HeaderMap,
+) -> Result<StatusCode, ApiError> {
+    let (user, session) = current(&state, &jar).await?;
+    check_csrf(&jar, &headers, &session)?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Member)?;
+    db::repositories::backlinks::archive(&state.pool, &scope, backlink_id).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// POST /v1/organizations/{org_id}/backlinks/{backlink_id}/restore — undo an
+/// archive and re-schedule monitoring. 204 on success, 404 if it is not archived
+/// or not in scope.
+pub async fn restore_backlink(
+    State(state): State<AppState>,
+    Path((org_id, backlink_id)): Path<(Uuid, Uuid)>,
+    jar: CookieJar,
+    headers: HeaderMap,
+) -> Result<StatusCode, ApiError> {
+    let (user, session) = current(&state, &jar).await?;
+    check_csrf(&jar, &headers, &session)?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Member)?;
+    db::repositories::backlinks::restore(&state.pool, &scope, backlink_id).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
 // ─── Backlink events (§30) + dashboard (§34) ─────────────────────────────────
 #[derive(Debug, Serialize)]
 pub struct EventView {

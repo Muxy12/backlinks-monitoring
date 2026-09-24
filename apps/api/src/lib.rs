@@ -79,6 +79,14 @@ pub fn app(state: AppState) -> Router {
             post(routes::resource_routes::check_backlink_now),
         )
         .route(
+            "/v1/organizations/{org_id}/backlinks/{backlink_id}/archive",
+            post(routes::resource_routes::archive_backlink),
+        )
+        .route(
+            "/v1/organizations/{org_id}/backlinks/{backlink_id}/restore",
+            post(routes::resource_routes::restore_backlink),
+        )
+        .route(
             "/v1/organizations/{org_id}/backlinks/{backlink_id}/events",
             get(routes::resource_routes::get_backlink_events),
         )
