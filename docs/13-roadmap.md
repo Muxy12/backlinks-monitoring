@@ -73,7 +73,11 @@ HTML parse + link matching · `crates/core` state machine · manual "check now" 
 
 **Exit criteria**
 
-- [ ] Every fixture in [06 §7](06-crawler.md#7-test-fixtures) passes
+- [~] Every fixture in [06 §7](06-crawler.md#7-test-fixtures) passes — the **parse/matching**
+      fixtures are done in `crates/crawler` (anchor, rel nofollow/sponsored/ugc, `<base href>`,
+      protocol-relative, http/https/www folding, img-only anchor, canonical, meta-robots, multiple
+      matches, malformed HTML — 24 tests, all local). The network fixtures (redirects, 404/500,
+      timeout, oversized) land with the fetch layer.
 - [~] The SSRF suite passes, **including redirect-to-private and DNS-rebinding** — the pure
       **address classifier** is done and tested in `crates/core::net` (23 cases incl. v4-mapped and
       6to4 unwrap, metadata, all private/reserved ranges); DNS resolution, address pinning and the

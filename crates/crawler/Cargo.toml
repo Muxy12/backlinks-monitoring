@@ -7,18 +7,10 @@ license.workspace = true
 publish = false
 
 [dependencies]
-tokio = { workspace = true }
-reqwest = { workspace = true }
+# Parse layer only — pure Rust, so this crate builds without a C toolchain.
+# reqwest / hickory-resolver / publicsuffix / tokio arrive with the fetch layer.
 scraper = { workspace = true }
-hickory-resolver = { workspace = true }
-publicsuffix = { workspace = true }
-ipnet = { workspace = true }
 url = { workspace = true }
-idna = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
+backlio-core = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
-chrono = { workspace = true }
-backlio-core = { workspace = true }
-common = { workspace = true }

@@ -1,3 +1,18 @@
-//! SSRF guard, fetch, parse, normalize, CrawlResult (docs/06).
+//! Crawler (docs/06). Two layers:
 //!
-//! Skeleton only — implementation lands in the phase noted in docs/13-roadmap.md.
+//! - **parse** (this increment): pure HTML → links / canonical / robots, and
+//!   the matching that decides whether a page contains the target link. Pure
+//!   Rust (`scraper`), no network, no C toolchain — fully testable offline.
+//! - **fetch** (next increment): DNS resolution + per-address SSRF validation
+//!   (via `backlio_core::net`), address pinning, the redirect loop that
+//!   re-checks every hop, response-size cap, and per-domain rate limiting. That
+//!   layer pulls `reqwest`/`hickory-resolver`.
+//!
+//! The SSRF *classification* already lives in `backlio_core::net`; the fetch
+//! layer is the I/O around it.
+
+pub mod matching;
+pub mod parse;
+
+pub use matching::{LinkMatch, best_match, evaluate, find_matches};
+pub use parse::{ExtractedLink, ParsedPage, parse_page};
