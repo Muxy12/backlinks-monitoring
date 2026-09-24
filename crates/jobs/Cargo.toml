@@ -7,16 +7,10 @@ license.workspace = true
 publish = false
 
 [dependencies]
-tokio = { workspace = true }
-sqlx = { workspace = true }
-uuid = { workspace = true }
-chrono = { workspace = true }
+# Pure job model: kinds, priorities, retry/backoff, idempotency keys. The queue
+# implementation (claim/complete/reap via sqlx) wires in with db.
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
-tracing = { workspace = true }
-async-trait = { workspace = true }
-db = { workspace = true }
-backlio-core = { workspace = true }
-crawler = { workspace = true }
-common = { workspace = true }
+chrono = { workspace = true }
+uuid = { workspace = true }
