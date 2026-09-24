@@ -1,0 +1,53 @@
+# Backlio API + worker on Fly.io (ADR-0002). One app, one image, two long-running
+# process groups:
+#   web    → /app/server  (the HTTP API; the only group with a public service)
+#   worker → /app/worker  (the monitoring loop; also runs the scheduler on a
+#            30s timer, so a separate scheduler process is optional)
+#
+# Secrets are NOT in this file — set them with `fly secrets set` (see
+# docs/17-deployment.md). Only non-secret config lives in [env].
+
+app = "backlio"
+primary_region = "iad" # near Neon's us-east-1; keep DB round-trips short
+
+[build]
+  dockerfile = "Dockerfile"
+
+[processes]
+  web = "/app/server"
+  worker = "/app/worker"
+
+[env]
+  APP_ENV = "production"
+  PORT = "8080"
+  RUST_LOG = "info"
+  DB_MAX_CONNECTIONS = "8"
+
+# Public HTTPS service — the API only. The worker has no service (internal).
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "off"    # the API should not scale to zero
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["web"]
+
+  [[http_service.checks]]
+    interval = "15s"
+    timeout = "3s"
+    grace_period = "10s"
+    method = "GET"
+    path = "/health"
+
+# The worker is a background group: no [http_service], so nothing public. Give it
+# a bit more memory for the crawler; keep exactly one so per-domain rate limiting
+# and the advisory-locked scheduler behave (scale out later once tested).
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+  processes = ["web"]
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1024mb"
+  processes = ["worker"]

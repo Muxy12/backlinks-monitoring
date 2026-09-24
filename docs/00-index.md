@@ -27,6 +27,7 @@ document — *then* build.
 | [13](13-roadmap.md) | Implementation roadmap | 15 |
 | [14](14-design-system.md) | Design system & frontend, from the supplied homepage | — |
 | [16](16-local-toolchain.md) | Local Rust toolchain setup on this Windows box | — |
+| [17](17-deployment.md) | Deploying the API + worker to Fly.io (Docker, secrets, migrations) | ADR-0002, ADR-0005 |
 
 ## Decisions
 

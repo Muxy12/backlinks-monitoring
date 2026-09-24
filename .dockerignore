@@ -1,0 +1,17 @@
+# Keep the build context small and deterministic. The Dockerfile COPYs only the
+# cargo members it needs, but this also guards against a stray `docker build .`.
+target/
+**/target/
+apps/web/
+node_modules/
+**/node_modules/
+.next/
+.git/
+.github/
+docs/
+tools/
+*.md
+.env
+.env.*
+!.env.example
+.claude/

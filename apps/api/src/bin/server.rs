@@ -24,8 +24,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let secure_cookies = std::env::var("APP_ENV").as_deref() == Ok("production");
+    // Optional runtime config from the environment (never baked in). The webhook
+    // secret enables `/v1/billing/webhook`; absent, that route 404s.
+    let stripe_webhook_secret = std::env::var("STRIPE_WEBHOOK_SECRET")
+        .ok()
+        .filter(|s| !s.is_empty());
+    let session_ttl_hours = std::env::var("SESSION_TTL_HOURS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(720);
     let cfg = ApiConfig {
         secure_cookies,
+        stripe_webhook_secret,
+        session_ttl_hours,
         ..ApiConfig::default()
     };
     let state = AppState::new(db.pool, cfg);
