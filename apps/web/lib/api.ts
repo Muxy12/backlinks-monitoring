@@ -190,6 +190,11 @@ export const orgApi = {
     request<BacklinkView[]>(`/v1/organizations/${org}/backlinks?project_id=${projectId}`),
   backlinkEvents: (org: string, id: string) =>
     request<EventView[]>(`/v1/organizations/${org}/backlinks/${id}/events`),
+  archiveBacklink: (org: string, id: string) =>
+    request<null>(`/v1/organizations/${org}/backlinks/${id}/archive`, {
+      method: "POST",
+      headers: csrfHeader(),
+    }),
   expiringWarranties: (org: string) =>
     request<BacklinkView[]>(`/v1/organizations/${org}/warranties/expiring`),
   notifications: (org: string) =>

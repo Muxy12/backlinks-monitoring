@@ -517,6 +517,38 @@ pub mod backlinks {
         Ok(n)
     }
 
+    /// Soft-archive a backlink (§36): stamp `archived_at` and clear
+    /// `next_check_at` so the scheduler stops checking it (the schema CHECK
+    /// requires next_check_at to be NULL once archived). Keeps the last known
+    /// state and history. Tenant-scoped; a cross-tenant or unknown id (or one
+    /// already archived) yields `NotFound`.
+    pub async fn archive(pool: &PgPool, scope: &OrgScope, id: Uuid) -> Result<(), DbError> {
+        let row: Option<(Uuid,)> = sqlx::query_as(
+            "UPDATE backlinks SET archived_at = now(), next_check_at = NULL \
+             WHERE id = $1 AND organization_id = $2 AND archived_at IS NULL RETURNING id",
+        )
+        .bind(id)
+        .bind(scope.organization_id())
+        .fetch_optional(pool)
+        .await?;
+        row.map(|_| ()).ok_or(DbError::NotFound)
+    }
+
+    /// Restore an archived backlink: clear `archived_at` and make it due now so
+    /// the scheduler picks it back up. `NotFound` if it is not archived or not
+    /// in this org.
+    pub async fn restore(pool: &PgPool, scope: &OrgScope, id: Uuid) -> Result<(), DbError> {
+        let row: Option<(Uuid,)> = sqlx::query_as(
+            "UPDATE backlinks SET archived_at = NULL, next_check_at = now() \
+             WHERE id = $1 AND organization_id = $2 AND archived_at IS NOT NULL RETURNING id",
+        )
+        .bind(id)
+        .bind(scope.organization_id())
+        .fetch_optional(pool)
+        .await?;
+        row.map(|_| ()).ok_or(DbError::NotFound)
+    }
+
     /// One org's warranted links whose warranty lapses on or before `cutoff`
     /// (today + a lookahead window) — for the dashboard's "warranty attention"
     /// list (§32). Only `days`/`months` warranties have a date; `lifetime`/`none`
