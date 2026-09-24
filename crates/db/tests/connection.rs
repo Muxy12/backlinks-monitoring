@@ -8,7 +8,7 @@
 //! is provided. Point `NEON_TEST_POOLED_URL` at a real Neon `-pooler` endpoint
 //! to learn whether SQLx's named statements are safe there (docs/adr/0005).
 
-use db::config::{resolve_statement_cache_capacity, DbConfig};
+use db::config::{DbConfig, resolve_statement_cache_capacity};
 use db::{build_pool, migrate};
 
 fn dsn() -> Option<String> {
@@ -30,7 +30,10 @@ async fn migrations_apply_and_ping_succeeds() {
 
     // verify() must now find the schema at the version this binary knows.
     let applied = migrate::verify(&db.pool).await.expect("schema verifies");
-    assert!(applied >= 12, "expected all migrations applied, got {applied}");
+    assert!(
+        applied >= 12,
+        "expected all migrations applied, got {applied}"
+    );
 }
 
 #[tokio::test]
@@ -62,7 +65,10 @@ async fn tenant_tables_exist_after_migration() {
 /// because a local/direct Postgres cannot reproduce the pooler's behaviour.
 #[tokio::test]
 async fn pooler_statement_cache_survives_concurrency() {
-    let Some(url) = std::env::var("NEON_TEST_POOLED_URL").ok().filter(|s| !s.is_empty()) else {
+    let Some(url) = std::env::var("NEON_TEST_POOLED_URL")
+        .ok()
+        .filter(|s| !s.is_empty())
+    else {
         eprintln!("NEON_TEST_POOLED_URL unset — skipping R1 pooler test (docs/adr/0005)");
         return;
     };
@@ -87,6 +93,8 @@ async fn pooler_statement_cache_survives_concurrency() {
         }));
     }
     for h in handles {
-        h.await.expect("task joins").expect("no sqlx_s_ collision under the pooler");
+        h.await
+            .expect("task joins")
+            .expect("no sqlx_s_ collision under the pooler");
     }
 }

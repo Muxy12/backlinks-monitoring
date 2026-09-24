@@ -12,7 +12,7 @@ pub mod pool;
 
 pub use config::DbConfig;
 pub use error::DbError;
-pub use pool::{build_pool, Db};
+pub use pool::{Db, build_pool};
 
 /// Re-export so downstream crates use one sqlx version.
 pub use sqlx;

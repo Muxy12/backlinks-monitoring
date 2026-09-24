@@ -32,7 +32,11 @@ pub struct DbConfig {
 impl DbConfig {
     /// Build a config for the **API** (pooled endpoint, small pool — Neon's
     /// PgBouncer absorbs the fan-out, and we must not "double pool", docs/01 §2.4).
-    pub fn api(url: impl Into<String>, max_connections: u32, cache_override: Option<usize>) -> Self {
+    pub fn api(
+        url: impl Into<String>,
+        max_connections: u32,
+        cache_override: Option<usize>,
+    ) -> Self {
         let url = url.into();
         DbConfig {
             statement_cache_capacity: resolve_statement_cache_capacity(&url, cache_override),
@@ -47,7 +51,11 @@ impl DbConfig {
 
     /// Build a config for the **worker** (direct endpoint, a couple of
     /// long-lived processes, warm pool to avoid reconnect churn per poll).
-    pub fn worker(url: impl Into<String>, max_connections: u32, cache_override: Option<usize>) -> Self {
+    pub fn worker(
+        url: impl Into<String>,
+        max_connections: u32,
+        cache_override: Option<usize>,
+    ) -> Self {
         let url = url.into();
         DbConfig {
             statement_cache_capacity: resolve_statement_cache_capacity(&url, cache_override),
@@ -73,11 +81,7 @@ pub fn resolve_statement_cache_capacity(url: &str, override_: Option<usize>) -> 
     if let Some(n) = override_ {
         return n;
     }
-    if is_pooled_host(url) {
-        0
-    } else {
-        100
-    }
+    if is_pooled_host(url) { 0 } else { 100 }
 }
 
 /// True when the DSN's host contains `-pooler`, Neon's marker for the pooled
@@ -122,8 +126,7 @@ fn host_of_dsn(url: &str) -> Option<String> {
 mod tests {
     use super::*;
 
-    const POOLED: &str =
-        "postgres://u:p@ep-cool-name-123456-pooler.eu-central-1.aws.neon.tech/backlio?sslmode=require";
+    const POOLED: &str = "postgres://u:p@ep-cool-name-123456-pooler.eu-central-1.aws.neon.tech/backlio?sslmode=require";
     const DIRECT: &str =
         "postgres://u:p@ep-cool-name-123456.eu-central-1.aws.neon.tech/backlio?sslmode=require";
 
@@ -131,14 +134,19 @@ mod tests {
     fn detects_pooled_vs_direct_host() {
         assert!(is_pooled_host(POOLED));
         assert!(!is_pooled_host(DIRECT));
-        assert!(!is_pooled_host("postgres://backlio:backlio@localhost:5432/backlio"));
+        assert!(!is_pooled_host(
+            "postgres://backlio:backlio@localhost:5432/backlio"
+        ));
     }
 
     #[test]
     fn pooler_substring_in_password_does_not_trip_detection() {
         // The password contains "-pooler" but the host does not.
         let dsn = "postgres://user:x-pooler-y@db.example.com:5432/backlio";
-        assert!(!is_pooled_host(dsn), "must parse the host, not substring the whole DSN");
+        assert!(
+            !is_pooled_host(dsn),
+            "must parse the host, not substring the whole DSN"
+        );
     }
 
     #[test]
@@ -156,17 +164,32 @@ mod tests {
 
     #[test]
     fn host_parsing_handles_ipv6_and_no_userinfo() {
-        assert_eq!(host_of_dsn("postgres://[2001:db8::1]:5432/db").as_deref(), Some("2001:db8::1"));
-        assert_eq!(host_of_dsn("postgres://host.example.com/db").as_deref(), Some("host.example.com"));
-        assert_eq!(host_of_dsn("postgres://u:p@H.EXAMPLE.com/db").as_deref(), Some("h.example.com"));
+        assert_eq!(
+            host_of_dsn("postgres://[2001:db8::1]:5432/db").as_deref(),
+            Some("2001:db8::1")
+        );
+        assert_eq!(
+            host_of_dsn("postgres://host.example.com/db").as_deref(),
+            Some("host.example.com")
+        );
+        assert_eq!(
+            host_of_dsn("postgres://u:p@H.EXAMPLE.com/db").as_deref(),
+            Some("h.example.com")
+        );
     }
 
     #[test]
     fn api_pool_is_small_and_holds_nothing_idle() {
         let cfg = DbConfig::api(POOLED, 8, None);
         assert_eq!(cfg.max_connections, 8);
-        assert_eq!(cfg.min_connections, 0, "API must not hold idle connections (double-pooling)");
-        assert_eq!(cfg.statement_cache_capacity, 0, "pooled API -> cache off (R1)");
+        assert_eq!(
+            cfg.min_connections, 0,
+            "API must not hold idle connections (double-pooling)"
+        );
+        assert_eq!(
+            cfg.statement_cache_capacity, 0,
+            "pooled API -> cache off (R1)"
+        );
     }
 
     #[test]
@@ -174,6 +197,9 @@ mod tests {
         let cfg = DbConfig::worker(DIRECT, 16, None);
         assert_eq!(cfg.max_connections, 16);
         assert_eq!(cfg.min_connections, 2);
-        assert_eq!(cfg.statement_cache_capacity, 100, "direct worker -> cache on");
+        assert_eq!(
+            cfg.statement_cache_capacity, 100,
+            "direct worker -> cache on"
+        );
     }
 }
