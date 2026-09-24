@@ -1310,7 +1310,7 @@ pub mod notifications {
             "INSERT INTO notifications \
                 (id, organization_id, backlink_id, kind, title, body, dedupe_key) \
              VALUES ($1, $2, $3, 'warranty_expiring', $4, $5, $6) \
-             ON CONFLICT (dedupe_key) DO NOTHING \
+             ON CONFLICT (dedupe_key) WHERE dedupe_key IS NOT NULL DO NOTHING \
              RETURNING id",
         )
         .bind(Uuid::now_v7())
