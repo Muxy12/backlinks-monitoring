@@ -8,9 +8,9 @@
 
 use backlio_core::{
     BacklinkState, BlockReason, ConnErrorKind, DetectedFields, NormalizeOptions, Observation,
-    ParsedPage, RelType, TransitionPolicy, transition,
+    RelType, TransitionPolicy, transition,
 };
-use crawler::{CrawlerConfig, FetchError, FetchOutcome, fetch, parse_page};
+use crawler::{CrawlerConfig, FetchError, FetchOutcome, ParsedPage, fetch, parse_page};
 use db::repositories::monitor::{self, CheckWrite, EventWrite, TransitionWrite};
 use serde_json::json;
 use sqlx::PgPool;
