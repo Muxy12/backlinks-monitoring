@@ -306,3 +306,37 @@ pub async fn get_backlink(
     let backlink = db::repositories::backlinks::get(&state.pool, &scope, backlink_id).await?;
     Ok(Json(backlink.into()))
 }
+
+/// POST /v1/organizations/{org_id}/backlinks/{backlink_id}/check — enqueue a
+/// priority check (§36). Never crawls in-request (§9, §57.5): returns 202 with
+/// the job id. Idempotent — repeated presses collapse to one pending job.
+pub async fn check_backlink_now(
+    State(state): State<AppState>,
+    Path((org_id, backlink_id)): Path<(Uuid, Uuid)>,
+    jar: CookieJar,
+    headers: HeaderMap,
+) -> Result<(StatusCode, Json<serde_json::Value>), ApiError> {
+    let (user, session) = current(&state, &jar).await?;
+    check_csrf(&jar, &headers, &session)?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Member)?;
+
+    // Confirm the backlink is in scope (404 otherwise) before enqueuing.
+    db::repositories::backlinks::get(&state.pool, &scope, backlink_id).await?;
+
+    let key = jobs::check_now_key(backlink_id);
+    let payload = serde_json::json!({ "backlink_id": backlink_id });
+    let job_id = db::repositories::jobs::enqueue(
+        &state.pool,
+        Some(scope.organization_id()),
+        jobs::JobKind::CheckBacklinkNow,
+        payload,
+        Some(&key),
+    )
+    .await?;
+
+    Ok((
+        StatusCode::ACCEPTED,
+        Json(serde_json::json!({ "queued": true, "job_id": job_id })),
+    ))
+}

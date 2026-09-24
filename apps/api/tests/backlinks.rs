@@ -230,6 +230,25 @@ async fn backlink_create_list_get_and_dedup() {
     assert_eq!(st, StatusCode::OK);
     assert_eq!(v.as_array().unwrap().len(), 1);
 
+    // Check now -> 202, and pressing again is idempotent (still 202).
+    for _ in 0..3 {
+        let resp = s
+            .app
+            .clone()
+            .oneshot(
+                Request::post(format!(
+                    "/v1/organizations/{org}/backlinks/{backlink_id}/check"
+                ))
+                .header(header::COOKIE, &s.cookie)
+                .header("x-csrf-token", &s.csrf)
+                .body(Body::empty())
+                .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::ACCEPTED, "check-now returns 202");
+    }
+
     // Get by id.
     let resp = s
         .app

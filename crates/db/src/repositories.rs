@@ -458,3 +458,48 @@ pub mod backlinks {
         Ok(n)
     }
 }
+
+// ─── Jobs (durable queue enqueue side) — docs/07 ─────────────────────────────
+pub mod jobs {
+    use super::*;
+    use ::jobs::JobKind;
+    use serde_json::Value;
+
+    /// Enqueue a job. Idempotent when `idempotency_key` is set: a second enqueue
+    /// while an equivalent job is still pending/processing is a no-op (the
+    /// partial unique index `jobs_idempotency_uq`), so "Check now" x5 -> one job
+    /// (§36, docs/07 §4). Returns the new job id, or `None` when deduped.
+    pub async fn enqueue(
+        pool: &PgPool,
+        organization_id: Option<Uuid>,
+        kind: JobKind,
+        payload: Value,
+        idempotency_key: Option<&str>,
+    ) -> Result<Option<Uuid>, DbError> {
+        let row: Option<(Uuid,)> = sqlx::query_as(
+            "INSERT INTO jobs (id, organization_id, job_type, payload, priority, idempotency_key) \
+             VALUES ($1, $2, $3, $4, $5, $6) \
+             ON CONFLICT DO NOTHING \
+             RETURNING id",
+        )
+        .bind(Uuid::now_v7())
+        .bind(organization_id)
+        .bind(kind.as_str())
+        .bind(payload)
+        .bind(kind.priority())
+        .bind(idempotency_key)
+        .fetch_optional(pool)
+        .await?;
+        Ok(row.map(|(id,)| id))
+    }
+
+    /// Count pending jobs of a kind — for observability/tests.
+    pub async fn count_pending(pool: &PgPool, kind: JobKind) -> Result<i64, DbError> {
+        let (n,): (i64,) =
+            sqlx::query_as("SELECT count(*) FROM jobs WHERE job_type = $1 AND status = 'pending'")
+                .bind(kind.as_str())
+                .fetch_one(pool)
+                .await?;
+        Ok(n)
+    }
+}

@@ -26,6 +26,7 @@ tracing-subscriber = { workspace = true }
 common = { workspace = true }
 db = { workspace = true }
 auth = { workspace = true }
+jobs = { workspace = true }
 
 [dev-dependencies]
 http-body-util = "0.1"
