@@ -8,11 +8,11 @@ publish = false
 
 [dependencies]
 sqlx = { workspace = true }
-uuid = { workspace = true }
-chrono = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
-common = { workspace = true }
-backlio-core = { workspace = true }
+log = { workspace = true }
+# uuid, chrono, serde, serde_json, backlio-core, common return with the
+# tenant-scoped repositories (they need the domain entities).
+
+[dev-dependencies]
+tokio = { workspace = true }

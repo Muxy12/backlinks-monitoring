@@ -91,6 +91,7 @@ anyhow      = "1.0"
 async-trait = "0.1"
 governor    = "0.10"
 dotenvy     = "0.15"
+log         = "0.4"
 
 # ─── Internal crates ─────────────────────────────────────────────────────────
 # Aliased as `backlio-core`, not `core`, so it does not shadow std's `core`

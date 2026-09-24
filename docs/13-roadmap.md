@@ -54,7 +54,14 @@ CI · first Vercel deploy.
 - [ ] Full gate green
 - [ ] A user can register, verify, log in, create an org, invite a member, create a client and a project — **in a deployed preview**, not only locally
 - [ ] `apps/api/tests/tenant_isolation.rs` passes for every route that exists so far
-- [ ] `crates/db/tests/neon_pooler.rs` has **run against a real Neon branch**, resolving open item R1
+- [~] Open item **R1** (SQLx statement cache vs Neon pooler): the *mechanism* is implemented —
+      `crates/db::config::resolve_statement_cache_capacity` defaults the cache **off** for `-pooler`
+      hosts (the setting that cannot break) and `crates/db/tests/connection.rs` carries the probe
+      (`pooler_statement_cache_survives_concurrency`). Fully resolved once that test runs against a
+      real Neon `-pooler` URL (`NEON_TEST_POOLED_URL`); until then the safe default stands.
+- [x] `crates/db` connection layer built: pool construction, R1 cache decision, embedded-migration
+      runner + boot-time schema `verify`, health `ping` — DB integration tests run in CI against a
+      real Postgres service (both the `rust` and `migrations` jobs)
 - [ ] Migrations apply cleanly from empty in CI
 - [ ] Argon2 parameters benchmarked, not guessed
 
