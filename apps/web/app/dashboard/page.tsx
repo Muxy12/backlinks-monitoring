@@ -103,6 +103,7 @@ export default function DashboardPage() {
         </div>
         <div className="head-actions">
           <a className="btn" href="/operations">Operations</a>
+          <a className="btn" href="/import">Import</a>
           <button className="btn bell" onClick={() => setShowNotifs((v) => !v)} aria-label="Notifications">
             🔔
             {notifs && notifs.unread > 0 && <span className="bell-badge">{notifs.unread}</span>}

@@ -210,7 +210,24 @@ export const orgApi = {
     }),
   publisherRollup: (org: string, id: string) =>
     request<PublisherRollup>(`/v1/organizations/${org}/publishers/${id}/rollup`),
+  importCsv: (org: string, projectId: string, csv: string) =>
+    request<ImportResult>(`/v1/organizations/${org}/imports`, {
+      method: "POST",
+      headers: csrfHeader(),
+      body: JSON.stringify({ project_id: projectId, csv }),
+    }),
 };
+
+export interface ImportRowError {
+  row_number: number;
+  message: string;
+}
+export interface ImportResult {
+  total: number;
+  imported: number;
+  duplicates: number;
+  errors: ImportRowError[];
+}
 
 export interface EventView {
   event_type: string;
