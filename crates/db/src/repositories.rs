@@ -503,3 +503,265 @@ pub mod jobs {
         Ok(n)
     }
 }
+
+// ─── Monitoring: state load + atomic result persistence (docs/07, docs/08) ────
+pub mod monitor {
+    use super::*;
+    use crate::entities::MonitorState;
+    use serde_json::Value;
+
+    /// Load the fields the state machine needs for one backlink.
+    pub async fn load_state(pool: &PgPool, id: Uuid) -> Result<MonitorState, DbError> {
+        sqlx::query_as::<_, MonitorState>(
+            "SELECT id, organization_id, status::text AS status, \
+                    expected_anchor_text, expected_rel_type::text AS expected_rel_type, \
+                    detected_anchor_text, detected_target_url, detected_rel_attributes, \
+                    detected_is_dofollow, source_canonical, source_robots_noindex, \
+                    consecutive_failure_count, last_seen_at, source_url, target_url \
+             FROM backlinks WHERE id = $1",
+        )
+        .bind(id)
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_fetch)
+    }
+
+    /// The new state to persist after a check. Enum-ish fields are strings that
+    /// the SQL casts to their Postgres enum types.
+    pub struct TransitionWrite {
+        pub status: String,
+        pub previous_status: String,
+        pub consecutive_failure_count: i32,
+        pub next_check_at: chrono::DateTime<Utc>,
+        pub last_seen_at: Option<chrono::DateTime<Utc>>,
+        pub detected_anchor_text: Option<String>,
+        pub detected_target_url: Option<String>,
+        pub detected_rel_attributes: Option<Vec<String>>,
+        pub detected_is_dofollow: Option<bool>,
+        pub source_canonical: Option<String>,
+        pub source_robots_noindex: bool,
+        pub source_http_status: Option<i32>,
+    }
+
+    /// One check row to append.
+    pub struct CheckWrite {
+        pub crawl_id: Uuid,
+        pub found: bool,
+        pub status_after: String,
+        pub source_status: Option<i32>,
+        pub anchor_text: Option<String>,
+        pub rel_attributes: Option<Vec<String>>,
+        pub is_dofollow: Option<bool>,
+        pub final_url: Option<String>,
+        pub duration_ms: Option<i32>,
+        pub bytes: Option<i32>,
+        pub error_kind: Option<String>,
+    }
+
+    /// One event to append (type + before/after JSON).
+    pub struct EventWrite {
+        pub event_type: String,
+        pub previous_data: Option<Value>,
+        pub current_data: Option<Value>,
+    }
+
+    /// Persist a check, its events, and the backlink's new state — atomically
+    /// (docs/07 §4, docs/08 §6). Idempotent on `(backlink_id, crawl_id)`: a
+    /// re-run with the same crawl id writes no second check row and skips the
+    /// update (returns Ok with `applied = false`).
+    pub async fn apply_check(
+        pool: &PgPool,
+        organization_id: Uuid,
+        backlink_id: Uuid,
+        check: CheckWrite,
+        transition: TransitionWrite,
+        events: Vec<EventWrite>,
+    ) -> Result<bool, DbError> {
+        let mut tx = pool.begin().await?;
+
+        let check_id = Uuid::now_v7();
+        let inserted: Option<(Uuid,)> = sqlx::query_as(
+            "INSERT INTO backlink_checks (id, backlink_id, organization_id, crawl_id, found, \
+                status_after, source_status, anchor_text, rel_attributes, is_dofollow, \
+                final_url, duration_ms, bytes, error_kind) \
+             VALUES ($1,$2,$3,$4,$5,$6::backlink_status,$7,$8,$9,$10,$11,$12,$13,$14) \
+             ON CONFLICT (backlink_id, crawl_id) DO NOTHING \
+             RETURNING id",
+        )
+        .bind(check_id)
+        .bind(backlink_id)
+        .bind(organization_id)
+        .bind(check.crawl_id)
+        .bind(check.found)
+        .bind(&check.status_after)
+        .bind(check.source_status)
+        .bind(&check.anchor_text)
+        .bind(&check.rel_attributes)
+        .bind(check.is_dofollow)
+        .bind(&check.final_url)
+        .bind(check.duration_ms)
+        .bind(check.bytes)
+        .bind(&check.error_kind)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(DbError::from_insert)?;
+
+        // Already processed this crawl for this backlink -> no-op (idempotent).
+        let Some((check_id,)) = inserted else {
+            tx.rollback().await?;
+            return Ok(false);
+        };
+
+        for ev in &events {
+            sqlx::query(
+                "INSERT INTO backlink_events (id, backlink_id, organization_id, check_id, \
+                    event_type, previous_data, current_data) \
+                 VALUES ($1,$2,$3,$4,$5::event_type,$6,$7)",
+            )
+            .bind(Uuid::now_v7())
+            .bind(backlink_id)
+            .bind(organization_id)
+            .bind(check_id)
+            .bind(&ev.event_type)
+            .bind(&ev.previous_data)
+            .bind(&ev.current_data)
+            .execute(&mut *tx)
+            .await
+            .map_err(DbError::from_insert)?;
+        }
+
+        sqlx::query(
+            "UPDATE backlinks SET \
+                status = $2::backlink_status, previous_status = $3::backlink_status, \
+                consecutive_failure_count = $4, next_check_at = $5, last_seen_at = $6, \
+                detected_anchor_text = $7, detected_target_url = $8, detected_rel_attributes = $9, \
+                detected_is_dofollow = $10, source_canonical = $11, source_robots_noindex = $12, \
+                source_http_status = $13, last_checked_at = now(), \
+                first_checked_at = COALESCE(first_checked_at, now()), \
+                failure_count = failure_count + $14 \
+             WHERE id = $1",
+        )
+        .bind(backlink_id)
+        .bind(&transition.status)
+        .bind(&transition.previous_status)
+        .bind(transition.consecutive_failure_count)
+        .bind(transition.next_check_at)
+        .bind(transition.last_seen_at)
+        .bind(&transition.detected_anchor_text)
+        .bind(&transition.detected_target_url)
+        .bind(&transition.detected_rel_attributes)
+        .bind(transition.detected_is_dofollow)
+        .bind(&transition.source_canonical)
+        .bind(transition.source_robots_noindex)
+        .bind(transition.source_http_status)
+        .bind(if check.found { 0_i32 } else { 1_i32 })
+        .execute(&mut *tx)
+        .await
+        .map_err(DbError::from_insert)?;
+
+        tx.commit().await?;
+        Ok(true)
+    }
+}
+
+// ─── Job queue: claim / complete / fail / reap (docs/07 §2–§3) ───────────────
+pub mod job_queue {
+    use super::*;
+    use serde_json::Value;
+
+    #[derive(Debug, Clone, sqlx::FromRow)]
+    pub struct ClaimedJob {
+        pub id: Uuid,
+        pub organization_id: Option<Uuid>,
+        pub job_type: String,
+        pub payload: Value,
+        pub attempts: i32,
+        pub max_attempts: i32,
+    }
+
+    /// Atomically claim up to `limit` due jobs with FOR UPDATE SKIP LOCKED
+    /// (docs/07 §2). No worker blocks another; no job goes to two workers.
+    pub async fn claim(
+        pool: &PgPool,
+        worker_id: &str,
+        limit: i64,
+    ) -> Result<Vec<ClaimedJob>, DbError> {
+        Ok(sqlx::query_as::<_, ClaimedJob>(
+            "UPDATE jobs SET status='processing', locked_at=now(), locked_by=$1, \
+                    attempts=attempts+1, updated_at=now() \
+             WHERE id IN ( \
+                SELECT id FROM jobs WHERE status='pending' AND scheduled_at <= now() \
+                ORDER BY priority DESC, scheduled_at FOR UPDATE SKIP LOCKED LIMIT $2 \
+             ) RETURNING id, organization_id, job_type, payload, attempts, max_attempts",
+        )
+        .bind(worker_id)
+        .bind(limit)
+        .fetch_all(pool)
+        .await?)
+    }
+
+    pub async fn complete(pool: &PgPool, id: Uuid) -> Result<(), DbError> {
+        sqlx::query(
+            "UPDATE jobs SET status='completed', completed_at=now(), updated_at=now() WHERE id=$1",
+        )
+        .bind(id)
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    /// Mark a job failed: reschedule for retry, or move to `dead` when the error
+    /// is permanent or attempts are exhausted (docs/07 §3).
+    pub async fn fail(
+        pool: &PgPool,
+        id: Uuid,
+        error: &str,
+        retry_in_secs: Option<i64>,
+    ) -> Result<(), DbError> {
+        match retry_in_secs {
+            Some(secs) => {
+                sqlx::query(
+                    "UPDATE jobs SET status='pending', scheduled_at = now() + make_interval(secs => $2), \
+                            last_error=$3, locked_at=NULL, locked_by=NULL, updated_at=now() WHERE id=$1",
+                )
+                .bind(id)
+                .bind(secs as f64)
+                .bind(error)
+                .execute(pool)
+                .await?;
+            }
+            None => {
+                sqlx::query(
+                    "UPDATE jobs SET status='dead', failed_at=now(), last_error=$2, updated_at=now() WHERE id=$1",
+                )
+                .bind(id)
+                .bind(error)
+                .execute(pool)
+                .await?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Return jobs stuck in `processing` past their lease to `pending` (docs/07
+    /// §3.1). Rows past max_attempts go to `dead`. Returns rows reaped.
+    pub async fn reap(pool: &PgPool, lease_secs: i64) -> Result<u64, DbError> {
+        let requeued = sqlx::query(
+            "UPDATE jobs SET status='pending', locked_at=NULL, locked_by=NULL, updated_at=now() \
+             WHERE status='processing' AND locked_at < now() - make_interval(secs => $1) \
+               AND attempts < max_attempts",
+        )
+        .bind(lease_secs as f64)
+        .execute(pool)
+        .await?;
+        sqlx::query(
+            "UPDATE jobs SET status='dead', failed_at=now(), last_error='reaped: max attempts', updated_at=now() \
+             WHERE status='processing' AND locked_at < now() - make_interval(secs => $1) \
+               AND attempts >= max_attempts",
+        )
+        .bind(lease_secs as f64)
+        .execute(pool)
+        .await?;
+        Ok(requeued.rows_affected())
+    }
+}

@@ -66,6 +66,39 @@ impl BacklinkStatus {
         matches!(self, BacklinkStatus::Blocked | BacklinkStatus::Unknown)
     }
 
+    /// The snake_case token stored in the `backlink_status` Postgres enum.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            BacklinkStatus::Pending => "pending",
+            BacklinkStatus::Live => "live",
+            BacklinkStatus::Lost => "lost",
+            BacklinkStatus::Changed => "changed",
+            BacklinkStatus::Nofollow => "nofollow",
+            BacklinkStatus::Redirected => "redirected",
+            BacklinkStatus::SourceError => "source_error",
+            BacklinkStatus::TargetError => "target_error",
+            BacklinkStatus::Blocked => "blocked",
+            BacklinkStatus::Unknown => "unknown",
+        }
+    }
+
+    /// Parse from the database enum text.
+    pub fn from_db(s: &str) -> Option<Self> {
+        Some(match s {
+            "pending" => BacklinkStatus::Pending,
+            "live" => BacklinkStatus::Live,
+            "lost" => BacklinkStatus::Lost,
+            "changed" => BacklinkStatus::Changed,
+            "nofollow" => BacklinkStatus::Nofollow,
+            "redirected" => BacklinkStatus::Redirected,
+            "source_error" => BacklinkStatus::SourceError,
+            "target_error" => BacklinkStatus::TargetError,
+            "blocked" => BacklinkStatus::Blocked,
+            "unknown" => BacklinkStatus::Unknown,
+            _ => return None,
+        })
+    }
+
     /// Pick the higher-precedence of two candidate statuses.
     pub fn max_precedence(self, other: BacklinkStatus) -> BacklinkStatus {
         if other.rank() > self.rank() {
@@ -85,6 +118,27 @@ pub enum RelType {
     Nofollow,
     Sponsored,
     Ugc,
+}
+
+impl RelType {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            RelType::Dofollow => "dofollow",
+            RelType::Nofollow => "nofollow",
+            RelType::Sponsored => "sponsored",
+            RelType::Ugc => "ugc",
+        }
+    }
+
+    pub fn from_db(s: &str) -> Option<Self> {
+        Some(match s {
+            "dofollow" => RelType::Dofollow,
+            "nofollow" => RelType::Nofollow,
+            "sponsored" => RelType::Sponsored,
+            "ugc" => RelType::Ugc,
+            _ => return None,
+        })
+    }
 }
 
 /// The set of `rel` attributes detected on a link. Ordered, so equality and
@@ -123,6 +177,19 @@ impl RelSet {
     /// page-level `<meta name="robots" content="nofollow">`.
     pub fn is_dofollow(&self, page_nofollow: bool) -> bool {
         !page_nofollow && !self.suppresses_follow()
+    }
+
+    /// Rebuild a set from stored tokens (e.g. `detected_rel_attributes`).
+    /// Unknown tokens are ignored.
+    pub fn from_tokens<I, S>(tokens: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<str>,
+    {
+        tokens
+            .into_iter()
+            .filter_map(|t| RelType::from_db(t.as_ref()))
+            .collect()
     }
 
     /// Snapshot as sorted strings, for storage in `detected_rel_attributes`

@@ -106,3 +106,24 @@ pub struct Backlink {
     pub next_check_at: Option<DateTime<Utc>>,
     pub last_checked_at: Option<DateTime<Utc>>,
 }
+
+/// The fields the state machine reads for one backlink (docs/08). Enum/array
+/// columns are read as text so no custom sqlx mapping is needed.
+#[derive(Debug, Clone, FromRow)]
+pub struct MonitorState {
+    pub id: Uuid,
+    pub organization_id: Uuid,
+    pub status: String,
+    pub expected_anchor_text: Option<String>,
+    pub expected_rel_type: String,
+    pub detected_anchor_text: Option<String>,
+    pub detected_target_url: Option<String>,
+    pub detected_rel_attributes: Option<Vec<String>>,
+    pub detected_is_dofollow: Option<bool>,
+    pub source_canonical: Option<String>,
+    pub source_robots_noindex: bool,
+    pub consecutive_failure_count: i32,
+    pub last_seen_at: Option<DateTime<Utc>>,
+    pub source_url: String,
+    pub target_url: String,
+}

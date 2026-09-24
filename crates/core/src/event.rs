@@ -28,6 +28,30 @@ pub enum EventType {
     CanonicalChanged,
 }
 
+impl EventType {
+    /// The snake_case token stored in the `event_type` Postgres enum.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            EventType::BacklinkFound => "backlink_found",
+            EventType::BacklinkLost => "backlink_lost",
+            EventType::BacklinkRestored => "backlink_restored",
+            EventType::AnchorChanged => "anchor_changed",
+            EventType::TargetChanged => "target_changed",
+            EventType::DofollowToNofollow => "dofollow_to_nofollow",
+            EventType::NofollowToDofollow => "nofollow_to_dofollow",
+            EventType::RelChanged => "rel_changed",
+            EventType::SourceRedirected => "source_redirected",
+            EventType::Source404 => "source_404",
+            EventType::SourceError => "source_error",
+            EventType::TargetRedirected => "target_redirected",
+            EventType::Target404 => "target_404",
+            EventType::TargetError => "target_error",
+            EventType::NoindexDetected => "noindex_detected",
+            EventType::CanonicalChanged => "canonical_changed",
+        }
+    }
+}
+
 /// One emitted event. `previous`/`current` are snapshots (plain strings here;
 /// the persistence layer widens them to JSONB), so they stay meaningful even if
 /// the backlink is later edited (docs/08 §6, the §30 "history is never
