@@ -7,7 +7,12 @@ license.workspace = true
 publish = false
 
 [dependencies]
-# Pure plan catalog + entitlement logic. async-stripe + db (Checkout, portal,
-# webhooks, persistence) wire in with the billing service layer.
 serde = { workspace = true }
+serde_json = { workspace = true }
 thiserror = { workspace = true }
+# Stripe webhook signature verification is pure crypto (HMAC-SHA256), so it lives
+# here and is unit-tested without the network. async-stripe (Checkout/Portal)
+# comes with the live billing service.
+hmac = { workspace = true }
+sha2 = { workspace = true }
+subtle = { workspace = true }

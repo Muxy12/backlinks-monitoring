@@ -17,6 +17,24 @@ use db::repositories::{clients, projects};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+/// Enforce the org's plan backlink cap before adding `count` (§39). Existing
+/// links are never touched; only new adds over the cap are blocked.
+async fn enforce_backlink_quota(
+    state: &AppState,
+    scope: &db::OrgScope,
+    count: u32,
+) -> Result<(), ApiError> {
+    let plan =
+        db::repositories::billing::plan_for_org(&state.pool, scope.organization_id()).await?;
+    let current = db::repositories::backlinks::count_active(&state.pool, scope).await? as u32;
+    match billing::Entitlements::new(plan).can_add_backlinks(current, count) {
+        billing::AddOutcome::Allowed { .. } => Ok(()),
+        billing::AddOutcome::OverLimit { limit, .. } => Err(ApiError::PlanLimit(format!(
+            "plan limit of {limit} monitored backlinks reached — upgrade to add more"
+        ))),
+    }
+}
+
 // ─── Clients ─────────────────────────────────────────────────────────────────
 #[derive(Debug, Serialize)]
 pub struct ClientView {
@@ -249,6 +267,10 @@ pub async fn create_backlink(
     // The project must belong to this org (returns 404 otherwise).
     db::repositories::projects::get(&state.pool, &scope, body.project_id).await?;
 
+    // Plan limit (§39): block a new backlink over the cap; existing links keep
+    // being monitored. Free/new orgs default to Starter.
+    enforce_backlink_quota(&state, &scope, 1).await?;
+
     let anchor = body
         .expected_anchor_text
         .as_deref()
@@ -480,6 +502,9 @@ pub async fn import_csv(
             "more than 5000 rows — split the file (async import for large files is coming)".into(),
         ));
     }
+    // Enforce the plan cap for the whole batch of valid rows (§39).
+    let valid_count = parsed.valid().count() as u32;
+    enforce_backlink_quota(&state, &scope, valid_count).await?;
 
     let mut imported = 0usize;
     let mut duplicates = 0usize;

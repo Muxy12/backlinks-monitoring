@@ -9,6 +9,8 @@
 
 pub mod entitlements;
 pub mod plans;
+pub mod webhook;
 
 pub use entitlements::{AddOutcome, Entitlements};
 pub use plans::{Plan, PlanSpec};
+pub use webhook::{WebhookError, verify_signature};

@@ -10,6 +10,8 @@ pub struct ApiConfig {
     pub session_ttl_hours: i64,
     /// Set `Secure` on cookies (true in production; false for local http tests).
     pub secure_cookies: bool,
+    /// Stripe webhook signing secret; `None` disables the webhook endpoint.
+    pub stripe_webhook_secret: Option<String>,
 }
 
 impl Default for ApiConfig {
@@ -18,6 +20,7 @@ impl Default for ApiConfig {
             argon: Argon2Params::default(),
             session_ttl_hours: 720,
             secure_cookies: true,
+            stripe_webhook_secret: None,
         }
     }
 }

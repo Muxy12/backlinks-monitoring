@@ -17,6 +17,7 @@ serde = { workspace = true }
 common = { workspace = true }
 backlio-core = { workspace = true }
 jobs = { workspace = true }
+billing = { workspace = true }
 serde_json = { workspace = true }
 
 [dev-dependencies]

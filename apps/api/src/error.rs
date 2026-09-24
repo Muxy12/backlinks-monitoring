@@ -18,6 +18,8 @@ pub enum ApiError {
     NotFound,
     #[error("conflict")]
     Conflict(String),
+    #[error("plan limit reached")]
+    PlanLimit(String),
     #[error("internal error")]
     Internal,
 }
@@ -38,6 +40,7 @@ impl ApiError {
             ),
             ApiError::NotFound => (StatusCode::NOT_FOUND, "not_found", "not found".into()),
             ApiError::Conflict(d) => (StatusCode::CONFLICT, "conflict", d.clone()),
+            ApiError::PlanLimit(d) => (StatusCode::PAYMENT_REQUIRED, "plan_limit", d.clone()),
             ApiError::Internal => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "internal",

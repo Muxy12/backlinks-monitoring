@@ -923,3 +923,42 @@ pub mod dashboard {
         .await?)
     }
 }
+
+// ─── Billing: plan lookup + idempotent webhook event record (§39) ────────────
+pub mod billing {
+    use super::*;
+    use ::billing::Plan;
+
+    /// The org's active plan, defaulting to Starter when there is no active
+    /// subscription (a new/free org still monitors up to the Starter cap).
+    pub async fn plan_for_org(pool: &PgPool, organization_id: Uuid) -> Result<Plan, DbError> {
+        let row: Option<(String,)> = sqlx::query_as(
+            "SELECT plan::text FROM subscriptions \
+             WHERE organization_id = $1 AND status IN ('trialing','active','past_due')",
+        )
+        .bind(organization_id)
+        .fetch_optional(pool)
+        .await?;
+        Ok(row
+            .and_then(|(p,)| Plan::from_slug(&p))
+            .unwrap_or(Plan::Starter))
+    }
+
+    /// Record a Stripe event id, idempotently (§39, S5). Returns true if this is
+    /// the first time we've seen it (should process), false on replay (no-op).
+    pub async fn record_stripe_event(
+        pool: &PgPool,
+        event_id: &str,
+        event_type: &str,
+    ) -> Result<bool, DbError> {
+        let row: Option<(String,)> = sqlx::query_as(
+            "INSERT INTO stripe_events (event_id, event_type) VALUES ($1, $2) \
+             ON CONFLICT (event_id) DO NOTHING RETURNING event_id",
+        )
+        .bind(event_id)
+        .bind(event_type)
+        .fetch_optional(pool)
+        .await?;
+        Ok(row.is_some())
+    }
+}
