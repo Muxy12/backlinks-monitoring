@@ -435,3 +435,94 @@ pub async fn dashboard(
         tracked_spend,
     }))
 }
+
+// ─── CSV import (§38) ────────────────────────────────────────────────────────
+#[derive(Debug, Deserialize)]
+pub struct ImportBody {
+    pub project_id: Uuid,
+    /// Raw CSV text (generic / Ahrefs / Semrush headers).
+    pub csv: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct RowError {
+    pub row_number: usize,
+    pub message: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ImportResult {
+    pub total: usize,
+    pub imported: usize,
+    pub duplicates: usize,
+    pub errors: Vec<RowError>,
+}
+
+/// Synchronous bulk import for reasonably-sized CSVs (§38). Large files move to
+/// an async chunked job later (docs/07 §5); for now a row cap keeps it bounded.
+pub async fn import_csv(
+    State(state): State<AppState>,
+    Path(org_id): Path<Uuid>,
+    jar: CookieJar,
+    headers: HeaderMap,
+    Json(body): Json<ImportBody>,
+) -> Result<Json<ImportResult>, ApiError> {
+    let (user, session) = current(&state, &jar).await?;
+    check_csrf(&jar, &headers, &session)?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Member)?;
+    // Project must be in scope (404 otherwise).
+    db::repositories::projects::get(&state.pool, &scope, body.project_id).await?;
+
+    let parsed = backlio_core::csv_import::parse_csv(&body.csv).map_err(ApiError::Validation)?;
+    if parsed.total > 5000 {
+        return Err(ApiError::Validation(
+            "more than 5000 rows — split the file (async import for large files is coming)".into(),
+        ));
+    }
+
+    let mut imported = 0usize;
+    let mut duplicates = 0usize;
+    let mut errors = Vec::new();
+    for row in parsed.rows {
+        match row {
+            backlio_core::csv_import::RowResult::Error {
+                row_number,
+                message,
+            } => {
+                errors.push(RowError {
+                    row_number,
+                    message,
+                });
+            }
+            backlio_core::csv_import::RowResult::Ok(r) => {
+                let new = db::repositories::backlinks::NewBacklink {
+                    project_id: body.project_id,
+                    source_url: &r.source_url,
+                    target_url: &r.target_url,
+                    expected_anchor_text: r.anchor.as_deref(),
+                    expected_rel_type: &r.rel_type,
+                    cost: r.cost.as_deref(),
+                    currency: r.currency.as_deref(),
+                };
+                match db::repositories::backlinks::create(&state.pool, &scope, Uuid::now_v7(), new)
+                    .await
+                {
+                    Ok(_) => imported += 1,
+                    Err(db::DbError::Conflict(_)) => duplicates += 1,
+                    Err(db::DbError::Config(_)) => errors.push(RowError {
+                        row_number: r.row_number,
+                        message: "could not parse a URL".into(),
+                    }),
+                    Err(e) => return Err(e.into()),
+                }
+            }
+        }
+    }
+    Ok(Json(ImportResult {
+        total: parsed.total,
+        imported,
+        duplicates,
+        errors,
+    }))
+}
