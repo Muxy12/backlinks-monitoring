@@ -108,9 +108,13 @@ auth          = { path = "crates/auth" }
 billing       = { path = "crates/billing" }
 notifications = { path = "crates/notifications" }
 
-# ─── Release profile (also used for the Vercel/Fly container builds) ──────────
+# ─── Release profile (also used for the container builds) ────────────────────
+# Tuned to build inside a memory-constrained CI/free-tier builder (Render free):
+# `lto = false` + `codegen-units = 16` keeps peak RAM and build time down (thin
+# LTO + a single codegen unit were OOM-killing the Render build). The API is
+# I/O-bound, so `opt-level = 2` costs nothing meaningful at runtime.
 [profile.release]
-opt-level     = 3
-lto           = "thin"
-codegen-units = 1
+opt-level     = 2
+lto           = false
+codegen-units = 16
 strip         = true
