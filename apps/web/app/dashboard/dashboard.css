@@ -20,3 +20,12 @@
 .mono { font-variant-numeric: tabular-nums; color: var(--muted); }
 @media (max-width: 900px) { .tiles { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 600px) { .tiles { grid-template-columns: 1fr; } }
+
+.row-click { cursor: pointer; }
+.row-click:hover td { background: var(--surface-2); }
+.drawer-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: flex; justify-content: flex-end; z-index: 50; }
+.drawer { width: 460px; max-width: 92vw; height: 100%; overflow-y: auto; background: var(--surface); border-left: 1px solid var(--border); padding: 24px; }
+.timeline { list-style: none; margin-top: 16px; display: grid; gap: 16px; }
+.timeline li { display: flex; gap: 12px; align-items: flex-start; }
+.tl-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); margin-top: 5px; flex: none; }
+.tl-type { font-size: 14px; }

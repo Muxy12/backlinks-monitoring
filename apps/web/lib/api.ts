@@ -81,4 +81,13 @@ export const orgApi = {
   projects: (org: string) => request<ProjectView[]>(`/v1/organizations/${org}/projects`),
   backlinks: (org: string, projectId: string) =>
     request<BacklinkView[]>(`/v1/organizations/${org}/backlinks?project_id=${projectId}`),
+  backlinkEvents: (org: string, id: string) =>
+    request<EventView[]>(`/v1/organizations/${org}/backlinks/${id}/events`),
 };
+
+export interface EventView {
+  event_type: string;
+  previous_data: unknown;
+  current_data: unknown;
+  detected_at: string;
+}

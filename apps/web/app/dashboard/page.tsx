@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { api, orgApi, type BacklinkView, type DashboardResponse, type MeResponse, type ProjectView } from "../../lib/api";
+import { api, orgApi, type BacklinkView, type DashboardResponse, type EventView, type MeResponse, type ProjectView } from "../../lib/api";
 import { statusColor, statusLabel } from "../../lib/status";
 import "../auth.css";
 import "./dashboard.css";
@@ -15,6 +15,8 @@ export default function DashboardPage() {
   const [projects, setProjects] = useState<ProjectView[]>([]);
   const [projectId, setProjectId] = useState<string | null>(null);
   const [backlinks, setBacklinks] = useState<BacklinkView[]>([]);
+  const [selected, setSelected] = useState<BacklinkView | null>(null);
+  const [events, setEvents] = useState<EventView[] | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -53,6 +55,15 @@ export default function DashboardPage() {
       setBacklinks([]);
     }
   }, [orgId, projectId]);
+
+  async function openDetail(b: BacklinkView) {
+    setSelected(b);
+    setEvents(null);
+    if (orgId) {
+      const res = await orgApi.backlinkEvents(orgId, b.id);
+      setEvents(res.ok ? res.data : []);
+    }
+  }
 
   if (loading) return <div className="auth-wrap"><p style={{ color: "var(--muted)" }}>Loading…</p></div>;
   if (!me) return null;
@@ -101,7 +112,7 @@ export default function DashboardPage() {
                 </thead>
                 <tbody>
                   {backlinks.map((b) => (
-                    <tr key={b.id}>
+                    <tr key={b.id} className="row-click" onClick={() => void openDetail(b)}>
                       <td><span className="badge" style={{ color: statusColor(b.status) }}>● {statusLabel(b.status)}</span></td>
                       <td className="mono">{b.source_domain}</td>
                       <td className="mono">{b.target_domain}</td>
@@ -115,6 +126,38 @@ export default function DashboardPage() {
             )}
           </section>
         </>
+      )}
+      {selected && (
+        <div className="drawer-backdrop" onClick={() => setSelected(null)}>
+          <aside className="drawer" onClick={(e) => e.stopPropagation()}>
+            <div className="panel-head">
+              <h2>Backlink history</h2>
+              <button className="btn" onClick={() => setSelected(null)}>Close</button>
+            </div>
+            <p className="muted mono">{selected.source_url}</p>
+            <p className="muted mono">→ {selected.target_url}</p>
+            <p style={{ margin: "10px 0" }}>
+              <span className="badge" style={{ color: statusColor(selected.status) }}>● {statusLabel(selected.status)}</span>
+            </p>
+            {events === null ? (
+              <p className="muted">Loading history…</p>
+            ) : events.length === 0 ? (
+              <p className="muted">No changes recorded yet.</p>
+            ) : (
+              <ul className="timeline">
+                {events.map((e, i) => (
+                  <li key={i}>
+                    <span className="tl-dot" />
+                    <div>
+                      <div className="tl-type">{statusLabel(e.event_type)}</div>
+                      <div className="muted mono">{new Date(e.detected_at).toLocaleString()}</div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </aside>
+        </div>
       )}
     </main>
   );
