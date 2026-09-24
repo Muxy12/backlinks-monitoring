@@ -126,11 +126,11 @@ jobs:
       - if: steps.check.outputs.exists == 'true'
         run: pnpm install --frozen-lockfile
       - if: steps.check.outputs.exists == 'true'
-        run: pnpm --filter web lint
-      - if: steps.check.outputs.exists == 'true'
         run: pnpm --filter web typecheck
+      # `next build` type-checks and bundles; it is the real gate for the app.
+      # (ESLint config + unit tests are added in a later frontend increment.)
       - if: steps.check.outputs.exists == 'true'
-        run: pnpm --filter web test
+        run: pnpm --filter web build
 
   # ── Full LTO release build — the actual shipping profile ────────────────────
   # Slow (LTO + codegen-units=1), so it does NOT run on every push. It runs on

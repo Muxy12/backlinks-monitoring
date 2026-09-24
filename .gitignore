@@ -27,3 +27,6 @@ out/
 Thumbs.db
 *.log
 coverage/
+
+# Next.js generated
+next-env.d.ts
