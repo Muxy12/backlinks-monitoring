@@ -17,6 +17,24 @@ sqlx migrate run && sqlx migrate info
 
 ---
 
+## Current status (living)
+
+Verified in CI on every push (fmt · clippy `-D warnings` · tests · migrations vs real
+Postgres · schema-check · `next build`). Local Rust pure-crate suite: 114 tests.
+
+| Area | State |
+|---|---|
+| **Phase 0** design | ✅ complete (24 docs, 5 ADRs) |
+| **Phase 1** foundation | ✅ core done: auth (register/login/logout/me), orgs+owner, clients, projects; cookie sessions + CSRF; tenant isolation proven over real routes. Remaining: team invites, deployed preview |
+| **Phase 2** backlink core | 🟡 backlink CRUD + normalization + "check now" enqueue; crawler parse/matching + SSRF classifier + state machine done. Remaining: crawler **fetch** layer (DNS-pin/redirect), events/history |
+| crates | ✅ core, common, db, crawler(parse), auth, billing, jobs — all built + tested |
+| **Frontend** | 🟡 Next.js app + marketing homepage (ported, rebranded). Remaining: auth UI, dashboard, tools |
+| Phases 3–7 | pure pieces landed early (job model, plan/entitlements); services/worker/imports/Stripe/hardening remaining |
+
+Repo: <https://github.com/Muxy12/backlinks-monitoring> · toolchain notes: [16](16-local-toolchain.md)
+
+---
+
 ## Phase 0 — Design · **complete**
 
 Deliverables: [01](01-research-findings.md) research verification · [02](02-monorepo.md) ·
