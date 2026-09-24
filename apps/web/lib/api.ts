@@ -58,6 +58,12 @@ export const api = {
     request<{ user: UserView }>("/v1/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
   logout: () => request<null>("/v1/auth/logout", { method: "POST" }),
   me: () => request<MeResponse>("/v1/me"),
+  acceptInvitation: (token: string) =>
+    request<{ organization_id: string; role: string }>("/v1/invitations/accept", {
+      method: "POST",
+      headers: csrfHeader(),
+      body: JSON.stringify({ token }),
+    }),
   // Public, no auth (§50).
   checkBacklink: (sourceUrl: string, targetUrl: string) =>
     request<BacklinkCheckResult>("/v1/tools/backlink-check", {
@@ -187,6 +193,19 @@ export interface TagView {
   name: string;
   color: string | null;
 }
+export interface MemberView {
+  user_id: string;
+  email: string;
+  name: string;
+  role: string;
+}
+export interface InvitationView {
+  id: string;
+  email: string;
+  role: string;
+  expires_at: string;
+  token?: string;
+}
 
 export const orgApi = {
   dashboard: (org: string) => request<DashboardResponse>(`/v1/organizations/${org}/dashboard`),
@@ -264,6 +283,19 @@ export const orgApi = {
     }),
   detachTag: (org: string, id: string, tagId: string) =>
     request<null>(`/v1/organizations/${org}/backlinks/${id}/tags/${tagId}`, {
+      method: "DELETE",
+      headers: csrfHeader(),
+    }),
+  members: (org: string) => request<MemberView[]>(`/v1/organizations/${org}/members`),
+  invitations: (org: string) => request<InvitationView[]>(`/v1/organizations/${org}/invitations`),
+  createInvitation: (org: string, email: string, role: string) =>
+    request<InvitationView>(`/v1/organizations/${org}/invitations`, {
+      method: "POST",
+      headers: csrfHeader(),
+      body: JSON.stringify({ email, role }),
+    }),
+  revokeInvitation: (org: string, id: string) =>
+    request<null>(`/v1/organizations/${org}/invitations/${id}`, {
       method: "DELETE",
       headers: csrfHeader(),
     }),

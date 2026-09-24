@@ -118,3 +118,18 @@
   box-sizing: border-box;
   resize: vertical;
 }
+
+.invite-link {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.invite-link code {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  word-break: break-all;
+  color: var(--text);
+}
