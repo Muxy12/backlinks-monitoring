@@ -58,6 +58,14 @@ export const api = {
     request<{ user: UserView }>("/v1/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
   logout: () => request<null>("/v1/auth/logout", { method: "POST" }),
   me: () => request<MeResponse>("/v1/me"),
+  // Create a workspace (organization). Slug is derived from the name server-side
+  // when omitted. The caller is made the owner.
+  createOrganization: (name: string, slug?: string) =>
+    request<OrgView>("/v1/organizations", {
+      method: "POST",
+      headers: csrfHeader(),
+      body: JSON.stringify(slug ? { name, slug } : { name }),
+    }),
   acceptInvitation: (token: string) =>
     request<{ organization_id: string; role: string }>("/v1/invitations/accept", {
       method: "POST",

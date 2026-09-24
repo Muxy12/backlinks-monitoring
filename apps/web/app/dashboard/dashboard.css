@@ -170,3 +170,21 @@
   border-radius: 999px;
   vertical-align: middle;
 }
+
+/* First-run: create-workspace form (shown when the user has no org yet). */
+.create-ws { max-width: 520px; }
+.create-ws h2 { font-size: 18px; margin-bottom: 6px; }
+.ws-form { display: flex; gap: 10px; margin-top: 16px; }
+.ws-form input {
+  flex: 1;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 10px 12px;
+  font-size: 14px;
+}
+.ws-form input:focus { outline: none; border-color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.primary:disabled { opacity: 0.6; cursor: default; }
+.create-ws .error { color: var(--red, #f87171); margin-top: 12px; font-size: 14px; }

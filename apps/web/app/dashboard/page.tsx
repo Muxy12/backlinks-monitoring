@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { api, orgApi, backlinksExportUrl, type BacklinkView, type ClientView, type DashboardResponse, type EventView, type MeResponse, type NotificationsResponse, type ProjectView, type TagView } from "../../lib/api";
 import { statusColor, statusLabel } from "../../lib/status";
@@ -28,6 +28,9 @@ export default function DashboardPage() {
   const [clientFilter, setClientFilter] = useState("");
   const [searchQ, setSearchQ] = useState("");
   const [loading, setLoading] = useState(true);
+  const [wsName, setWsName] = useState("");
+  const [wsBusy, setWsBusy] = useState(false);
+  const [wsErr, setWsErr] = useState<string | null>(null);
 
   const STATUSES = ["live", "lost", "changed", "nofollow", "redirected", "source_error", "target_error", "blocked", "pending"];
 
@@ -174,6 +177,31 @@ export default function DashboardPage() {
     ? clients.find((c) => c.id === activeClientId) ?? null
     : null;
 
+  async function createWorkspace(e: FormEvent) {
+    e.preventDefault();
+    const name = wsName.trim();
+    if (name.length < 2) {
+      setWsErr("Enter a workspace name (at least 2 characters).");
+      return;
+    }
+    setWsErr(null);
+    setWsBusy(true);
+    const res = await api.createOrganization(name);
+    if (!res.ok) {
+      setWsBusy(false);
+      setWsErr(res.detail || "Could not create the workspace.");
+      return;
+    }
+    // Reload the session so the new org (and its id) propagate.
+    const meRes = await api.me();
+    setWsBusy(false);
+    if (meRes.ok) {
+      setMe(meRes.data);
+      setOrgId(meRes.data.organizations[0]?.id ?? null);
+      setWsName("");
+    }
+  }
+
   return (
     <main className="dash">
       <header className="dash-head">
@@ -196,7 +224,24 @@ export default function DashboardPage() {
       </header>
 
       {me.organizations.length === 0 ? (
-        <p className="muted">No workspace yet. Create one to start monitoring.</p>
+        <section className="panel create-ws">
+          <h2>Create your workspace</h2>
+          <p className="muted">A workspace holds your clients, projects and backlinks. Name it after your agency or your own site.</p>
+          <form onSubmit={createWorkspace} className="ws-form">
+            <input
+              type="text"
+              placeholder="e.g. Acme SEO"
+              value={wsName}
+              onChange={(e) => setWsName(e.target.value)}
+              disabled={wsBusy}
+              autoFocus
+            />
+            <button type="submit" className="btn primary" disabled={wsBusy}>
+              {wsBusy ? "Creating…" : "Create workspace"}
+            </button>
+          </form>
+          {wsErr && <p className="error">{wsErr}</p>}
+        </section>
       ) : (
         <>
           <section className="tiles">
