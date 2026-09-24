@@ -99,7 +99,11 @@ async fn bootstrap() -> Option<Session> {
                 .header(header::CONTENT_TYPE, "application/json")
                 .header(header::COOKIE, &cookie)
                 .header("x-csrf-token", &csrf)
-                .body(jbody(serde_json::json!({"name":"Acme"})))
+                // Unique slug: the org slug is globally unique and the CI DB is
+                // shared across integration binaries (see imports.rs).
+                .body(jbody(serde_json::json!({
+                    "name":"Acme","slug":format!("ops-{}", Uuid::now_v7().simple())
+                })))
                 .unwrap(),
         )
         .await
