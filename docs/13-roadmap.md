@@ -27,7 +27,7 @@ Postgres · schema-check · `next build`). Local Rust pure-crate suite: 114 test
 | **Phase 0** design | ✅ complete (24 docs, 5 ADRs) |
 | **Phase 1** foundation | ✅ core done: auth (register/login/logout/me), orgs+owner, clients, projects; cookie sessions + CSRF; tenant isolation proven over real routes. Remaining: team invites, deployed preview |
 | **Phase 2** backlink core | ✅ backlink CRUD + normalization + "check now"; crawler parse/matching + **SSRF-safe fetch** (DNS-pin, redirect re-validation, size cap) + state machine — all verified. Remaining: events/history API + timeline UI |
-| **Phase 3** monitoring | 🟡 **the check engine runs end to end** (fetch → observation → state machine → atomic persist of check+events+state), job queue claim/complete/retry/reap, worker loop. Remaining: scheduler (auto-enqueue due checks), deduped source-page handler |
+| **Phase 3** monitoring | ✅ automatic: scheduler (advisory-locked, deduped by source URL, in-flight lease) enqueues due checks; worker claims (SKIP LOCKED) + runs the check engine (fetch → observation → state machine → atomic check+events+state) + retries/reaps; the deduped `check_source_page` handler checks N backlinks from one fetch (§27) |
 | crates | ✅ core, common, db, crawler, auth, billing, jobs — built + tested |
 | **Frontend** | 🟡 Next.js app: marketing homepage + login/register/dashboard (wired to API). Remaining: backlinks table, campaigns, §34 dashboard, public tools |
 | Phases 4–7 | pure pieces landed (job model, plan/entitlements); Stripe webhooks, imports, notifications, hardening remaining |
