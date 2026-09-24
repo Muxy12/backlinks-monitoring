@@ -9,6 +9,7 @@ import {
   type MeResponse,
   type ProjectView,
 } from "../../lib/api";
+import { AppNav } from "../../components/AppNav";
 import "../auth.css";
 import "../dashboard/dashboard.css";
 import "../operations/operations.css";
@@ -85,11 +86,12 @@ export default function ImportPage() {
   return (
     <main className="dash">
       <header className="dash-head">
-        <div>
+        <div className="dash-id">
+          <div className="brand"><span className="brand-mark" />Backlio</div>
           <h1>Import backlinks</h1>
           <p className="muted">CSV — generic, Ahrefs, or Semrush headers. Duplicates are skipped.</p>
         </div>
-        <a className="btn" href="/dashboard">← Dashboard</a>
+        <AppNav active="import" />
       </header>
 
       {!orgId ? (

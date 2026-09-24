@@ -9,6 +9,7 @@ import {
   type MemberView,
   type MeResponse,
 } from "../../lib/api";
+import { AppNav } from "../../components/AppNav";
 import "../auth.css";
 import "../dashboard/dashboard.css";
 import "../operations/operations.css";
@@ -88,11 +89,12 @@ export default function TeamPage() {
   return (
     <main className="dash">
       <header className="dash-head">
-        <div>
+        <div className="dash-id">
+          <div className="brand"><span className="brand-mark" />Backlio</div>
           <h1>Team</h1>
           <p className="muted">{me.organizations[0]?.name ?? "No workspace"}</p>
         </div>
-        <a className="btn" href="/dashboard">← Dashboard</a>
+        <AppNav active="team" />
       </header>
 
       {!orgId ? (

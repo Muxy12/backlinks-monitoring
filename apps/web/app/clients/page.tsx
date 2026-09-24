@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, orgApi, type ClientView, type MeResponse } from "../../lib/api";
+import { AppNav } from "../../components/AppNav";
 import "../auth.css";
 import "../dashboard/dashboard.css";
 import "../operations/operations.css";
@@ -79,11 +80,12 @@ export default function ClientsPage() {
   return (
     <main className="dash">
       <header className="dash-head">
-        <div>
+        <div className="dash-id">
+          <div className="brand"><span className="brand-mark" />Backlio</div>
           <h1>Clients</h1>
           <p className="muted">The companies you build links for.</p>
         </div>
-        <a className="btn" href="/dashboard">← Dashboard</a>
+        <AppNav active="clients" />
       </header>
 
       {!orgId ? (

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, type CSSProperties, type FormEvent } 
 import { useRouter } from "next/navigation";
 import { api, orgApi, backlinksExportUrl, type BacklinkView, type ClientView, type DashboardResponse, type EventView, type MeResponse, type NotificationsResponse, type ProjectView, type TagView } from "../../lib/api";
 import { statusColor, statusLabel } from "../../lib/status";
+import { AppNav } from "../../components/AppNav";
 import "../auth.css";
 import "./dashboard.css";
 
@@ -217,18 +218,12 @@ export default function DashboardPage() {
           </h1>
           <p className="muted">{me.user.email}</p>
         </div>
-        <nav className="head-actions">
-          <a className="btn" href="/projects">Projects</a>
-          <a className="btn" href="/clients">Clients</a>
-          <a className="btn" href="/operations">Operations</a>
-          <a className="btn" href="/import">Import</a>
-          <a className="btn" href="/team">Team</a>
+        <AppNav active="dashboard">
           <button className="btn bell" onClick={() => setShowNotifs((v) => !v)} aria-label="Notifications">
             🔔
             {notifs && notifs.unread > 0 && <span className="bell-badge">{notifs.unread}</span>}
           </button>
-          <button className="btn" onClick={async () => { await api.logout(); router.push("/login"); }}>Log out</button>
-        </nav>
+        </AppNav>
       </header>
 
       {me.organizations.length === 0 ? (

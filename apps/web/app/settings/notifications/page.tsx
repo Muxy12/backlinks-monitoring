@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, orgApi, type MeResponse, type PreferenceItem } from "../../../lib/api";
+import { AppNav } from "../../../components/AppNav";
 import "../../auth.css";
 import "../../dashboard/dashboard.css";
 
@@ -92,11 +93,12 @@ export default function NotificationSettingsPage() {
   return (
     <main className="dash">
       <header className="dash-head">
-        <div>
+        <div className="dash-id">
+          <div className="brand"><span className="brand-mark" />Backlio</div>
           <h1>Notification settings</h1>
           <p className="muted">Choose which changes notify you, and where.</p>
         </div>
-        <a className="btn" href="/dashboard">← Dashboard</a>
+        <AppNav />
       </header>
 
       {!orgId ? (

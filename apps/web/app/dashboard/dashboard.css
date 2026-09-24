@@ -85,6 +85,11 @@
 }
 .btn.primary:hover { background: linear-gradient(135deg, #9d70ff, #7c3aed); }
 .btn.primary:disabled { opacity: .6; cursor: default; box-shadow: none; }
+.btn.active {
+  color: #fff;
+  background: color-mix(in srgb, var(--accent) 20%, var(--surface-2));
+  border-color: color-mix(in srgb, var(--accent) 48%, transparent);
+}
 .btn.sm { padding: 5px 11px; font-size: 12px; }
 .btn.bell { position: relative; font-size: 15px; padding: 7px 11px; }
 .bell-badge {
