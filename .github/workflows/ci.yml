@@ -4,7 +4,9 @@ name: CI
 on:
   push:
     branches: [main, master]
+    tags: ["v*"]          # a version tag also triggers the full release build
   pull_request:
+  workflow_dispatch:      # allow the release build to be run on demand
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -47,8 +49,11 @@ jobs:
         run: cargo clippy --workspace --all-targets -- -D warnings
       - name: cargo test
         run: cargo test --workspace
-      - name: cargo build (release, container target)
-        run: cargo build --workspace --release
+      # Debug build of all bin/test targets — catches compile errors fast on
+      # every push. The full LTO release build is verified separately by the
+      # `release-build` job (tags / manual only), so PR feedback stays quick.
+      - name: cargo build (all targets, debug)
+        run: cargo build --workspace --all-targets
       - name: No format!-built SQL (S9 guard, docs/11)
         run: |
           if grep -rnE 'query(_as)?\(&?format!' crates apps --include='*.rs'; then
@@ -111,3 +116,18 @@ jobs:
         run: pnpm --filter web typecheck
       - if: steps.check.outputs.exists == 'true'
         run: pnpm --filter web test
+
+  # ── Full LTO release build — the actual shipping profile ────────────────────
+  # Slow (LTO + codegen-units=1), so it does NOT run on every push. It runs on
+  # version tags (v*) and on manual dispatch, which is when the shipping binary
+  # actually matters. Everyday pushes get the fast debug build in the `rust` job.
+  release-build:
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+      - name: cargo build --release
+        run: cargo build --workspace --release
