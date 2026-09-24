@@ -233,20 +233,38 @@ pub mod clients {
     use super::*;
     use crate::entities::Client;
 
+    /// Optional contact/company details for a client (§20).
+    #[derive(Debug, Default)]
+    pub struct NewClient<'a> {
+        pub company_name: Option<&'a str>,
+        pub website: Option<&'a str>,
+        pub contact_name: Option<&'a str>,
+        pub contact_email: Option<&'a str>,
+        pub notes: Option<&'a str>,
+    }
+
     pub async fn create(
         pool: &PgPool,
         scope: &OrgScope,
         id: Uuid,
         name: &str,
+        extra: NewClient<'_>,
     ) -> Result<Client, DbError> {
         sqlx::query_as::<_, Client>(
-            "INSERT INTO clients (id, organization_id, name) VALUES ($1, $2, $3) \
+            "INSERT INTO clients \
+                (id, organization_id, name, company_name, website, contact_name, contact_email, notes) \
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8) \
              RETURNING id, organization_id, name, company_name, website, \
                        contact_name, contact_email, notes, created_at, updated_at",
         )
         .bind(id)
         .bind(scope.organization_id())
         .bind(name)
+        .bind(extra.company_name)
+        .bind(extra.website)
+        .bind(extra.contact_name)
+        .bind(extra.contact_email)
+        .bind(extra.notes)
         .fetch_one(pool)
         .await
         .map_err(DbError::from_insert)

@@ -42,6 +42,8 @@ pub struct ClientView {
     pub name: String,
     pub company_name: Option<String>,
     pub website: Option<String>,
+    pub contact_name: Option<String>,
+    pub contact_email: Option<String>,
 }
 
 impl From<db::entities::Client> for ClientView {
@@ -51,6 +53,8 @@ impl From<db::entities::Client> for ClientView {
             name: c.name,
             company_name: c.company_name,
             website: c.website,
+            contact_name: c.contact_name,
+            contact_email: c.contact_email,
         }
     }
 }
@@ -58,6 +62,15 @@ impl From<db::entities::Client> for ClientView {
 #[derive(Debug, Deserialize)]
 pub struct CreateClientBody {
     pub name: String,
+    pub company_name: Option<String>,
+    pub website: Option<String>,
+    pub contact_name: Option<String>,
+    pub contact_email: Option<String>,
+    pub notes: Option<String>,
+}
+
+fn clean(s: Option<&str>) -> Option<&str> {
+    s.map(str::trim).filter(|v| !v.is_empty())
 }
 
 pub async fn create_client(
@@ -76,7 +89,22 @@ pub async fn create_client(
     if name.is_empty() || name.len() > 200 {
         return Err(ApiError::Validation("name must be 1–200 characters".into()));
     }
-    let client = clients::create(&state.pool, &scope, Uuid::now_v7(), name).await?;
+    let email = clean(body.contact_email.as_deref());
+    if let Some(e) = email
+        && !e.contains('@')
+    {
+        return Err(ApiError::Validation(
+            "contact_email must be an email".into(),
+        ));
+    }
+    let extra = clients::NewClient {
+        company_name: clean(body.company_name.as_deref()),
+        website: clean(body.website.as_deref()),
+        contact_name: clean(body.contact_name.as_deref()),
+        contact_email: email,
+        notes: clean(body.notes.as_deref()),
+    };
+    let client = clients::create(&state.pool, &scope, Uuid::now_v7(), name, extra).await?;
     Ok((StatusCode::CREATED, Json(client.into())))
 }
 

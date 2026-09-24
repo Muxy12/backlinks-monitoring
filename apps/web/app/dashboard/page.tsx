@@ -168,6 +168,7 @@ export default function DashboardPage() {
           <p className="muted">{me.organizations[0]?.name ?? "No workspace"} · {me.user.email}</p>
         </div>
         <div className="head-actions">
+          <a className="btn" href="/clients">Clients</a>
           <a className="btn" href="/operations">Operations</a>
           <a className="btn" href="/import">Import</a>
           <a className="btn" href="/team">Team</a>

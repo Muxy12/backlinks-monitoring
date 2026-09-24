@@ -188,6 +188,22 @@ export interface NewPublisher {
   contact_name?: string;
   contact_email?: string;
 }
+export interface ClientView {
+  id: string;
+  name: string;
+  company_name: string | null;
+  website: string | null;
+  contact_name: string | null;
+  contact_email: string | null;
+}
+export interface NewClient {
+  name: string;
+  company_name?: string;
+  website?: string;
+  contact_name?: string;
+  contact_email?: string;
+  notes?: string;
+}
 export interface TagView {
   id: string;
   name: string;
@@ -299,6 +315,18 @@ export const orgApi = {
       method: "PUT",
       headers: csrfHeader(),
       body: JSON.stringify({ preferences }),
+    }),
+  clients: (org: string) => request<ClientView[]>(`/v1/organizations/${org}/clients`),
+  createClient: (org: string, body: NewClient) =>
+    request<ClientView>(`/v1/organizations/${org}/clients`, {
+      method: "POST",
+      headers: csrfHeader(),
+      body: JSON.stringify(body),
+    }),
+  deleteClient: (org: string, id: string) =>
+    request<null>(`/v1/organizations/${org}/clients/${id}`, {
+      method: "DELETE",
+      headers: csrfHeader(),
     }),
   members: (org: string) => request<MemberView[]>(`/v1/organizations/${org}/members`),
   invitations: (org: string) => request<InvitationView[]>(`/v1/organizations/${org}/invitations`),
