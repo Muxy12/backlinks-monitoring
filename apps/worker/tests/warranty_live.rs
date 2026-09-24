@@ -104,24 +104,23 @@ async fn warranty_sweep_alerts_once_and_is_idempotent() {
     .await
     .unwrap();
 
+    // The sweep is system-wide and the CI DB is shared across test binaries, so
+    // the *global* return count isn't deterministic. Assert on this org's own
+    // unread delta instead: exactly one alert for the soon-to-lapse link, and
+    // the far-future link produces none.
     let before = notifications::unread_count(&pool, &scope).await.unwrap();
 
-    // First sweep: exactly one new alert (the soon-to-lapse link).
     let n1 = engine::run_warranty_sweep(&pool, today, 14, 5000)
         .await
         .unwrap();
-    assert_eq!(n1, 1, "one warranty alert written");
+    assert!(n1 >= 1, "sweep wrote at least our alert");
+    let mid = notifications::unread_count(&pool, &scope).await.unwrap();
+    assert_eq!(mid - before, 1, "exactly one alert for this org");
 
-    // Second sweep same day: idempotent, no new alerts.
-    let n2 = engine::run_warranty_sweep(&pool, today, 14, 5000)
+    // Second sweep same day: idempotent for this org (dedupe on backlink+date).
+    engine::run_warranty_sweep(&pool, today, 14, 5000)
         .await
         .unwrap();
-    assert_eq!(n2, 0, "re-run writes nothing (dedupe)");
-
     let after = notifications::unread_count(&pool, &scope).await.unwrap();
-    assert_eq!(
-        after - before,
-        1,
-        "net one unread notification for this org"
-    );
+    assert_eq!(after, mid, "re-run adds nothing for this org");
 }
