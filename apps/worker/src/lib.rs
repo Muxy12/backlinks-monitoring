@@ -80,6 +80,19 @@ async fn dispatch(ctx: &WorkerCtx, job: &ClaimedJob) -> anyhow::Result<()> {
                 .await?;
             Ok(())
         }
+        JobKind::CheckWarranties => {
+            // Daily sweep (§32). Look 14 days ahead so buyers are nudged before
+            // cover lapses. `within_days` can be overridden via the payload.
+            let within_days = job
+                .payload
+                .get("within_days")
+                .and_then(|v| v.as_i64())
+                .unwrap_or(14);
+            let today = chrono::Utc::now().date_naive();
+            let n = engine::run_warranty_sweep(&ctx.pool, today, within_days, 5000).await?;
+            tracing::info!(new_alerts = n, "warranty sweep complete");
+            Ok(())
+        }
         // Other job types wire in as their handlers land (docs/07 §5).
         other => Err(anyhow::anyhow!("no handler for {other:?} yet")),
     }

@@ -86,6 +86,10 @@ pub fn app(state: AppState) -> Router {
             get(routes::resource_routes::dashboard),
         )
         .route(
+            "/v1/organizations/{org_id}/warranties/expiring",
+            get(routes::resource_routes::expiring_warranties),
+        )
+        .route(
             "/v1/organizations/{org_id}/imports",
             post(routes::resource_routes::import_csv),
         )

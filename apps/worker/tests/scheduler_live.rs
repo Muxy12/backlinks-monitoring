@@ -88,6 +88,9 @@ async fn scheduler_dedupes_by_source_and_handler_checks_all() {
         expected_rel_type: "dofollow",
         cost: None,
         currency: None,
+        warranty_type: "none",
+        warranty_value: None,
+        warranty_expiration: None,
     };
     let a = backlinks::create(pool, &scope, Uuid::now_v7(), new("https://acme.com/a"))
         .await

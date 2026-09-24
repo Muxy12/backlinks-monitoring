@@ -16,6 +16,7 @@ pub mod observation;
 pub mod state_machine;
 pub mod status;
 pub mod url_normalize;
+pub mod warranty;
 
 pub use event::{BacklinkEvent, EventType};
 pub use net::{SsrfBlock, classify_host, classify_ip, classify_port, classify_scheme};
@@ -23,3 +24,6 @@ pub use observation::{BlockReason, ConnErrorKind, Detected, Observation};
 pub use state_machine::{BacklinkState, DetectedFields, Transition, TransitionPolicy, transition};
 pub use status::{BacklinkStatus, RelSet, RelType};
 pub use url_normalize::{NormalizeOptions, host_of, normalize};
+pub use warranty::{
+    WarrantyStatus, WarrantyType, expiration as warranty_expiration, status as warranty_status,
+};

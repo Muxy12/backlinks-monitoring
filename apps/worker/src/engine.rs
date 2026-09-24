@@ -213,3 +213,47 @@ fn build_state(st: &db::entities::MonitorState) -> BacklinkState {
         last_seen_at: st.last_seen_at,
     }
 }
+
+/// The daily warranty-expiry sweep (§32, docs/07 §5). Finds every warranted
+/// link whose warranty lapses on or before `today + within_days` and records a
+/// `warranty_expiring` notification for it, idempotently — a re-run on the same
+/// day writes nothing new (the notification dedupe key is per backlink +
+/// expiration date). Returns the number of *new* alerts written. This is a
+/// system sweep across all orgs; each notification is still written scoped to
+/// the backlink's own organization.
+pub async fn run_warranty_sweep(
+    pool: &PgPool,
+    today: chrono::NaiveDate,
+    within_days: i64,
+    batch: i64,
+) -> anyhow::Result<usize> {
+    let cutoff = today + chrono::Duration::days(within_days.max(0));
+    let due = db::repositories::warranties::expiring_before(pool, cutoff, batch).await?;
+    let mut new_alerts = 0usize;
+    for w in due {
+        let lapsed = w.warranty_expiration <= today;
+        let title = if lapsed {
+            "Backlink warranty expired"
+        } else {
+            "Backlink warranty expiring soon"
+        };
+        let body = format!(
+            "The warranty for a monitored backlink {} on {}.",
+            if lapsed { "expired" } else { "expires" },
+            w.warranty_expiration
+        );
+        if db::repositories::notifications::create_warranty_alert(
+            pool,
+            w.organization_id,
+            w.backlink_id,
+            w.warranty_expiration,
+            title,
+            &body,
+        )
+        .await?
+        {
+            new_alerts += 1;
+        }
+    }
+    Ok(new_alerts)
+}

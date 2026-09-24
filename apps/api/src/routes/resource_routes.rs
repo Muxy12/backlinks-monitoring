@@ -182,6 +182,10 @@ pub async fn get_project(
 }
 
 // ─── Backlinks (§23) ─────────────────────────────────────────────────────────
+/// How many days before a warranty lapses we flag it as "expiring soon" in the
+/// read view and the daily sweep (§32).
+pub const WARRANTY_SOON_DAYS: i64 = 14;
+
 #[derive(Debug, Serialize)]
 pub struct BacklinkView {
     pub id: Uuid,
@@ -194,10 +198,21 @@ pub struct BacklinkView {
     pub status: String,
     pub cost: Option<String>,
     pub currency: Option<String>,
+    pub warranty_type: String,
+    pub warranty_value: Option<i32>,
+    pub warranty_expiration: Option<String>,
+    /// Computed at read against today: none/lifetime/active/expiring_soon/expired.
+    pub warranty_status: String,
 }
 
 impl From<db::entities::Backlink> for BacklinkView {
     fn from(b: db::entities::Backlink) -> Self {
+        let kind = backlio_core::WarrantyType::from_db(&b.warranty_type);
+        let today = chrono::Utc::now().date_naive();
+        let warranty_status =
+            backlio_core::warranty_status(kind, b.warranty_expiration, today, WARRANTY_SOON_DAYS)
+                .as_str()
+                .to_string();
         BacklinkView {
             id: b.id,
             source_url: b.source_url,
@@ -209,6 +224,10 @@ impl From<db::entities::Backlink> for BacklinkView {
             status: b.status,
             cost: b.cost,
             currency: b.currency,
+            warranty_type: b.warranty_type,
+            warranty_value: b.warranty_value,
+            warranty_expiration: b.warranty_expiration.map(|d| d.to_string()),
+            warranty_status,
         }
     }
 }
@@ -226,6 +245,10 @@ pub struct CreateBacklinkBody {
     pub expected_rel_type: Option<String>,
     pub cost: Option<f64>,
     pub currency: Option<String>,
+    /// Warranty (§32): "none" (default), "days", "months", or "lifetime".
+    /// `days`/`months` require a positive `warranty_value`.
+    pub warranty_type: Option<String>,
+    pub warranty_value: Option<i32>,
 }
 
 fn is_http_url(s: &str) -> bool {
@@ -268,6 +291,30 @@ pub async fn create_backlink(
         (Some(c), Some(_)) => Some(format!("{c:.2}")),
         (None, _) => None,
     };
+    // Warranty (§32): validate the type, require a positive value for
+    // days/months, and materialize the expiration date from today so the DB can
+    // index it. `none`/`lifetime` never carry a value or a date.
+    let warranty_type = body.warranty_type.as_deref().unwrap_or("none");
+    let warranty_kind = backlio_core::WarrantyType::from_db(warranty_type);
+    if !matches!(warranty_type, "none" | "days" | "months" | "lifetime") {
+        return Err(ApiError::Validation(
+            "warranty_type must be none/days/months/lifetime".into(),
+        ));
+    }
+    if warranty_kind.needs_value() && !matches!(body.warranty_value, Some(v) if v > 0) {
+        return Err(ApiError::Validation(
+            "warranty_value must be a positive number of days/months".into(),
+        ));
+    }
+    let warranty_value = if warranty_kind.needs_value() {
+        body.warranty_value
+    } else {
+        None // ignore a stray value on none/lifetime
+    };
+    let today = chrono::Utc::now().date_naive();
+    let warranty_expiration =
+        backlio_core::warranty_expiration(warranty_kind, warranty_value, today);
+
     // The project must belong to this org (returns 404 otherwise).
     db::repositories::projects::get(&state.pool, &scope, body.project_id).await?;
     // Same for an optional campaign/publisher — validate org membership so a
@@ -298,6 +345,9 @@ pub async fn create_backlink(
         expected_rel_type: rel,
         cost: cost_str.as_deref(),
         currency: body.currency.as_deref(),
+        warranty_type,
+        warranty_value,
+        warranty_expiration,
     };
     let backlink = db::repositories::backlinks::create(&state.pool, &scope, Uuid::now_v7(), new)
         .await
@@ -472,6 +522,31 @@ pub async fn dashboard(
     }))
 }
 
+// ─── Warranty attention (§32) ─────────────────────────────────────────────────
+#[derive(Debug, Deserialize)]
+pub struct ExpiringWarrantyQuery {
+    /// Lookahead window in days (default 14, clamped to 0–365).
+    pub within_days: Option<i64>,
+}
+
+/// Backlinks whose warranty has lapsed or lapses within the lookahead window.
+/// Newest-lapsing first; each carries its computed `warranty_status`.
+pub async fn expiring_warranties(
+    State(state): State<AppState>,
+    Path(org_id): Path<Uuid>,
+    axum::extract::Query(q): axum::extract::Query<ExpiringWarrantyQuery>,
+    jar: CookieJar,
+) -> Result<Json<Vec<BacklinkView>>, ApiError> {
+    let (user, _s) = current(&state, &jar).await?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    let within = q.within_days.unwrap_or(WARRANTY_SOON_DAYS).clamp(0, 365);
+    let cutoff = chrono::Utc::now().date_naive() + chrono::Duration::days(within);
+    let rows =
+        db::repositories::backlinks::warranty_expiring_for_org(&state.pool, &scope, cutoff, 200)
+            .await?;
+    Ok(Json(rows.into_iter().map(BacklinkView::from).collect()))
+}
+
 // ─── CSV import (§38) ────────────────────────────────────────────────────────
 #[derive(Debug, Deserialize)]
 pub struct ImportBody {
@@ -545,6 +620,9 @@ pub async fn import_csv(
                     expected_rel_type: &r.rel_type,
                     cost: r.cost.as_deref(),
                     currency: r.currency.as_deref(),
+                    warranty_type: "none",
+                    warranty_value: None,
+                    warranty_expiration: None,
                 };
                 match db::repositories::backlinks::create(&state.pool, &scope, Uuid::now_v7(), new)
                     .await

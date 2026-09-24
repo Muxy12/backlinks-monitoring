@@ -355,6 +355,7 @@ pub mod backlinks {
              target_url, target_url_normalized, target_domain, \
              expected_anchor_text, expected_rel_type::text AS expected_rel_type, \
              status::text AS status, cost::text AS cost, currency, \
+             warranty_type::text AS warranty_type, warranty_value, warranty_expiration, \
              created_at, updated_at, next_check_at, last_checked_at"
         };
     }
@@ -372,6 +373,12 @@ pub mod backlinks {
         pub expected_rel_type: &'a str,
         pub cost: Option<&'a str>,
         pub currency: Option<&'a str>,
+        /// Warranty is stored as `(type, value)`; the expiration date is
+        /// materialized by the caller (via `backlio_core::warranty_expiration`)
+        /// so the DB can index it (docs/03 §4.3, §32).
+        pub warranty_type: &'a str,
+        pub warranty_value: Option<i32>,
+        pub warranty_expiration: Option<chrono::NaiveDate>,
     }
 
     pub async fn create(
@@ -395,8 +402,10 @@ pub mod backlinks {
                 campaign_id, publisher_id, \
                 source_url, source_url_normalized, source_domain, \
                 target_url, target_url_normalized, target_domain, \
-                expected_anchor_text, expected_rel_type, cost, currency, next_check_at) \
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::rel_type,$14::numeric,$15, now()) \
+                expected_anchor_text, expected_rel_type, cost, currency, \
+                warranty_type, warranty_value, warranty_expiration, next_check_at) \
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::rel_type,$14::numeric,$15, \
+                     $16::warranty_type,$17,$18, now()) \
              RETURNING ",
             cols!()
         ))
@@ -415,6 +424,9 @@ pub mod backlinks {
         .bind(new.expected_rel_type)
         .bind(new.cost)
         .bind(new.currency)
+        .bind(new.warranty_type)
+        .bind(new.warranty_value)
+        .bind(new.warranty_expiration)
         .fetch_one(pool)
         .await
         .map_err(DbError::from_insert)
@@ -463,6 +475,31 @@ pub mod backlinks {
         .fetch_one(pool)
         .await?;
         Ok(n)
+    }
+
+    /// One org's warranted links whose warranty lapses on or before `cutoff`
+    /// (today + a lookahead window) — for the dashboard's "warranty attention"
+    /// list (§32). Only `days`/`months` warranties have a date; `lifetime`/`none`
+    /// never appear. Newest-lapsing first.
+    pub async fn warranty_expiring_for_org(
+        pool: &PgPool,
+        scope: &OrgScope,
+        cutoff: chrono::NaiveDate,
+        limit: i64,
+    ) -> Result<Vec<Backlink>, DbError> {
+        Ok(sqlx::query_as::<_, Backlink>(concat!(
+            "SELECT ",
+            cols!(),
+            " FROM backlinks \
+              WHERE organization_id = $1 AND archived_at IS NULL \
+                AND warranty_expiration IS NOT NULL AND warranty_expiration <= $2 \
+              ORDER BY warranty_expiration LIMIT $3"
+        ))
+        .bind(scope.organization_id())
+        .bind(cutoff)
+        .bind(limit.clamp(1, 500))
+        .fetch_all(pool)
+        .await?)
     }
 }
 
@@ -1213,3 +1250,89 @@ macro_rules! rollup_query {
 
 const ROLLUP_CAMPAIGN: &str = rollup_query!("campaign_id");
 const ROLLUP_PUBLISHER: &str = rollup_query!("publisher_id");
+
+// ─── Warranties (§32) — the system-wide daily expiry sweep ───────────────────
+pub mod warranties {
+    use super::*;
+
+    /// One warranted link that is at or past its expiry lookahead. `org_id`
+    /// travels with the row so the sweep can write an org-scoped notification
+    /// without a second query.
+    #[derive(Debug, Clone, sqlx::FromRow)]
+    pub struct ExpiringWarranty {
+        pub organization_id: Uuid,
+        pub backlink_id: Uuid,
+        pub warranty_expiration: chrono::NaiveDate,
+    }
+
+    /// Every org's warranted links whose warranty lapses on or before `cutoff`.
+    /// This is a **system** query (the daily `check_warranties` job, docs/07 §5),
+    /// not tenant-scoped — each returned row still carries its `organization_id`
+    /// so downstream writes stay org-scoped. Bounded by `limit` for batching.
+    pub async fn expiring_before(
+        pool: &PgPool,
+        cutoff: chrono::NaiveDate,
+        limit: i64,
+    ) -> Result<Vec<ExpiringWarranty>, DbError> {
+        Ok(sqlx::query_as::<_, ExpiringWarranty>(
+            "SELECT organization_id, id AS backlink_id, warranty_expiration \
+             FROM backlinks \
+             WHERE archived_at IS NULL \
+               AND warranty_expiration IS NOT NULL AND warranty_expiration <= $1 \
+             ORDER BY warranty_expiration \
+             LIMIT $2",
+        )
+        .bind(cutoff)
+        .bind(limit.clamp(1, 5000))
+        .fetch_all(pool)
+        .await?)
+    }
+}
+
+// ─── Notifications (§37) — write side used by the warranty sweep ──────────────
+pub mod notifications {
+    use super::*;
+
+    /// Record a warranty-expiry alert, idempotently. `dedupe_key` keys on the
+    /// backlink and its expiration date, so a daily re-run does not notify twice
+    /// for the same lapse, but a re-warrantied link (new expiration) can alert
+    /// again (docs/07 §4). Returns true when a new row was written.
+    pub async fn create_warranty_alert(
+        pool: &PgPool,
+        organization_id: Uuid,
+        backlink_id: Uuid,
+        expiration: chrono::NaiveDate,
+        title: &str,
+        body: &str,
+    ) -> Result<bool, DbError> {
+        let dedupe_key = format!("warranty:{backlink_id}:{expiration}");
+        let row: Option<(Uuid,)> = sqlx::query_as(
+            "INSERT INTO notifications \
+                (id, organization_id, backlink_id, kind, title, body, dedupe_key) \
+             VALUES ($1, $2, $3, 'warranty_expiring', $4, $5, $6) \
+             ON CONFLICT (dedupe_key) DO NOTHING \
+             RETURNING id",
+        )
+        .bind(Uuid::now_v7())
+        .bind(organization_id)
+        .bind(backlink_id)
+        .bind(title)
+        .bind(body)
+        .bind(&dedupe_key)
+        .fetch_optional(pool)
+        .await?;
+        Ok(row.is_some())
+    }
+
+    /// Count of unread notifications for an org — the alerts badge.
+    pub async fn unread_count(pool: &PgPool, scope: &OrgScope) -> Result<i64, DbError> {
+        let (n,): (i64,) = sqlx::query_as(
+            "SELECT count(*) FROM notifications \
+             WHERE organization_id = $1 AND read_at IS NULL",
+        )
+        .bind(scope.organization_id())
+        .fetch_one(pool)
+        .await?;
+        Ok(n)
+    }
+}

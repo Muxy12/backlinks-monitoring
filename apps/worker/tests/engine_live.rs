@@ -86,6 +86,9 @@ async fn check_makes_a_present_backlink_live_with_check_and_event() {
             expected_rel_type: "dofollow",
             cost: None,
             currency: None,
+            warranty_type: "none",
+            warranty_value: None,
+            warranty_expiration: None,
         },
     )
     .await
@@ -182,6 +185,9 @@ async fn check_of_absent_link_does_not_lose_it_on_first_miss() {
             expected_rel_type: "dofollow",
             cost: None,
             currency: None,
+            warranty_type: "none",
+            warranty_value: None,
+            warranty_expiration: None,
         },
     )
     .await
