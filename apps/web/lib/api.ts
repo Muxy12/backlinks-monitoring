@@ -206,6 +206,12 @@ export interface InvitationView {
   expires_at: string;
   token?: string;
 }
+export interface PreferenceItem {
+  event_type: string;
+  channel: string;
+  enabled: boolean;
+  digest?: string;
+}
 
 export const orgApi = {
   dashboard: (org: string) => request<DashboardResponse>(`/v1/organizations/${org}/dashboard`),
@@ -285,6 +291,14 @@ export const orgApi = {
     request<null>(`/v1/organizations/${org}/backlinks/${id}/tags/${tagId}`, {
       method: "DELETE",
       headers: csrfHeader(),
+    }),
+  notificationPreferences: (org: string) =>
+    request<PreferenceItem[]>(`/v1/organizations/${org}/notification-preferences`),
+  setNotificationPreferences: (org: string, preferences: PreferenceItem[]) =>
+    request<PreferenceItem[]>(`/v1/organizations/${org}/notification-preferences`, {
+      method: "PUT",
+      headers: csrfHeader(),
+      body: JSON.stringify({ preferences }),
     }),
   members: (org: string) => request<MemberView[]>(`/v1/organizations/${org}/members`),
   invitations: (org: string) => request<InvitationView[]>(`/v1/organizations/${org}/invitations`),

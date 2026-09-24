@@ -260,7 +260,7 @@ export default function DashboardPage() {
           <aside className="drawer" onClick={(e) => e.stopPropagation()}>
             <div className="panel-head">
               <h2>Notifications</h2>
-              <button className="btn" onClick={() => setShowNotifs(false)}>Close</button>
+              <div className="panel-actions"><a className="btn sm" href="/settings/notifications">Settings</a><button className="btn" onClick={() => setShowNotifs(false)}>Close</button></div>
             </div>
             {!notifs || notifs.items.length === 0 ? (
               <p className="muted">No notifications yet.</p>
