@@ -1,6 +1,7 @@
 //! Database error type. Thin wrapper over `sqlx::Error` plus the couple of
 //! domain-shaped variants callers care about.
 
+use sqlx::error::DatabaseError;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -17,6 +18,16 @@ pub enum DbError {
     #[error("not found")]
     NotFound,
 
+    /// The actor is a member but lacks the required role (docs/05 §2). Distinct
+    /// from `NotFound`: the resource is in scope, the action is not permitted.
+    #[error("forbidden")]
+    Forbidden,
+
+    /// A uniqueness constraint was violated (e.g. duplicate email or slug).
+    /// Carries the constraint name so callers can map it to a field error.
+    #[error("conflict: {0}")]
+    Conflict(String),
+
     #[error("invalid database configuration: {0}")]
     Config(String),
 }
@@ -29,5 +40,18 @@ impl DbError {
             sqlx::Error::RowNotFound => DbError::NotFound,
             other => DbError::Sqlx(other),
         }
+    }
+
+    /// Turn a Postgres unique-violation (SQLSTATE 23505) into `Conflict`,
+    /// carrying the constraint name, so an insert of a duplicate email/slug maps
+    /// to a field error rather than a 500.
+    pub fn from_insert(e: sqlx::Error) -> Self {
+        if let sqlx::Error::Database(db) = &e
+            && db.code().as_deref() == Some("23505")
+        {
+            let constraint = db.constraint().unwrap_or("unique").to_string();
+            return DbError::Conflict(constraint);
+        }
+        DbError::Sqlx(e)
     }
 }

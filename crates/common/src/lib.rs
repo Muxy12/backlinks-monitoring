@@ -4,8 +4,10 @@
 
 pub mod env;
 pub mod ids;
+pub mod role;
 
 pub use env::{AppEnv, Guards};
 pub use ids::{
     BacklinkId, CampaignId, ClientId, JobId, OrganizationId, ProjectId, PublisherId, UserId,
 };
+pub use role::Role;

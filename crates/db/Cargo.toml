@@ -11,8 +11,11 @@ sqlx = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 log = { workspace = true }
-# uuid, chrono, serde, serde_json, backlio-core, common return with the
-# tenant-scoped repositories (they need the domain entities).
+uuid = { workspace = true }
+chrono = { workspace = true }
+serde = { workspace = true }
+common = { workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true }
+auth = { workspace = true }

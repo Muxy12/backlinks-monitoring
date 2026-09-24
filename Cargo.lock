@@ -652,11 +652,16 @@ dependencies = [
 name = "db"
 version = "0.1.0"
 dependencies = [
+ "auth",
+ "chrono",
+ "common",
  "log",
+ "serde",
  "sqlx",
  "thiserror 2.0.21",
  "tokio",
  "tracing",
+ "uuid",
 ]
 
 [[package]]
