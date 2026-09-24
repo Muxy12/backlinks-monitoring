@@ -29,6 +29,22 @@ pub fn app(state: AppState) -> Router {
             get(routes::org_routes::list).post(routes::org_routes::create),
         )
         .route(
+            "/v1/invitations/accept",
+            post(routes::team_routes::accept_invitation),
+        )
+        .route(
+            "/v1/organizations/{org_id}/members",
+            get(routes::team_routes::list_members),
+        )
+        .route(
+            "/v1/organizations/{org_id}/invitations",
+            get(routes::team_routes::list_invitations).post(routes::team_routes::create_invitation),
+        )
+        .route(
+            "/v1/organizations/{org_id}/invitations/{invitation_id}",
+            axum::routing::delete(routes::team_routes::revoke_invitation),
+        )
+        .route(
             "/v1/organizations/{org_id}/clients",
             get(routes::resource_routes::list_clients).post(routes::resource_routes::create_client),
         )

@@ -1628,3 +1628,164 @@ pub mod tags {
         }
     }
 }
+
+// ─── Members (team) — the org roster + role changes ──────────────────────────
+pub mod members {
+    use super::*;
+    use crate::entities::Member;
+
+    /// Everyone in the org with their role, owners first then by join time.
+    pub async fn list(pool: &PgPool, scope: &OrgScope) -> Result<Vec<Member>, DbError> {
+        Ok(sqlx::query_as::<_, Member>(
+            "SELECT u.id AS user_id, u.email::text AS email, u.name, \
+                    m.role::text AS role, m.created_at \
+             FROM organization_members m JOIN users u ON u.id = m.user_id \
+             WHERE m.organization_id = $1 \
+             ORDER BY (m.role = 'owner') DESC, m.created_at",
+        )
+        .bind(scope.organization_id())
+        .fetch_all(pool)
+        .await?)
+    }
+
+    /// Add a user to the org with a role, idempotently (keeps the existing role
+    /// if already a member). Used when an invitation is accepted.
+    pub async fn add(
+        pool: &PgPool,
+        organization_id: Uuid,
+        user_id: Uuid,
+        role: &str,
+    ) -> Result<(), DbError> {
+        sqlx::query(
+            "INSERT INTO organization_members (organization_id, user_id, role) \
+             VALUES ($1, $2, $3::org_role) \
+             ON CONFLICT (organization_id, user_id) DO NOTHING",
+        )
+        .bind(organization_id)
+        .bind(user_id)
+        .bind(role)
+        .execute(pool)
+        .await
+        .map_err(DbError::from_insert)?;
+        Ok(())
+    }
+}
+
+// ─── Invitations (team) ──────────────────────────────────────────────────────
+pub mod invitations {
+    use super::*;
+    use crate::entities::Invitation;
+
+    macro_rules! cols {
+        () => {
+            "id, organization_id, email::text AS email, role::text AS role, \
+             invited_by, expires_at, accepted_at, created_at"
+        };
+    }
+
+    pub async fn create(
+        pool: &PgPool,
+        scope: &OrgScope,
+        id: Uuid,
+        email: &str,
+        role: &str,
+        invited_by: Uuid,
+        token_hash: &[u8],
+        expires_at: DateTime<Utc>,
+    ) -> Result<Invitation, DbError> {
+        sqlx::query_as::<_, Invitation>(concat!(
+            "INSERT INTO organization_invitations \
+                (id, organization_id, email, role, invited_by, token_hash, expires_at) \
+             VALUES ($1, $2, $3, $4::org_role, $5, $6, $7) RETURNING ",
+            cols!()
+        ))
+        .bind(id)
+        .bind(scope.organization_id())
+        .bind(email)
+        .bind(role)
+        .bind(invited_by)
+        .bind(token_hash)
+        .bind(expires_at)
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_insert)
+    }
+
+    /// Pending (unaccepted) invitations for the org, newest first.
+    pub async fn list_pending(pool: &PgPool, scope: &OrgScope) -> Result<Vec<Invitation>, DbError> {
+        Ok(sqlx::query_as::<_, Invitation>(concat!(
+            "SELECT ",
+            cols!(),
+            " FROM organization_invitations \
+              WHERE organization_id = $1 AND accepted_at IS NULL \
+              ORDER BY created_at DESC"
+        ))
+        .bind(scope.organization_id())
+        .fetch_all(pool)
+        .await?)
+    }
+
+    /// Revoke a pending invitation. `NotFound` if it is missing, already
+    /// accepted, or belongs to another org.
+    pub async fn revoke(pool: &PgPool, scope: &OrgScope, id: Uuid) -> Result<(), DbError> {
+        let row: Option<(Uuid,)> = sqlx::query_as(
+            "DELETE FROM organization_invitations \
+             WHERE id = $1 AND organization_id = $2 AND accepted_at IS NULL RETURNING id",
+        )
+        .bind(id)
+        .bind(scope.organization_id())
+        .fetch_optional(pool)
+        .await?;
+        row.map(|_| ()).ok_or(DbError::NotFound)
+    }
+
+    /// Look up a live invitation by its token hash — a **system** query (the
+    /// accepting user is not yet a member). Only returns one that is unaccepted
+    /// and unexpired.
+    pub async fn find_live_by_token_hash(
+        pool: &PgPool,
+        token_hash: &[u8],
+        now: DateTime<Utc>,
+    ) -> Result<Invitation, DbError> {
+        sqlx::query_as::<_, Invitation>(concat!(
+            "SELECT ",
+            cols!(),
+            " FROM organization_invitations \
+              WHERE token_hash = $1 AND accepted_at IS NULL AND expires_at > $2"
+        ))
+        .bind(token_hash)
+        .bind(now)
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_fetch)
+    }
+
+    /// Accept an invitation and add the user to the org, atomically. Marks the
+    /// invitation accepted and inserts the membership in one transaction.
+    pub async fn accept(
+        pool: &PgPool,
+        invitation_id: Uuid,
+        organization_id: Uuid,
+        user_id: Uuid,
+        role: &str,
+    ) -> Result<(), DbError> {
+        let mut tx = pool.begin().await?;
+        sqlx::query(
+            "INSERT INTO organization_members (organization_id, user_id, role) \
+             VALUES ($1, $2, $3::org_role) \
+             ON CONFLICT (organization_id, user_id) DO NOTHING",
+        )
+        .bind(organization_id)
+        .bind(user_id)
+        .bind(role)
+        .execute(&mut *tx)
+        .await
+        .map_err(DbError::from_insert)?;
+        sqlx::query("UPDATE organization_invitations SET accepted_at = now() WHERE id = $1")
+            .bind(invitation_id)
+            .execute(&mut *tx)
+            .await?;
+        tx.commit().await?;
+        Ok(())
+    }
+}

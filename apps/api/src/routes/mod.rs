@@ -8,4 +8,5 @@ pub mod ops_routes;
 pub mod org_routes;
 pub mod resource_routes;
 pub mod tags_routes;
+pub mod team_routes;
 pub mod tools_routes;

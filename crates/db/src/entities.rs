@@ -211,3 +211,26 @@ pub struct Tag {
     pub color: Option<String>,
     pub created_at: DateTime<Utc>,
 }
+
+/// A pending or accepted org invitation (§Phase 1 team). `role` is read as text.
+#[derive(Debug, Clone, FromRow)]
+pub struct Invitation {
+    pub id: Uuid,
+    pub organization_id: Uuid,
+    pub email: String,
+    pub role: String,
+    pub invited_by: Option<Uuid>,
+    pub expires_at: DateTime<Utc>,
+    pub accepted_at: Option<DateTime<Utc>>,
+    pub created_at: DateTime<Utc>,
+}
+
+/// One organization member with their identity — the members list.
+#[derive(Debug, Clone, FromRow)]
+pub struct Member {
+    pub user_id: Uuid,
+    pub email: String,
+    pub name: String,
+    pub role: String,
+    pub created_at: DateTime<Utc>,
+}
