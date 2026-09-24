@@ -10,9 +10,11 @@
 //! request's cost, but not request volume.
 
 use crate::error::ApiError;
+use crate::security::{LimitError, client_ip};
 use crate::state::AppState;
 use axum::Json;
 use axum::extract::State;
+use axum::http::HeaderMap;
 use backlio_core::{NormalizeOptions, Observation};
 use crawler::{CrawlerConfig, FetchError, FetchOutcome, evaluate, fetch, parse_page};
 use serde::{Deserialize, Serialize};
@@ -70,11 +72,23 @@ fn fetch_error_kind(e: &FetchError) -> &'static str {
     }
 }
 
-/// `POST /v1/tools/backlink-check` — public, unauthenticated (§50).
+/// `POST /v1/tools/backlink-check` — public, unauthenticated (§50). Rate limited
+/// per client IP with a global concurrency cap (docs/11 S3).
 pub async fn backlink_check(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Json(body): Json<CheckBody>,
 ) -> Result<Json<CheckResult>, ApiError> {
+    // Admit past the rate limiter before doing any work; hold the permit for the
+    // whole fetch so the global concurrency cap actually bounds in-flight checks.
+    let _permit = match state.checker.admit(&client_ip(&headers)) {
+        Ok(permit) => permit,
+        Err(LimitError::RateLimited { retry_after_secs }) => {
+            return Err(ApiError::RateLimited { retry_after_secs });
+        }
+        Err(LimitError::Busy) => return Err(ApiError::Busy),
+    };
+
     if !is_http_url(&body.source_url) || !is_http_url(&body.target_url) {
         return Err(ApiError::Validation(
             "source_url and target_url must be http(s) URLs".into(),

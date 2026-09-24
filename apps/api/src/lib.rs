@@ -3,6 +3,7 @@
 
 pub mod error;
 pub mod routes;
+pub mod security;
 pub mod session;
 pub mod state;
 
@@ -112,6 +113,8 @@ pub fn app(state: AppState) -> Router {
         // Global 1 MiB body cap (docs/09 §1, S7). The CSV upload route will
         // raise this locally when it lands.
         .layer(DefaultBodyLimit::max(1024 * 1024))
+        // Security headers on every response (docs/11 S8).
+        .layer(axum::middleware::from_fn(security::security_headers))
         .with_state(state)
 }
 

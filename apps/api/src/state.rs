@@ -1,7 +1,11 @@
 //! Shared application state and configuration.
 
+use std::sync::Arc;
+
 use auth::Argon2Params;
 use db::sqlx::PgPool;
+
+use crate::security::CheckerLimiter;
 
 /// Runtime configuration the handlers need. Cheap to clone.
 #[derive(Debug, Clone)]
@@ -35,10 +39,26 @@ impl Default for ApiConfig {
 pub struct AppState {
     pub pool: PgPool,
     pub cfg: ApiConfig,
+    /// Rate limiter for the public backlink checker (docs/11 S3). Shared, so it
+    /// is an `Arc` and cloning `AppState` keeps one limiter.
+    pub checker: Arc<CheckerLimiter>,
 }
 
 impl AppState {
     pub fn new(pool: PgPool, cfg: ApiConfig) -> Self {
-        AppState { pool, cfg }
+        AppState {
+            pool,
+            cfg,
+            checker: Arc::new(CheckerLimiter::default_for_prod()),
+        }
+    }
+
+    /// Build with a custom checker limiter (tests use a tiny budget).
+    pub fn with_checker(pool: PgPool, cfg: ApiConfig, checker: CheckerLimiter) -> Self {
+        AppState {
+            pool,
+            cfg,
+            checker: Arc::new(checker),
+        }
     }
 }

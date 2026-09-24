@@ -20,6 +20,10 @@ pub enum ApiError {
     Conflict(String),
     #[error("plan limit reached")]
     PlanLimit(String),
+    #[error("rate limited")]
+    RateLimited { retry_after_secs: u64 },
+    #[error("service busy")]
+    Busy,
     #[error("internal error")]
     Internal,
 }
@@ -41,6 +45,16 @@ impl ApiError {
             ApiError::NotFound => (StatusCode::NOT_FOUND, "not_found", "not found".into()),
             ApiError::Conflict(d) => (StatusCode::CONFLICT, "conflict", d.clone()),
             ApiError::PlanLimit(d) => (StatusCode::PAYMENT_REQUIRED, "plan_limit", d.clone()),
+            ApiError::RateLimited { .. } => (
+                StatusCode::TOO_MANY_REQUESTS,
+                "rate_limited",
+                "too many requests — slow down".into(),
+            ),
+            ApiError::Busy => (
+                StatusCode::SERVICE_UNAVAILABLE,
+                "busy",
+                "the service is at capacity — try again shortly".into(),
+            ),
             ApiError::Internal => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "internal",
@@ -52,6 +66,10 @@ impl ApiError {
 
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
+        let retry_after = match self {
+            ApiError::RateLimited { retry_after_secs } => Some(retry_after_secs),
+            _ => None,
+        };
         let (status, kind, detail) = self.parts();
         let body = Json(json!({
             "type": format!("https://backlio.app/errors/{kind}"),
@@ -59,7 +77,13 @@ impl IntoResponse for ApiError {
             "status": status.as_u16(),
             "detail": detail,
         }));
-        (status, body).into_response()
+        let mut res = (status, body).into_response();
+        if let Some(secs) = retry_after
+            && let Ok(v) = axum::http::HeaderValue::from_str(&secs.to_string())
+        {
+            res.headers_mut().insert(axum::http::header::RETRY_AFTER, v);
+        }
+        res
     }
 }
 
