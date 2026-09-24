@@ -158,3 +158,15 @@
   border-radius: 6px;
   min-width: 160px;
 }
+
+.client-badge {
+  margin-left: 10px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  border-radius: 999px;
+  vertical-align: middle;
+}

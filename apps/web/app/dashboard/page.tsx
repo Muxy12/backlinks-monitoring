@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { api, orgApi, backlinksExportUrl, type BacklinkView, type DashboardResponse, type EventView, type MeResponse, type NotificationsResponse, type ProjectView, type TagView } from "../../lib/api";
+import { api, orgApi, backlinksExportUrl, type BacklinkView, type ClientView, type DashboardResponse, type EventView, type MeResponse, type NotificationsResponse, type ProjectView, type TagView } from "../../lib/api";
 import { statusColor, statusLabel } from "../../lib/status";
 import "../auth.css";
 import "./dashboard.css";
@@ -20,6 +20,7 @@ export default function DashboardPage() {
   const [warranties, setWarranties] = useState<BacklinkView[]>([]);
   const [notifs, setNotifs] = useState<NotificationsResponse | null>(null);
   const [showNotifs, setShowNotifs] = useState(false);
+  const [clients, setClients] = useState<ClientView[]>([]);
   const [orgTags, setOrgTags] = useState<TagView[]>([]);
   const [blTags, setBlTags] = useState<TagView[]>([]);
   const [newTag, setNewTag] = useState("");
@@ -61,8 +62,9 @@ export default function DashboardPage() {
         setProjectId(p);
       }
       if (warr.ok) setWarranties(warr.data);
-      const tags = await orgApi.tags(org);
+      const [tags, cls] = await Promise.all([orgApi.tags(org), orgApi.clients(org)]);
       if (tags.ok) setOrgTags(tags.data);
+      if (cls.ok) setClients(cls.data);
       await loadNotifs(org);
     },
     [loadNotifs],
@@ -160,6 +162,11 @@ export default function DashboardPage() {
   const money = (rows: { currency: string; amount: string }[]) =>
     rows.length === 0 ? "—" : rows.map((r) => `${r.amount} ${r.currency}`).join(" · ");
 
+  // The client the current project (and so these backlinks) is filed under.
+  const selectedProject = projects.find((p) => p.id === projectId) ?? null;
+  const selectedClient =
+    selectedProject?.client_id ? clients.find((c) => c.id === selectedProject.client_id) ?? null : null;
+
   return (
     <main className="dash">
       <header className="dash-head">
@@ -194,7 +201,10 @@ export default function DashboardPage() {
 
           <section className="panel">
             <div className="panel-head">
-              <h2>Backlinks</h2>
+              <h2>
+                Backlinks
+                {selectedClient && <span className="client-badge">{selectedClient.name}</span>}
+              </h2>
               <div className="panel-actions">
                 {projects.length > 0 && (
                   <select value={projectId ?? ""} onChange={(e) => setProjectId(e.target.value)}>
