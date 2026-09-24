@@ -4,3 +4,4 @@
 pub mod auth_routes;
 pub mod me_routes;
 pub mod org_routes;
+pub mod resource_routes;

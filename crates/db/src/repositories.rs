@@ -227,3 +227,116 @@ pub mod sessions {
         Ok(r.rows_affected())
     }
 }
+
+// ─── Clients (§20) — tenant-scoped ───────────────────────────────────────────
+pub mod clients {
+    use super::*;
+    use crate::entities::Client;
+
+    pub async fn create(
+        pool: &PgPool,
+        scope: &OrgScope,
+        id: Uuid,
+        name: &str,
+    ) -> Result<Client, DbError> {
+        sqlx::query_as::<_, Client>(
+            "INSERT INTO clients (id, organization_id, name) VALUES ($1, $2, $3) \
+             RETURNING id, organization_id, name, company_name, website, \
+                       contact_name, contact_email, notes, created_at, updated_at",
+        )
+        .bind(id)
+        .bind(scope.organization_id())
+        .bind(name)
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_insert)
+    }
+
+    pub async fn list(pool: &PgPool, scope: &OrgScope) -> Result<Vec<Client>, DbError> {
+        Ok(sqlx::query_as::<_, Client>(
+            "SELECT id, organization_id, name, company_name, website, \
+                    contact_name, contact_email, notes, created_at, updated_at \
+             FROM clients WHERE organization_id = $1 ORDER BY name",
+        )
+        .bind(scope.organization_id())
+        .fetch_all(pool)
+        .await?)
+    }
+
+    /// Fetch by id, always filtered by the scoped org. A cross-tenant id yields
+    /// `NotFound`, never another tenant's row (ADR-0004).
+    pub async fn get(pool: &PgPool, scope: &OrgScope, id: Uuid) -> Result<Client, DbError> {
+        sqlx::query_as::<_, Client>(
+            "SELECT id, organization_id, name, company_name, website, \
+                    contact_name, contact_email, notes, created_at, updated_at \
+             FROM clients WHERE id = $1 AND organization_id = $2",
+        )
+        .bind(id)
+        .bind(scope.organization_id())
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_fetch)
+    }
+}
+
+// ─── Projects (§21) — tenant-scoped ──────────────────────────────────────────
+pub mod projects {
+    // Frequency read as seconds, status read as text, so no custom type mapping.
+    use super::*;
+    use crate::entities::Project;
+
+    pub async fn create(
+        pool: &PgPool,
+        scope: &OrgScope,
+        id: Uuid,
+        name: &str,
+        domain: &str,
+        check_frequency_secs: i64,
+    ) -> Result<Project, DbError> {
+        sqlx::query_as::<_, Project>(
+            "WITH inserted AS ( \
+                INSERT INTO projects (id, organization_id, name, domain, default_check_frequency) \
+                VALUES ($1, $2, $3, $4, make_interval(secs => $5)) \
+                RETURNING * \
+             ) \
+             SELECT id, organization_id, client_id, name, domain, \
+                    EXTRACT(EPOCH FROM default_check_frequency)::bigint AS check_frequency_secs, \
+                    timezone, status::text AS status, created_at, updated_at, archived_at \
+             FROM inserted",
+        )
+        .bind(id)
+        .bind(scope.organization_id())
+        .bind(name)
+        .bind(domain)
+        .bind(check_frequency_secs as f64)
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_insert)
+    }
+
+    pub async fn list(pool: &PgPool, scope: &OrgScope) -> Result<Vec<Project>, DbError> {
+        Ok(sqlx::query_as::<_, Project>(
+            "SELECT id, organization_id, client_id, name, domain, \
+                    EXTRACT(EPOCH FROM default_check_frequency)::bigint AS check_frequency_secs, \
+                    timezone, status::text AS status, created_at, updated_at, archived_at \
+             FROM projects WHERE organization_id = $1 ORDER BY created_at",
+        )
+        .bind(scope.organization_id())
+        .fetch_all(pool)
+        .await?)
+    }
+
+    pub async fn get(pool: &PgPool, scope: &OrgScope, id: Uuid) -> Result<Project, DbError> {
+        sqlx::query_as::<_, Project>(
+            "SELECT id, organization_id, client_id, name, domain, \
+                    EXTRACT(EPOCH FROM default_check_frequency)::bigint AS check_frequency_secs, \
+                    timezone, status::text AS status, created_at, updated_at, archived_at \
+             FROM projects WHERE id = $1 AND organization_id = $2",
+        )
+        .bind(id)
+        .bind(scope.organization_id())
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_fetch)
+    }
+}

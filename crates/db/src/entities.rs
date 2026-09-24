@@ -47,3 +47,35 @@ impl Session {
         self.revoked_at.is_none() && self.expires_at > now
     }
 }
+
+#[derive(Debug, Clone, FromRow)]
+pub struct Client {
+    pub id: Uuid,
+    pub organization_id: Uuid,
+    pub name: String,
+    pub company_name: Option<String>,
+    pub website: Option<String>,
+    pub contact_name: Option<String>,
+    pub contact_email: Option<String>,
+    pub notes: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+/// A project row. `check_frequency_secs` is `default_check_frequency` read via
+/// `EXTRACT(EPOCH ...)`, and `status` is the `project_status` enum read as text
+/// — both cast in the query so no custom sqlx type mapping is needed.
+#[derive(Debug, Clone, FromRow)]
+pub struct Project {
+    pub id: Uuid,
+    pub organization_id: Uuid,
+    pub client_id: Option<Uuid>,
+    pub name: String,
+    pub domain: String,
+    pub check_frequency_secs: i64,
+    pub timezone: String,
+    pub status: String,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    pub archived_at: Option<DateTime<Utc>>,
+}
