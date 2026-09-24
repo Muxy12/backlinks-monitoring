@@ -182,6 +182,11 @@ export interface NewPublisher {
   contact_name?: string;
   contact_email?: string;
 }
+export interface TagView {
+  id: string;
+  name: string;
+  color: string | null;
+}
 
 export const orgApi = {
   dashboard: (org: string) => request<DashboardResponse>(`/v1/organizations/${org}/dashboard`),
@@ -227,6 +232,26 @@ export const orgApi = {
       method: "POST",
       headers: csrfHeader(),
       body: JSON.stringify({ project_id: projectId, csv }),
+    }),
+  tags: (org: string) => request<TagView[]>(`/v1/organizations/${org}/tags`),
+  createTag: (org: string, name: string, color?: string) =>
+    request<TagView>(`/v1/organizations/${org}/tags`, {
+      method: "POST",
+      headers: csrfHeader(),
+      body: JSON.stringify({ name, color }),
+    }),
+  backlinkTags: (org: string, id: string) =>
+    request<TagView[]>(`/v1/organizations/${org}/backlinks/${id}/tags`),
+  attachTag: (org: string, id: string, tagId: string) =>
+    request<null>(`/v1/organizations/${org}/backlinks/${id}/tags`, {
+      method: "POST",
+      headers: csrfHeader(),
+      body: JSON.stringify({ tag_id: tagId }),
+    }),
+  detachTag: (org: string, id: string, tagId: string) =>
+    request<null>(`/v1/organizations/${org}/backlinks/${id}/tags/${tagId}`, {
+      method: "DELETE",
+      headers: csrfHeader(),
     }),
 };
 

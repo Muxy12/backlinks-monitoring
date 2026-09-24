@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { api, orgApi, backlinksExportUrl, type BacklinkView, type DashboardResponse, type EventView, type MeResponse, type NotificationsResponse, type ProjectView } from "../../lib/api";
+import { api, orgApi, backlinksExportUrl, type BacklinkView, type DashboardResponse, type EventView, type MeResponse, type NotificationsResponse, type ProjectView, type TagView } from "../../lib/api";
 import { statusColor, statusLabel } from "../../lib/status";
 import "../auth.css";
 import "./dashboard.css";
@@ -20,6 +20,9 @@ export default function DashboardPage() {
   const [warranties, setWarranties] = useState<BacklinkView[]>([]);
   const [notifs, setNotifs] = useState<NotificationsResponse | null>(null);
   const [showNotifs, setShowNotifs] = useState(false);
+  const [orgTags, setOrgTags] = useState<TagView[]>([]);
+  const [blTags, setBlTags] = useState<TagView[]>([]);
+  const [newTag, setNewTag] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -54,6 +57,8 @@ export default function DashboardPage() {
         setProjectId(p);
       }
       if (warr.ok) setWarranties(warr.data);
+      const tags = await orgApi.tags(org);
+      if (tags.ok) setOrgTags(tags.data);
       await loadNotifs(org);
     },
     [loadNotifs],
@@ -82,9 +87,47 @@ export default function DashboardPage() {
   async function openDetail(b: BacklinkView) {
     setSelected(b);
     setEvents(null);
+    setBlTags([]);
+    setNewTag("");
     if (orgId) {
-      const res = await orgApi.backlinkEvents(orgId, b.id);
-      setEvents(res.ok ? res.data : []);
+      const [ev, tg] = await Promise.all([
+        orgApi.backlinkEvents(orgId, b.id),
+        orgApi.backlinkTags(orgId, b.id),
+      ]);
+      setEvents(ev.ok ? ev.data : []);
+      if (tg.ok) setBlTags(tg.data);
+    }
+  }
+
+  async function refreshBlTags(id: string) {
+    if (!orgId) return;
+    const tg = await orgApi.backlinkTags(orgId, id);
+    if (tg.ok) setBlTags(tg.data);
+  }
+
+  async function attachExisting(tagId: string) {
+    if (!orgId || !selected || !tagId) return;
+    const res = await orgApi.attachTag(orgId, selected.id, tagId);
+    if (res.ok) await refreshBlTags(selected.id);
+  }
+
+  async function removeTag(tagId: string) {
+    if (!orgId || !selected) return;
+    const res = await orgApi.detachTag(orgId, selected.id, tagId);
+    if (res.ok) await refreshBlTags(selected.id);
+  }
+
+  async function createAndAttach() {
+    if (!orgId || !selected) return;
+    const name = newTag.trim();
+    if (!name) return;
+    const created = await orgApi.createTag(orgId, name);
+    if (created.ok) {
+      await orgApi.attachTag(orgId, selected.id, created.data.id);
+      setNewTag("");
+      const [tags, blt] = await Promise.all([orgApi.tags(orgId), orgApi.backlinkTags(orgId, selected.id)]);
+      if (tags.ok) setOrgTags(tags.data);
+      if (blt.ok) setBlTags(blt.data);
     }
   }
 
@@ -229,6 +272,35 @@ export default function DashboardPage() {
             <p style={{ margin: "10px 0" }}>
               <span className="badge" style={{ color: statusColor(selected.status) }}>● {statusLabel(selected.status)}</span>
             </p>
+            <div className="tags-row">
+              {blTags.map((t) => (
+                <span key={t.id} className="tag-chip" style={t.color ? { borderColor: t.color, color: t.color } : undefined}>
+                  {t.name}
+                  <button className="tag-x" onClick={() => void removeTag(t.id)} aria-label={`Remove ${t.name}`}>×</button>
+                </span>
+              ))}
+              {blTags.length === 0 && <span className="muted">No tags</span>}
+            </div>
+            <div className="tags-add">
+              <select
+                value=""
+                onChange={(e) => { if (e.target.value) void attachExisting(e.target.value); }}
+              >
+                <option value="">Add tag…</option>
+                {orgTags
+                  .filter((t) => !blTags.some((b) => b.id === t.id))
+                  .map((t) => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+              </select>
+              <input
+                placeholder="new tag"
+                value={newTag}
+                onChange={(e) => setNewTag(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") void createAndAttach(); }}
+              />
+              <button className="btn sm" onClick={() => void createAndAttach()}>Add</button>
+            </div>
             {events === null ? (
               <p className="muted">Loading history…</p>
             ) : events.length === 0 ? (
