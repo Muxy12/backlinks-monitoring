@@ -1,0 +1,1735 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>LinkOps — Backlink Monitoring for SEO Teams</title>
+  <meta
+    name="description"
+    content="Monitor every backlink you build. Track lost links, nofollow changes, anchors, campaigns, costs and warranties from one dashboard."
+  />
+
+  <style>
+    :root {
+      --bg: #07090d;
+      --surface: #0d1117;
+      --surface-2: #111720;
+      --border: rgba(255,255,255,.08);
+      --border-hover: rgba(255,255,255,.15);
+      --text: #f7f8fa;
+      --muted: #8b949e;
+      --muted-2: #66707d;
+      --accent: #8b5cf6;
+      --accent-2: #a78bfa;
+      --green: #36d399;
+      --red: #fb7185;
+      --yellow: #fbbf24;
+      --blue: #60a5fa;
+      --radius: 18px;
+      --max: 1180px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 50% -10%, rgba(139,92,246,.16), transparent 34%),
+        var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    .container {
+      width: min(var(--max), calc(100% - 40px));
+      margin: auto;
+    }
+
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: blur(18px);
+      background: rgba(7,9,13,.76);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-inner {
+      height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 750;
+      font-size: 20px;
+      letter-spacing: -.5px;
+    }
+
+    .logo-mark {
+      width: 30px;
+      height: 30px;
+      border-radius: 9px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, var(--accent), #5b21b6);
+      box-shadow: 0 0 30px rgba(139,92,246,.35);
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 30px;
+      color: #aeb6c2;
+      font-size: 14px;
+    }
+
+    .nav-links a:hover {
+      color: white;
+    }
+
+    .nav-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .btn {
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,.03);
+      color: white;
+      padding: 10px 16px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: .2s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .btn:hover {
+      border-color: var(--border-hover);
+      background: rgba(255,255,255,.06);
+      transform: translateY(-1px);
+    }
+
+    .btn-primary {
+      border-color: transparent;
+      background: white;
+      color: #0b0d12;
+    }
+
+    .btn-primary:hover {
+      background: #eee;
+    }
+
+    .btn-accent {
+      border-color: transparent;
+      background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+      box-shadow: 0 10px 35px rgba(109,40,217,.25);
+    }
+
+    .btn-accent:hover {
+      background: linear-gradient(135deg, #9d70ff, #7c3aed);
+    }
+
+    .hero {
+      text-align: center;
+      padding: 115px 0 70px;
+      overflow: hidden;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      padding: 7px 12px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: rgba(255,255,255,.025);
+      color: #b9c1cc;
+      font-size: 13px;
+      margin-bottom: 28px;
+    }
+
+    .eyebrow-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 14px rgba(54,211,153,.8);
+    }
+
+    h1 {
+      max-width: 900px;
+      margin: auto;
+      font-size: clamp(48px, 7vw, 82px);
+      line-height: .99;
+      letter-spacing: -4px;
+      font-weight: 780;
+    }
+
+    .gradient-text {
+      background: linear-gradient(90deg, #fff, #a78bfa 55%, #7c3aed);
+      -webkit-background-clip: text;
+      color: transparent;
+    }
+
+    .hero-copy {
+      max-width: 690px;
+      margin: 28px auto 0;
+      color: var(--muted);
+      font-size: 19px;
+      line-height: 1.7;
+    }
+
+    .hero-actions {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 34px;
+    }
+
+    .hero-actions .btn {
+      padding: 13px 20px;
+    }
+
+    .microcopy {
+      margin-top: 15px;
+      color: var(--muted-2);
+      font-size: 12px;
+    }
+
+    .dashboard-wrap {
+      position: relative;
+      margin: 70px auto 0;
+      max-width: 1080px;
+    }
+
+    .dashboard-glow {
+      position: absolute;
+      width: 70%;
+      height: 300px;
+      background: rgba(124,58,237,.22);
+      filter: blur(100px);
+      left: 15%;
+      top: 0;
+      z-index: -1;
+    }
+
+    .dashboard {
+      text-align: left;
+      border: 1px solid rgba(255,255,255,.11);
+      background: rgba(11,14,20,.94);
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow:
+        0 40px 120px rgba(0,0,0,.55),
+        inset 0 1px rgba(255,255,255,.04);
+    }
+
+    .dash-top {
+      height: 54px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 18px;
+      gap: 8px;
+    }
+
+    .window-dot {
+      width: 10px;
+      height: 10px;
+      background: #30363d;
+      border-radius: 50%;
+    }
+
+    .dash-body {
+      display: grid;
+      grid-template-columns: 190px 1fr;
+      min-height: 520px;
+    }
+
+    .sidebar {
+      border-right: 1px solid var(--border);
+      padding: 20px 12px;
+    }
+
+    .side-item {
+      color: var(--muted);
+      padding: 9px 12px;
+      border-radius: 8px;
+      margin-bottom: 3px;
+      font-size: 13px;
+    }
+
+    .side-item.active {
+      color: white;
+      background: rgba(255,255,255,.06);
+    }
+
+    .dash-main {
+      padding: 28px;
+    }
+
+    .dash-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 22px;
+    }
+
+    .dash-title {
+      font-size: 21px;
+      font-weight: 700;
+    }
+
+    .dash-sub {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 3px;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .stat {
+      padding: 16px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,.02);
+    }
+
+    .stat-label {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .stat-value {
+      margin-top: 7px;
+      font-size: 23px;
+      font-weight: 700;
+    }
+
+    .green { color: var(--green); }
+    .red { color: var(--red); }
+    .yellow { color: var(--yellow); }
+
+    .table {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .tr {
+      display: grid;
+      grid-template-columns: .7fr 2fr 1.5fr 1fr .8fr;
+      gap: 10px;
+      align-items: center;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+      font-size: 11px;
+      color: #c8ced8;
+    }
+
+    .tr:last-child {
+      border-bottom: 0;
+    }
+
+    .tr.head {
+      color: var(--muted);
+      background: rgba(255,255,255,.02);
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    section {
+      padding: 110px 0;
+    }
+
+    .section-head {
+      max-width: 680px;
+      margin-bottom: 48px;
+    }
+
+    .section-label {
+      color: var(--accent-2);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      margin-bottom: 13px;
+    }
+
+    h2 {
+      font-size: clamp(34px, 5vw, 54px);
+      line-height: 1.08;
+      letter-spacing: -2px;
+    }
+
+    .section-copy {
+      margin-top: 18px;
+      color: var(--muted);
+      font-size: 17px;
+      max-width: 640px;
+    }
+
+    .logo-strip {
+      padding: 30px 0 70px;
+      text-align: center;
+      color: var(--muted-2);
+    }
+
+    .logo-strip p {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .13em;
+      margin-bottom: 25px;
+    }
+
+    .logos {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 45px;
+      font-weight: 700;
+      color: #555f6c;
+    }
+
+    .problem-grid,
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      background: linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.015));
+      transition: .2s ease;
+    }
+
+    .card:hover {
+      border-color: var(--border-hover);
+      transform: translateY(-2px);
+    }
+
+    .icon {
+      width: 40px;
+      height: 40px;
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      display: grid;
+      place-items: center;
+      margin-bottom: 22px;
+      background: rgba(255,255,255,.03);
+      font-size: 17px;
+    }
+
+    .card h3 {
+      font-size: 17px;
+      margin-bottom: 9px;
+    }
+
+    .card p {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .feature-large {
+      grid-column: span 2;
+      min-height: 330px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .feature-small {
+      min-height: 330px;
+    }
+
+    .mini-monitor {
+      margin-top: 28px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      background: #090c11;
+    }
+
+    .monitor-row {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr .8fr;
+      padding: 11px 13px;
+      border-bottom: 1px solid var(--border);
+      font-size: 11px;
+    }
+
+    .monitor-row:last-child {
+      border-bottom: 0;
+    }
+
+    .campaign {
+      margin-top: 26px;
+    }
+
+    .progress {
+      height: 6px;
+      background: #20252d;
+      border-radius: 20px;
+      overflow: hidden;
+      margin: 12px 0;
+    }
+
+    .progress span {
+      display: block;
+      width: 76%;
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    }
+
+    .money {
+      font-size: 40px;
+      letter-spacing: -2px;
+      font-weight: 750;
+      margin-top: 28px;
+    }
+
+    .workflow {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+
+    .step {
+      border-top: 1px solid var(--border);
+      padding-top: 22px;
+    }
+
+    .step-num {
+      color: var(--accent-2);
+      font-size: 12px;
+      margin-bottom: 14px;
+    }
+
+    .step h3 {
+      margin-bottom: 8px;
+    }
+
+    .step p {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .comparison {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .comparison-row {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr;
+      padding: 17px 22px;
+      border-bottom: 1px solid var(--border);
+      align-items: center;
+      font-size: 14px;
+    }
+
+    .comparison-row:last-child {
+      border: 0;
+    }
+
+    .comparison-row.head {
+      background: rgba(255,255,255,.03);
+      color: var(--muted);
+    }
+
+    .yes {
+      color: var(--green);
+      font-weight: 700;
+    }
+
+    .no {
+      color: #5f6875;
+    }
+
+    .pricing {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+    }
+
+    .price-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 25px;
+      position: relative;
+      background: rgba(255,255,255,.018);
+    }
+
+    .price-card.featured {
+      border-color: rgba(139,92,246,.55);
+      box-shadow: 0 0 60px rgba(124,58,237,.12);
+    }
+
+    .popular {
+      position: absolute;
+      top: -12px;
+      left: 20px;
+      background: var(--accent);
+      color: white;
+      padding: 4px 9px;
+      border-radius: 20px;
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .plan {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .price {
+      font-size: 37px;
+      font-weight: 760;
+      letter-spacing: -2px;
+      margin: 12px 0 3px;
+    }
+
+    .price span {
+      font-size: 13px;
+      color: var(--muted);
+      letter-spacing: 0;
+      font-weight: 400;
+    }
+
+    .price-desc {
+      color: var(--muted);
+      font-size: 12px;
+      min-height: 38px;
+    }
+
+    .price-card .btn {
+      width: 100%;
+      margin: 22px 0;
+    }
+
+    .features-list {
+      list-style: none;
+    }
+
+    .features-list li {
+      padding: 7px 0;
+      color: #b4bdc9;
+      font-size: 12px;
+    }
+
+    .features-list li::before {
+      content: "✓";
+      color: var(--green);
+      margin-right: 8px;
+    }
+
+    .testimonial {
+      text-align: center;
+      max-width: 780px;
+      margin: auto;
+    }
+
+    .quote {
+      font-size: clamp(25px, 4vw, 38px);
+      letter-spacing: -1px;
+      line-height: 1.35;
+    }
+
+    .quote-person {
+      color: var(--muted);
+      margin-top: 22px;
+      font-size: 13px;
+    }
+
+    .faq {
+      max-width: 800px;
+      margin: auto;
+    }
+
+    details {
+      border-bottom: 1px solid var(--border);
+      padding: 21px 0;
+    }
+
+    summary {
+      cursor: pointer;
+      font-weight: 600;
+      list-style: none;
+    }
+
+    details p {
+      color: var(--muted);
+      margin-top: 12px;
+      max-width: 700px;
+      font-size: 14px;
+    }
+
+    .cta-box {
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      padding: 80px 30px;
+      text-align: center;
+      background:
+        radial-gradient(circle at 50% 120%, rgba(139,92,246,.3), transparent 42%),
+        rgba(255,255,255,.02);
+    }
+
+    .cta-box h2 {
+      max-width: 700px;
+      margin: auto;
+    }
+
+    .cta-box p {
+      color: var(--muted);
+      max-width: 560px;
+      margin: 18px auto 28px;
+    }
+
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 55px 0;
+      color: var(--muted);
+    }
+
+    .footer-grid {
+      display: grid;
+      grid-template-columns: 2fr repeat(3, 1fr);
+      gap: 50px;
+    }
+
+    footer h4 {
+      color: white;
+      font-size: 13px;
+      margin-bottom: 15px;
+    }
+
+    footer a {
+      display: block;
+      font-size: 12px;
+      margin: 9px 0;
+    }
+
+    footer a:hover {
+      color: white;
+    }
+
+    .copyright {
+      margin-top: 45px;
+      padding-top: 25px;
+      border-top: 1px solid var(--border);
+      font-size: 11px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    @media (max-width: 900px) {
+      .nav-links {
+        display: none;
+      }
+
+      h1 {
+        letter-spacing: -2.5px;
+      }
+
+      .problem-grid,
+      .feature-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .feature-large {
+        grid-column: span 1;
+      }
+
+      .workflow {
+        grid-template-columns: 1fr 1fr;
+        gap: 35px;
+      }
+
+      .pricing {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .dash-body {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        display: none;
+      }
+
+      .stats {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .footer-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .container {
+        width: min(100% - 24px, var(--max));
+      }
+
+      .nav-actions .btn:first-child {
+        display: none;
+      }
+
+      .hero {
+        padding-top: 80px;
+      }
+
+      .hero-actions {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      section {
+        padding: 75px 0;
+      }
+
+      .pricing,
+      .workflow {
+        grid-template-columns: 1fr;
+      }
+
+      .stats {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .dash-main {
+        padding: 15px;
+      }
+
+      .tr {
+        grid-template-columns: .7fr 2fr 1fr;
+      }
+
+      .tr > *:nth-child(3),
+      .tr > *:nth-child(4) {
+        display: none;
+      }
+
+      .comparison-row {
+        grid-template-columns: 1.6fr .7fr .7fr;
+        padding: 14px 12px;
+        font-size: 12px;
+      }
+
+      .footer-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .copyright {
+        flex-direction: column;
+        gap: 10px;
+      }
+    }
+  </style>
+
+</head>
+
+<body>
+
+<nav class="nav">
+  <div class="container nav-inner">
+    <a href="#" class="logo">
+      <span class="logo-mark">↗</span>
+      LinkOps
+    </a>
+
+```
+<div class="nav-links">
+  <a href="#features">Features</a>
+  <a href="#how">How it works</a>
+  <a href="#pricing">Pricing</a>
+  <a href="#faq">FAQ</a>
+</div>
+
+<div class="nav-actions">
+  <a href="/login" class="btn">Log in</a>
+  <a href="/signup" class="btn btn-primary">Start monitoring →</a>
+</div>
+```
+
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="container">
+
+```
+<div class="eyebrow">
+  <span class="eyebrow-dot"></span>
+  Backlink monitoring built for SEO teams
+</div>
+
+<h1>
+  Never lose track of a
+  <span class="gradient-text">backlink again.</span>
+</h1>
+
+<p class="hero-copy">
+  Monitor every backlink you build. Get notified when links disappear,
+  change to nofollow, redirect, or break — and manage campaigns, costs
+  and warranties from one place.
+</p>
+
+<div class="hero-actions">
+  <a href="/signup" class="btn btn-primary">
+    Start monitoring for free →
+  </a>
+
+  <a href="#demo" class="btn">
+    See how it works
+  </a>
+</div>
+
+<p class="microcopy">
+  No credit card required · Import your backlinks in minutes
+</p>
+
+<div class="dashboard-wrap" id="demo">
+  <div class="dashboard-glow"></div>
+
+  <div class="dashboard">
+
+    <div class="dash-top">
+      <span class="window-dot"></span>
+      <span class="window-dot"></span>
+      <span class="window-dot"></span>
+    </div>
+
+    <div class="dash-body">
+
+      <aside class="sidebar">
+        <div class="side-item active">Overview</div>
+        <div class="side-item">Backlinks</div>
+        <div class="side-item">Campaigns</div>
+        <div class="side-item">Clients</div>
+        <div class="side-item">Publishers</div>
+        <div class="side-item">Alerts</div>
+        <div class="side-item">Reports</div>
+      </aside>
+
+      <main class="dash-main">
+
+        <div class="dash-header">
+          <div>
+            <div class="dash-title">Backlink health</div>
+            <div class="dash-sub">Acme SEO Agency · All projects</div>
+          </div>
+
+          <span class="btn">+ Add backlinks</span>
+        </div>
+
+        <div class="stats">
+
+          <div class="stat">
+            <div class="stat-label">MONITORED</div>
+            <div class="stat-value">2,847</div>
+          </div>
+
+          <div class="stat">
+            <div class="stat-label">LIVE</div>
+            <div class="stat-value green">2,641</div>
+          </div>
+
+          <div class="stat">
+            <div class="stat-label">LOST</div>
+            <div class="stat-value red">61</div>
+          </div>
+
+          <div class="stat">
+            <div class="stat-label">VALUE AT RISK</div>
+            <div class="stat-value yellow">€4,870</div>
+          </div>
+
+        </div>
+
+        <div class="table">
+
+          <div class="tr head">
+            <span>Status</span>
+            <span>Source</span>
+            <span>Target</span>
+            <span>Anchor</span>
+            <span>Cost</span>
+          </div>
+
+          <div class="tr">
+            <span class="status green">
+              <span class="status-dot"></span> Live
+            </span>
+            <span>techradar.com/seo-tools</span>
+            <span>/seo-monitor</span>
+            <span>SEO monitoring</span>
+            <span>€280</span>
+          </div>
+
+          <div class="tr">
+            <span class="status red">
+              <span class="status-dot"></span> Lost
+            </span>
+            <span>growthdaily.io/resources</span>
+            <span>/backlinks</span>
+            <span>backlink tool</span>
+            <span>€350</span>
+          </div>
+
+          <div class="tr">
+            <span class="status yellow">
+              <span class="status-dot"></span> Nofollow
+            </span>
+            <span>saasweekly.com/tools</span>
+            <span>/monitor</span>
+            <span>LinkOps</span>
+            <span>€190</span>
+          </div>
+
+          <div class="tr">
+            <span class="status green">
+              <span class="status-dot"></span> Live
+            </span>
+            <span>marketinghub.io/seo</span>
+            <span>/pricing</span>
+            <span>SEO software</span>
+            <span>€420</span>
+          </div>
+
+        </div>
+
+      </main>
+    </div>
+  </div>
+</div>
+```
+
+  </div>
+</header>
+
+<div class="logo-strip">
+  <div class="container">
+    <p>Built for teams who take link building seriously</p>
+
+```
+<div class="logos">
+  <span>SEO AGENCIES</span>
+  <span>LINK BUILDERS</span>
+  <span>CONSULTANTS</span>
+  <span>IN-HOUSE SEO</span>
+</div>
+```
+
+  </div>
+</div>
+
+<section>
+  <div class="container">
+
+```
+<div class="section-head">
+  <div class="section-label">The problem</div>
+
+  <h2>
+    You spend thousands on backlinks.
+    Then hope they stay live.
+  </h2>
+
+  <p class="section-copy">
+    Links disappear. Publishers change anchors. Dofollow becomes
+    nofollow. Pages break. And most teams discover it weeks or
+    months later.
+  </p>
+</div>
+
+<div class="problem-grid">
+
+  <div class="card">
+    <div class="icon">✕</div>
+    <h3>Links disappear</h3>
+    <p>
+      Know when a backlink you've earned or paid for gets removed.
+    </p>
+  </div>
+
+  <div class="card">
+    <div class="icon">↔</div>
+    <h3>Links change</h3>
+    <p>
+      Detect anchor, destination, rel attribute and redirect changes.
+    </p>
+  </div>
+
+  <div class="card">
+    <div class="icon">€</div>
+    <h3>Money gets lost</h3>
+    <p>
+      Connect backlink health to acquisition cost and warranties.
+    </p>
+  </div>
+
+</div>
+```
+
+  </div>
+</section>
+
+<section id="features">
+  <div class="container">
+
+```
+<div class="section-head">
+  <div class="section-label">Monitoring</div>
+
+  <h2>
+    Know exactly what changed.
+  </h2>
+
+  <p class="section-copy">
+    LinkOps checks your backlinks automatically and turns every
+    meaningful change into something your team can act on.
+  </p>
+</div>
+
+<div class="feature-grid">
+
+  <div class="card feature-large">
+    <div class="icon">◎</div>
+
+    <h3>Continuous backlink monitoring</h3>
+
+    <p>
+      Monitor link presence, anchors, targets, redirects,
+      HTTP status and rel attributes.
+    </p>
+
+    <div class="mini-monitor">
+
+      <div class="monitor-row">
+        <span>growthdaily.io/article</span>
+        <span class="green">● Live</span>
+        <span>Dofollow</span>
+      </div>
+
+      <div class="monitor-row">
+        <span>saasweekly.com/tools</span>
+        <span class="red">● Lost</span>
+        <span>Missing</span>
+      </div>
+
+      <div class="monitor-row">
+        <span>startupbase.io/seo</span>
+        <span class="yellow">● Changed</span>
+        <span>Nofollow</span>
+      </div>
+
+    </div>
+  </div>
+
+
+  <div class="card feature-small">
+    <div class="icon">⚡</div>
+
+    <h3>Instant alerts</h3>
+
+    <p>
+      Stop manually checking links. Get notified when something
+      requires your attention.
+    </p>
+
+    <div class="mini-monitor">
+      <div class="monitor-row" style="grid-template-columns:1fr">
+        <span>
+          🔴 Backlink lost<br>
+          <small style="color:#697381">
+            growthdaily.io · 2 minutes ago
+          </small>
+        </span>
+      </div>
+
+      <div class="monitor-row" style="grid-template-columns:1fr">
+        <span>
+          🟡 Changed to nofollow<br>
+          <small style="color:#697381">
+            saasweekly.com · 18 minutes ago
+          </small>
+        </span>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="card feature-small">
+    <div class="icon">€</div>
+
+    <h3>Track link spend</h3>
+
+    <p>
+      Record what every placement costs and understand how much
+      acquisition value requires attention.
+    </p>
+
+    <div class="money">€84,320</div>
+
+    <div style="color:#717b88;font-size:12px">
+      tracked backlink spend
+    </div>
+
+    <div style="margin-top:15px;color:#fbbf24;font-size:13px">
+      €4,870 requiring attention
+    </div>
+  </div>
+
+
+  <div class="card feature-large">
+    <div class="icon">◫</div>
+
+    <h3>Campaign management</h3>
+
+    <p>
+      Organize backlinks by client and campaign. Track targets,
+      spend, progress and link health from one workspace.
+    </p>
+
+    <div class="campaign">
+
+      <div style="display:flex;justify-content:space-between;font-size:12px">
+        <span>SaaS Link Building — September</span>
+        <span>23 / 30 links</span>
+      </div>
+
+      <div class="progress">
+        <span></span>
+      </div>
+
+      <div style="display:flex;gap:25px;color:#8b949e;font-size:11px">
+        <span>21 live</span>
+        <span>2 lost</span>
+        <span>€4,209 spent</span>
+        <span>€183 avg.</span>
+      </div>
+
+    </div>
+  </div>
+
+
+  <div class="card">
+    <div class="icon">⌛</div>
+    <h3>Warranty tracking</h3>
+    <p>
+      Know whether a removed backlink is still covered by its
+      publisher warranty.
+    </p>
+  </div>
+
+
+  <div class="card">
+    <div class="icon">↗</div>
+    <h3>Link history</h3>
+    <p>
+      Keep an audit trail of every detected backlink change over time.
+    </p>
+  </div>
+
+
+  <div class="card">
+    <div class="icon">⇩</div>
+    <h3>CSV imports</h3>
+    <p>
+      Bring your existing backlinks from spreadsheets, Ahrefs or
+      Semrush exports.
+    </p>
+  </div>
+
+</div>
+```
+
+  </div>
+</section>
+
+<section id="how">
+  <div class="container">
+
+```
+<div class="section-head">
+  <div class="section-label">How it works</div>
+  <h2>From spreadsheet to monitoring in minutes.</h2>
+</div>
+
+<div class="workflow">
+
+  <div class="step">
+    <div class="step-num">01</div>
+    <h3>Create a project</h3>
+    <p>
+      Add the website or client whose backlinks you want to monitor.
+    </p>
+  </div>
+
+  <div class="step">
+    <div class="step-num">02</div>
+    <h3>Import backlinks</h3>
+    <p>
+      Upload a CSV or add individual backlinks manually.
+    </p>
+  </div>
+
+  <div class="step">
+    <div class="step-num">03</div>
+    <h3>We monitor them</h3>
+    <p>
+      LinkOps continuously checks each source for meaningful changes.
+    </p>
+  </div>
+
+  <div class="step">
+    <div class="step-num">04</div>
+    <h3>Fix what matters</h3>
+    <p>
+      Your team gets a clear list of links that require attention.
+    </p>
+  </div>
+
+</div>
+```
+
+  </div>
+</section>
+
+<section>
+  <div class="container">
+
+```
+<div class="section-head">
+  <div class="section-label">Built for operations</div>
+
+  <h2>
+    More than another backlink checker.
+  </h2>
+
+  <p class="section-copy">
+    SEO databases help you discover links. LinkOps helps your team
+    manage the links you've actually built.
+  </p>
+</div>
+
+<div class="comparison">
+
+  <div class="comparison-row head">
+    <span>Capability</span>
+    <span>Spreadsheet</span>
+    <span>LinkOps</span>
+  </div>
+
+  <div class="comparison-row">
+    <span>Backlink inventory</span>
+    <span class="yes">✓</span>
+    <span class="yes">✓</span>
+  </div>
+
+  <div class="comparison-row">
+    <span>Automatic monitoring</span>
+    <span class="no">—</span>
+    <span class="yes">✓</span>
+  </div>
+
+  <div class="comparison-row">
+    <span>Lost link alerts</span>
+    <span class="no">—</span>
+    <span class="yes">✓</span>
+  </div>
+
+  <div class="comparison-row">
+    <span>Dofollow / nofollow changes</span>
+    <span class="no">—</span>
+    <span class="yes">✓</span>
+  </div>
+
+  <div class="comparison-row">
+    <span>Historical changes</span>
+    <span class="no">—</span>
+    <span class="yes">✓</span>
+  </div>
+
+  <div class="comparison-row">
+    <span>Cost tracking</span>
+    <span>Manual</span>
+    <span class="yes">✓</span>
+  </div>
+
+  <div class="comparison-row">
+    <span>Warranty monitoring</span>
+    <span class="no">—</span>
+    <span class="yes">✓</span>
+  </div>
+
+</div>
+```
+
+  </div>
+</section>
+
+<section>
+  <div class="container">
+
+```
+<div class="testimonial">
+
+  <div class="section-label">For SEO teams</div>
+
+  <p class="quote">
+    “Your backlink database tells you what links exist.
+    Your monitoring system should tell you which ones
+    need your attention.”
+  </p>
+
+  <p class="quote-person">
+    Built around the workflow of agencies and professional link builders.
+  </p>
+
+</div>
+```
+
+  </div>
+</section>
+
+<section id="pricing">
+  <div class="container">
+
+```
+<div class="section-head">
+  <div class="section-label">Pricing</div>
+
+  <h2>
+    Simple pricing that scales with your links.
+  </h2>
+
+  <p class="section-copy">
+    Start small and upgrade as your backlink portfolio grows.
+  </p>
+</div>
+
+<div class="pricing">
+
+  <div class="price-card">
+
+    <div class="plan">STARTER</div>
+
+    <div class="price">
+      $19<span>/month</span>
+    </div>
+
+    <div class="price-desc">
+      For freelancers and small websites.
+    </div>
+
+    <a href="/signup" class="btn">
+      Start free
+    </a>
+
+    <ul class="features-list">
+      <li>1,000 monitored backlinks</li>
+      <li>3 projects</li>
+      <li>Daily monitoring</li>
+      <li>Email alerts</li>
+      <li>CSV import</li>
+    </ul>
+
+  </div>
+
+
+  <div class="price-card featured">
+
+    <span class="popular">POPULAR</span>
+
+    <div class="plan">PRO</div>
+
+    <div class="price">
+      $49<span>/month</span>
+    </div>
+
+    <div class="price-desc">
+      For professional SEOs and link builders.
+    </div>
+
+    <a href="/signup" class="btn btn-accent">
+      Start free
+    </a>
+
+    <ul class="features-list">
+      <li>5,000 monitored backlinks</li>
+      <li>20 projects</li>
+      <li>Advanced monitoring</li>
+      <li>Campaign tracking</li>
+      <li>Warranty tracking</li>
+      <li>Cost tracking</li>
+    </ul>
+
+  </div>
+
+
+  <div class="price-card">
+
+    <div class="plan">AGENCY</div>
+
+    <div class="price">
+      $99<span>/month</span>
+    </div>
+
+    <div class="price-desc">
+      For agencies managing multiple clients.
+    </div>
+
+    <a href="/signup" class="btn">
+      Start free
+    </a>
+
+    <ul class="features-list">
+      <li>20,000 monitored backlinks</li>
+      <li>100 projects</li>
+      <li>Client management</li>
+      <li>Team members</li>
+      <li>Advanced reporting</li>
+      <li>Priority monitoring</li>
+    </ul>
+
+  </div>
+
+
+  <div class="price-card">
+
+    <div class="plan">AGENCY+</div>
+
+    <div class="price">
+      $199<span>/month</span>
+    </div>
+
+    <div class="price-desc">
+      For high-volume link building operations.
+    </div>
+
+    <a href="/signup" class="btn">
+      Start free
+    </a>
+
+    <ul class="features-list">
+      <li>75,000 monitored backlinks</li>
+      <li>Unlimited projects</li>
+      <li>Advanced team controls</li>
+      <li>Priority support</li>
+      <li>API access</li>
+      <li>Custom reporting</li>
+    </ul>
+
+  </div>
+
+</div>
+```
+
+  </div>
+</section>
+
+<section id="faq">
+  <div class="container faq">
+
+```
+<div class="section-head">
+  <div class="section-label">FAQ</div>
+  <h2>Questions, answered.</h2>
+</div>
+
+<details>
+  <summary>What exactly does LinkOps monitor?</summary>
+  <p>
+    LinkOps checks whether your backlink is still present and monitors
+    attributes such as its target URL, anchor text, rel attributes,
+    source HTTP status and relevant redirects.
+  </p>
+</details>
+
+<details>
+  <summary>Is this an alternative to Ahrefs or Semrush?</summary>
+  <p>
+    Not exactly. Those platforms are primarily SEO intelligence
+    databases. LinkOps is designed around operational monitoring of
+    backlinks you already know about and the campaigns that generated them.
+  </p>
+</details>
+
+<details>
+  <summary>Can I import my existing backlinks?</summary>
+  <p>
+    Yes. You can upload backlinks via CSV, including exports from common
+    SEO workflows, and start monitoring them without rebuilding your
+    backlink inventory manually.
+  </p>
+</details>
+
+<details>
+  <summary>Can LinkOps tell me when a backlink becomes nofollow?</summary>
+  <p>
+    Yes. LinkOps monitors link attributes and can flag changes such as
+    dofollow to nofollow, sponsored or UGC.
+  </p>
+</details>
+
+<details>
+  <summary>What is “Value at Risk”?</summary>
+  <p>
+    It is the recorded acquisition cost associated with backlinks that
+    currently require attention. It does not represent guaranteed SEO or
+    financial loss.
+  </p>
+</details>
+
+<details>
+  <summary>Can agencies manage multiple clients?</summary>
+  <p>
+    Yes. Agency plans are designed around multiple clients, projects,
+    campaigns and team members.
+  </p>
+</details>
+```
+
+  </div>
+</section>
+
+<section>
+  <div class="container">
+
+```
+<div class="cta-box">
+
+  <div class="section-label">
+    Start monitoring
+  </div>
+
+  <h2>
+    You built the backlinks.
+    Make sure they stay there.
+  </h2>
+
+  <p>
+    Import your links and start monitoring your backlink portfolio
+    in minutes.
+  </p>
+
+  <a href="/signup" class="btn btn-primary">
+    Start monitoring for free →
+  </a>
+
+  <div class="microcopy">
+    No credit card required
+  </div>
+
+</div>
+```
+
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+
+```
+<div class="footer-grid">
+
+  <div>
+    <div class="logo">
+      <span class="logo-mark">↗</span>
+      LinkOps
+    </div>
+
+    <p style="font-size:12px;max-width:280px;margin-top:15px">
+      Backlink monitoring and link building operations for SEO teams.
+    </p>
+  </div>
+
+  <div>
+    <h4>Product</h4>
+    <a href="#features">Features</a>
+    <a href="#pricing">Pricing</a>
+    <a href="/tools/backlink-checker">Backlink Checker</a>
+    <a href="/tools/dofollow-backlink-checker">Dofollow Checker</a>
+  </div>
+
+  <div>
+    <h4>Resources</h4>
+    <a href="/blog">Blog</a>
+    <a href="/guides">SEO Guides</a>
+    <a href="/docs">Documentation</a>
+    <a href="/status">Status</a>
+  </div>
+
+  <div>
+    <h4>Company</h4>
+    <a href="/contact">Contact</a>
+    <a href="/privacy">Privacy</a>
+    <a href="/terms">Terms</a>
+  </div>
+
+</div>
+
+<div class="copyright">
+  <span>© 2026 LinkOps. All rights reserved.</span>
+  <span>Backlink monitoring for serious SEO teams.</span>
+</div>
+```
+
+  </div>
+</footer>
+
+</body>
+</html>
