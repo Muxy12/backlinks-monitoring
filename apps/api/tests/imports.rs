@@ -90,14 +90,14 @@ async fn csv_import_creates_backlinks_and_dedupes() {
                     .header(header::CONTENT_TYPE, "application/json")
                     .header(header::COOKIE, &cookie)
                     .header("x-csrf-token", &csrf)
-                    .body(jbody(serde_json::json!({"name":"Acme"})))
+                    .body(jbody(serde_json::json!({"name":"Acme","slug":format!("imp-{}", Uuid::now_v7().simple())})))
                     .unwrap(),
             )
             .await
             .unwrap(),
     )
     .await;
-    let org_id = org["id"].as_str().unwrap();
+    let org_id = org["id"].as_str().expect("org created");
     let (_, proj) = jout(
         app.clone()
             .oneshot(
