@@ -201,3 +201,13 @@ pub struct Notification {
     pub read_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
 }
+
+/// A tag for organizing backlinks (§35). `name` is citext (case-insensitive).
+#[derive(Debug, Clone, FromRow)]
+pub struct Tag {
+    pub id: Uuid,
+    pub organization_id: Uuid,
+    pub name: String,
+    pub color: Option<String>,
+    pub created_at: DateTime<Utc>,
+}

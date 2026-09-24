@@ -66,9 +66,21 @@ pub fn app(state: AppState) -> Router {
             get(routes::ops_routes::publisher_rollup),
         )
         .route(
+            "/v1/organizations/{org_id}/tags",
+            get(routes::tags_routes::list_tags).post(routes::tags_routes::create_tag),
+        )
+        .route(
             "/v1/organizations/{org_id}/backlinks",
             get(routes::resource_routes::list_backlinks)
                 .post(routes::resource_routes::create_backlink),
+        )
+        .route(
+            "/v1/organizations/{org_id}/backlinks/{backlink_id}/tags",
+            get(routes::tags_routes::list_backlink_tags).post(routes::tags_routes::attach_tag),
+        )
+        .route(
+            "/v1/organizations/{org_id}/backlinks/{backlink_id}/tags/{tag_id}",
+            axum::routing::delete(routes::tags_routes::detach_tag),
         )
         .route(
             "/v1/organizations/{org_id}/backlinks/{backlink_id}",

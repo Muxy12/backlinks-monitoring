@@ -1443,3 +1443,127 @@ pub mod notifications {
         }
     }
 }
+
+// ─── Tags (§35) — tenant-scoped, with backlink tagging ───────────────────────
+pub mod tags {
+    use super::*;
+    use crate::entities::Tag;
+
+    // name is citext; cast to text so no custom sqlx type mapping is needed.
+    macro_rules! cols {
+        () => {
+            "id, organization_id, name::text AS name, color, created_at"
+        };
+    }
+
+    pub async fn create(
+        pool: &PgPool,
+        scope: &OrgScope,
+        id: Uuid,
+        name: &str,
+        color: Option<&str>,
+    ) -> Result<Tag, DbError> {
+        sqlx::query_as::<_, Tag>(concat!(
+            "INSERT INTO tags (id, organization_id, name, color) \
+             VALUES ($1, $2, $3, $4) RETURNING ",
+            cols!()
+        ))
+        .bind(id)
+        .bind(scope.organization_id())
+        .bind(name)
+        .bind(color)
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_insert)
+    }
+
+    pub async fn list(pool: &PgPool, scope: &OrgScope) -> Result<Vec<Tag>, DbError> {
+        Ok(sqlx::query_as::<_, Tag>(concat!(
+            "SELECT ",
+            cols!(),
+            " FROM tags WHERE organization_id = $1 ORDER BY name"
+        ))
+        .bind(scope.organization_id())
+        .fetch_all(pool)
+        .await?)
+    }
+
+    pub async fn get(pool: &PgPool, scope: &OrgScope, id: Uuid) -> Result<Tag, DbError> {
+        sqlx::query_as::<_, Tag>(concat!(
+            "SELECT ",
+            cols!(),
+            " FROM tags WHERE id = $1 AND organization_id = $2"
+        ))
+        .bind(id)
+        .bind(scope.organization_id())
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_fetch)
+    }
+
+    /// The tags attached to one backlink, alphabetical. Tenant-scoped via the
+    /// backlink_tags.organization_id column.
+    pub async fn for_backlink(
+        pool: &PgPool,
+        scope: &OrgScope,
+        backlink_id: Uuid,
+    ) -> Result<Vec<Tag>, DbError> {
+        Ok(sqlx::query_as::<_, Tag>(
+            "SELECT t.id, t.organization_id, t.name::text AS name, t.color, t.created_at \
+             FROM tags t JOIN backlink_tags bt ON bt.tag_id = t.id \
+             WHERE bt.organization_id = $1 AND bt.backlink_id = $2 \
+             ORDER BY t.name",
+        )
+        .bind(scope.organization_id())
+        .bind(backlink_id)
+        .fetch_all(pool)
+        .await?)
+    }
+
+    /// Attach a tag to a backlink, idempotently. Both ids are validated to be in
+    /// the org by the caller; the composite FKs are a second guard. Returns true
+    /// if the link was newly created.
+    pub async fn attach(
+        pool: &PgPool,
+        scope: &OrgScope,
+        backlink_id: Uuid,
+        tag_id: Uuid,
+    ) -> Result<bool, DbError> {
+        let row: Option<(Uuid,)> = sqlx::query_as(
+            "INSERT INTO backlink_tags (organization_id, backlink_id, tag_id) \
+             VALUES ($1, $2, $3) ON CONFLICT (backlink_id, tag_id) DO NOTHING \
+             RETURNING backlink_id",
+        )
+        .bind(scope.organization_id())
+        .bind(backlink_id)
+        .bind(tag_id)
+        .fetch_optional(pool)
+        .await
+        .map_err(DbError::from_insert)?;
+        Ok(row.is_some())
+    }
+
+    /// Detach a tag from a backlink. `NotFound` if the pairing did not exist.
+    pub async fn detach(
+        pool: &PgPool,
+        scope: &OrgScope,
+        backlink_id: Uuid,
+        tag_id: Uuid,
+    ) -> Result<(), DbError> {
+        let n = sqlx::query(
+            "DELETE FROM backlink_tags \
+             WHERE organization_id = $1 AND backlink_id = $2 AND tag_id = $3",
+        )
+        .bind(scope.organization_id())
+        .bind(backlink_id)
+        .bind(tag_id)
+        .execute(pool)
+        .await?
+        .rows_affected();
+        if n == 0 {
+            Err(DbError::NotFound)
+        } else {
+            Ok(())
+        }
+    }
+}
