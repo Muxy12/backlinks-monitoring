@@ -1,6 +1,6 @@
 //! End-to-end monitoring: seed a backlink whose source page (a wiremock server)
 //! contains the target link, run the check engine, and assert the state machine
-//! + persistence made it `live` with a check row and a BACKLINK_FOUND event.
+//! and persistence made it `live` with a check row and a BACKLINK_FOUND event.
 //! Gated on `DATABASE_URL`; the crawler runs with the test-only loopback escape
 //! hatch so it can reach 127.0.0.1.
 
