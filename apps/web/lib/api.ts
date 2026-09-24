@@ -118,6 +118,64 @@ function csrfHeader(): Record<string, string> {
   return m ? { "x-csrf-token": decodeURIComponent(m[1]) } : {};
 }
 
+export interface MoneyByCurrency {
+  currency: string;
+  amount: string;
+}
+export interface CampaignView {
+  id: string;
+  project_id: string;
+  name: string;
+  description: string | null;
+  status: string;
+  target_backlinks: number | null;
+  budget: string | null;
+  currency: string | null;
+}
+export interface CampaignRollup {
+  campaign_id: string;
+  total: number;
+  live: number;
+  lost: number;
+  needs_attention: number;
+  removal_rate: number;
+  avg_lifespan_days: number | null;
+  target_backlinks: number | null;
+  target_progress: number | null;
+  spend: MoneyByCurrency[];
+}
+export interface PublisherView {
+  id: string;
+  name: string;
+  domain: string;
+  contact_name: string | null;
+  contact_email: string | null;
+}
+export interface PublisherRollup {
+  publisher_id: string;
+  total: number;
+  live: number;
+  lost: number;
+  needs_attention: number;
+  removal_rate: number;
+  avg_lifespan_days: number | null;
+  spend: MoneyByCurrency[];
+}
+export interface NewCampaign {
+  project_id: string;
+  name: string;
+  description?: string;
+  target_backlinks?: number;
+  budget?: number;
+  currency?: string;
+}
+export interface NewPublisher {
+  name: string;
+  domain: string;
+  contact_name?: string;
+  contact_email?: string;
+}
+
 export const orgApi = {
   dashboard: (org: string) => request<DashboardResponse>(`/v1/organizations/${org}/dashboard`),
   projects: (org: string) => request<ProjectView[]>(`/v1/organizations/${org}/projects`),
@@ -134,6 +192,24 @@ export const orgApi = {
       method: "POST",
       headers: csrfHeader(),
     }),
+  campaigns: (org: string) => request<CampaignView[]>(`/v1/organizations/${org}/campaigns`),
+  createCampaign: (org: string, body: NewCampaign) =>
+    request<CampaignView>(`/v1/organizations/${org}/campaigns`, {
+      method: "POST",
+      headers: csrfHeader(),
+      body: JSON.stringify(body),
+    }),
+  campaignRollup: (org: string, id: string) =>
+    request<CampaignRollup>(`/v1/organizations/${org}/campaigns/${id}/rollup`),
+  publishers: (org: string) => request<PublisherView[]>(`/v1/organizations/${org}/publishers`),
+  createPublisher: (org: string, body: NewPublisher) =>
+    request<PublisherView>(`/v1/organizations/${org}/publishers`, {
+      method: "POST",
+      headers: csrfHeader(),
+      body: JSON.stringify(body),
+    }),
+  publisherRollup: (org: string, id: string) =>
+    request<PublisherRollup>(`/v1/organizations/${org}/publishers/${id}/rollup`),
 };
 
 export interface EventView {

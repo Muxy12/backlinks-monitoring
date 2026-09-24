@@ -102,6 +102,7 @@ export default function DashboardPage() {
           <p className="muted">{me.organizations[0]?.name ?? "No workspace"} · {me.user.email}</p>
         </div>
         <div className="head-actions">
+          <a className="btn" href="/operations">Operations</a>
           <button className="btn bell" onClick={() => setShowNotifs((v) => !v)} aria-label="Notifications">
             🔔
             {notifs && notifs.unread > 0 && <span className="bell-badge">{notifs.unread}</span>}
