@@ -67,9 +67,15 @@ HTML parse + link matching · `crates/core` state machine · manual "check now" 
 **Exit criteria**
 
 - [ ] Every fixture in [06 §7](06-crawler.md#7-test-fixtures) passes
-- [ ] The SSRF suite passes, **including redirect-to-private and DNS-rebinding**
+- [~] The SSRF suite passes, **including redirect-to-private and DNS-rebinding** — the pure
+      **address classifier** is done and tested in `crates/core::net` (23 cases incl. v4-mapped and
+      6to4 unwrap, metadata, all private/reserved ranges); DNS resolution, address pinning and the
+      redirect-hop re-check remain for `crates/crawler` (needs a C compiler for rustls — see
+      [16](16-local-toolchain.md))
 - [x] The state machine property test holds: no sequence of non-`Absent` observations reaches `lost`
       (`crates/core`, done early — 18 tests green)
+- [x] The URL normalizer folds harmless http/https/www variation without false `TARGET_CHANGED`
+      (`crates/core::url_normalize`, done early)
 - [ ] "Check now" enqueues and returns 202; no crawling happens inside a request
 - [ ] The timeline renders a real multi-event history
 
