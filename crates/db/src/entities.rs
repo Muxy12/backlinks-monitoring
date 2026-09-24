@@ -189,3 +189,15 @@ pub struct RollupCounts {
     pub attention: i64,
     pub avg_lifespan_days: Option<f64>,
 }
+
+/// An in-app notification (§37). The alerts feed projection — not every column.
+#[derive(Debug, Clone, FromRow)]
+pub struct Notification {
+    pub id: Uuid,
+    pub kind: String,
+    pub title: String,
+    pub body: Option<String>,
+    pub backlink_id: Option<Uuid>,
+    pub read_at: Option<DateTime<Utc>>,
+    pub created_at: DateTime<Utc>,
+}

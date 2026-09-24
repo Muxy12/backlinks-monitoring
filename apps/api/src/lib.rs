@@ -90,6 +90,14 @@ pub fn app(state: AppState) -> Router {
             get(routes::resource_routes::expiring_warranties),
         )
         .route(
+            "/v1/organizations/{org_id}/notifications",
+            get(routes::resource_routes::list_notifications),
+        )
+        .route(
+            "/v1/organizations/{org_id}/notifications/{notification_id}/read",
+            post(routes::resource_routes::read_notification),
+        )
+        .route(
             "/v1/organizations/{org_id}/imports",
             post(routes::resource_routes::import_csv),
         )

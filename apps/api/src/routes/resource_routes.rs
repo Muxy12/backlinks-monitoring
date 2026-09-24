@@ -547,6 +547,66 @@ pub async fn expiring_warranties(
     Ok(Json(rows.into_iter().map(BacklinkView::from).collect()))
 }
 
+// ─── Notifications feed (§37) ─────────────────────────────────────────────────
+#[derive(Debug, Serialize)]
+pub struct NotificationView {
+    pub id: Uuid,
+    pub kind: String,
+    pub title: String,
+    pub body: Option<String>,
+    pub backlink_id: Option<Uuid>,
+    pub read: bool,
+    pub created_at: String,
+}
+
+impl From<db::entities::Notification> for NotificationView {
+    fn from(n: db::entities::Notification) -> Self {
+        NotificationView {
+            id: n.id,
+            kind: n.kind,
+            title: n.title,
+            body: n.body,
+            backlink_id: n.backlink_id,
+            read: n.read_at.is_some(),
+            created_at: n.created_at.to_rfc3339(),
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct NotificationsResponse {
+    pub items: Vec<NotificationView>,
+    pub unread: i64,
+}
+
+pub async fn list_notifications(
+    State(state): State<AppState>,
+    Path(org_id): Path<Uuid>,
+    jar: CookieJar,
+) -> Result<Json<NotificationsResponse>, ApiError> {
+    let (user, _s) = current(&state, &jar).await?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    let rows = db::repositories::notifications::list(&state.pool, &scope, 100).await?;
+    let unread = db::repositories::notifications::unread_count(&state.pool, &scope).await?;
+    Ok(Json(NotificationsResponse {
+        items: rows.into_iter().map(NotificationView::from).collect(),
+        unread,
+    }))
+}
+
+pub async fn read_notification(
+    State(state): State<AppState>,
+    Path((org_id, notification_id)): Path<(Uuid, Uuid)>,
+    jar: CookieJar,
+    headers: HeaderMap,
+) -> Result<StatusCode, ApiError> {
+    let (user, session) = current(&state, &jar).await?;
+    check_csrf(&jar, &headers, &session)?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    db::repositories::notifications::mark_read(&state.pool, &scope, notification_id).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
 // ─── CSV import (§38) ────────────────────────────────────────────────────────
 #[derive(Debug, Deserialize)]
 pub struct ImportBody {

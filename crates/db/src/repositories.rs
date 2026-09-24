@@ -1335,4 +1335,39 @@ pub mod notifications {
         .await?;
         Ok(n)
     }
+
+    /// The org's notifications feed, newest first (§37). Tenant-scoped.
+    pub async fn list(
+        pool: &PgPool,
+        scope: &OrgScope,
+        limit: i64,
+    ) -> Result<Vec<crate::entities::Notification>, DbError> {
+        Ok(sqlx::query_as::<_, crate::entities::Notification>(
+            "SELECT id, kind, title, body, backlink_id, read_at, created_at \
+             FROM notifications WHERE organization_id = $1 \
+             ORDER BY created_at DESC LIMIT $2",
+        )
+        .bind(scope.organization_id())
+        .bind(limit.clamp(1, 200))
+        .fetch_all(pool)
+        .await?)
+    }
+
+    /// Mark one notification read (idempotent). Scoped to the org, so a
+    /// cross-tenant id yields `NotFound`, never another tenant's row. Marking an
+    /// already-read one is a no-op success.
+    pub async fn mark_read(pool: &PgPool, scope: &OrgScope, id: Uuid) -> Result<(), DbError> {
+        let row: Option<(Uuid,)> = sqlx::query_as(
+            "UPDATE notifications SET read_at = coalesce(read_at, now()) \
+             WHERE id = $1 AND organization_id = $2 RETURNING id",
+        )
+        .bind(id)
+        .bind(scope.organization_id())
+        .fetch_optional(pool)
+        .await?;
+        match row {
+            Some(_) => Ok(()),
+            None => Err(DbError::NotFound),
+        }
+    }
 }
