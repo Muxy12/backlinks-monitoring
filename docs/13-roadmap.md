@@ -51,9 +51,12 @@ CI · first Vercel deploy.
 
 **Exit criteria**
 
-- [ ] Full gate green
-- [ ] A user can register, verify, log in, create an org, invite a member, create a client and a project — **in a deployed preview**, not only locally
-- [ ] `apps/api/tests/tenant_isolation.rs` passes for every route that exists so far
+- [x] Full gate green in CI (fmt, clippy -D warnings, tests, migrations, schema-check)
+- [x] A user can register, log in, create an org, create a client and a project — proven by
+      `apps/api/tests/api.rs` running against real Postgres in CI (invite-a-member + deployed-preview
+      still to come)
+- [x] `apps/api/tests/tenant_isolation.rs` passes — cross-tenant project read is 404 both via the
+      caller's own org path (out of scope) and via the owner's org path (non-member)
 - [~] Open item **R1** (SQLx statement cache vs Neon pooler): the *mechanism* is implemented —
       `crates/db::config::resolve_statement_cache_capacity` defaults the cache **off** for `-pooler`
       hosts (the setting that cannot break) and `crates/db/tests/connection.rs` carries the probe

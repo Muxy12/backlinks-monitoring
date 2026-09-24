@@ -162,3 +162,147 @@ pub async fn get_project(
     let project = projects::get(&state.pool, &scope, project_id).await?;
     Ok(Json(project.into()))
 }
+
+// ─── Backlinks (§23) ─────────────────────────────────────────────────────────
+#[derive(Debug, Serialize)]
+pub struct BacklinkView {
+    pub id: Uuid,
+    pub source_url: String,
+    pub target_url: String,
+    pub source_domain: String,
+    pub target_domain: String,
+    pub expected_anchor_text: Option<String>,
+    pub expected_rel_type: String,
+    pub status: String,
+    pub cost: Option<String>,
+    pub currency: Option<String>,
+}
+
+impl From<db::entities::Backlink> for BacklinkView {
+    fn from(b: db::entities::Backlink) -> Self {
+        BacklinkView {
+            id: b.id,
+            source_url: b.source_url,
+            target_url: b.target_url,
+            source_domain: b.source_domain,
+            target_domain: b.target_domain,
+            expected_anchor_text: b.expected_anchor_text,
+            expected_rel_type: b.expected_rel_type,
+            status: b.status,
+            cost: b.cost,
+            currency: b.currency,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CreateBacklinkBody {
+    pub project_id: Uuid,
+    pub source_url: String,
+    pub target_url: String,
+    pub expected_anchor_text: Option<String>,
+    pub expected_rel_type: Option<String>,
+    pub cost: Option<f64>,
+    pub currency: Option<String>,
+}
+
+fn is_http_url(s: &str) -> bool {
+    let s = s.trim();
+    s.starts_with("http://") || s.starts_with("https://")
+}
+
+pub async fn create_backlink(
+    State(state): State<AppState>,
+    Path(org_id): Path<Uuid>,
+    jar: CookieJar,
+    headers: HeaderMap,
+    Json(body): Json<CreateBacklinkBody>,
+) -> Result<(StatusCode, Json<BacklinkView>), ApiError> {
+    let (user, session) = current(&state, &jar).await?;
+    check_csrf(&jar, &headers, &session)?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Member)?;
+
+    if !is_http_url(&body.source_url) || !is_http_url(&body.target_url) {
+        return Err(ApiError::Validation(
+            "source_url and target_url must be http(s) URLs".into(),
+        ));
+    }
+    let rel = body.expected_rel_type.as_deref().unwrap_or("dofollow");
+    if !matches!(rel, "dofollow" | "nofollow" | "sponsored" | "ugc") {
+        return Err(ApiError::Validation(
+            "expected_rel_type must be dofollow/nofollow/sponsored/ugc".into(),
+        ));
+    }
+    let cost_str = match (body.cost, body.currency.as_deref()) {
+        (Some(_), None) => {
+            return Err(ApiError::Validation(
+                "currency is required when cost is set".into(),
+            ));
+        }
+        (Some(c), Some(_)) if c < 0.0 => {
+            return Err(ApiError::Validation("cost cannot be negative".into()));
+        }
+        (Some(c), Some(_)) => Some(format!("{c:.2}")),
+        (None, _) => None,
+    };
+    // The project must belong to this org (returns 404 otherwise).
+    db::repositories::projects::get(&state.pool, &scope, body.project_id).await?;
+
+    let anchor = body
+        .expected_anchor_text
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty());
+    let new = db::repositories::backlinks::NewBacklink {
+        project_id: body.project_id,
+        source_url: body.source_url.trim(),
+        target_url: body.target_url.trim(),
+        expected_anchor_text: anchor,
+        expected_rel_type: rel,
+        cost: cost_str.as_deref(),
+        currency: body.currency.as_deref(),
+    };
+    let backlink = db::repositories::backlinks::create(&state.pool, &scope, Uuid::now_v7(), new)
+        .await
+        .map_err(|e| match e {
+            db::DbError::Config(_) => ApiError::Validation("could not parse a URL".into()),
+            other => other.into(),
+        })?;
+    Ok((StatusCode::CREATED, Json(backlink.into())))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ListBacklinksQuery {
+    pub project_id: Uuid,
+    pub limit: Option<i64>,
+}
+
+pub async fn list_backlinks(
+    State(state): State<AppState>,
+    Path(org_id): Path<Uuid>,
+    axum::extract::Query(q): axum::extract::Query<ListBacklinksQuery>,
+    jar: CookieJar,
+) -> Result<Json<Vec<BacklinkView>>, ApiError> {
+    let (user, _s) = current(&state, &jar).await?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    let rows = db::repositories::backlinks::list_for_project(
+        &state.pool,
+        &scope,
+        q.project_id,
+        q.limit.unwrap_or(50),
+    )
+    .await?;
+    Ok(Json(rows.into_iter().map(BacklinkView::from).collect()))
+}
+
+pub async fn get_backlink(
+    State(state): State<AppState>,
+    Path((org_id, backlink_id)): Path<(Uuid, Uuid)>,
+    jar: CookieJar,
+) -> Result<Json<BacklinkView>, ApiError> {
+    let (user, _s) = current(&state, &jar).await?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    let backlink = db::repositories::backlinks::get(&state.pool, &scope, backlink_id).await?;
+    Ok(Json(backlink.into()))
+}

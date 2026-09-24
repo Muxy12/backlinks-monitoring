@@ -340,3 +340,121 @@ pub mod projects {
         .map_err(DbError::from_fetch)
     }
 }
+
+// ─── Backlinks (§23) — tenant-scoped ─────────────────────────────────────────
+pub mod backlinks {
+    use super::*;
+    use crate::entities::Backlink;
+    use backlio_core::{NormalizeOptions, host_of, normalize};
+
+    // Shared RETURNING/SELECT projection (literal for sqlx 0.9).
+    macro_rules! cols {
+        () => {
+            "id, organization_id, project_id, campaign_id, publisher_id, \
+             source_url, source_url_normalized, source_domain, \
+             target_url, target_url_normalized, target_domain, \
+             expected_anchor_text, expected_rel_type::text AS expected_rel_type, \
+             status::text AS status, cost::text AS cost, currency, \
+             created_at, updated_at, next_check_at, last_checked_at"
+        };
+    }
+
+    /// Input for creating a backlink. URLs are normalized here (docs/03 §3.4)
+    /// via the same normalizer the crawler uses, so a stored link and a
+    /// discovered link compare identically.
+    pub struct NewBacklink<'a> {
+        pub project_id: Uuid,
+        pub source_url: &'a str,
+        pub target_url: &'a str,
+        pub expected_anchor_text: Option<&'a str>,
+        pub expected_rel_type: &'a str,
+        pub cost: Option<&'a str>,
+        pub currency: Option<&'a str>,
+    }
+
+    pub async fn create(
+        pool: &PgPool,
+        scope: &OrgScope,
+        id: Uuid,
+        new: NewBacklink<'_>,
+    ) -> Result<Backlink, DbError> {
+        let opts = NormalizeOptions::default();
+        let source_norm = normalize(new.source_url, None, opts)
+            .ok_or_else(|| DbError::Config("invalid source_url".into()))?;
+        let target_norm = normalize(new.target_url, None, opts)
+            .ok_or_else(|| DbError::Config("invalid target_url".into()))?;
+        let source_domain = host_of(&source_norm).unwrap_or_default();
+        let target_domain = host_of(&target_norm).unwrap_or_default();
+
+        sqlx::query_as::<_, Backlink>(concat!(
+            "INSERT INTO backlinks (id, organization_id, project_id, \
+                source_url, source_url_normalized, source_domain, \
+                target_url, target_url_normalized, target_domain, \
+                expected_anchor_text, expected_rel_type, cost, currency) \
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::rel_type,$12::numeric,$13) \
+             RETURNING ",
+            cols!()
+        ))
+        .bind(id)
+        .bind(scope.organization_id())
+        .bind(new.project_id)
+        .bind(new.source_url)
+        .bind(&source_norm)
+        .bind(&source_domain)
+        .bind(new.target_url)
+        .bind(&target_norm)
+        .bind(&target_domain)
+        .bind(new.expected_anchor_text)
+        .bind(new.expected_rel_type)
+        .bind(new.cost)
+        .bind(new.currency)
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_insert)
+    }
+
+    /// List a project's backlinks (newest first). Tenant + project scoped.
+    /// Pagination refinement (keyset) lands with the filter work (§35).
+    pub async fn list_for_project(
+        pool: &PgPool,
+        scope: &OrgScope,
+        project_id: Uuid,
+        limit: i64,
+    ) -> Result<Vec<Backlink>, DbError> {
+        Ok(sqlx::query_as::<_, Backlink>(concat!(
+            "SELECT ",
+            cols!(),
+            " FROM backlinks WHERE organization_id = $1 AND project_id = $2 \
+              AND archived_at IS NULL ORDER BY created_at DESC LIMIT $3"
+        ))
+        .bind(scope.organization_id())
+        .bind(project_id)
+        .bind(limit.clamp(1, 200))
+        .fetch_all(pool)
+        .await?)
+    }
+
+    pub async fn get(pool: &PgPool, scope: &OrgScope, id: Uuid) -> Result<Backlink, DbError> {
+        sqlx::query_as::<_, Backlink>(concat!(
+            "SELECT ",
+            cols!(),
+            " FROM backlinks WHERE id = $1 AND organization_id = $2"
+        ))
+        .bind(id)
+        .bind(scope.organization_id())
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_fetch)
+    }
+
+    /// Count active backlinks in an org — for plan-limit enforcement (§39).
+    pub async fn count_active(pool: &PgPool, scope: &OrgScope) -> Result<i64, DbError> {
+        let (n,): (i64,) = sqlx::query_as(
+            "SELECT count(*) FROM backlinks WHERE organization_id = $1 AND archived_at IS NULL",
+        )
+        .bind(scope.organization_id())
+        .fetch_one(pool)
+        .await?;
+        Ok(n)
+    }
+}

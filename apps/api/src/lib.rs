@@ -40,6 +40,15 @@ pub fn app(state: AppState) -> Router {
             "/v1/organizations/{org_id}/projects/{project_id}",
             get(routes::resource_routes::get_project),
         )
+        .route(
+            "/v1/organizations/{org_id}/backlinks",
+            get(routes::resource_routes::list_backlinks)
+                .post(routes::resource_routes::create_backlink),
+        )
+        .route(
+            "/v1/organizations/{org_id}/backlinks/{backlink_id}",
+            get(routes::resource_routes::get_backlink),
+        )
         // Global 1 MiB body cap (docs/09 §1, S7). The CSV upload route will
         // raise this locally when it lands.
         .layer(DefaultBodyLimit::max(1024 * 1024))

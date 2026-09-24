@@ -79,3 +79,30 @@ pub struct Project {
     pub updated_at: DateTime<Utc>,
     pub archived_at: Option<DateTime<Utc>>,
 }
+
+/// The core backlink row (docs/03 §3.4), read with `rel_type`/`status`/`cost`
+/// cast to text/numeric-as-text so no custom sqlx type mapping is needed. This
+/// is a create/list projection, not every column.
+#[derive(Debug, Clone, FromRow)]
+pub struct Backlink {
+    pub id: Uuid,
+    pub organization_id: Uuid,
+    pub project_id: Uuid,
+    pub campaign_id: Option<Uuid>,
+    pub publisher_id: Option<Uuid>,
+    pub source_url: String,
+    pub source_url_normalized: String,
+    pub source_domain: String,
+    pub target_url: String,
+    pub target_url_normalized: String,
+    pub target_domain: String,
+    pub expected_anchor_text: Option<String>,
+    pub expected_rel_type: String,
+    pub status: String,
+    pub cost: Option<String>,
+    pub currency: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    pub next_check_at: Option<DateTime<Utc>>,
+    pub last_checked_at: Option<DateTime<Utc>>,
+}
