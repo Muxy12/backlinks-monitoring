@@ -465,6 +465,51 @@ pub mod backlinks {
         .map_err(DbError::from_insert)
     }
 
+    /// The mutable fields of a backlink (§36 edit). Source/target URLs are not
+    /// editable — they define the link's identity (change = delete + recreate).
+    /// Every field is the FULL new value, so `None` clears a nullable column.
+    pub struct BacklinkUpdate<'a> {
+        pub expected_anchor_text: Option<&'a str>,
+        pub expected_rel_type: &'a str,
+        pub cost: Option<&'a str>,
+        pub currency: Option<&'a str>,
+        pub campaign_id: Option<Uuid>,
+        pub publisher_id: Option<Uuid>,
+    }
+
+    /// Replace a backlink's mutable fields (§36). Tenant-scoped; `NotFound` if it
+    /// is not in the org. The caller merges the PATCH over current values and
+    /// validates before calling, so this is a straight write.
+    pub async fn update(
+        pool: &PgPool,
+        scope: &OrgScope,
+        id: Uuid,
+        upd: BacklinkUpdate<'_>,
+    ) -> Result<Backlink, DbError> {
+        sqlx::query_as::<_, Backlink>(concat!(
+            "UPDATE backlinks SET \
+                expected_anchor_text = $3, \
+                expected_rel_type = $4::rel_type, \
+                cost = $5::numeric, \
+                currency = $6, \
+                campaign_id = $7, \
+                publisher_id = $8 \
+             WHERE id = $1 AND organization_id = $2 RETURNING ",
+            cols!()
+        ))
+        .bind(id)
+        .bind(scope.organization_id())
+        .bind(upd.expected_anchor_text)
+        .bind(upd.expected_rel_type)
+        .bind(upd.cost)
+        .bind(upd.currency)
+        .bind(upd.campaign_id)
+        .bind(upd.publisher_id)
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_fetch)
+    }
+
     /// List a project's backlinks (newest first). Tenant + project scoped.
     /// Pagination refinement (keyset) lands with the filter work (§35).
     pub async fn list_for_project(

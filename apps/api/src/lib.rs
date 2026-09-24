@@ -101,7 +101,8 @@ pub fn app(state: AppState) -> Router {
         )
         .route(
             "/v1/organizations/{org_id}/backlinks/{backlink_id}",
-            get(routes::resource_routes::get_backlink),
+            get(routes::resource_routes::get_backlink)
+                .patch(routes::resource_routes::update_backlink),
         )
         .route(
             "/v1/organizations/{org_id}/backlinks/bulk",

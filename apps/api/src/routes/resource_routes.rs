@@ -233,6 +233,8 @@ pub struct BacklinkView {
     pub target_url: String,
     pub source_domain: String,
     pub target_domain: String,
+    pub campaign_id: Option<Uuid>,
+    pub publisher_id: Option<Uuid>,
     pub expected_anchor_text: Option<String>,
     pub expected_rel_type: String,
     pub status: String,
@@ -259,6 +261,8 @@ impl From<db::entities::Backlink> for BacklinkView {
             target_url: b.target_url,
             source_domain: b.source_domain,
             target_domain: b.target_domain,
+            campaign_id: b.campaign_id,
+            publisher_id: b.publisher_id,
             expected_anchor_text: b.expected_anchor_text,
             expected_rel_type: b.expected_rel_type,
             status: b.status,
@@ -396,6 +400,116 @@ pub async fn create_backlink(
             other => other.into(),
         })?;
     Ok((StatusCode::CREATED, Json(backlink.into())))
+}
+
+// ─── Edit a backlink (§36) ────────────────────────────────────────────────────
+/// serde helper: distinguish an absent field (`None`) from one explicitly set to
+/// a value or `null` (`Some(_)`), so PATCH can tell "keep" from "clear".
+fn de_double_opt<'de, T, D>(de: D) -> Result<Option<Option<T>>, D::Error>
+where
+    T: serde::Deserialize<'de>,
+    D: serde::Deserializer<'de>,
+{
+    serde::Deserialize::deserialize(de).map(Some)
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateBacklinkBody {
+    #[serde(default, deserialize_with = "de_double_opt")]
+    pub expected_anchor_text: Option<Option<String>>,
+    /// Set only (the column is NOT NULL); omit to keep.
+    pub expected_rel_type: Option<String>,
+    #[serde(default, deserialize_with = "de_double_opt")]
+    pub cost: Option<Option<f64>>,
+    #[serde(default, deserialize_with = "de_double_opt")]
+    pub currency: Option<Option<String>>,
+    #[serde(default, deserialize_with = "de_double_opt")]
+    pub campaign_id: Option<Option<Uuid>>,
+    #[serde(default, deserialize_with = "de_double_opt")]
+    pub publisher_id: Option<Option<Uuid>>,
+}
+
+/// PATCH …/backlinks/{id} — edit mutable fields (§36). Source/target URLs are
+/// immutable (they define the link). A field present in the body is applied
+/// (null clears a nullable one); an absent field is kept. Read-modify-write so
+/// the cost/currency pairing is validated against the resulting values.
+pub async fn update_backlink(
+    State(state): State<AppState>,
+    Path((org_id, backlink_id)): Path<(Uuid, Uuid)>,
+    jar: CookieJar,
+    headers: HeaderMap,
+    Json(body): Json<UpdateBacklinkBody>,
+) -> Result<Json<BacklinkView>, ApiError> {
+    let (user, session) = current(&state, &jar).await?;
+    check_csrf(&jar, &headers, &session)?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Member)?;
+
+    let current = db::repositories::backlinks::get(&state.pool, &scope, backlink_id).await?;
+
+    // Merge each field: present-in-patch wins, else keep current.
+    let anchor: Option<String> = match body.expected_anchor_text {
+        Some(v) => v.map(|s| s.trim().to_string()).filter(|s| !s.is_empty()),
+        None => current.expected_anchor_text,
+    };
+    let rel = match body.expected_rel_type.as_deref() {
+        Some(r) => {
+            if !matches!(r, "dofollow" | "nofollow" | "sponsored" | "ugc") {
+                return Err(ApiError::Validation(
+                    "expected_rel_type must be dofollow/nofollow/sponsored/ugc".into(),
+                ));
+            }
+            r.to_string()
+        }
+        None => current.expected_rel_type,
+    };
+    let new_cost: Option<f64> = match body.cost {
+        Some(v) => v,
+        None => current.cost.as_deref().and_then(|c| c.parse::<f64>().ok()),
+    };
+    let new_currency: Option<String> = match body.currency {
+        Some(v) => v.map(|s| s.trim().to_string()).filter(|s| !s.is_empty()),
+        None => current.currency,
+    };
+    if let Some(c) = new_cost
+        && c < 0.0
+    {
+        return Err(ApiError::Validation("cost cannot be negative".into()));
+    }
+    if new_cost.is_some() && new_currency.is_none() {
+        return Err(ApiError::Validation(
+            "currency is required when cost is set".into(),
+        ));
+    }
+    let cost_str = new_cost.map(|c| format!("{c:.2}"));
+
+    let campaign_id = match body.campaign_id {
+        Some(v) => v,
+        None => current.campaign_id,
+    };
+    let publisher_id = match body.publisher_id {
+        Some(v) => v,
+        None => current.publisher_id,
+    };
+    // A newly-assigned campaign/publisher must belong to this org (404 else).
+    if let Some(cid) = campaign_id {
+        db::repositories::campaigns::get(&state.pool, &scope, cid).await?;
+    }
+    if let Some(pid) = publisher_id {
+        db::repositories::publishers::get(&state.pool, &scope, pid).await?;
+    }
+
+    let upd = db::repositories::backlinks::BacklinkUpdate {
+        expected_anchor_text: anchor.as_deref(),
+        expected_rel_type: &rel,
+        cost: cost_str.as_deref(),
+        currency: new_currency.as_deref(),
+        campaign_id,
+        publisher_id,
+    };
+    let backlink =
+        db::repositories::backlinks::update(&state.pool, &scope, backlink_id, upd).await?;
+    Ok(Json(backlink.into()))
 }
 
 // ─── Bulk create (§35) ────────────────────────────────────────────────────────
