@@ -85,6 +85,20 @@ pub async fn list_tags(
     Ok(Json(rows.into_iter().map(TagView::from).collect()))
 }
 
+pub async fn delete_tag(
+    State(state): State<AppState>,
+    Path((org_id, tag_id)): Path<(Uuid, Uuid)>,
+    jar: CookieJar,
+    headers: HeaderMap,
+) -> Result<StatusCode, ApiError> {
+    let (user, session) = current(&state, &jar).await?;
+    check_csrf(&jar, &headers, &session)?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Member)?;
+    tags::delete(&state.pool, &scope, tag_id).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
 pub async fn list_backlink_tags(
     State(state): State<AppState>,
     Path((org_id, backlink_id)): Path<(Uuid, Uuid)>,

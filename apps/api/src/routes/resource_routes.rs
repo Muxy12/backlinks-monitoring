@@ -91,6 +91,20 @@ pub async fn list_clients(
     Ok(Json(rows.into_iter().map(ClientView::from).collect()))
 }
 
+pub async fn delete_client(
+    State(state): State<AppState>,
+    Path((org_id, client_id)): Path<(Uuid, Uuid)>,
+    jar: CookieJar,
+    headers: HeaderMap,
+) -> Result<StatusCode, ApiError> {
+    let (user, session) = current(&state, &jar).await?;
+    check_csrf(&jar, &headers, &session)?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Member)?;
+    clients::delete(&state.pool, &scope, client_id).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
 // ─── Projects ────────────────────────────────────────────────────────────────
 #[derive(Debug, Serialize)]
 pub struct ProjectView {

@@ -277,6 +277,19 @@ pub mod clients {
         .await
         .map_err(DbError::from_fetch)
     }
+
+    /// Delete a client (§20). Projects keep working — their `client_id` FK is
+    /// `ON DELETE SET NULL`. `NotFound` if not in the org.
+    pub async fn delete(pool: &PgPool, scope: &OrgScope, id: Uuid) -> Result<(), DbError> {
+        let row: Option<(Uuid,)> = sqlx::query_as(
+            "DELETE FROM clients WHERE id = $1 AND organization_id = $2 RETURNING id",
+        )
+        .bind(id)
+        .bind(scope.organization_id())
+        .fetch_optional(pool)
+        .await?;
+        row.map(|_| ()).ok_or(DbError::NotFound)
+    }
 }
 
 // ─── Projects (§21) — tenant-scoped ──────────────────────────────────────────
@@ -1290,6 +1303,19 @@ pub mod campaigns {
         .map_err(DbError::from_fetch)
     }
 
+    /// Delete a campaign (§22). Attached backlinks are unassigned (their
+    /// `campaign_id` FK is `ON DELETE SET NULL`). `NotFound` if not in the org.
+    pub async fn delete(pool: &PgPool, scope: &OrgScope, id: Uuid) -> Result<(), DbError> {
+        let row: Option<(Uuid,)> = sqlx::query_as(
+            "DELETE FROM campaigns WHERE id = $1 AND organization_id = $2 RETURNING id",
+        )
+        .bind(id)
+        .bind(scope.organization_id())
+        .fetch_optional(pool)
+        .await?;
+        row.map(|_| ()).ok_or(DbError::NotFound)
+    }
+
     /// Scalar rollup over the campaign's non-archived backlinks (§22).
     pub async fn rollup(
         pool: &PgPool,
@@ -1389,6 +1415,19 @@ pub mod publishers {
         .fetch_one(pool)
         .await
         .map_err(DbError::from_fetch)
+    }
+
+    /// Delete a publisher (§31). Attached backlinks are unassigned (their
+    /// `publisher_id` FK is `ON DELETE SET NULL`). `NotFound` if not in the org.
+    pub async fn delete(pool: &PgPool, scope: &OrgScope, id: Uuid) -> Result<(), DbError> {
+        let row: Option<(Uuid,)> = sqlx::query_as(
+            "DELETE FROM publishers WHERE id = $1 AND organization_id = $2 RETURNING id",
+        )
+        .bind(id)
+        .bind(scope.organization_id())
+        .fetch_optional(pool)
+        .await?;
+        row.map(|_| ()).ok_or(DbError::NotFound)
     }
 
     /// Scalar rollup over the publisher's non-archived backlinks (§31):
@@ -1638,6 +1677,18 @@ pub mod tags {
         .fetch_one(pool)
         .await
         .map_err(DbError::from_fetch)
+    }
+
+    /// Delete a tag (§35). Its attachments are removed (`backlink_tags.tag_id`
+    /// FK is `ON DELETE CASCADE`). `NotFound` if not in the org.
+    pub async fn delete(pool: &PgPool, scope: &OrgScope, id: Uuid) -> Result<(), DbError> {
+        let row: Option<(Uuid,)> =
+            sqlx::query_as("DELETE FROM tags WHERE id = $1 AND organization_id = $2 RETURNING id")
+                .bind(id)
+                .bind(scope.organization_id())
+                .fetch_optional(pool)
+                .await?;
+        row.map(|_| ()).ok_or(DbError::NotFound)
     }
 
     /// The tags attached to one backlink, alphabetical. Tenant-scoped via the

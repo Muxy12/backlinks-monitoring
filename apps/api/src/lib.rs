@@ -49,6 +49,10 @@ pub fn app(state: AppState) -> Router {
             get(routes::resource_routes::list_clients).post(routes::resource_routes::create_client),
         )
         .route(
+            "/v1/organizations/{org_id}/clients/{client_id}",
+            axum::routing::delete(routes::resource_routes::delete_client),
+        )
+        .route(
             "/v1/organizations/{org_id}/projects",
             get(routes::resource_routes::list_projects)
                 .post(routes::resource_routes::create_project),
@@ -64,7 +68,7 @@ pub fn app(state: AppState) -> Router {
         )
         .route(
             "/v1/organizations/{org_id}/campaigns/{campaign_id}",
-            get(routes::ops_routes::get_campaign),
+            get(routes::ops_routes::get_campaign).delete(routes::ops_routes::delete_campaign),
         )
         .route(
             "/v1/organizations/{org_id}/campaigns/{campaign_id}/rollup",
@@ -76,7 +80,7 @@ pub fn app(state: AppState) -> Router {
         )
         .route(
             "/v1/organizations/{org_id}/publishers/{publisher_id}",
-            get(routes::ops_routes::get_publisher),
+            get(routes::ops_routes::get_publisher).delete(routes::ops_routes::delete_publisher),
         )
         .route(
             "/v1/organizations/{org_id}/publishers/{publisher_id}/rollup",
@@ -85,6 +89,10 @@ pub fn app(state: AppState) -> Router {
         .route(
             "/v1/organizations/{org_id}/tags",
             get(routes::tags_routes::list_tags).post(routes::tags_routes::create_tag),
+        )
+        .route(
+            "/v1/organizations/{org_id}/tags/{tag_id}",
+            axum::routing::delete(routes::tags_routes::delete_tag),
         )
         .route(
             "/v1/organizations/{org_id}/backlinks",

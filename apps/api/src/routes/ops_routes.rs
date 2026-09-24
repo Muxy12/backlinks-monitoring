@@ -156,6 +156,20 @@ pub async fn get_campaign(
     Ok(Json(campaign.into()))
 }
 
+pub async fn delete_campaign(
+    State(state): State<AppState>,
+    Path((org_id, campaign_id)): Path<(Uuid, Uuid)>,
+    jar: CookieJar,
+    headers: HeaderMap,
+) -> Result<StatusCode, ApiError> {
+    let (user, session) = current(&state, &jar).await?;
+    check_csrf(&jar, &headers, &session)?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Member)?;
+    campaigns::delete(&state.pool, &scope, campaign_id).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
 #[derive(Debug, Serialize)]
 pub struct CampaignRollupView {
     pub campaign_id: Uuid,
@@ -290,6 +304,20 @@ pub async fn get_publisher(
     let scope = authorize_org(&state.pool, user.id, org_id).await?;
     let publisher = publishers::get(&state.pool, &scope, publisher_id).await?;
     Ok(Json(publisher.into()))
+}
+
+pub async fn delete_publisher(
+    State(state): State<AppState>,
+    Path((org_id, publisher_id)): Path<(Uuid, Uuid)>,
+    jar: CookieJar,
+    headers: HeaderMap,
+) -> Result<StatusCode, ApiError> {
+    let (user, session) = current(&state, &jar).await?;
+    check_csrf(&jar, &headers, &session)?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Member)?;
+    publishers::delete(&state.pool, &scope, publisher_id).await?;
+    Ok(StatusCode::NO_CONTENT)
 }
 
 #[derive(Debug, Serialize)]
