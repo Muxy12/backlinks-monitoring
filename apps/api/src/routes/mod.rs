@@ -4,6 +4,7 @@
 pub mod auth_routes;
 pub mod billing_routes;
 pub mod competitor_routes;
+pub mod discovery_routes;
 pub mod graph_routes;
 pub mod internal_routes;
 pub mod me_routes;

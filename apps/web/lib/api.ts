@@ -91,6 +91,18 @@ export interface DashboardResponse {
   occurrences: number;
 }
 
+export interface SeedView {
+  id: string;
+  domain: string;
+  normalized_domain: string;
+  source: string;
+  status: string;
+  pages_crawled: number;
+  backlinks_found: number;
+  last_crawled_at: string | null;
+  next_crawl_at: string;
+}
+
 export interface GraphNode {
   id: string;
   label: string;
@@ -391,6 +403,13 @@ export const orgApi = {
     }),
   competitorBacklinks: (org: string, competitorId: string) =>
     request<BacklinkView[]>(`/v1/organizations/${org}/competitors/${competitorId}/backlinks`),
+  discoverySeeds: (org: string, projectId: string) =>
+    request<SeedView[]>(`/v1/organizations/${org}/projects/${projectId}/discovery/seeds`),
+  importSeeds: (org: string, projectId: string, domains: string[], source = "gsc") =>
+    request<{ added: number; skipped: number }>(
+      `/v1/organizations/${org}/projects/${projectId}/discovery/seeds`,
+      { method: "POST", headers: csrfHeader(), body: JSON.stringify({ domains, source }) },
+    ),
   backlinkGraph: (org: string, projectId: string, view: "domain" | "url" = "domain", limit = 2000) =>
     request<GraphResponse>(
       `/v1/organizations/${org}/projects/${projectId}/backlink-graph?view=${view}&limit=${limit}`,

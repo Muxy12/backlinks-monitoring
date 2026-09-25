@@ -1601,6 +1601,184 @@ pub mod graph {
     }
 }
 
+// ─── Discovery seeds: referring domains to expand-crawl (spec §21) ───────────
+pub mod seeds {
+    use super::*;
+    use crate::entities::DiscoverySeed;
+    use backlio_core::{NormalizeOptions, host_of, normalize};
+
+    macro_rules! seed_cols {
+        () => {
+            "id, organization_id, project_id, domain, normalized_domain, source, status, \
+             pages_crawled, backlinks_found, last_crawled_at, next_crawl_at, last_error, \
+             created_at, updated_at"
+        };
+    }
+
+    fn norm_domain(input: &str) -> Option<String> {
+        let url = if input.contains("://") {
+            input.to_string()
+        } else {
+            format!("https://{}", input.trim())
+        };
+        host_of(&normalize(&url, None, NormalizeOptions::default())?)
+    }
+
+    /// Add a seed domain to crawl (idempotent per project + domain).
+    pub async fn create(
+        pool: &PgPool,
+        scope: &OrgScope,
+        id: Uuid,
+        project_id: Uuid,
+        domain: &str,
+        source: &str,
+    ) -> Result<Option<DiscoverySeed>, DbError> {
+        let normalized = match norm_domain(domain) {
+            Some(d) if !d.is_empty() => d,
+            _ => return Ok(None),
+        };
+        sqlx::query_as::<_, DiscoverySeed>(concat!(
+            "INSERT INTO discovery_seeds \
+                (id, organization_id, project_id, domain, normalized_domain, source) \
+             VALUES ($1,$2,$3,$4,$5,$6) \
+             ON CONFLICT (project_id, normalized_domain) DO NOTHING RETURNING ",
+            seed_cols!()
+        ))
+        .bind(id)
+        .bind(scope.organization_id())
+        .bind(project_id)
+        .bind(domain.trim())
+        .bind(&normalized)
+        .bind(source)
+        .fetch_optional(pool)
+        .await
+        .map_err(DbError::from_insert)
+    }
+
+    pub async fn list(
+        pool: &PgPool,
+        scope: &OrgScope,
+        project_id: Uuid,
+    ) -> Result<Vec<DiscoverySeed>, DbError> {
+        Ok(sqlx::query_as::<_, DiscoverySeed>(concat!(
+            "SELECT ",
+            seed_cols!(),
+            " FROM discovery_seeds WHERE organization_id = $1 AND project_id = $2 \
+             ORDER BY created_at DESC"
+        ))
+        .bind(scope.organization_id())
+        .bind(project_id)
+        .fetch_all(pool)
+        .await?)
+    }
+
+    /// Claim due seeds for crawling (cross-tenant; the worker runs them).
+    pub async fn claim_due(pool: &PgPool, limit: i64) -> Result<Vec<DiscoverySeed>, DbError> {
+        Ok(sqlx::query_as::<_, DiscoverySeed>(concat!(
+            "UPDATE discovery_seeds SET status='crawling', updated_at=now() \
+             WHERE id IN ( \
+                SELECT id FROM discovery_seeds \
+                WHERE status IN ('pending','done') AND next_crawl_at <= now() \
+                ORDER BY next_crawl_at FOR UPDATE SKIP LOCKED LIMIT $1 \
+             ) RETURNING ",
+            seed_cols!()
+        ))
+        .bind(limit.clamp(1, 50))
+        .fetch_all(pool)
+        .await?)
+    }
+
+    /// Record a crawl result and reschedule.
+    pub async fn finish(
+        pool: &PgPool,
+        id: Uuid,
+        pages: i32,
+        found: i32,
+        next_in_secs: i64,
+        error: Option<&str>,
+    ) -> Result<(), DbError> {
+        sqlx::query(
+            "UPDATE discovery_seeds SET \
+                status = CASE WHEN $5::text IS NULL THEN 'done' ELSE 'error' END, \
+                pages_crawled = $2, backlinks_found = $3, last_crawled_at = now(), \
+                next_crawl_at = now() + make_interval(secs => $4), last_error = $5 \
+             WHERE id = $1",
+        )
+        .bind(id)
+        .bind(pages)
+        .bind(found)
+        .bind(next_in_secs)
+        .bind(error)
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    /// Insert a discovered own Tier-1 backlink if the relation is new.
+    /// Returns whether it was newly created. Idempotent per project + urls.
+    pub async fn record_backlink(
+        pool: &PgPool,
+        organization_id: Uuid,
+        project_id: Uuid,
+        source_url: &str,
+        target_url: &str,
+        anchor: Option<&str>,
+        rel_type: &str,
+    ) -> Result<bool, DbError> {
+        let opts = NormalizeOptions::default();
+        let source_norm = match normalize(source_url, None, opts) {
+            Some(s) => s,
+            None => return Ok(false),
+        };
+        let target_norm = match normalize(target_url, None, opts) {
+            Some(s) => s,
+            None => return Ok(false),
+        };
+        let source_domain = host_of(&source_norm).unwrap_or_default();
+        let target_domain = host_of(&target_norm).unwrap_or_default();
+
+        let mut tx = pool.begin().await?;
+        let existing: Option<(Uuid,)> = sqlx::query_as(
+            "SELECT id FROM backlinks WHERE organization_id = $1 AND project_id = $2 \
+               AND subject = 'own' AND source_url_normalized = $3 \
+               AND target_url_normalized = $4 AND archived_at IS NULL",
+        )
+        .bind(organization_id)
+        .bind(project_id)
+        .bind(&source_norm)
+        .bind(&target_norm)
+        .fetch_optional(&mut *tx)
+        .await?;
+        if existing.is_some() {
+            tx.commit().await?;
+            return Ok(false);
+        }
+        sqlx::query(
+            "INSERT INTO backlinks (id, organization_id, project_id, \
+                source_url, source_url_normalized, source_domain, \
+                target_url, target_url_normalized, target_domain, \
+                expected_anchor_text, expected_rel_type, subject, tier, next_check_at) \
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::rel_type,'own',1, now())",
+        )
+        .bind(Uuid::now_v7())
+        .bind(organization_id)
+        .bind(project_id)
+        .bind(source_url)
+        .bind(&source_norm)
+        .bind(&source_domain)
+        .bind(target_url)
+        .bind(&target_norm)
+        .bind(&target_domain)
+        .bind(anchor)
+        .bind(rel_type)
+        .execute(&mut *tx)
+        .await
+        .map_err(DbError::from_insert)?;
+        tx.commit().await?;
+        Ok(true)
+    }
+}
+
 // ─── Job queue: claim / complete / fail / reap (docs/07 §2–§3) ───────────────
 pub mod job_queue {
     use super::*;

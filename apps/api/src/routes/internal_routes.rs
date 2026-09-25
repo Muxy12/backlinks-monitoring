@@ -75,7 +75,7 @@ pub async fn tick(
         })?;
 
     // Process a batch + run the warranty sweep only where crawling is allowed.
-    let (processed, warranty_alerts) = if guards.may_process_jobs() {
+    let (processed, warranty_alerts, discovered) = if guards.may_process_jobs() {
         let processed = worker::tick(&ctx, 25).await.map_err(|e| {
             tracing::error!(error = %e, "tick: process failed");
             ApiError::Internal
@@ -87,9 +87,17 @@ pub async fn tick(
                 tracing::error!(error = %e, "tick: warranty sweep failed");
                 ApiError::Internal
             })?;
-        (processed, alerts)
+        // Expansion discovery: a tiny bounded slice per tick so the cron stays
+        // well under its timeout (seeds are rescheduled and progress over time).
+        let discovered = worker::discover::discover_tick(&state.pool, &ctx.crawler, 1, 8)
+            .await
+            .unwrap_or_else(|e| {
+                tracing::warn!(error = %e, "tick: discovery failed");
+                0
+            });
+        (processed, alerts, discovered)
     } else {
-        (0, 0)
+        (0, 0, 0)
     };
 
     // Reclaim any leases from a tick that died mid-flight (docs/07).
@@ -100,5 +108,6 @@ pub async fn tick(
         "scheduled_backlinks": scheduled_backlinks,
         "processed": processed,
         "warranty_alerts": warranty_alerts,
+        "discovered": discovered,
     })))
 }

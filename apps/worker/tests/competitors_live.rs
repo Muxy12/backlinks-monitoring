@@ -331,3 +331,99 @@ async fn tier2_ingestion_links_to_the_tier1_source() {
         .unwrap();
     assert!(own.iter().all(|b| b.tier == 1), "main list is Tier 1 only");
 }
+
+#[tokio::test]
+async fn discovery_seeds_and_record_backlink() {
+    let Some(pool) = pool().await else { return };
+    let user = users::create(
+        &pool,
+        Uuid::now_v7(),
+        &format!("{}@x.com", uniq("u")),
+        "hash",
+        "U",
+    )
+    .await
+    .unwrap();
+    let org = orgs::create_with_owner(&pool, Uuid::now_v7(), "Acme", &uniq("acme"), user.id)
+        .await
+        .unwrap();
+    let scope = authorize_org(&pool, user.id, org.id).await.unwrap();
+    let project = projects::create(
+        &pool,
+        &scope,
+        Uuid::now_v7(),
+        "Site",
+        "mysite.com",
+        7 * 24 * 3600,
+        None,
+    )
+    .await
+    .unwrap();
+
+    // Seed create is idempotent per (project, domain).
+    let s1 = db::repositories::seeds::create(
+        &pool,
+        &scope,
+        Uuid::now_v7(),
+        project.id,
+        "ref.com",
+        "gsc",
+    )
+    .await
+    .unwrap();
+    assert!(s1.is_some(), "first seed created");
+    let s2 = db::repositories::seeds::create(
+        &pool,
+        &scope,
+        Uuid::now_v7(),
+        project.id,
+        "ref.com",
+        "gsc",
+    )
+    .await
+    .unwrap();
+    assert!(s2.is_none(), "duplicate seed skipped");
+
+    // record_backlink inserts an own Tier-1 backlink, deduped.
+    let new1 = db::repositories::seeds::record_backlink(
+        &pool,
+        org.id,
+        project.id,
+        "https://ref.com/a",
+        "https://mysite.com/p",
+        Some("hi"),
+        "dofollow",
+    )
+    .await
+    .unwrap();
+    assert!(new1);
+    let new2 = db::repositories::seeds::record_backlink(
+        &pool,
+        org.id,
+        project.id,
+        "https://ref.com/a",
+        "https://mysite.com/p",
+        Some("hi"),
+        "dofollow",
+    )
+    .await
+    .unwrap();
+    assert!(!new2, "same discovered relation is not re-created");
+
+    let own = backlinks::search(&pool, &scope, &backlinks::BacklinkFilter::default(), 200)
+        .await
+        .unwrap();
+    assert!(
+        own.iter()
+            .any(|b| b.source_domain == "ref.com" && b.tier == 1 && b.subject == "own"),
+        "discovered backlink shows in the own Tier-1 list"
+    );
+
+    // Claim + finish lifecycle.
+    let sid = s1.unwrap().id;
+    let due = db::repositories::seeds::claim_due(&pool, 50).await.unwrap();
+    assert!(due.iter().any(|d| d.id == sid), "our seed is claimable");
+    db::repositories::seeds::finish(&pool, sid, 3, 1, 3600, None)
+        .await
+        .unwrap();
+}

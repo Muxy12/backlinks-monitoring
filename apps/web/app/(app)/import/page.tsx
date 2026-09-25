@@ -8,6 +8,7 @@ import {
   type ImportResult,
   type MeResponse,
   type ProjectView,
+  type SeedView,
 } from "@/lib/api";
 import "@/app/auth.css";
 import "../dashboard/dashboard.css";
@@ -27,6 +28,9 @@ export default function ImportPage() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [loading, setLoading] = useState(true);
+  const [seedText, setSeedText] = useState("");
+  const [seeds, setSeeds] = useState<SeedView[]>([]);
+  const [seedMsg, setSeedMsg] = useState<string | null>(null);
 
   useEffect(() => {
     api.me().then((res) => {
@@ -51,6 +55,36 @@ export default function ImportPage() {
   useEffect(() => {
     if (orgId) void loadProjects(orgId);
   }, [orgId, loadProjects]);
+
+  useEffect(() => {
+    if (orgId && projectId) {
+      orgApi.discoverySeeds(orgId, projectId).then((r) => {
+        if (r.ok) setSeeds(r.data);
+      });
+    }
+  }, [orgId, projectId]);
+
+  async function addSeeds() {
+    if (!orgId || !projectId) return;
+    const domains = seedText
+      .split(/\r?\n/)
+      .map((l) => (l.split(/[,\t]/)[0] ?? "").trim().replace(/^"|"$/g, ""))
+      .filter(Boolean)
+      .filter((d) => !/^(site|top linking sites|domain|linking sites)$/i.test(d));
+    if (domains.length === 0) {
+      setSeedMsg("Paste domains, or a GSC 'Top linking sites' export (first column).");
+      return;
+    }
+    const res = await orgApi.importSeeds(orgId, projectId, domains, "gsc");
+    if (!res.ok) {
+      setSeedMsg(res.detail || "Import failed.");
+      return;
+    }
+    setSeedMsg(`Added ${res.data.added} (${res.data.skipped} skipped). The crawler will expand them into real backlinks.`);
+    setSeedText("");
+    const s = await orgApi.discoverySeeds(orgId, projectId);
+    if (s.ok) setSeeds(s.data);
+  }
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
@@ -94,6 +128,7 @@ export default function ImportPage() {
       ) : projects.length === 0 ? (
         <p className="muted">Create a project before importing.</p>
       ) : (
+        <>
         <div className="ops-grid">
           <section className="panel">
             <div className="panel-head"><h2>Upload</h2></div>
@@ -160,6 +195,44 @@ export default function ImportPage() {
             )}
           </section>
         </div>
+
+        <section className="panel" style={{ marginTop: 16 }}>
+          <div className="panel-head">
+            <h2>Discover from referring domains</h2>
+          </div>
+          <p className="muted" style={{ marginBottom: 10 }}>
+            Paste referring <b>domains</b> (one per line) — or a Google Search Console
+            “Top linking sites” export (first column). Backlio crawls each domain (SSRF-safe,
+            bounded) to find the actual pages that link to your site and records them.
+          </p>
+          <textarea
+            className="csv-area"
+            rows={6}
+            value={seedText}
+            onChange={(e) => setSeedText(e.target.value)}
+            placeholder={"forbes.com\ntechcrunch.com\nsomeblog.com"}
+          />
+          <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 8 }}>
+            <button className="btn primary" onClick={() => void addSeeds()}>Add &amp; crawl</button>
+            {seedMsg && <span className="muted">{seedMsg}</span>}
+          </div>
+          {seeds.length > 0 && (
+            <table className="bl-table" style={{ marginTop: 14 }}>
+              <thead><tr><th>Domain</th><th>Status</th><th>Pages</th><th>Backlinks</th></tr></thead>
+              <tbody>
+                {seeds.map((s) => (
+                  <tr key={s.id}>
+                    <td className="mono">{s.normalized_domain}</td>
+                    <td>{s.status}</td>
+                    <td className="mono">{s.pages_crawled}</td>
+                    <td className="mono">{s.backlinks_found}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </section>
+        </>
       )}
     </main>
   );

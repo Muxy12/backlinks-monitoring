@@ -178,6 +178,10 @@ pub fn app(state: AppState) -> Router {
             get(routes::graph_routes::backlink_graph),
         )
         .route(
+            "/v1/organizations/{org_id}/projects/{project_id}/discovery/seeds",
+            get(routes::discovery_routes::list_seeds).post(routes::discovery_routes::import_seeds),
+        )
+        .route(
             "/v1/organizations/{org_id}/warranties/expiring",
             get(routes::resource_routes::expiring_warranties),
         )

@@ -132,6 +132,25 @@ pub struct Backlink {
     pub parent_backlink_id: Option<Uuid>,
 }
 
+/// A referring domain queued for expansion-crawl discovery (spec §21).
+#[derive(Debug, Clone, FromRow)]
+pub struct DiscoverySeed {
+    pub id: Uuid,
+    pub organization_id: Uuid,
+    pub project_id: Uuid,
+    pub domain: String,
+    pub normalized_domain: String,
+    pub source: String,
+    pub status: String,
+    pub pages_crawled: i32,
+    pub backlinks_found: i32,
+    pub last_crawled_at: Option<DateTime<Utc>>,
+    pub next_crawl_at: DateTime<Utc>,
+    pub last_error: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
 /// A competitor domain tracked for a project (backlink-intelligence §1).
 #[derive(Debug, Clone, FromRow)]
 pub struct ProjectCompetitor {
