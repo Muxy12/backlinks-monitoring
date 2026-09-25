@@ -150,10 +150,14 @@ pub fn transition(
             } else if previous_status == BacklinkStatus::Lost {
                 // Already confirmed lost — stay lost, don't demote to suspected.
                 BacklinkStatus::Lost
-            } else {
-                // Page fetched OK, link absent, but not yet confirmed (§24): a
-                // distinct, honest state — no LOST event yet.
+            } else if current.last_seen_at.is_some() {
+                // We had seen it present before; a fetched-OK absence is now a
+                // distinct, honest "maybe gone" state (§24) — no LOST event yet.
                 BacklinkStatus::SuspectedLost
+            } else {
+                // Never observed present yet (e.g. still pending): hold the
+                // current status rather than claim it was lost.
+                previous_status
             }
         }
 

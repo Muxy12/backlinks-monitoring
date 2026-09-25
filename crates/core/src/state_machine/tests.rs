@@ -81,10 +81,12 @@ fn stable_live_reschedules_at_base_interval() {
 #[test]
 fn single_absent_does_not_lose_a_live_link() {
     let t = transition(&live_state(), &Observation::Absent, now(), &policy());
+    // One absence is SUSPECTED, never confirmed LOST (§24) — the guarantee that
+    // matters is that no BacklinkLost event fires and the link is not `lost`.
     assert_eq!(
         t.status,
-        BacklinkStatus::Live,
-        "status held after ONE absence"
+        BacklinkStatus::SuspectedLost,
+        "one absence -> suspected, not lost"
     );
     assert_eq!(t.consecutive_failure_count, 1);
     assert!(!has_event(&t, EventType::BacklinkLost));
@@ -96,7 +98,7 @@ fn single_absent_does_not_lose_a_live_link() {
 fn two_consecutive_absent_confirms_lost() {
     let mut s = live_state();
     let t1 = transition(&s, &Observation::Absent, now(), &policy());
-    assert_eq!(t1.status, BacklinkStatus::Live);
+    assert_eq!(t1.status, BacklinkStatus::SuspectedLost);
 
     s.status = t1.status;
     s.consecutive_failure_count = t1.consecutive_failure_count;
