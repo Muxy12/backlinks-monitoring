@@ -1053,6 +1053,43 @@ pub async fn dashboard(
     }))
 }
 
+#[derive(Debug, serde::Deserialize)]
+pub struct EventsSummaryQuery {
+    pub days: Option<i64>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct EventsSummaryView {
+    pub since: String,
+    pub days: i64,
+    /// event_type -> count over the window.
+    pub counts: std::collections::BTreeMap<String, i64>,
+}
+
+/// Change counts over a time window (default 30 days): new/lost/recovered,
+/// follow flips, anchor/target changes, … — the dashboard "evolution" view.
+pub async fn events_summary(
+    State(state): State<AppState>,
+    Path(org_id): Path<Uuid>,
+    jar: CookieJar,
+    Query(q): Query<EventsSummaryQuery>,
+) -> Result<Json<EventsSummaryView>, ApiError> {
+    let (user, _s) = current(&state, &jar).await?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    let days = q.days.unwrap_or(30).clamp(1, 365);
+    let since = chrono::Utc::now() - chrono::Duration::days(days);
+    let rows = db::repositories::dashboard::event_counts(&state.pool, &scope, since).await?;
+    let mut counts = std::collections::BTreeMap::new();
+    for (t, n) in rows {
+        counts.insert(t, n);
+    }
+    Ok(Json(EventsSummaryView {
+        since: since.to_rfc3339(),
+        days,
+        counts,
+    }))
+}
+
 // ─── Warranty attention (§32) ─────────────────────────────────────────────────
 #[derive(Debug, Deserialize)]
 pub struct ExpiringWarrantyQuery {

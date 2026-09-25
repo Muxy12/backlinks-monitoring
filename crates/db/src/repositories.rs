@@ -1382,6 +1382,23 @@ pub mod dashboard {
         Ok(row)
     }
 
+    /// (event_type, count) over a time window — powers the "what changed
+    /// recently" dashboard view (§34). Reads the append-only events table.
+    pub async fn event_counts(
+        pool: &PgPool,
+        scope: &OrgScope,
+        since: DateTime<Utc>,
+    ) -> Result<Vec<(String, i64)>, DbError> {
+        Ok(sqlx::query_as::<_, (String, i64)>(
+            "SELECT event_type::text, count(*) FROM backlink_events \
+             WHERE organization_id = $1 AND detected_at >= $2 GROUP BY event_type",
+        )
+        .bind(scope.organization_id())
+        .bind(since)
+        .fetch_all(pool)
+        .await?)
+    }
+
     /// (currency, sum(cost)) for links needing attention — Value at Risk (§33).
     /// Grouped by currency; never summed across (that would be a lie).
     pub async fn value_at_risk(

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, type CSSProperties, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { api, orgApi, backlinksExportUrl, type BacklinkView, type ClientView, type DashboardResponse, type EventView, type MeResponse, type NotificationsResponse, type OccurrenceView, type ProjectView, type TagView } from "@/lib/api";
+import { api, orgApi, backlinksExportUrl, type BacklinkView, type ClientView, type DashboardResponse, type EventsSummary, type EventView, type MeResponse, type NotificationsResponse, type OccurrenceView, type ProjectView, type TagView } from "@/lib/api";
 import { statusColor, statusLabel } from "@/lib/status";
 import "@/app/auth.css";
 import "./dashboard.css";
@@ -12,6 +12,7 @@ export default function DashboardPage() {
   const [me, setMe] = useState<MeResponse | null>(null);
   const [orgId, setOrgId] = useState<string | null>(null);
   const [summary, setSummary] = useState<DashboardResponse | null>(null);
+  const [evsum, setEvsum] = useState<EventsSummary | null>(null);
   const [projects, setProjects] = useState<ProjectView[]>([]);
   const [projectId, setProjectId] = useState<string | null>(null);
   const [backlinks, setBacklinks] = useState<BacklinkView[]>([]);
@@ -67,11 +68,13 @@ export default function DashboardPage() {
 
   const loadOrg = useCallback(
     async (org: string) => {
-      const [dash, projs, warr] = await Promise.all([
+      const [dash, projs, warr, evs] = await Promise.all([
         orgApi.dashboard(org),
         orgApi.projects(org),
         orgApi.expiringWarranties(org),
+        orgApi.eventsSummary(org, 30),
       ]);
+      if (evs.ok) setEvsum(evs.data);
       if (dash.ok) setSummary(dash.data);
       if (projs.ok) {
         setProjects(projs.data);
@@ -322,6 +325,19 @@ export default function DashboardPage() {
               <span><b>{summary.referring_domains}</b> referring domains</span>
               <span><b>{summary.referring_pages}</b> referring pages</span>
               <span><b>{summary.occurrences}</b> occurrences</span>
+            </div>
+          )}
+
+          {evsum && Object.keys(evsum.counts).length > 0 && (
+            <div className="substats evo">
+              <span className="evo-label">Last {evsum.days} days:</span>
+              {evsum.counts["backlink_found"] ? <span><b>+{evsum.counts["backlink_found"]}</b> found</span> : null}
+              {evsum.counts["backlink_lost"] ? <span><b>{evsum.counts["backlink_lost"]}</b> lost</span> : null}
+              {evsum.counts["backlink_restored"] ? <span><b>{evsum.counts["backlink_restored"]}</b> recovered</span> : null}
+              {evsum.counts["dofollow_to_nofollow"] ? <span><b>{evsum.counts["dofollow_to_nofollow"]}</b> → nofollow</span> : null}
+              {evsum.counts["anchor_changed"] ? <span><b>{evsum.counts["anchor_changed"]}</b> anchor changes</span> : null}
+              {evsum.counts["target_changed"] ? <span><b>{evsum.counts["target_changed"]}</b> target changes</span> : null}
+              {evsum.counts["link_moved"] ? <span><b>{evsum.counts["link_moved"]}</b> moved</span> : null}
             </div>
           )}
 

@@ -341,3 +341,7 @@
 .occ-anchor { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .occ-place { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted-2); flex: none; }
 .occ-ctx { margin-top: 7px; font-size: 12px; font-style: italic; line-height: 1.4; }
+
+/* Evolution strip (events over a window) */
+.substats.evo { margin-top: -12px; }
+.evo-label { color: var(--muted-2); font-weight: 600; }

@@ -91,6 +91,12 @@ export interface DashboardResponse {
   occurrences: number;
 }
 
+export interface EventsSummary {
+  since: string;
+  days: number;
+  counts: Record<string, number>;
+}
+
 export interface OccurrenceView {
   id: string;
   fingerprint: string;
@@ -323,6 +329,8 @@ export const orgApi = {
     request<EventView[]>(`/v1/organizations/${org}/backlinks/${id}/events`),
   backlinkOccurrences: (org: string, id: string) =>
     request<OccurrenceView[]>(`/v1/organizations/${org}/backlinks/${id}/occurrences`),
+  eventsSummary: (org: string, days = 30) =>
+    request<EventsSummary>(`/v1/organizations/${org}/events/summary?days=${days}`),
   archiveBacklink: (org: string, id: string) =>
     request<null>(`/v1/organizations/${org}/backlinks/${id}/archive`, {
       method: "POST",

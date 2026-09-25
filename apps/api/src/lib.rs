@@ -141,6 +141,10 @@ pub fn app(state: AppState) -> Router {
             get(routes::resource_routes::dashboard),
         )
         .route(
+            "/v1/organizations/{org_id}/events/summary",
+            get(routes::resource_routes::events_summary),
+        )
+        .route(
             "/v1/organizations/{org_id}/warranties/expiring",
             get(routes::resource_routes::expiring_warranties),
         )
