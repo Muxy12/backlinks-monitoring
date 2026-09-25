@@ -174,6 +174,10 @@ pub fn app(state: AppState) -> Router {
             get(routes::competitor_routes::backlink_gap),
         )
         .route(
+            "/v1/organizations/{org_id}/projects/{project_id}/backlink-graph",
+            get(routes::graph_routes::backlink_graph),
+        )
+        .route(
             "/v1/organizations/{org_id}/warranties/expiring",
             get(routes::resource_routes::expiring_warranties),
         )

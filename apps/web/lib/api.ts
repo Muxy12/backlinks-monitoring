@@ -91,6 +91,28 @@ export interface DashboardResponse {
   occurrences: number;
 }
 
+export interface GraphNode {
+  id: string;
+  label: string;
+  domain: string;
+  tier: number;
+  type: string;
+}
+export interface GraphEdge {
+  source: string;
+  target: string;
+  backlink_id: string;
+  tier: number;
+  status: string;
+}
+export interface GraphResponse {
+  view: string;
+  root: string;
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+  truncated: boolean;
+}
+
 export interface CompetitorView {
   id: string;
   project_id: string;
@@ -369,6 +391,10 @@ export const orgApi = {
     }),
   competitorBacklinks: (org: string, competitorId: string) =>
     request<BacklinkView[]>(`/v1/organizations/${org}/competitors/${competitorId}/backlinks`),
+  backlinkGraph: (org: string, projectId: string, view: "domain" | "url" = "domain", limit = 2000) =>
+    request<GraphResponse>(
+      `/v1/organizations/${org}/projects/${projectId}/backlink-graph?view=${view}&limit=${limit}`,
+    ),
   backlinkGap: (org: string, projectId: string, min = 1) =>
     request<{ source_domain: string; competitor_count: number }[]>(
       `/v1/organizations/${org}/projects/${projectId}/backlink-gap?min=${min}`,
