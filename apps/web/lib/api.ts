@@ -405,6 +405,21 @@ export const orgApi = {
     request<BacklinkView[]>(`/v1/organizations/${org}/competitors/${competitorId}/backlinks`),
   discoverySeeds: (org: string, projectId: string) =>
     request<SeedView[]>(`/v1/organizations/${org}/projects/${projectId}/discovery/seeds`),
+  runDiscovery: (
+    org: string,
+    projectId: string,
+    provider: string,
+    competitorId?: string,
+    limit = 200,
+  ) =>
+    request<{ provider: string; discovered: number; new: number }>(
+      `/v1/organizations/${org}/projects/${projectId}/discovery/run`,
+      {
+        method: "POST",
+        headers: csrfHeader(),
+        body: JSON.stringify({ provider, competitor_id: competitorId ?? null, limit }),
+      },
+    ),
   importSeeds: (org: string, projectId: string, domains: string[], source = "gsc") =>
     request<{ added: number; skipped: number }>(
       `/v1/organizations/${org}/projects/${projectId}/discovery/seeds`,

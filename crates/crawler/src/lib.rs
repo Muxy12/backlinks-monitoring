@@ -12,6 +12,7 @@
 //! layer is the I/O around it.
 
 pub mod config;
+pub mod discovery;
 pub mod fetch;
 pub mod matching;
 pub mod parse;

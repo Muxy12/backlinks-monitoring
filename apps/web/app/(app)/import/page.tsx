@@ -86,6 +86,17 @@ export default function ImportPage() {
     if (s.ok) setSeeds(s.data);
   }
 
+  async function runProvider(provider: string) {
+    if (!orgId || !projectId) return;
+    setSeedMsg(`Running ${provider}…`);
+    const res = await orgApi.runDiscovery(orgId, projectId, provider);
+    if (!res.ok) {
+      setSeedMsg(res.detail || `${provider} failed`);
+      return;
+    }
+    setSeedMsg(`${provider}: ${res.data.discovered} found, ${res.data.new} new backlinks.`);
+  }
+
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (f) setCsv(await f.text());
@@ -212,8 +223,10 @@ export default function ImportPage() {
             onChange={(e) => setSeedText(e.target.value)}
             placeholder={"forbes.com\ntechcrunch.com\nsomeblog.com"}
           />
-          <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 8 }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 8, flexWrap: "wrap" }}>
             <button className="btn primary" onClick={() => void addSeeds()}>Add &amp; crawl</button>
+            <button className="btn sm" onClick={() => void runProvider("bing")}>Discover via Bing (free)</button>
+            <button className="btn sm" onClick={() => void runProvider("dataforseo")}>Discover via DataForSEO</button>
             {seedMsg && <span className="muted">{seedMsg}</span>}
           </div>
           {seeds.length > 0 && (

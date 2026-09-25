@@ -182,6 +182,10 @@ pub fn app(state: AppState) -> Router {
             get(routes::discovery_routes::list_seeds).post(routes::discovery_routes::import_seeds),
         )
         .route(
+            "/v1/organizations/{org_id}/projects/{project_id}/discovery/run",
+            post(routes::discovery_routes::run_discovery),
+        )
+        .route(
             "/v1/organizations/{org_id}/warranties/expiring",
             get(routes::resource_routes::expiring_warranties),
         )

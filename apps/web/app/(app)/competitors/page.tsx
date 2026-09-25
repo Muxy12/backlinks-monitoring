@@ -107,6 +107,18 @@ export default function CompetitorsPage() {
     }
   }
 
+  async function discoverCompetitor() {
+    if (!orgId || !projectId || !selected) return;
+    setImportMsg("Running DataForSEO…");
+    const res = await orgApi.runDiscovery(orgId, projectId, "dataforseo", selected.id);
+    if (!res.ok) {
+      setImportMsg(res.detail || "DataForSEO failed (is it configured?)");
+      return;
+    }
+    setImportMsg(`DataForSEO: ${res.data.discovered} found, ${res.data.new} new.`);
+    await openCompetitor(selected);
+  }
+
   async function runImport() {
     if (!orgId || !selected) return;
     const rows = csv
@@ -212,8 +224,9 @@ export default function CompetitorsPage() {
                     onChange={(e) => setCsv(e.target.value)}
                     placeholder={`https://news.com/post,https://${selected.normalized_domain}/page,great tool,dofollow`}
                   />
-                  <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 8 }}>
+                  <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 8, flexWrap: "wrap" }}>
                     <button className="btn primary" onClick={() => void runImport()}>Import</button>
+                    <button className="btn sm" onClick={() => void discoverCompetitor()}>Discover via DataForSEO</button>
                     {importMsg && <span className="muted">{importMsg}</span>}
                   </div>
                 </div>

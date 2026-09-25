@@ -11,7 +11,7 @@ use axum::http::HeaderMap;
 use axum_extra::extract::cookie::CookieJar;
 use common::Role;
 use db::authorize_org;
-use db::repositories::seeds;
+use db::repositories::{competitors, projects, seeds};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -98,4 +98,98 @@ pub async fn import_seeds(
         }
     }
     Ok(Json(ImportSeedsResult { added, skipped }))
+}
+
+#[derive(Deserialize)]
+pub struct RunDiscoveryBody {
+    pub provider: String,
+    /// When set, discover for this competitor; otherwise for the project's site.
+    pub competitor_id: Option<Uuid>,
+    pub limit: Option<usize>,
+}
+
+#[derive(Serialize)]
+pub struct RunDiscoveryResult {
+    pub provider: String,
+    pub discovered: usize,
+    pub new: usize,
+}
+
+/// Run an external discovery provider (spec §21). Providers are gated by env
+/// secrets — an unconfigured provider returns 400 rather than calling anything.
+pub async fn run_discovery(
+    State(state): State<AppState>,
+    Path((org_id, project_id)): Path<(Uuid, Uuid)>,
+    jar: CookieJar,
+    headers: HeaderMap,
+    Json(body): Json<RunDiscoveryBody>,
+) -> Result<Json<RunDiscoveryResult>, ApiError> {
+    let (user, session) = current(&state, &jar).await?;
+    check_csrf(&jar, &headers, &session)?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Member)?;
+
+    let provider = crawler::discovery::from_env(&body.provider).ok_or_else(|| {
+        ApiError::Validation(format!(
+            "discovery provider '{}' is not configured (set its API secrets)",
+            body.provider
+        ))
+    })?;
+    let limit = body.limit.unwrap_or(200).min(1000);
+
+    // Target: a competitor's domain, or the project's own domain.
+    let competitor = match body.competitor_id {
+        Some(cid) => Some(competitors::get(&state.pool, &scope, cid).await?),
+        None => None,
+    };
+    let target_domain = match &competitor {
+        Some(c) => c.normalized_domain.clone(),
+        None => projects::get(&state.pool, &scope, project_id).await?.domain,
+    };
+
+    let links = provider
+        .discover(&target_domain, limit)
+        .await
+        .map_err(|e| {
+            tracing::warn!(provider = %body.provider, error = %e, "discovery provider failed");
+            ApiError::Internal
+        })?;
+    let discovered = links.len();
+    let mut new = 0usize;
+    for l in links {
+        let rel = if l.dofollow { "dofollow" } else { "nofollow" };
+        let is_new = match &competitor {
+            Some(c) => competitors::record_backlink(
+                &state.pool,
+                &scope,
+                c,
+                &l.source_url,
+                &l.target_url,
+                l.anchor.as_deref(),
+                rel,
+            )
+            .await
+            .map(|(_, n)| n)
+            .unwrap_or(false),
+            None => seeds::record_backlink(
+                &state.pool,
+                org_id,
+                project_id,
+                &l.source_url,
+                &l.target_url,
+                l.anchor.as_deref(),
+                rel,
+            )
+            .await
+            .unwrap_or(false),
+        };
+        if is_new {
+            new += 1;
+        }
+    }
+    Ok(Json(RunDiscoveryResult {
+        provider: body.provider,
+        discovered,
+        new,
+    }))
 }
