@@ -145,6 +145,23 @@ pub fn app(state: AppState) -> Router {
             get(routes::resource_routes::events_summary),
         )
         .route(
+            "/v1/organizations/{org_id}/projects/{project_id}/competitors",
+            get(routes::competitor_routes::list_competitors)
+                .post(routes::competitor_routes::create_competitor),
+        )
+        .route(
+            "/v1/organizations/{org_id}/competitors/{competitor_id}",
+            axum::routing::delete(routes::competitor_routes::delete_competitor),
+        )
+        .route(
+            "/v1/organizations/{org_id}/competitors/{competitor_id}/backlinks",
+            get(routes::competitor_routes::list_competitor_backlinks),
+        )
+        .route(
+            "/v1/organizations/{org_id}/competitors/{competitor_id}/backlinks/import",
+            post(routes::competitor_routes::import_competitor_backlinks),
+        )
+        .route(
             "/v1/organizations/{org_id}/warranties/expiring",
             get(routes::resource_routes::expiring_warranties),
         )

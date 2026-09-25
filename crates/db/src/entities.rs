@@ -121,6 +121,25 @@ pub struct Backlink {
     pub image_alt: Option<String>,
     pub lost_at: Option<DateTime<Utc>>,
     pub target_final_url: Option<String>,
+    /// "own" (the customer's link) or "competitor" (a competitor's link).
+    pub subject: String,
+    /// When `subject = competitor`, which competitor this belongs to.
+    pub competitor_id: Option<Uuid>,
+}
+
+/// A competitor domain tracked for a project (backlink-intelligence §1).
+#[derive(Debug, Clone, FromRow)]
+pub struct ProjectCompetitor {
+    pub id: Uuid,
+    pub organization_id: Uuid,
+    pub project_id: Uuid,
+    pub domain: String,
+    pub normalized_domain: String,
+    pub enabled: bool,
+    pub first_scanned_at: Option<DateTime<Utc>>,
+    pub last_scanned_at: Option<DateTime<Utc>>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 /// One physical occurrence of a backlink on its source page (docs/06 §3.4).

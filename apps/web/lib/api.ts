@@ -91,6 +91,16 @@ export interface DashboardResponse {
   occurrences: number;
 }
 
+export interface CompetitorView {
+  id: string;
+  project_id: string;
+  domain: string;
+  normalized_domain: string;
+  enabled: boolean;
+  first_scanned_at: string | null;
+  last_scanned_at: string | null;
+}
+
 export interface EventsSummary {
   since: string;
   days: number;
@@ -331,6 +341,30 @@ export const orgApi = {
     request<OccurrenceView[]>(`/v1/organizations/${org}/backlinks/${id}/occurrences`),
   eventsSummary: (org: string, days = 30) =>
     request<EventsSummary>(`/v1/organizations/${org}/events/summary?days=${days}`),
+  competitors: (org: string, projectId: string) =>
+    request<CompetitorView[]>(`/v1/organizations/${org}/projects/${projectId}/competitors`),
+  createCompetitor: (org: string, projectId: string, domain: string) =>
+    request<CompetitorView>(`/v1/organizations/${org}/projects/${projectId}/competitors`, {
+      method: "POST",
+      headers: csrfHeader(),
+      body: JSON.stringify({ domain }),
+    }),
+  deleteCompetitor: (org: string, competitorId: string) =>
+    request<null>(`/v1/organizations/${org}/competitors/${competitorId}`, {
+      method: "DELETE",
+      headers: csrfHeader(),
+    }),
+  competitorBacklinks: (org: string, competitorId: string) =>
+    request<BacklinkView[]>(`/v1/organizations/${org}/competitors/${competitorId}/backlinks`),
+  importCompetitorBacklinks: (
+    org: string,
+    competitorId: string,
+    rows: { source_url: string; target_url: string; anchor?: string; rel?: string }[],
+  ) =>
+    request<{ imported: number; new: number; skipped: number }>(
+      `/v1/organizations/${org}/competitors/${competitorId}/backlinks/import`,
+      { method: "POST", headers: csrfHeader(), body: JSON.stringify({ rows }) },
+    ),
   archiveBacklink: (org: string, id: string) =>
     request<null>(`/v1/organizations/${org}/backlinks/${id}/archive`, {
       method: "POST",

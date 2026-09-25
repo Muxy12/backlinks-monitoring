@@ -451,7 +451,8 @@ pub mod backlinks {
              created_at, updated_at, next_check_at, last_checked_at, \
              detected_anchor_text, detected_target_url, detected_rel_attributes, \
              detected_is_dofollow, source_http_status, target_http_status, \
-             first_checked_at, last_seen_at, link_type, image_alt, lost_at, target_final_url"
+             first_checked_at, last_seen_at, link_type, image_alt, lost_at, target_final_url, \
+             subject, competitor_id"
         };
     }
 
@@ -622,7 +623,7 @@ pub mod backlinks {
             " FROM backlinks WHERE organization_id = "
         ));
         qb.push_bind(scope.organization_id());
-        qb.push(" AND archived_at IS NULL");
+        qb.push(" AND archived_at IS NULL AND subject = 'own'");
 
         if let Some(pid) = filter.project_id {
             qb.push(" AND project_id = ");
@@ -692,7 +693,7 @@ pub mod backlinks {
             " FROM backlinks WHERE organization_id = "
         ));
         qb.push_bind(scope.organization_id());
-        qb.push(" AND archived_at IS NULL");
+        qb.push(" AND archived_at IS NULL AND subject = 'own'");
         if let Some(pid) = project_id {
             qb.push(" AND project_id = ");
             qb.push_bind(pid);
@@ -709,10 +710,33 @@ pub mod backlinks {
         Ok(qb.build_query_as::<Backlink>().fetch_all(pool).await?)
     }
 
+    /// Competitor backlinks for one competitor (subject='competitor'), newest
+    /// first, capped. Tenant-scoped.
+    pub async fn search_competitor(
+        pool: &PgPool,
+        scope: &OrgScope,
+        competitor_id: Uuid,
+        limit: i64,
+    ) -> Result<Vec<Backlink>, DbError> {
+        Ok(sqlx::query_as::<_, Backlink>(concat!(
+            "SELECT ",
+            cols!(),
+            " FROM backlinks WHERE organization_id = $1 AND competitor_id = $2 \
+               AND subject = 'competitor' AND archived_at IS NULL \
+             ORDER BY created_at DESC LIMIT $3"
+        ))
+        .bind(scope.organization_id())
+        .bind(competitor_id)
+        .bind(limit.clamp(1, 500))
+        .fetch_all(pool)
+        .await?)
+    }
+
     /// Count active backlinks in an org — for plan-limit enforcement (§39).
     pub async fn count_active(pool: &PgPool, scope: &OrgScope) -> Result<i64, DbError> {
         let (n,): (i64,) = sqlx::query_as(
-            "SELECT count(*) FROM backlinks WHERE organization_id = $1 AND archived_at IS NULL",
+            "SELECT count(*) FROM backlinks \
+             WHERE organization_id = $1 AND archived_at IS NULL AND subject = 'own'",
         )
         .bind(scope.organization_id())
         .fetch_one(pool)
@@ -1144,6 +1168,235 @@ pub mod link_occurrences {
     }
 }
 
+// ─── Competitors: tracked competitor domains + their backlinks ───────────────
+pub mod competitors {
+    use super::*;
+    use crate::entities::ProjectCompetitor;
+    use backlio_core::{NormalizeOptions, host_of, normalize};
+
+    fn norm_domain(input: &str) -> Option<String> {
+        let url = if input.contains("://") {
+            input.to_string()
+        } else {
+            format!("https://{}", input.trim())
+        };
+        host_of(&normalize(&url, None, NormalizeOptions::default())?)
+    }
+
+    macro_rules! competitor_cols {
+        () => {
+            "id, organization_id, project_id, domain, normalized_domain, \
+             enabled, first_scanned_at, last_scanned_at, created_at, updated_at"
+        };
+    }
+
+    /// Add a competitor to a project (idempotent on (project, normalized_domain)).
+    pub async fn create(
+        pool: &PgPool,
+        scope: &OrgScope,
+        id: Uuid,
+        project_id: Uuid,
+        domain: &str,
+    ) -> Result<ProjectCompetitor, DbError> {
+        let normalized = norm_domain(domain)
+            .ok_or_else(|| DbError::Config("invalid competitor domain".into()))?;
+        let inserted: Option<ProjectCompetitor> = sqlx::query_as::<_, ProjectCompetitor>(concat!(
+            "INSERT INTO project_competitors \
+                (id, organization_id, project_id, domain, normalized_domain) \
+             VALUES ($1,$2,$3,$4,$5) \
+             ON CONFLICT (project_id, normalized_domain) DO NOTHING RETURNING ",
+            competitor_cols!()
+        ))
+        .bind(id)
+        .bind(scope.organization_id())
+        .bind(project_id)
+        .bind(domain.trim())
+        .bind(&normalized)
+        .fetch_optional(pool)
+        .await
+        .map_err(DbError::from_insert)?;
+        if let Some(c) = inserted {
+            return Ok(c);
+        }
+        // Already present — return the existing row.
+        sqlx::query_as::<_, ProjectCompetitor>(concat!(
+            "SELECT ",
+            competitor_cols!(),
+            " FROM project_competitors \
+             WHERE organization_id = $1 AND project_id = $2 AND normalized_domain = $3"
+        ))
+        .bind(scope.organization_id())
+        .bind(project_id)
+        .bind(&normalized)
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_fetch)
+    }
+
+    pub async fn list(
+        pool: &PgPool,
+        scope: &OrgScope,
+        project_id: Uuid,
+    ) -> Result<Vec<ProjectCompetitor>, DbError> {
+        Ok(sqlx::query_as::<_, ProjectCompetitor>(concat!(
+            "SELECT ",
+            competitor_cols!(),
+            " FROM project_competitors \
+             WHERE organization_id = $1 AND project_id = $2 ORDER BY created_at"
+        ))
+        .bind(scope.organization_id())
+        .bind(project_id)
+        .fetch_all(pool)
+        .await?)
+    }
+
+    pub async fn get(
+        pool: &PgPool,
+        scope: &OrgScope,
+        id: Uuid,
+    ) -> Result<ProjectCompetitor, DbError> {
+        sqlx::query_as::<_, ProjectCompetitor>(concat!(
+            "SELECT ",
+            competitor_cols!(),
+            " FROM project_competitors WHERE id = $1 AND organization_id = $2"
+        ))
+        .bind(id)
+        .bind(scope.organization_id())
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_fetch)
+    }
+
+    pub async fn delete(pool: &PgPool, scope: &OrgScope, id: Uuid) -> Result<bool, DbError> {
+        let r =
+            sqlx::query("DELETE FROM project_competitors WHERE id = $1 AND organization_id = $2")
+                .bind(id)
+                .bind(scope.organization_id())
+                .execute(pool)
+                .await?;
+        Ok(r.rows_affected() > 0)
+    }
+
+    /// Ingest one discovered competitor backlink. Returns (backlink_id, is_new).
+    /// On a genuinely new relation it emits competitor_new_backlink and, when
+    /// this is the first backlink seen from that page / domain for the
+    /// competitor, competitor_new_referring_page / _referring_domain — all in one
+    /// transaction so a re-run never double-emits.
+    pub async fn record_backlink(
+        pool: &PgPool,
+        scope: &OrgScope,
+        competitor: &ProjectCompetitor,
+        source_url: &str,
+        target_url: &str,
+        anchor: Option<&str>,
+        rel_type: &str,
+    ) -> Result<(Uuid, bool), DbError> {
+        let opts = NormalizeOptions::default();
+        let source_norm = normalize(source_url, None, opts)
+            .ok_or_else(|| DbError::Config("invalid source_url".into()))?;
+        let target_norm = normalize(target_url, None, opts)
+            .ok_or_else(|| DbError::Config("invalid target_url".into()))?;
+        let source_domain = host_of(&source_norm).unwrap_or_default();
+        let target_domain = host_of(&target_norm).unwrap_or_default();
+        let org = scope.organization_id();
+
+        let mut tx = pool.begin().await?;
+
+        let existing: Option<(Uuid,)> = sqlx::query_as(
+            "SELECT id FROM backlinks WHERE organization_id = $1 AND project_id = $2 \
+               AND subject = 'competitor' AND source_url_normalized = $3 \
+               AND target_url_normalized = $4 AND archived_at IS NULL",
+        )
+        .bind(org)
+        .bind(competitor.project_id)
+        .bind(&source_norm)
+        .bind(&target_norm)
+        .fetch_optional(&mut *tx)
+        .await?;
+        if let Some((id,)) = existing {
+            tx.commit().await?;
+            return Ok((id, false));
+        }
+
+        // Firsts (scoped to this competitor), measured before we insert.
+        let (page_seen,): (i64,) = sqlx::query_as(
+            "SELECT count(*) FROM backlinks WHERE organization_id = $1 AND competitor_id = $2 \
+               AND source_url_normalized = $3 AND archived_at IS NULL",
+        )
+        .bind(org)
+        .bind(competitor.id)
+        .bind(&source_norm)
+        .fetch_one(&mut *tx)
+        .await?;
+        let (domain_seen,): (i64,) = sqlx::query_as(
+            "SELECT count(*) FROM backlinks WHERE organization_id = $1 AND competitor_id = $2 \
+               AND source_domain = $3 AND archived_at IS NULL",
+        )
+        .bind(org)
+        .bind(competitor.id)
+        .bind(&source_domain)
+        .fetch_one(&mut *tx)
+        .await?;
+
+        let id = Uuid::now_v7();
+        sqlx::query(
+            "INSERT INTO backlinks (id, organization_id, project_id, \
+                source_url, source_url_normalized, source_domain, \
+                target_url, target_url_normalized, target_domain, \
+                expected_anchor_text, expected_rel_type, subject, competitor_id, next_check_at) \
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::rel_type,'competitor',$12, now())",
+        )
+        .bind(id)
+        .bind(org)
+        .bind(competitor.project_id)
+        .bind(source_url)
+        .bind(&source_norm)
+        .bind(&source_domain)
+        .bind(target_url)
+        .bind(&target_norm)
+        .bind(&target_domain)
+        .bind(anchor)
+        .bind(rel_type)
+        .bind(competitor.id)
+        .execute(&mut *tx)
+        .await
+        .map_err(DbError::from_insert)?;
+
+        let payload = serde_json::json!({
+            "competitor_id": competitor.id,
+            "competitor_domain": competitor.normalized_domain,
+            "source_domain": source_domain,
+            "source_url": source_url,
+            "target_url": target_url,
+        });
+        let mut to_emit = vec!["competitor_new_backlink"];
+        if domain_seen == 0 {
+            to_emit.push("competitor_new_referring_domain");
+        }
+        if page_seen == 0 {
+            to_emit.push("competitor_new_referring_page");
+        }
+        for et in to_emit {
+            sqlx::query(
+                "INSERT INTO backlink_events \
+                    (id, backlink_id, organization_id, check_id, event_type, previous_data, current_data) \
+                 VALUES ($1,$2,$3,NULL,$4::event_type,NULL,$5)",
+            )
+            .bind(Uuid::now_v7())
+            .bind(id)
+            .bind(org)
+            .bind(et)
+            .bind(&payload)
+            .execute(&mut *tx)
+            .await
+            .map_err(DbError::from_insert)?;
+        }
+
+        tx.commit().await?;
+        Ok((id, true))
+    }
+}
+
 // ─── Job queue: claim / complete / fail / reap (docs/07 §2–§3) ───────────────
 pub mod job_queue {
     use super::*;
@@ -1362,7 +1615,7 @@ pub mod dashboard {
     ) -> Result<Vec<(String, i64)>, DbError> {
         Ok(sqlx::query_as::<_, (String, i64)>(
             "SELECT status::text, count(*) FROM backlinks \
-             WHERE organization_id = $1 AND archived_at IS NULL GROUP BY status",
+             WHERE organization_id = $1 AND archived_at IS NULL AND subject = 'own' GROUP BY status",
         )
         .bind(scope.organization_id())
         .fetch_all(pool)
@@ -1374,7 +1627,7 @@ pub mod dashboard {
     pub async fn referring_counts(pool: &PgPool, scope: &OrgScope) -> Result<(i64, i64), DbError> {
         let row: (i64, i64) = sqlx::query_as(
             "SELECT count(DISTINCT source_domain), count(DISTINCT source_url_normalized) \
-             FROM backlinks WHERE organization_id = $1 AND archived_at IS NULL",
+             FROM backlinks WHERE organization_id = $1 AND archived_at IS NULL AND subject = 'own'",
         )
         .bind(scope.organization_id())
         .fetch_one(pool)
@@ -1407,8 +1660,8 @@ pub mod dashboard {
     ) -> Result<Vec<(String, String)>, DbError> {
         Ok(sqlx::query_as::<_, (String, String)>(
             "SELECT currency, sum(cost)::text FROM backlinks \
-             WHERE organization_id = $1 AND archived_at IS NULL AND cost IS NOT NULL \
-               AND status IN ('lost','changed','nofollow','source_error','target_error','redirected') \
+             WHERE organization_id = $1 AND archived_at IS NULL AND subject = 'own' AND cost IS NOT NULL \
+               AND status IN ('lost','suspected_lost','changed','nofollow','source_error','target_error','redirected') \
              GROUP BY currency",
         )
         .bind(scope.organization_id())
@@ -1423,7 +1676,7 @@ pub mod dashboard {
     ) -> Result<Vec<(String, String)>, DbError> {
         Ok(sqlx::query_as::<_, (String, String)>(
             "SELECT currency, sum(cost)::text FROM backlinks \
-             WHERE organization_id = $1 AND archived_at IS NULL AND cost IS NOT NULL \
+             WHERE organization_id = $1 AND archived_at IS NULL AND subject = 'own' AND cost IS NOT NULL \
              GROUP BY currency",
         )
         .bind(scope.organization_id())
