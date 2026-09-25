@@ -1565,6 +1565,7 @@ pub mod graph {
     use super::*;
 
     /// One edge's raw fields — the API turns these into domain/url graph nodes.
+    #[derive(sqlx::FromRow)]
     pub struct EdgeRow {
         pub id: Uuid,
         pub source_domain: String,
@@ -1584,54 +1585,19 @@ pub mod graph {
         project_id: Uuid,
         limit: i64,
     ) -> Result<Vec<EdgeRow>, DbError> {
-        let rows: Vec<(
-            Uuid,
-            String,
-            String,
-            String,
-            String,
-            i16,
-            Option<Uuid>,
-            String,
-        )> = sqlx::query_as(
+        Ok(sqlx::query_as::<_, EdgeRow>(
             "SELECT id, source_domain, source_url, target_domain, target_url, tier, \
-                    parent_backlink_id, status::text \
-                 FROM backlinks \
-                 WHERE organization_id = $1 AND project_id = $2 AND subject = 'own' \
-                   AND archived_at IS NULL \
-                 ORDER BY tier, created_at LIMIT $3",
+                parent_backlink_id, status::text AS status \
+             FROM backlinks \
+             WHERE organization_id = $1 AND project_id = $2 AND subject = 'own' \
+               AND archived_at IS NULL \
+             ORDER BY tier, created_at LIMIT $3",
         )
         .bind(scope.organization_id())
         .bind(project_id)
         .bind(limit.clamp(1, 20_000))
         .fetch_all(pool)
-        .await?;
-        Ok(rows
-            .into_iter()
-            .map(
-                |(
-                    id,
-                    source_domain,
-                    source_url,
-                    target_domain,
-                    target_url,
-                    tier,
-                    parent,
-                    status,
-                )| {
-                    EdgeRow {
-                        id,
-                        source_domain,
-                        source_url,
-                        target_domain,
-                        target_url,
-                        tier,
-                        parent_backlink_id: parent,
-                        status,
-                    }
-                },
-            )
-            .collect())
+        .await?)
     }
 }
 
