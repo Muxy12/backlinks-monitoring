@@ -1072,7 +1072,7 @@ pub async fn events_summary(
     State(state): State<AppState>,
     Path(org_id): Path<Uuid>,
     jar: CookieJar,
-    Query(q): Query<EventsSummaryQuery>,
+    axum::extract::Query(q): axum::extract::Query<EventsSummaryQuery>,
 ) -> Result<Json<EventsSummaryView>, ApiError> {
     let (user, _s) = current(&state, &jar).await?;
     let scope = authorize_org(&state.pool, user.id, org_id).await?;
