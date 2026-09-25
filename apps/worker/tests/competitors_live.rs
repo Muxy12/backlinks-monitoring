@@ -145,3 +145,95 @@ async fn competitor_ingestion_records_dedups_and_emits_events() {
             .all(|b| b.subject == "competitor" && b.competitor_id == Some(comp.id))
     );
 }
+
+#[tokio::test]
+async fn gap_analysis_finds_opportunity_domains() {
+    let Some(pool) = pool().await else { return };
+    let user = users::create(
+        &pool,
+        Uuid::now_v7(),
+        &format!("{}@x.com", uniq("u")),
+        "hash",
+        "U",
+    )
+    .await
+    .unwrap();
+    let org = orgs::create_with_owner(&pool, Uuid::now_v7(), "Acme", &uniq("acme"), user.id)
+        .await
+        .unwrap();
+    let scope = authorize_org(&pool, user.id, org.id).await.unwrap();
+    let project = projects::create(
+        &pool,
+        &scope,
+        Uuid::now_v7(),
+        "Site",
+        "mysite.com",
+        7 * 24 * 3600,
+        None,
+    )
+    .await
+    .unwrap();
+    let comp = competitors::create(&pool, &scope, Uuid::now_v7(), project.id, "competitor.com")
+        .await
+        .unwrap();
+
+    // Our own backlink from sitez.com.
+    backlinks::create(
+        &pool,
+        &scope,
+        Uuid::now_v7(),
+        backlinks::NewBacklink {
+            project_id: project.id,
+            campaign_id: None,
+            publisher_id: None,
+            source_url: "https://sitez.com/a",
+            target_url: "https://mysite.com/p",
+            expected_anchor_text: None,
+            expected_rel_type: "dofollow",
+            cost: None,
+            currency: None,
+            warranty_type: "none",
+            warranty_value: None,
+            warranty_expiration: None,
+        },
+    )
+    .await
+    .unwrap();
+
+    // Competitor backlinks: sitex (only competitor) and sitez (also links us).
+    competitors::record_backlink(
+        &pool,
+        &scope,
+        &comp,
+        "https://sitex.com/a",
+        "https://competitor.com/p",
+        None,
+        "dofollow",
+    )
+    .await
+    .unwrap();
+    competitors::record_backlink(
+        &pool,
+        &scope,
+        &comp,
+        "https://sitez.com/b",
+        "https://competitor.com/q",
+        None,
+        "dofollow",
+    )
+    .await
+    .unwrap();
+
+    let gap = competitors::gap_analysis(&pool, &scope, project.id, 1, 100)
+        .await
+        .unwrap();
+    let domains: Vec<String> = gap.iter().map(|(d, _)| d.clone()).collect();
+    assert!(
+        domains.contains(&"sitex.com".to_string()),
+        "sitex only links a competitor -> gap"
+    );
+    assert!(
+        !domains.contains(&"sitez.com".to_string()),
+        "sitez also links us -> not a gap"
+    );
+}

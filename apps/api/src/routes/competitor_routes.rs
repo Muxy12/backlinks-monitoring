@@ -111,6 +111,39 @@ pub async fn list_competitor_backlinks(
 }
 
 #[derive(Deserialize)]
+pub struct GapQuery {
+    pub min: Option<i64>,
+}
+
+#[derive(Serialize)]
+pub struct GapRow {
+    pub source_domain: String,
+    pub competitor_count: i64,
+}
+
+/// Backlink gap (§4): domains linking to ≥ `min` competitors but not to us.
+pub async fn backlink_gap(
+    State(state): State<AppState>,
+    Path((org_id, project_id)): Path<(Uuid, Uuid)>,
+    jar: CookieJar,
+    axum::extract::Query(q): axum::extract::Query<GapQuery>,
+) -> Result<Json<Vec<GapRow>>, ApiError> {
+    let (user, _s) = current(&state, &jar).await?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Viewer)?;
+    let rows =
+        competitors::gap_analysis(&state.pool, &scope, project_id, q.min.unwrap_or(1), 500).await?;
+    Ok(Json(
+        rows.into_iter()
+            .map(|(source_domain, competitor_count)| GapRow {
+                source_domain,
+                competitor_count,
+            })
+            .collect(),
+    ))
+}
+
+#[derive(Deserialize)]
 pub struct ImportRow {
     pub source_url: String,
     pub target_url: String,

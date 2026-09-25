@@ -30,6 +30,8 @@ export default function CompetitorsPage() {
   const [cbacklinks, setCbacklinks] = useState<BacklinkView[]>([]);
   const [csv, setCsv] = useState("");
   const [importMsg, setImportMsg] = useState<string | null>(null);
+  const [gap, setGap] = useState<{ source_domain: string; competitor_count: number }[]>([]);
+  const [gapMin, setGapMin] = useState(1);
 
   useEffect(() => {
     api.me().then((res) => {
@@ -61,6 +63,14 @@ export default function CompetitorsPage() {
   useEffect(() => {
     if (orgId && projectId) void loadCompetitors(orgId, projectId);
   }, [orgId, projectId, loadCompetitors]);
+
+  useEffect(() => {
+    if (orgId && projectId) {
+      orgApi.backlinkGap(orgId, projectId, gapMin).then((r) => {
+        if (r.ok) setGap(r.data);
+      });
+    }
+  }, [orgId, projectId, gapMin, competitors]);
 
   async function addCompetitor(e: FormEvent) {
     e.preventDefault();
@@ -135,6 +145,7 @@ export default function CompetitorsPage() {
       {me.organizations.length === 0 ? (
         <p className="muted">Create a workspace first.</p>
       ) : (
+        <>
         <div className="ops-grid">
           <section className="panel">
             <div className="panel-head">
@@ -227,6 +238,34 @@ export default function CompetitorsPage() {
             )}
           </section>
         </div>
+
+        <section className="panel" style={{ marginTop: 16 }}>
+          <div className="panel-head">
+            <h2>Backlink gap</h2>
+            <select value={gapMin} onChange={(e) => setGapMin(Number(e.target.value))}>
+              <option value={1}>Links ≥ 1 competitor</option>
+              <option value={2}>Links ≥ 2 competitors</option>
+              <option value={3}>Links ≥ 3 competitors</option>
+            </select>
+          </div>
+          <p className="muted">Domains that link to your competitors but not to you — outreach opportunities.</p>
+          {gap.length === 0 ? (
+            <p className="muted">No gap domains yet (import competitor backlinks to populate this).</p>
+          ) : (
+            <table className="bl-table">
+              <thead><tr><th>Referring domain</th><th>Competitors linked</th></tr></thead>
+              <tbody>
+                {gap.map((g) => (
+                  <tr key={g.source_domain}>
+                    <td className="mono">{g.source_domain}</td>
+                    <td><b>{g.competitor_count}</b></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </section>
+        </>
       )}
     </main>
   );

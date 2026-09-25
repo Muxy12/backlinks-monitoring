@@ -162,6 +162,10 @@ pub fn app(state: AppState) -> Router {
             post(routes::competitor_routes::import_competitor_backlinks),
         )
         .route(
+            "/v1/organizations/{org_id}/projects/{project_id}/backlink-gap",
+            get(routes::competitor_routes::backlink_gap),
+        )
+        .route(
             "/v1/organizations/{org_id}/warranties/expiring",
             get(routes::resource_routes::expiring_warranties),
         )

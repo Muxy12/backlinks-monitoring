@@ -356,6 +356,10 @@ export const orgApi = {
     }),
   competitorBacklinks: (org: string, competitorId: string) =>
     request<BacklinkView[]>(`/v1/organizations/${org}/competitors/${competitorId}/backlinks`),
+  backlinkGap: (org: string, projectId: string, min = 1) =>
+    request<{ source_domain: string; competitor_count: number }[]>(
+      `/v1/organizations/${org}/projects/${projectId}/backlink-gap?min=${min}`,
+    ),
   importCompetitorBacklinks: (
     org: string,
     competitorId: string,

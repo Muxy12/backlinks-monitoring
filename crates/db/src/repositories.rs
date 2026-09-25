@@ -1277,6 +1277,41 @@ pub mod competitors {
         Ok(r.rows_affected() > 0)
     }
 
+    /// Backlink gap / link intersect (§4): referring domains that link to at
+    /// least `min_competitors` of this project's competitors but NOT to the
+    /// project's own site. These are the opportunity domains. Returns
+    /// (source_domain, competitor_count), strongest first.
+    pub async fn gap_analysis(
+        pool: &PgPool,
+        scope: &OrgScope,
+        project_id: Uuid,
+        min_competitors: i64,
+        limit: i64,
+    ) -> Result<Vec<(String, i64)>, DbError> {
+        Ok(sqlx::query_as::<_, (String, i64)>(
+            "SELECT b.source_domain, count(DISTINCT b.competitor_id) AS competitor_count \
+             FROM backlinks b \
+             JOIN project_competitors pc \
+               ON pc.organization_id = b.organization_id AND pc.id = b.competitor_id \
+             WHERE b.organization_id = $1 AND b.subject = 'competitor' \
+               AND b.archived_at IS NULL AND pc.project_id = $2 \
+               AND b.source_domain NOT IN ( \
+                   SELECT source_domain FROM backlinks \
+                   WHERE organization_id = $1 AND subject = 'own' \
+                     AND project_id = $2 AND archived_at IS NULL) \
+             GROUP BY b.source_domain \
+             HAVING count(DISTINCT b.competitor_id) >= $3 \
+             ORDER BY competitor_count DESC, b.source_domain \
+             LIMIT $4",
+        )
+        .bind(scope.organization_id())
+        .bind(project_id)
+        .bind(min_competitors.max(1))
+        .bind(limit.clamp(1, 1000))
+        .fetch_all(pool)
+        .await?)
+    }
+
     /// Ingest one discovered competitor backlink. Returns (backlink_id, is_new).
     /// On a genuinely new relation it emits competitor_new_backlink and, when
     /// this is the first backlink seen from that page / domain for the
