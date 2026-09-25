@@ -830,6 +830,7 @@ pub struct ListBacklinksQuery {
 const BACKLINK_STATUSES: &[&str] = &[
     "pending",
     "live",
+    "suspected_lost",
     "lost",
     "changed",
     "nofollow",
@@ -1012,6 +1013,7 @@ pub async fn dashboard(
     let mut needs_attention = 0i64;
     const ATTENTION: &[&str] = &[
         "lost",
+        "suspected_lost",
         "changed",
         "nofollow",
         "source_error",

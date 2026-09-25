@@ -1038,6 +1038,32 @@ pub mod link_occurrences {
     ) -> Result<(), DbError> {
         let mut tx = pool.begin().await?;
         for o in occs {
+            // Reliable LINK_MOVED: same occurrence (fingerprint), different region.
+            let existing: Option<(String,)> = sqlx::query_as(
+                "SELECT placement FROM link_occurrences \
+                 WHERE backlink_id = $1 AND fingerprint = $2 AND removed_at IS NULL",
+            )
+            .bind(backlink_id)
+            .bind(&o.fingerprint)
+            .fetch_optional(&mut *tx)
+            .await?;
+            if let Some((old,)) = existing
+                && old != o.placement
+            {
+                sqlx::query(
+                    "INSERT INTO backlink_events (id, backlink_id, organization_id, check_id, \
+                        event_type, previous_data, current_data) \
+                     VALUES ($1,$2,$3,NULL,'link_moved'::event_type,$4,$5)",
+                )
+                .bind(Uuid::now_v7())
+                .bind(backlink_id)
+                .bind(organization_id)
+                .bind(serde_json::Value::String(old))
+                .bind(serde_json::Value::String(o.placement.clone()))
+                .execute(&mut *tx)
+                .await
+                .map_err(DbError::from_insert)?;
+            }
             sqlx::query(
                 "INSERT INTO link_occurrences (id, organization_id, backlink_id, fingerprint, \
                     anchor_text, link_type, image_alt, href_raw, rel_raw, \

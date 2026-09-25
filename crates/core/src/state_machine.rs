@@ -147,8 +147,13 @@ pub fn transition(
                     EventType::BacklinkLost,
                 );
                 BacklinkStatus::Lost
+            } else if previous_status == BacklinkStatus::Lost {
+                // Already confirmed lost — stay lost, don't demote to suspected.
+                BacklinkStatus::Lost
             } else {
-                previous_status // hold public status; SUSPECTED FAILURE is the counter
+                // Page fetched OK, link absent, but not yet confirmed (§24): a
+                // distinct, honest state — no LOST event yet.
+                BacklinkStatus::SuspectedLost
             }
         }
 
@@ -288,17 +293,40 @@ fn apply_present(
         )),
         _ => {}
     }
-    // rel changed without crossing the follow boundary (e.g. ugc -> sponsored).
+    // Granular rel transitions. dofollow<->nofollow is handled above; here we
+    // emit sponsored/ugc added/removed — but only after a first detection, so a
+    // freshly discovered link does not spuriously "add" its attributes.
     let new_rel = d.rel.to_sorted_vec();
-    if !prev.rel_attributes.is_empty()
-        && prev.rel_attributes != new_rel
-        && prev.is_dofollow == Some(d.is_dofollow)
-    {
-        events.push(BacklinkEvent::new(
-            EventType::RelChanged,
-            Some(prev.rel_attributes.join(",")),
-            Some(new_rel.join(",")),
-        ));
+    if prev.is_dofollow.is_some() {
+        let had = |tok: &str| prev.rel_attributes.iter().any(|r| r == tok);
+        let new_spon = d.rel.contains(RelType::Sponsored);
+        let new_ugc = d.rel.contains(RelType::Ugc);
+        if new_spon && !had("sponsored") {
+            events.push(BacklinkEvent::new(
+                EventType::SponsoredAdded,
+                None,
+                Some("sponsored".into()),
+            ));
+        } else if !new_spon && had("sponsored") {
+            events.push(BacklinkEvent::new(
+                EventType::SponsoredRemoved,
+                Some("sponsored".into()),
+                None,
+            ));
+        }
+        if new_ugc && !had("ugc") {
+            events.push(BacklinkEvent::new(
+                EventType::UgcAdded,
+                None,
+                Some("ugc".into()),
+            ));
+        } else if !new_ugc && had("ugc") {
+            events.push(BacklinkEvent::new(
+                EventType::UgcRemoved,
+                Some("ugc".into()),
+                None,
+            ));
+        }
     }
     // Canonical / noindex page signals.
     if prev.canonical != d.canonical {
@@ -366,6 +394,7 @@ fn status_label(s: BacklinkStatus) -> &'static str {
     match s {
         BacklinkStatus::Pending => "pending",
         BacklinkStatus::Live => "live",
+        BacklinkStatus::SuspectedLost => "suspected_lost",
         BacklinkStatus::Lost => "lost",
         BacklinkStatus::Changed => "changed",
         BacklinkStatus::Nofollow => "nofollow",

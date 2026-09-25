@@ -405,3 +405,103 @@ fn absent_is_the_documented_path_to_lost() {
         "lost at exactly the threshold"
     );
 }
+
+// ── Phase C: suspected_lost + granular rel events ─────────────────────────────
+
+fn present_with_rel(anchor: &str, rel: RelSet, dofollow: bool) -> Observation {
+    Observation::Present(Detected {
+        anchor_text: Some(anchor.into()),
+        target_url: Some("https://example.com/x".into()),
+        rel,
+        is_dofollow: dofollow,
+        canonical: None,
+        noindex: false,
+        is_image: false,
+        image_alt: None,
+    })
+}
+
+#[test]
+fn first_absent_is_suspected_then_lost_at_threshold() {
+    let s = live_state();
+    let t1 = transition(&s, &Observation::Absent, now(), &policy());
+    assert_eq!(
+        t1.status,
+        BacklinkStatus::SuspectedLost,
+        "first miss -> suspected"
+    );
+    assert!(
+        !has_event(&t1, EventType::BacklinkLost),
+        "no LOST event yet"
+    );
+
+    let mut s2 = live_state();
+    s2.status = t1.status;
+    s2.consecutive_failure_count = t1.consecutive_failure_count;
+    let t2 = transition(&s2, &Observation::Absent, now(), &policy());
+    assert_eq!(
+        t2.status,
+        BacklinkStatus::Lost,
+        "second confirmed miss -> lost"
+    );
+    assert!(
+        has_event(&t2, EventType::BacklinkLost),
+        "LOST event at confirmation"
+    );
+}
+
+#[test]
+fn lost_recovers_to_live_with_restored_event() {
+    let mut s = live_state();
+    s.status = BacklinkStatus::Lost;
+    let t = transition(&s, &present("seo tools", true), now(), &policy());
+    assert_eq!(t.status, BacklinkStatus::Live);
+    assert!(has_event(&t, EventType::BacklinkRestored));
+}
+
+#[test]
+fn sponsored_added_emits_event() {
+    let mut rel = RelSet::new();
+    rel.insert(RelType::Sponsored);
+    let t = transition(
+        &live_state(),
+        &present_with_rel("seo tools", rel, true),
+        now(),
+        &policy(),
+    );
+    assert!(has_event(&t, EventType::SponsoredAdded));
+}
+
+#[test]
+fn ugc_removed_emits_event() {
+    let mut s = live_state();
+    s.detected.rel_attributes = vec!["ugc".into()];
+    let t = transition(
+        &s,
+        &present_with_rel("seo tools", RelSet::new(), true),
+        now(),
+        &policy(),
+    );
+    assert!(has_event(&t, EventType::UgcRemoved));
+}
+
+#[test]
+fn discovery_does_not_emit_spurious_rel_events() {
+    // A pending link with no prior detection must not "add" sponsored on first sight.
+    let mut s = live_state();
+    s.status = BacklinkStatus::Pending;
+    s.detected = Default::default();
+    let mut rel = RelSet::new();
+    rel.insert(RelType::Sponsored);
+    let t = transition(
+        &s,
+        &present_with_rel("seo tools", rel, true),
+        now(),
+        &policy(),
+    );
+    assert!(
+        !has_event(&t, EventType::SponsoredAdded),
+        "no rel event on first detection"
+    );
+    assert!(has_event(&t, EventType::BacklinkFound));
+}

@@ -45,7 +45,7 @@ export default function DashboardPage() {
     currency: "",
   });
 
-  const STATUSES = ["live", "lost", "changed", "nofollow", "redirected", "source_error", "target_error", "blocked", "pending"];
+  const STATUSES = ["live", "suspected_lost", "lost", "changed", "nofollow", "redirected", "source_error", "target_error", "blocked", "pending"];
 
   useEffect(() => {
     api.me().then((res) => {

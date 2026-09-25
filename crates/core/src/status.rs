@@ -11,6 +11,8 @@ use std::collections::BTreeSet;
 pub enum BacklinkStatus {
     Pending,
     Live,
+    /// Page fetched OK but the link was absent — not yet confirmed lost (§24).
+    SuspectedLost,
     Lost,
     Changed,
     Nofollow,
@@ -32,11 +34,12 @@ impl BacklinkStatus {
     /// ```
     fn rank(self) -> u8 {
         match self {
-            BacklinkStatus::Redirected => 9,
-            BacklinkStatus::Lost => 8,
-            BacklinkStatus::SourceError => 7,
-            BacklinkStatus::TargetError => 6,
-            BacklinkStatus::Changed => 5,
+            BacklinkStatus::Redirected => 10,
+            BacklinkStatus::Lost => 9,
+            BacklinkStatus::SourceError => 8,
+            BacklinkStatus::TargetError => 7,
+            BacklinkStatus::Changed => 6,
+            BacklinkStatus::SuspectedLost => 5,
             BacklinkStatus::Nofollow => 4,
             BacklinkStatus::Blocked => 3,
             BacklinkStatus::Unknown => 2,
@@ -51,6 +54,7 @@ impl BacklinkStatus {
         matches!(
             self,
             BacklinkStatus::Lost
+                | BacklinkStatus::SuspectedLost
                 | BacklinkStatus::Changed
                 | BacklinkStatus::Nofollow
                 | BacklinkStatus::Redirected
@@ -71,6 +75,7 @@ impl BacklinkStatus {
         match self {
             BacklinkStatus::Pending => "pending",
             BacklinkStatus::Live => "live",
+            BacklinkStatus::SuspectedLost => "suspected_lost",
             BacklinkStatus::Lost => "lost",
             BacklinkStatus::Changed => "changed",
             BacklinkStatus::Nofollow => "nofollow",
@@ -87,6 +92,7 @@ impl BacklinkStatus {
         Some(match s {
             "pending" => BacklinkStatus::Pending,
             "live" => BacklinkStatus::Live,
+            "suspected_lost" => BacklinkStatus::SuspectedLost,
             "lost" => BacklinkStatus::Lost,
             "changed" => BacklinkStatus::Changed,
             "nofollow" => BacklinkStatus::Nofollow,

@@ -8,6 +8,7 @@ export function statusColor(status: string): string {
     case "source_error":
     case "target_error":
       return "var(--red)";
+    case "suspected_lost":
     case "changed":
     case "nofollow":
     case "redirected":
