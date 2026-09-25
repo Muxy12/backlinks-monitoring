@@ -29,6 +29,9 @@ pub struct DetectedFields {
     pub is_dofollow: Option<bool>,
     pub canonical: Option<String>,
     pub noindex: bool,
+    /// Link nature carried between checks (docs/06 §3.2).
+    pub is_image: bool,
+    pub image_alt: Option<String>,
 }
 
 /// The current persisted state the machine reads. It does not include the row's
@@ -316,6 +319,8 @@ fn apply_present(
     detected.is_dofollow = Some(d.is_dofollow);
     detected.canonical = d.canonical.clone();
     detected.noindex = d.noindex;
+    detected.is_image = d.is_image;
+    detected.image_alt = d.image_alt.clone();
 
     // Resulting status from expectations, by precedence.
     let mut status = BacklinkStatus::Live;

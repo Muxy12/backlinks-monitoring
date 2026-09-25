@@ -123,6 +123,9 @@ export interface BacklinkView {
   first_checked_at?: string | null;
   last_seen_at?: string | null;
   last_checked_at?: string | null;
+  link_type?: string | null;
+  image_alt?: string | null;
+  lost_at?: string | null;
 }
 
 export interface NotificationItem {

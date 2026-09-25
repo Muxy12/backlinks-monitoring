@@ -117,6 +117,9 @@ pub struct Backlink {
     pub target_http_status: Option<i32>,
     pub first_checked_at: Option<DateTime<Utc>>,
     pub last_seen_at: Option<DateTime<Utc>>,
+    pub link_type: Option<String>,
+    pub image_alt: Option<String>,
+    pub lost_at: Option<DateTime<Utc>>,
 }
 
 /// The fields the state machine reads for one backlink (docs/08). Enum/array

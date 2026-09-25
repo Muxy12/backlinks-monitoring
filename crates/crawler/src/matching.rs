@@ -14,6 +14,8 @@ pub struct LinkMatch {
     pub rel: RelSet,
     /// Already accounts for page-level nofollow (docs/06 §3.3).
     pub is_dofollow: bool,
+    pub is_image: bool,
+    pub image_alt: Option<String>,
     pub position: usize,
 }
 
@@ -41,6 +43,8 @@ pub fn find_matches(
                 anchor_text: link.anchor_text.clone(),
                 rel: link.rel.clone(),
                 is_dofollow: link.rel.is_dofollow(page.robots_nofollow),
+                is_image: link.is_image,
+                image_alt: link.image_alt.clone(),
                 position: link.position,
             });
         }
@@ -76,6 +80,8 @@ pub fn evaluate(
             is_dofollow: m.is_dofollow,
             canonical: page.canonical.clone(),
             noindex: page.robots_noindex,
+            is_image: m.is_image,
+            image_alt: m.image_alt.clone(),
         }),
     }
 }

@@ -320,6 +320,11 @@ pub struct BacklinkView {
     pub first_checked_at: Option<String>,
     pub last_seen_at: Option<String>,
     pub last_checked_at: Option<String>,
+    /// Link nature observed on the last check: "text" | "image" | null.
+    pub link_type: Option<String>,
+    pub image_alt: Option<String>,
+    /// When the link went `lost` (RFC3339), null if currently present.
+    pub lost_at: Option<String>,
 }
 
 impl From<db::entities::Backlink> for BacklinkView {
@@ -363,6 +368,9 @@ impl From<db::entities::Backlink> for BacklinkView {
             first_checked_at: b.first_checked_at.map(|d| d.to_rfc3339()),
             last_seen_at: b.last_seen_at.map(|d| d.to_rfc3339()),
             last_checked_at: b.last_checked_at.map(|d| d.to_rfc3339()),
+            link_type: b.link_type,
+            image_alt: b.image_alt,
+            lost_at: b.lost_at.map(|d| d.to_rfc3339()),
         }
     }
 }

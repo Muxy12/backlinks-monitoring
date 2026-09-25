@@ -26,6 +26,11 @@ pub struct Detected {
     pub canonical: Option<String>,
     /// Source page carries `noindex` (meta robots or `X-Robots-Tag`).
     pub noindex: bool,
+    /// The link's nature: `true` when the anchor wraps only an image (docs/06
+    /// §3.2), `false` for a text link.
+    pub is_image: bool,
+    /// When `is_image`, the image's `alt` (may be empty); `None` for text links.
+    pub image_alt: Option<String>,
 }
 
 /// Why a connection could not be made or completed. We learned nothing about

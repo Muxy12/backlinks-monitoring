@@ -27,6 +27,8 @@ fn live_state() -> BacklinkState {
             is_dofollow: Some(true),
             canonical: None,
             noindex: false,
+            is_image: false,
+            image_alt: None,
         },
         consecutive_failure_count: 0,
         last_seen_at: Some(now() - Duration::days(7)),
@@ -45,6 +47,8 @@ fn present(anchor: &str, dofollow: bool) -> Observation {
         is_dofollow: dofollow,
         canonical: None,
         noindex: false,
+        is_image: false,
+        image_alt: None,
     })
 }
 
@@ -294,6 +298,8 @@ fn noindex_and_canonical_changes_emit_events() {
         is_dofollow: true,
         canonical: Some("https://example.com/other".into()),
         noindex: true,
+        is_image: false,
+        image_alt: None,
     });
     let t = transition(&s, &obs, now(), &policy());
     assert!(has_event(&t, EventType::CanonicalChanged));

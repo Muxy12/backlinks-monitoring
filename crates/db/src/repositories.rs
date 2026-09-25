@@ -451,7 +451,7 @@ pub mod backlinks {
              created_at, updated_at, next_check_at, last_checked_at, \
              detected_anchor_text, detected_target_url, detected_rel_attributes, \
              detected_is_dofollow, source_http_status, target_http_status, \
-             first_checked_at, last_seen_at"
+             first_checked_at, last_seen_at, link_type, image_alt, lost_at"
         };
     }
 
@@ -860,6 +860,9 @@ pub mod monitor {
         pub source_canonical: Option<String>,
         pub source_robots_noindex: bool,
         pub source_http_status: Option<i32>,
+        /// "text" | "image" when a link was detected this cycle, else None.
+        pub link_type: Option<String>,
+        pub image_alt: Option<String>,
     }
 
     /// One check row to append.
@@ -957,7 +960,12 @@ pub mod monitor {
                 detected_is_dofollow = $10, source_canonical = $11, source_robots_noindex = $12, \
                 source_http_status = $13, last_checked_at = now(), \
                 first_checked_at = COALESCE(first_checked_at, now()), \
-                failure_count = failure_count + $14 \
+                failure_count = failure_count + $14, \
+                link_type = $15, image_alt = $16, \
+                lost_at = CASE \
+                    WHEN $2 = 'lost' THEN COALESCE(lost_at, now()) \
+                    WHEN $2 = 'live' THEN NULL \
+                    ELSE lost_at END \
              WHERE id = $1",
         )
         .bind(backlink_id)
@@ -974,6 +982,8 @@ pub mod monitor {
         .bind(transition.source_robots_noindex)
         .bind(transition.source_http_status)
         .bind(if check.found { 0_i32 } else { 1_i32 })
+        .bind(&transition.link_type)
+        .bind(&transition.image_alt)
         .execute(&mut *tx)
         .await
         .map_err(DbError::from_insert)?;

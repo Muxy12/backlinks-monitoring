@@ -93,6 +93,13 @@ pub async fn check_source_group(
             source_canonical: t.detected.canonical.clone(),
             source_robots_noindex: t.detected.noindex,
             source_http_status: meta.source_status,
+            // Link nature only when we actually detected a link this cycle.
+            link_type: t
+                .detected
+                .target_url
+                .as_ref()
+                .map(|_| if t.detected.is_image { "image" } else { "text" }.to_string()),
+            image_alt: t.detected.image_alt.clone(),
         };
         let events: Vec<EventWrite> = t
             .events
@@ -208,6 +215,9 @@ fn build_state(st: &db::entities::MonitorState) -> BacklinkState {
             is_dofollow: st.detected_is_dofollow,
             canonical: st.source_canonical.clone(),
             noindex: st.source_robots_noindex,
+            // Not carried on MonitorState — refreshed from each fresh detection.
+            is_image: false,
+            image_alt: None,
         },
         consecutive_failure_count: st.consecutive_failure_count,
         last_seen_at: st.last_seen_at,

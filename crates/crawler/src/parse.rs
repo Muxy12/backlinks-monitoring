@@ -18,6 +18,10 @@ pub struct ExtractedLink {
     pub anchor_text: Option<String>,
     /// The link's `rel` token set.
     pub rel: RelSet,
+    /// `true` when the anchor wraps only an image (no text) — an image link.
+    pub is_image: bool,
+    /// The image's `alt` when `is_image` (may be empty); `None` for text links.
+    pub image_alt: Option<String>,
     /// Document order (0-based) — used to break ties between multiple matches.
     pub position: usize,
 }
@@ -98,18 +102,31 @@ pub fn parse_page(html: &str) -> ParsedPage {
             _ => continue, // empty href is not a link we track
         };
 
-        // Anchor text: collapse whitespace. If empty, fall back to an image alt.
+        // Anchor text: collapse whitespace. An anchor with no text but an
+        // <img> is an *image link*: record its nature + alt, and still render
+        // a `[img: <alt>]` marker for the text comparison (docs/06 §3.2).
         let text: String = a
             .text()
             .collect::<String>()
             .split_whitespace()
             .collect::<Vec<_>>()
             .join(" ");
+        let img = a.select(img_sel).next();
+        let is_image = text.is_empty() && img.is_some();
+        let image_alt: Option<String> = if is_image {
+            Some(
+                img.and_then(|i| i.value().attr("alt"))
+                    .unwrap_or("")
+                    .trim()
+                    .to_string(),
+            )
+        } else {
+            None
+        };
         let anchor_text = if !text.is_empty() {
             Some(text)
-        } else if let Some(img) = a.select(img_sel).next() {
-            let alt = img.value().attr("alt").unwrap_or("").trim();
-            Some(format!("[img: {alt}]"))
+        } else if is_image {
+            Some(format!("[img: {}]", image_alt.as_deref().unwrap_or("")))
         } else {
             None
         };
@@ -120,6 +137,8 @@ pub fn parse_page(html: &str) -> ParsedPage {
             href_raw,
             anchor_text,
             rel,
+            is_image,
+            image_alt,
             position,
         });
     }

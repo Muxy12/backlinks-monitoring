@@ -593,11 +593,13 @@ export default function DashboardPage() {
               <div><dt>Rel (found)</dt><dd className="mono">{selected.detected_rel?.join(" ") || "—"}</dd></div>
               <div><dt>dofollow / nofollow</dt><dd>{yn(selected.is_dofollow)} / {yn(selected.is_nofollow)}</dd></div>
               <div><dt>sponsored / ugc</dt><dd>{yn(selected.is_sponsored)} / {yn(selected.is_ugc)}</dd></div>
-              <div><dt>Link type / image alt</dt><dd className="muted">not captured yet</dd></div>
+              <div><dt>Link type</dt><dd>{selected.link_type ?? "—"}</dd></div>
+              <div><dt>Image alt</dt><dd>{selected.link_type === "image" ? (selected.image_alt || "(empty)") : "—"}</dd></div>
               <div><dt>HTTP source / target</dt><dd className="mono">{httpPair(selected)}</dd></div>
               <div><dt>First seen</dt><dd>{fmtLong(selected.first_checked_at)}</dd></div>
               <div><dt>Last seen</dt><dd>{fmtLong(selected.last_seen_at)}</dd></div>
               <div><dt>Last checked</dt><dd>{fmtLong(selected.last_checked_at)}</dd></div>
+              <div><dt>Lost at</dt><dd>{fmtLong(selected.lost_at)}</dd></div>
               <div><dt>Cost</dt><dd>{selected.cost ? `${selected.cost} ${selected.currency ?? ""}` : "—"}</dd></div>
             </dl>
             <div className="tags-row">
