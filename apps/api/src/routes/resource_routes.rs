@@ -327,6 +327,8 @@ pub struct BacklinkView {
     pub lost_at: Option<String>,
     /// Where the target URL lands after following its own redirects.
     pub target_final_url: Option<String>,
+    pub tier: i16,
+    pub parent_backlink_id: Option<Uuid>,
 }
 
 impl From<db::entities::Backlink> for BacklinkView {
@@ -374,6 +376,8 @@ impl From<db::entities::Backlink> for BacklinkView {
             image_alt: b.image_alt,
             lost_at: b.lost_at.map(|d| d.to_rfc3339()),
             target_final_url: b.target_final_url,
+            tier: b.tier,
+            parent_backlink_id: b.parent_backlink_id,
         }
     }
 }
@@ -430,6 +434,92 @@ pub async fn list_backlink_occurrences(
     scope.require(Role::Viewer)?;
     let occs = db::repositories::link_occurrences::list(&state.pool, org_id, backlink_id).await?;
     Ok(Json(occs.into_iter().map(OccurrenceView::from).collect()))
+}
+
+/// GET the Tier-2 backlinks reinforcing a Tier-1 backlink (§9).
+pub async fn list_tier2(
+    State(state): State<AppState>,
+    Path((org_id, backlink_id)): Path<(Uuid, Uuid)>,
+    jar: CookieJar,
+) -> Result<Json<Vec<BacklinkView>>, ApiError> {
+    let (user, _s) = current(&state, &jar).await?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Viewer)?;
+    db::repositories::backlinks::get(&state.pool, &scope, backlink_id).await?;
+    let rows =
+        db::repositories::backlinks::search_tier2(&state.pool, &scope, backlink_id, 500).await?;
+    Ok(Json(rows.into_iter().map(BacklinkView::from).collect()))
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct Tier2Row {
+    pub source_url: String,
+    pub anchor: Option<String>,
+    pub rel: Option<String>,
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct Tier2ImportBody {
+    pub rows: Vec<Tier2Row>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct Tier2ImportResult {
+    pub imported: usize,
+    pub new: usize,
+    pub skipped: usize,
+}
+
+/// Import Tier-2 backlinks that reinforce a Tier-1 backlink (§8, §21 Import).
+pub async fn import_tier2(
+    State(state): State<AppState>,
+    Path((org_id, backlink_id)): Path<(Uuid, Uuid)>,
+    jar: CookieJar,
+    headers: HeaderMap,
+    Json(body): Json<Tier2ImportBody>,
+) -> Result<Json<Tier2ImportResult>, ApiError> {
+    let (user, session) = current(&state, &jar).await?;
+    check_csrf(&jar, &headers, &session)?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Member)?;
+    let parent = db::repositories::backlinks::get(&state.pool, &scope, backlink_id).await?;
+
+    let (mut imported, mut new, mut skipped) = (0usize, 0usize, 0usize);
+    for row in body.rows.into_iter().take(5_000) {
+        let rel = row.rel.as_deref().unwrap_or("dofollow");
+        if !is_http_url(&row.source_url)
+            || !matches!(rel, "dofollow" | "nofollow" | "sponsored" | "ugc")
+        {
+            skipped += 1;
+            continue;
+        }
+        match db::repositories::tiers::record_tier2(
+            &state.pool,
+            &scope,
+            &parent,
+            row.source_url.trim(),
+            row.anchor
+                .as_deref()
+                .map(str::trim)
+                .filter(|s| !s.is_empty()),
+            rel,
+        )
+        .await
+        {
+            Ok((_, is_new)) => {
+                imported += 1;
+                if is_new {
+                    new += 1;
+                }
+            }
+            Err(_) => skipped += 1,
+        }
+    }
+    Ok(Json(Tier2ImportResult {
+        imported,
+        new,
+        skipped,
+    }))
 }
 
 #[derive(Debug, Deserialize)]

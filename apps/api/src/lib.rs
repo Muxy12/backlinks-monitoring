@@ -137,6 +137,14 @@ pub fn app(state: AppState) -> Router {
             get(routes::resource_routes::list_backlink_occurrences),
         )
         .route(
+            "/v1/organizations/{org_id}/backlinks/{backlink_id}/tier2",
+            get(routes::resource_routes::list_tier2),
+        )
+        .route(
+            "/v1/organizations/{org_id}/backlinks/{backlink_id}/tier2/import",
+            post(routes::resource_routes::import_tier2),
+        )
+        .route(
             "/v1/organizations/{org_id}/dashboard",
             get(routes::resource_routes::dashboard),
         )

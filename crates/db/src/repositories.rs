@@ -452,7 +452,7 @@ pub mod backlinks {
              detected_anchor_text, detected_target_url, detected_rel_attributes, \
              detected_is_dofollow, source_http_status, target_http_status, \
              first_checked_at, last_seen_at, link_type, image_alt, lost_at, target_final_url, \
-             subject, competitor_id"
+             subject, competitor_id, tier, parent_backlink_id"
         };
     }
 
@@ -623,7 +623,7 @@ pub mod backlinks {
             " FROM backlinks WHERE organization_id = "
         ));
         qb.push_bind(scope.organization_id());
-        qb.push(" AND archived_at IS NULL AND subject = 'own'");
+        qb.push(" AND archived_at IS NULL AND subject = 'own' AND tier = 1");
 
         if let Some(pid) = filter.project_id {
             qb.push(" AND project_id = ");
@@ -693,7 +693,7 @@ pub mod backlinks {
             " FROM backlinks WHERE organization_id = "
         ));
         qb.push_bind(scope.organization_id());
-        qb.push(" AND archived_at IS NULL AND subject = 'own'");
+        qb.push(" AND archived_at IS NULL AND subject = 'own' AND tier = 1");
         if let Some(pid) = project_id {
             qb.push(" AND project_id = ");
             qb.push_bind(pid);
@@ -732,11 +732,32 @@ pub mod backlinks {
         .await?)
     }
 
+    /// Tier-2 backlinks reinforcing a given Tier-1 backlink (its children in the
+    /// graph), newest first. Tenant-scoped.
+    pub async fn search_tier2(
+        pool: &PgPool,
+        scope: &OrgScope,
+        parent_backlink_id: Uuid,
+        limit: i64,
+    ) -> Result<Vec<Backlink>, DbError> {
+        Ok(sqlx::query_as::<_, Backlink>(concat!(
+            "SELECT ",
+            cols!(),
+            " FROM backlinks WHERE organization_id = $1 AND parent_backlink_id = $2 \
+               AND archived_at IS NULL ORDER BY created_at DESC LIMIT $3"
+        ))
+        .bind(scope.organization_id())
+        .bind(parent_backlink_id)
+        .bind(limit.clamp(1, 500))
+        .fetch_all(pool)
+        .await?)
+    }
+
     /// Count active backlinks in an org — for plan-limit enforcement (§39).
     pub async fn count_active(pool: &PgPool, scope: &OrgScope) -> Result<i64, DbError> {
         let (n,): (i64,) = sqlx::query_as(
             "SELECT count(*) FROM backlinks \
-             WHERE organization_id = $1 AND archived_at IS NULL AND subject = 'own'",
+             WHERE organization_id = $1 AND archived_at IS NULL AND subject = 'own' AND tier = 1",
         )
         .bind(scope.organization_id())
         .fetch_one(pool)
@@ -1297,7 +1318,7 @@ pub mod competitors {
                AND b.archived_at IS NULL AND pc.project_id = $2 \
                AND b.source_domain NOT IN ( \
                    SELECT source_domain FROM backlinks \
-                   WHERE organization_id = $1 AND subject = 'own' \
+                   WHERE organization_id = $1 AND subject = 'own' AND tier = 1 \
                      AND project_id = $2 AND archived_at IS NULL) \
              GROUP BY b.source_domain \
              HAVING count(DISTINCT b.competitor_id) >= $3 \
@@ -1457,6 +1478,82 @@ pub mod competitors {
             .await
             .map_err(DbError::from_insert)?;
         }
+
+        tx.commit().await?;
+        Ok((id, true))
+    }
+}
+
+// ─── Tiers: Tier-2 backlinks that reinforce a Tier-1 edge ────────────────────
+pub mod tiers {
+    use super::*;
+    use crate::entities::Backlink;
+    use backlio_core::{NormalizeOptions, host_of, normalize};
+
+    /// Ingest a Tier-2 backlink: a page linking to `parent`'s SOURCE page (which
+    /// is itself a Tier-1 backlink to our site). Stored as own/tier=parent+1 with
+    /// `parent_backlink_id` set. Returns (id, is_new); dedups the relation.
+    pub async fn record_tier2(
+        pool: &PgPool,
+        scope: &OrgScope,
+        parent: &Backlink,
+        source_url: &str,
+        anchor: Option<&str>,
+        rel_type: &str,
+    ) -> Result<(Uuid, bool), DbError> {
+        let opts = NormalizeOptions::default();
+        // The Tier-2 link points AT the Tier-1 source page.
+        let target_url = parent.source_url.clone();
+        let source_norm = normalize(source_url, None, opts)
+            .ok_or_else(|| DbError::Config("invalid source_url".into()))?;
+        let target_norm = normalize(&target_url, None, opts)
+            .ok_or_else(|| DbError::Config("invalid tier-1 source url".into()))?;
+        let source_domain = host_of(&source_norm).unwrap_or_default();
+        let target_domain = host_of(&target_norm).unwrap_or_default();
+        let org = scope.organization_id();
+
+        let mut tx = pool.begin().await?;
+        let existing: Option<(Uuid,)> = sqlx::query_as(
+            "SELECT id FROM backlinks WHERE organization_id = $1 AND project_id = $2 \
+               AND parent_backlink_id = $3 AND source_url_normalized = $4 \
+               AND target_url_normalized = $5 AND archived_at IS NULL",
+        )
+        .bind(org)
+        .bind(parent.project_id)
+        .bind(parent.id)
+        .bind(&source_norm)
+        .bind(&target_norm)
+        .fetch_optional(&mut *tx)
+        .await?;
+        if let Some((id,)) = existing {
+            tx.commit().await?;
+            return Ok((id, false));
+        }
+
+        let id = Uuid::now_v7();
+        sqlx::query(
+            "INSERT INTO backlinks (id, organization_id, project_id, \
+                source_url, source_url_normalized, source_domain, \
+                target_url, target_url_normalized, target_domain, \
+                expected_anchor_text, expected_rel_type, subject, tier, parent_backlink_id, next_check_at) \
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::rel_type,'own',$12,$13, now())",
+        )
+        .bind(id)
+        .bind(org)
+        .bind(parent.project_id)
+        .bind(source_url)
+        .bind(&source_norm)
+        .bind(&source_domain)
+        .bind(&target_url)
+        .bind(&target_norm)
+        .bind(&target_domain)
+        .bind(anchor)
+        .bind(rel_type)
+        .bind(parent.tier + 1)
+        .bind(parent.id)
+        .execute(&mut *tx)
+        .await
+        .map_err(DbError::from_insert)?;
 
         tx.commit().await?;
         Ok((id, true))
@@ -1681,7 +1778,7 @@ pub mod dashboard {
     ) -> Result<Vec<(String, i64)>, DbError> {
         Ok(sqlx::query_as::<_, (String, i64)>(
             "SELECT status::text, count(*) FROM backlinks \
-             WHERE organization_id = $1 AND archived_at IS NULL AND subject = 'own' GROUP BY status",
+             WHERE organization_id = $1 AND archived_at IS NULL AND subject = 'own' AND tier = 1 GROUP BY status",
         )
         .bind(scope.organization_id())
         .fetch_all(pool)
@@ -1693,7 +1790,7 @@ pub mod dashboard {
     pub async fn referring_counts(pool: &PgPool, scope: &OrgScope) -> Result<(i64, i64), DbError> {
         let row: (i64, i64) = sqlx::query_as(
             "SELECT count(DISTINCT source_domain), count(DISTINCT source_url_normalized) \
-             FROM backlinks WHERE organization_id = $1 AND archived_at IS NULL AND subject = 'own'",
+             FROM backlinks WHERE organization_id = $1 AND archived_at IS NULL AND subject = 'own' AND tier = 1",
         )
         .bind(scope.organization_id())
         .fetch_one(pool)
@@ -1726,7 +1823,7 @@ pub mod dashboard {
     ) -> Result<Vec<(String, String)>, DbError> {
         Ok(sqlx::query_as::<_, (String, String)>(
             "SELECT currency, sum(cost)::text FROM backlinks \
-             WHERE organization_id = $1 AND archived_at IS NULL AND subject = 'own' AND cost IS NOT NULL \
+             WHERE organization_id = $1 AND archived_at IS NULL AND subject = 'own' AND tier = 1 AND cost IS NOT NULL \
                AND status IN ('lost','suspected_lost','changed','nofollow','source_error','target_error','redirected') \
              GROUP BY currency",
         )
@@ -1742,7 +1839,7 @@ pub mod dashboard {
     ) -> Result<Vec<(String, String)>, DbError> {
         Ok(sqlx::query_as::<_, (String, String)>(
             "SELECT currency, sum(cost)::text FROM backlinks \
-             WHERE organization_id = $1 AND archived_at IS NULL AND subject = 'own' AND cost IS NOT NULL \
+             WHERE organization_id = $1 AND archived_at IS NULL AND subject = 'own' AND tier = 1 AND cost IS NOT NULL \
              GROUP BY currency",
         )
         .bind(scope.organization_id())

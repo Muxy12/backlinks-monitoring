@@ -164,6 +164,8 @@ export interface BacklinkView {
   image_alt?: string | null;
   lost_at?: string | null;
   target_final_url?: string | null;
+  tier?: number;
+  parent_backlink_id?: string | null;
 }
 
 export interface NotificationItem {
@@ -339,6 +341,17 @@ export const orgApi = {
     request<EventView[]>(`/v1/organizations/${org}/backlinks/${id}/events`),
   backlinkOccurrences: (org: string, id: string) =>
     request<OccurrenceView[]>(`/v1/organizations/${org}/backlinks/${id}/occurrences`),
+  backlinkTier2: (org: string, id: string) =>
+    request<BacklinkView[]>(`/v1/organizations/${org}/backlinks/${id}/tier2`),
+  importTier2: (
+    org: string,
+    id: string,
+    rows: { source_url: string; anchor?: string; rel?: string }[],
+  ) =>
+    request<{ imported: number; new: number; skipped: number }>(
+      `/v1/organizations/${org}/backlinks/${id}/tier2/import`,
+      { method: "POST", headers: csrfHeader(), body: JSON.stringify({ rows }) },
+    ),
   eventsSummary: (org: string, days = 30) =>
     request<EventsSummary>(`/v1/organizations/${org}/events/summary?days=${days}`),
   competitors: (org: string, projectId: string) =>

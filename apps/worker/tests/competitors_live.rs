@@ -237,3 +237,97 @@ async fn gap_analysis_finds_opportunity_domains() {
         "sitez also links us -> not a gap"
     );
 }
+
+#[tokio::test]
+async fn tier2_ingestion_links_to_the_tier1_source() {
+    let Some(pool) = pool().await else { return };
+    let user = users::create(
+        &pool,
+        Uuid::now_v7(),
+        &format!("{}@x.com", uniq("u")),
+        "hash",
+        "U",
+    )
+    .await
+    .unwrap();
+    let org = orgs::create_with_owner(&pool, Uuid::now_v7(), "Acme", &uniq("acme"), user.id)
+        .await
+        .unwrap();
+    let scope = authorize_org(&pool, user.id, org.id).await.unwrap();
+    let project = projects::create(
+        &pool,
+        &scope,
+        Uuid::now_v7(),
+        "Site",
+        "mysite.com",
+        7 * 24 * 3600,
+        None,
+    )
+    .await
+    .unwrap();
+    // Tier-1: blog.com/post -> mysite.com
+    let t1 = backlinks::create(
+        &pool,
+        &scope,
+        Uuid::now_v7(),
+        backlinks::NewBacklink {
+            project_id: project.id,
+            campaign_id: None,
+            publisher_id: None,
+            source_url: "https://blog.com/post",
+            target_url: "https://mysite.com/p",
+            expected_anchor_text: None,
+            expected_rel_type: "dofollow",
+            cost: None,
+            currency: None,
+            warranty_type: "none",
+            warranty_value: None,
+            warranty_expiration: None,
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(t1.tier, 1);
+
+    // Tier-2: forum.com/thread -> blog.com/post (reinforces t1).
+    let (_id, new1) = db::repositories::tiers::record_tier2(
+        &pool,
+        &scope,
+        &t1,
+        "https://forum.com/thread",
+        Some("nice"),
+        "dofollow",
+    )
+    .await
+    .unwrap();
+    assert!(new1);
+    // Dedup.
+    let (_id2, new2) = db::repositories::tiers::record_tier2(
+        &pool,
+        &scope,
+        &t1,
+        "https://forum.com/thread",
+        Some("nice"),
+        "dofollow",
+    )
+    .await
+    .unwrap();
+    assert!(!new2);
+
+    let t2 = backlinks::search_tier2(&pool, &scope, t1.id, 500)
+        .await
+        .unwrap();
+    assert_eq!(t2.len(), 1);
+    assert_eq!(t2[0].tier, 2);
+    assert_eq!(t2[0].parent_backlink_id, Some(t1.id));
+    assert_eq!(
+        t2[0].target_url, t1.source_url,
+        "tier-2 targets the tier-1 source"
+    );
+
+    // The Tier-2 link is not in the Tier-1 (main) list.
+    let own = backlinks::search(&pool, &scope, &backlinks::BacklinkFilter::default(), 200)
+        .await
+        .unwrap();
+    assert!(own.iter().all(|b| b.tier == 1), "main list is Tier 1 only");
+}

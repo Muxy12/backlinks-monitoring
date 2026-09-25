@@ -19,6 +19,9 @@ export default function DashboardPage() {
   const [selected, setSelected] = useState<BacklinkView | null>(null);
   const [events, setEvents] = useState<EventView[] | null>(null);
   const [occurrences, setOccurrences] = useState<OccurrenceView[]>([]);
+  const [tier2, setTier2] = useState<BacklinkView[]>([]);
+  const [t2csv, setT2csv] = useState("");
+  const [t2msg, setT2msg] = useState<string | null>(null);
   const [warranties, setWarranties] = useState<BacklinkView[]>([]);
   const [notifs, setNotifs] = useState<NotificationsResponse | null>(null);
   const [showNotifs, setShowNotifs] = useState(false);
@@ -127,17 +130,48 @@ export default function DashboardPage() {
     setEvents(null);
     setBlTags([]);
     setOccurrences([]);
+    setTier2([]);
+    setT2csv("");
+    setT2msg(null);
     setNewTag("");
     if (orgId) {
-      const [ev, tg, oc] = await Promise.all([
+      const [ev, tg, oc, t2] = await Promise.all([
         orgApi.backlinkEvents(orgId, b.id),
         orgApi.backlinkTags(orgId, b.id),
         orgApi.backlinkOccurrences(orgId, b.id),
+        orgApi.backlinkTier2(orgId, b.id),
       ]);
       setEvents(ev.ok ? ev.data : []);
       if (tg.ok) setBlTags(tg.data);
       if (oc.ok) setOccurrences(oc.data);
+      if (t2.ok) setTier2(t2.data);
     }
+  }
+
+  async function importTier2() {
+    if (!orgId || !selected) return;
+    const rows = t2csv
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .map((l) => {
+        const [source_url, anchor, rel] = l.split(",").map((s) => s?.trim());
+        return { source_url, anchor, rel };
+      })
+      .filter((r) => r.source_url);
+    if (rows.length === 0) {
+      setT2msg("Paste rows: source_url,anchor,rel");
+      return;
+    }
+    const res = await orgApi.importTier2(orgId, selected.id, rows);
+    if (!res.ok) {
+      setT2msg(res.detail || "Import failed.");
+      return;
+    }
+    setT2msg(`Imported ${res.data.imported} (${res.data.new} new).`);
+    setT2csv("");
+    const t2 = await orgApi.backlinkTier2(orgId, selected.id);
+    if (t2.ok) setTier2(t2.data);
   }
 
   async function refreshBlTags(id: string) {
@@ -662,6 +696,31 @@ export default function DashboardPage() {
                 </ul>
               </>
             )}
+            <h3 className="drawer-sub">Tier 2 — reinforcing links ({tier2.length})</h3>
+            {tier2.length === 0 ? (
+              <p className="muted">No Tier-2 links yet.</p>
+            ) : (
+              <ul className="occ-list">
+                {tier2.map((t) => (
+                  <li key={t.id} className="occ">
+                    <div className="occ-top">
+                      <span className="occ-anchor mono">{t.source_domain}</span>
+                      <span className="badge" style={{ "--st": statusColor(t.status) } as CSSProperties}><span className="dot" />{statusLabel(t.status)}</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="tags-add">
+              <textarea
+                style={{ flex: 1, minHeight: 44, fontFamily: "ui-monospace, monospace", fontSize: 12, background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 6, padding: "6px 8px" }}
+                placeholder="source_url,anchor,rel (one per line)"
+                value={t2csv}
+                onChange={(e) => setT2csv(e.target.value)}
+              />
+              <button className="btn sm" onClick={() => void importTier2()}>Add T2</button>
+            </div>
+            {t2msg && <p className="muted" style={{ marginTop: -6, marginBottom: 10 }}>{t2msg}</p>}
             <div className="tags-row">
               {blTags.map((t) => (
                 <span key={t.id} className="tag-chip" style={t.color ? { borderColor: t.color, color: t.color } : undefined}>

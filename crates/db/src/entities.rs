@@ -125,6 +125,11 @@ pub struct Backlink {
     pub subject: String,
     /// When `subject = competitor`, which competitor this belongs to.
     pub competitor_id: Option<Uuid>,
+    /// Graph distance from the monitored root domain: 1 = direct, 2 = reinforces
+    /// a Tier-1 source page (docs backlink-intelligence §5–§7).
+    pub tier: i16,
+    /// For Tier 2+, the Tier-1 backlink this one reinforces.
+    pub parent_backlink_id: Option<Uuid>,
 }
 
 /// A competitor domain tracked for a project (backlink-intelligence §1).
