@@ -15,6 +15,7 @@ const LINKS: { href: string; label: string; icon: string }[] = [
   { href: "/projects", label: "Projects", icon: "🗂️" },
   { href: "/clients", label: "Clients", icon: "🏢" },
   { href: "/competitors", label: "Competitors", icon: "🥊" },
+  { href: "/graph", label: "Graph", icon: "🕸️" },
   { href: "/operations", label: "Operations", icon: "🎯" },
   { href: "/import", label: "Import", icon: "⬆️" },
   { href: "/team", label: "Team", icon: "👥" },
