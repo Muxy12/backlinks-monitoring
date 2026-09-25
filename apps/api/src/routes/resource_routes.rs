@@ -325,6 +325,8 @@ pub struct BacklinkView {
     pub image_alt: Option<String>,
     /// When the link went `lost` (RFC3339), null if currently present.
     pub lost_at: Option<String>,
+    /// Where the target URL lands after following its own redirects.
+    pub target_final_url: Option<String>,
 }
 
 impl From<db::entities::Backlink> for BacklinkView {
@@ -371,6 +373,7 @@ impl From<db::entities::Backlink> for BacklinkView {
             link_type: b.link_type,
             image_alt: b.image_alt,
             lost_at: b.lost_at.map(|d| d.to_rfc3339()),
+            target_final_url: b.target_final_url,
         }
     }
 }

@@ -36,7 +36,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let ctx = WorkerCtx {
         pool: db.pool,
-        crawler: CrawlerConfig::default(),
+        crawler: CrawlerConfig {
+            check_target: true,
+            ..CrawlerConfig::default()
+        },
         policy: TransitionPolicy::default(),
         backoff: BackoffPolicy::default(),
         worker_id: std::env::var("WORKER_ID").unwrap_or_else(|_| default_worker_id()),

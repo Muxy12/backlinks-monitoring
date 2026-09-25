@@ -587,6 +587,7 @@ export default function DashboardPage() {
             <dl className="detail-grid">
               <div><dt>Source</dt><dd className="mono br">{selected.source_url}</dd></div>
               <div><dt>Target</dt><dd className="mono br">{selected.target_url}</dd></div>
+              <div><dt>Target final URL</dt><dd className="mono br">{selected.target_final_url ?? "—"}</dd></div>
               <div><dt>Link URL (found)</dt><dd className="mono br">{selected.detected_target_url ?? "—"}</dd></div>
               <div><dt>Anchor (found)</dt><dd>{selected.detected_anchor_text ?? "—"}</dd></div>
               <div><dt>Anchor (expected)</dt><dd>{selected.expected_anchor_text ?? "—"}</dd></div>

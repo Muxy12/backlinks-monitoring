@@ -451,7 +451,7 @@ pub mod backlinks {
              created_at, updated_at, next_check_at, last_checked_at, \
              detected_anchor_text, detected_target_url, detected_rel_attributes, \
              detected_is_dofollow, source_http_status, target_http_status, \
-             first_checked_at, last_seen_at, link_type, image_alt, lost_at"
+             first_checked_at, last_seen_at, link_type, image_alt, lost_at, target_final_url"
         };
     }
 
@@ -863,6 +863,10 @@ pub mod monitor {
         /// "text" | "image" when a link was detected this cycle, else None.
         pub link_type: Option<String>,
         pub image_alt: Option<String>,
+        /// Target fetch result (only when the link was found and target-checking
+        /// is on); None otherwise, and then the stored value is preserved.
+        pub target_http_status: Option<i32>,
+        pub target_final_url: Option<String>,
     }
 
     /// One check row to append.
@@ -871,6 +875,7 @@ pub mod monitor {
         pub found: bool,
         pub status_after: String,
         pub source_status: Option<i32>,
+        pub target_status: Option<i32>,
         pub anchor_text: Option<String>,
         pub rel_attributes: Option<Vec<String>>,
         pub is_dofollow: Option<bool>,
@@ -905,8 +910,8 @@ pub mod monitor {
         let inserted: Option<(Uuid,)> = sqlx::query_as(
             "INSERT INTO backlink_checks (id, backlink_id, organization_id, crawl_id, found, \
                 status_after, source_status, anchor_text, rel_attributes, is_dofollow, \
-                final_url, duration_ms, bytes, error_kind) \
-             VALUES ($1,$2,$3,$4,$5,$6::backlink_status,$7,$8,$9,$10,$11,$12,$13,$14) \
+                final_url, duration_ms, bytes, error_kind, target_status) \
+             VALUES ($1,$2,$3,$4,$5,$6::backlink_status,$7,$8,$9,$10,$11,$12,$13,$14,$15) \
              ON CONFLICT (backlink_id, crawl_id) DO NOTHING \
              RETURNING id",
         )
@@ -924,6 +929,7 @@ pub mod monitor {
         .bind(check.duration_ms)
         .bind(check.bytes)
         .bind(&check.error_kind)
+        .bind(check.target_status)
         .fetch_optional(&mut *tx)
         .await
         .map_err(DbError::from_insert)?;
@@ -962,6 +968,8 @@ pub mod monitor {
                 first_checked_at = COALESCE(first_checked_at, now()), \
                 failure_count = failure_count + $14, \
                 link_type = $15, image_alt = $16, \
+                target_http_status = COALESCE($17, target_http_status), \
+                target_final_url = COALESCE($18, target_final_url), \
                 lost_at = CASE \
                     WHEN $2 = 'lost' THEN COALESCE(lost_at, now()) \
                     WHEN $2 = 'live' THEN NULL \
@@ -984,6 +992,8 @@ pub mod monitor {
         .bind(if check.found { 0_i32 } else { 1_i32 })
         .bind(&transition.link_type)
         .bind(&transition.image_alt)
+        .bind(transition.target_http_status)
+        .bind(&transition.target_final_url)
         .execute(&mut *tx)
         .await
         .map_err(DbError::from_insert)?;

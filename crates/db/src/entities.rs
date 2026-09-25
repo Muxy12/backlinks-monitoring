@@ -120,6 +120,7 @@ pub struct Backlink {
     pub link_type: Option<String>,
     pub image_alt: Option<String>,
     pub lost_at: Option<DateTime<Utc>>,
+    pub target_final_url: Option<String>,
 }
 
 /// The fields the state machine reads for one backlink (docs/08). Enum/array

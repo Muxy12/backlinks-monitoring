@@ -56,6 +56,10 @@ pub async fn check_source_group(
     let opts = NormalizeOptions::default();
     let now = chrono::Utc::now();
     let mut applied = 0usize;
+    // Dedup target fetches within this source group: several backlinks can point
+    // at the same target. Maps a target URL -> (final HTTP status, final URL).
+    let mut target_cache: std::collections::HashMap<String, (Option<i32>, Option<String>)> =
+        std::collections::HashMap::new();
 
     for &id in backlink_ids {
         let st = monitor::load_state(pool, id).await?;
@@ -67,11 +71,32 @@ pub async fn check_source_group(
         let t = transition(&current, &obs, now, policy);
         let found = matches!(obs, Observation::Present(_));
 
+        // Only when the link is present do we spend a request resolving where the
+        // target itself lands (after its own redirects). Reuses the SSRF-safe
+        // `fetch`, so a target pointing at a private address is blocked. Failures
+        // yield None and never overwrite a previously-known value (COALESCE in
+        // the UPDATE), so "we could not check the target" is not "target gone".
+        let (target_status, target_final) = if found && cfg.check_target {
+            if let Some(hit) = target_cache.get(&st.target_url) {
+                hit.clone()
+            } else {
+                let r = match fetch(cfg, &st.target_url).await {
+                    FetchOutcome::Response(ok) => (Some(ok.status as i32), Some(ok.final_url)),
+                    FetchOutcome::Failed(_) => (None, None),
+                };
+                target_cache.insert(st.target_url.clone(), r.clone());
+                r
+            }
+        } else {
+            (None, None)
+        };
+
         let check = CheckWrite {
             crawl_id,
             found,
             status_after: t.status.as_str().to_string(),
             source_status: meta.source_status,
+            target_status,
             anchor_text: t.detected.anchor_text.clone(),
             rel_attributes: Some(t.detected.rel_attributes.clone()),
             is_dofollow: t.detected.is_dofollow,
@@ -100,6 +125,8 @@ pub async fn check_source_group(
                 .as_ref()
                 .map(|_| if t.detected.is_image { "image" } else { "text" }.to_string()),
             image_alt: t.detected.image_alt.clone(),
+            target_http_status: target_status,
+            target_final_url: target_final,
         };
         let events: Vec<EventWrite> = t
             .events

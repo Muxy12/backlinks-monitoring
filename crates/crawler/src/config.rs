@@ -16,6 +16,12 @@ pub struct CrawlerConfig {
     /// local mock server (127.0.0.1) can be reached. NEVER true in production —
     /// it disables the product's most important control (docs/06 §2, docs/10 §1).
     pub allow_private_addresses: bool,
+    /// When true, a *found* link also triggers a fetch of its target URL (via the
+    /// same SSRF-safe `fetch`) to record the target's final URL after redirects
+    /// and its HTTP status. Off by default so unit/integration tests and the
+    /// public single-check tool never make an extra, network-dependent request;
+    /// the production monitoring path turns it on.
+    pub check_target: bool,
 }
 
 impl Default for CrawlerConfig {
@@ -27,6 +33,7 @@ impl Default for CrawlerConfig {
             max_redirects: 5,
             max_response_bytes: 2 * 1024 * 1024,
             allow_private_addresses: false,
+            check_target: false,
         }
     }
 }

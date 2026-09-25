@@ -57,7 +57,11 @@ pub async fn tick(
 
     let ctx = worker::WorkerCtx {
         pool: state.pool.clone(),
-        crawler: CrawlerConfig::default(),
+        // Production monitoring resolves the target's final URL too (SSRF-safe).
+        crawler: CrawlerConfig {
+            check_target: true,
+            ..CrawlerConfig::default()
+        },
         policy: TransitionPolicy::default(),
         backoff: BackoffPolicy::default(),
         worker_id: "api-tick".to_string(),

@@ -126,6 +126,7 @@ export interface BacklinkView {
   link_type?: string | null;
   image_alt?: string | null;
   lost_at?: string | null;
+  target_final_url?: string | null;
 }
 
 export interface NotificationItem {
