@@ -123,6 +123,29 @@ pub struct Backlink {
     pub target_final_url: Option<String>,
 }
 
+/// One physical occurrence of a backlink on its source page (docs/06 §3.4).
+#[derive(Debug, Clone, FromRow)]
+pub struct LinkOccurrence {
+    pub id: Uuid,
+    pub organization_id: Uuid,
+    pub backlink_id: Uuid,
+    pub fingerprint: String,
+    pub anchor_text: Option<String>,
+    pub link_type: Option<String>,
+    pub image_alt: Option<String>,
+    pub href_raw: Option<String>,
+    pub rel_raw: Option<Vec<String>>,
+    pub is_nofollow: bool,
+    pub is_sponsored: bool,
+    pub is_ugc: bool,
+    pub placement: String,
+    pub surrounding_text: Option<String>,
+    pub position: Option<i32>,
+    pub first_seen_at: DateTime<Utc>,
+    pub last_seen_at: DateTime<Utc>,
+    pub removed_at: Option<DateTime<Utc>>,
+}
+
 /// The fields the state machine reads for one backlink (docs/08). Enum/array
 /// columns are read as text so no custom sqlx mapping is needed.
 #[derive(Debug, Clone, FromRow)]

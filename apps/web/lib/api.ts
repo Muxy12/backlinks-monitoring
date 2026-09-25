@@ -86,6 +86,27 @@ export interface DashboardResponse {
   needs_attention: number;
   value_at_risk: { currency: string; amount: string }[];
   tracked_spend: { currency: string; amount: string }[];
+  referring_domains: number;
+  referring_pages: number;
+  occurrences: number;
+}
+
+export interface OccurrenceView {
+  id: string;
+  fingerprint: string;
+  anchor_text: string | null;
+  link_type: string | null;
+  image_alt: string | null;
+  href_raw: string | null;
+  rel: string[] | null;
+  is_nofollow: boolean;
+  is_sponsored: boolean;
+  is_ugc: boolean;
+  placement: string;
+  surrounding_text: string | null;
+  position: number | null;
+  first_seen_at: string;
+  last_seen_at: string;
 }
 export interface ProjectView {
   id: string;
@@ -300,6 +321,8 @@ export const orgApi = {
   },
   backlinkEvents: (org: string, id: string) =>
     request<EventView[]>(`/v1/organizations/${org}/backlinks/${id}/events`),
+  backlinkOccurrences: (org: string, id: string) =>
+    request<OccurrenceView[]>(`/v1/organizations/${org}/backlinks/${id}/occurrences`),
   archiveBacklink: (org: string, id: string) =>
     request<null>(`/v1/organizations/${org}/backlinks/${id}/archive`, {
       method: "POST",

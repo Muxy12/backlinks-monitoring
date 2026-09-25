@@ -1003,6 +1003,121 @@ pub mod monitor {
     }
 }
 
+// ─── Link occurrences: every physical link on a source page (docs/06 §3.4) ───
+pub mod link_occurrences {
+    use super::*;
+    use crate::entities::LinkOccurrence;
+
+    /// One observed occurrence, ready to upsert.
+    pub struct OccurrenceInput {
+        pub fingerprint: String,
+        pub anchor_text: Option<String>,
+        pub link_type: Option<String>,
+        pub image_alt: Option<String>,
+        pub href_raw: Option<String>,
+        pub rel_raw: Vec<String>,
+        pub is_nofollow: bool,
+        pub is_sponsored: bool,
+        pub is_ugc: bool,
+        pub placement: String,
+        pub surrounding_text: Option<String>,
+        pub position: Option<i32>,
+    }
+
+    /// Upsert every occurrence seen on one crawl, then mark occurrences that were
+    /// present before but not seen this time as removed. Transactional and
+    /// idempotent per `seen_at` (docs/07 §4): the touched rows get
+    /// `last_seen_at = seen_at`, so the mark-removed step (`last_seen_at < seen_at`)
+    /// never touches them and a re-run is a no-op.
+    pub async fn sync(
+        pool: &PgPool,
+        organization_id: Uuid,
+        backlink_id: Uuid,
+        occs: &[OccurrenceInput],
+        seen_at: DateTime<Utc>,
+    ) -> Result<(), DbError> {
+        let mut tx = pool.begin().await?;
+        for o in occs {
+            sqlx::query(
+                "INSERT INTO link_occurrences (id, organization_id, backlink_id, fingerprint, \
+                    anchor_text, link_type, image_alt, href_raw, rel_raw, \
+                    is_nofollow, is_sponsored, is_ugc, placement, surrounding_text, position, \
+                    first_seen_at, last_seen_at, removed_at) \
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$16,NULL) \
+                 ON CONFLICT (backlink_id, fingerprint) DO UPDATE SET \
+                    anchor_text = EXCLUDED.anchor_text, link_type = EXCLUDED.link_type, \
+                    image_alt = EXCLUDED.image_alt, href_raw = EXCLUDED.href_raw, \
+                    rel_raw = EXCLUDED.rel_raw, is_nofollow = EXCLUDED.is_nofollow, \
+                    is_sponsored = EXCLUDED.is_sponsored, is_ugc = EXCLUDED.is_ugc, \
+                    placement = EXCLUDED.placement, surrounding_text = EXCLUDED.surrounding_text, \
+                    position = EXCLUDED.position, last_seen_at = EXCLUDED.last_seen_at, \
+                    removed_at = NULL",
+            )
+            .bind(Uuid::now_v7())
+            .bind(organization_id)
+            .bind(backlink_id)
+            .bind(&o.fingerprint)
+            .bind(&o.anchor_text)
+            .bind(&o.link_type)
+            .bind(&o.image_alt)
+            .bind(&o.href_raw)
+            .bind(&o.rel_raw)
+            .bind(o.is_nofollow)
+            .bind(o.is_sponsored)
+            .bind(o.is_ugc)
+            .bind(&o.placement)
+            .bind(&o.surrounding_text)
+            .bind(o.position)
+            .bind(seen_at)
+            .execute(&mut *tx)
+            .await
+            .map_err(DbError::from_insert)?;
+        }
+        sqlx::query(
+            "UPDATE link_occurrences SET removed_at = $2 \
+             WHERE backlink_id = $1 AND removed_at IS NULL AND last_seen_at < $2",
+        )
+        .bind(backlink_id)
+        .bind(seen_at)
+        .execute(&mut *tx)
+        .await?;
+        tx.commit().await?;
+        Ok(())
+    }
+
+    /// Live occurrences of one backlink (org-scoped by the caller).
+    pub async fn list(
+        pool: &PgPool,
+        organization_id: Uuid,
+        backlink_id: Uuid,
+    ) -> Result<Vec<LinkOccurrence>, DbError> {
+        Ok(sqlx::query_as::<_, LinkOccurrence>(
+            "SELECT id, organization_id, backlink_id, fingerprint, anchor_text, link_type, \
+                image_alt, href_raw, rel_raw, is_nofollow, is_sponsored, is_ugc, placement, \
+                surrounding_text, position, first_seen_at, last_seen_at, removed_at \
+             FROM link_occurrences \
+             WHERE organization_id = $1 AND backlink_id = $2 AND removed_at IS NULL \
+             ORDER BY position NULLS LAST, last_seen_at DESC",
+        )
+        .bind(organization_id)
+        .bind(backlink_id)
+        .fetch_all(pool)
+        .await?)
+    }
+
+    /// Count of live occurrences across the org (dashboard metric).
+    pub async fn count_active(pool: &PgPool, organization_id: Uuid) -> Result<i64, DbError> {
+        let (n,): (i64,) = sqlx::query_as(
+            "SELECT count(*) FROM link_occurrences \
+             WHERE organization_id = $1 AND removed_at IS NULL",
+        )
+        .bind(organization_id)
+        .fetch_one(pool)
+        .await?;
+        Ok(n)
+    }
+}
+
 // ─── Job queue: claim / complete / fail / reap (docs/07 §2–§3) ───────────────
 pub mod job_queue {
     use super::*;
@@ -1226,6 +1341,19 @@ pub mod dashboard {
         .bind(scope.organization_id())
         .fetch_all(pool)
         .await?)
+    }
+
+    /// (referring domains, referring pages): distinct source domains and distinct
+    /// source pages across the org's live (non-archived) backlinks.
+    pub async fn referring_counts(pool: &PgPool, scope: &OrgScope) -> Result<(i64, i64), DbError> {
+        let row: (i64, i64) = sqlx::query_as(
+            "SELECT count(DISTINCT source_domain), count(DISTINCT source_url_normalized) \
+             FROM backlinks WHERE organization_id = $1 AND archived_at IS NULL",
+        )
+        .bind(scope.organization_id())
+        .fetch_one(pool)
+        .await?;
+        Ok(row)
     }
 
     /// (currency, sum(cost)) for links needing attention — Value at Risk (§33).

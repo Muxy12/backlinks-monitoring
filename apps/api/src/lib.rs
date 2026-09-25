@@ -133,6 +133,10 @@ pub fn app(state: AppState) -> Router {
             get(routes::resource_routes::get_backlink_events),
         )
         .route(
+            "/v1/organizations/{org_id}/backlinks/{backlink_id}/occurrences",
+            get(routes::resource_routes::list_backlink_occurrences),
+        )
+        .route(
             "/v1/organizations/{org_id}/dashboard",
             get(routes::resource_routes::dashboard),
         )

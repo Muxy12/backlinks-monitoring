@@ -378,6 +378,60 @@ impl From<db::entities::Backlink> for BacklinkView {
     }
 }
 
+#[derive(serde::Serialize)]
+pub struct OccurrenceView {
+    pub id: Uuid,
+    pub fingerprint: String,
+    pub anchor_text: Option<String>,
+    pub link_type: Option<String>,
+    pub image_alt: Option<String>,
+    pub href_raw: Option<String>,
+    pub rel: Option<Vec<String>>,
+    pub is_nofollow: bool,
+    pub is_sponsored: bool,
+    pub is_ugc: bool,
+    pub placement: String,
+    pub surrounding_text: Option<String>,
+    pub position: Option<i32>,
+    pub first_seen_at: String,
+    pub last_seen_at: String,
+}
+
+impl From<db::entities::LinkOccurrence> for OccurrenceView {
+    fn from(o: db::entities::LinkOccurrence) -> Self {
+        OccurrenceView {
+            id: o.id,
+            fingerprint: o.fingerprint,
+            anchor_text: o.anchor_text,
+            link_type: o.link_type,
+            image_alt: o.image_alt,
+            href_raw: o.href_raw,
+            rel: o.rel_raw,
+            is_nofollow: o.is_nofollow,
+            is_sponsored: o.is_sponsored,
+            is_ugc: o.is_ugc,
+            placement: o.placement,
+            surrounding_text: o.surrounding_text,
+            position: o.position,
+            first_seen_at: o.first_seen_at.to_rfc3339(),
+            last_seen_at: o.last_seen_at.to_rfc3339(),
+        }
+    }
+}
+
+/// GET a backlink's live physical occurrences (docs/06 §3.4).
+pub async fn list_backlink_occurrences(
+    State(state): State<AppState>,
+    Path((org_id, backlink_id)): Path<(Uuid, Uuid)>,
+    jar: CookieJar,
+) -> Result<Json<Vec<OccurrenceView>>, ApiError> {
+    let (user, _session) = current(&state, &jar).await?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Viewer)?;
+    let occs = db::repositories::link_occurrences::list(&state.pool, org_id, backlink_id).await?;
+    Ok(Json(occs.into_iter().map(OccurrenceView::from).collect()))
+}
+
 #[derive(Debug, Deserialize)]
 pub struct CreateBacklinkBody {
     pub project_id: Uuid,
@@ -939,6 +993,9 @@ pub struct DashboardView {
     pub needs_attention: i64,
     pub value_at_risk: Vec<MoneyByCurrency>,
     pub tracked_spend: Vec<MoneyByCurrency>,
+    pub referring_domains: i64,
+    pub referring_pages: i64,
+    pub occurrences: i64,
 }
 
 pub async fn dashboard(
@@ -978,6 +1035,9 @@ pub async fn dashboard(
         to_money(db::repositories::dashboard::value_at_risk(&state.pool, &scope).await?);
     let tracked_spend =
         to_money(db::repositories::dashboard::tracked_spend(&state.pool, &scope).await?);
+    let (referring_domains, referring_pages) =
+        db::repositories::dashboard::referring_counts(&state.pool, &scope).await?;
+    let occurrences = db::repositories::link_occurrences::count_active(&state.pool, org_id).await?;
 
     Ok(Json(DashboardView {
         counts,
@@ -985,6 +1045,9 @@ pub async fn dashboard(
         needs_attention,
         value_at_risk,
         tracked_spend,
+        referring_domains,
+        referring_pages,
+        occurrences,
     }))
 }
 

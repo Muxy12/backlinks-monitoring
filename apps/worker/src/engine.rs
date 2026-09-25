@@ -11,6 +11,7 @@ use backlio_core::{
     RelType, TransitionPolicy, transition,
 };
 use crawler::{CrawlerConfig, FetchError, FetchOutcome, ParsedPage, fetch, parse_page};
+use db::repositories::link_occurrences;
 use db::repositories::monitor::{self, CheckWrite, EventWrite, TransitionWrite};
 use serde_json::json;
 use sqlx::PgPool;
@@ -138,6 +139,15 @@ pub async fn check_source_group(
             })
             .collect();
 
+        // When we actually fetched+parsed the page, record every physical
+        // occurrence (and mark vanished ones removed). Skipped on a fetch
+        // failure — "couldn't look" must not wipe the known occurrences.
+        if let Some((page, final_url)) = &parsed {
+            let matches = crawler::find_matches(page, &st.target_url, final_url, opts);
+            let occs = build_occurrences(&matches);
+            link_occurrences::sync(pool, st.organization_id, id, &occs, now).await?;
+        }
+
         if monitor::apply_check(pool, st.organization_id, id, check, tw, events).await? {
             applied += 1;
         }
@@ -226,6 +236,41 @@ fn failure_observation(outcome: &FetchOutcome) -> Observation {
             },
         },
     }
+}
+
+/// Turn the page's matched links into occurrence rows, giving exact duplicates
+/// (same href + type + anchor) a stable, disambiguated fingerprint.
+fn build_occurrences(matches: &[crawler::LinkMatch]) -> Vec<link_occurrences::OccurrenceInput> {
+    use std::collections::HashMap;
+    let mut seen: HashMap<String, u32> = HashMap::new();
+    let mut out = Vec::with_capacity(matches.len());
+    for m in matches {
+        let link_type = if m.is_image { "image" } else { "text" };
+        let anchor = m.anchor_text.clone().unwrap_or_default();
+        let base = format!("{}|{}|{}", m.href_normalized, link_type, anchor);
+        let n = seen.entry(base.clone()).or_insert(0);
+        let fingerprint = if *n == 0 {
+            base.clone()
+        } else {
+            format!("{base}#{n}")
+        };
+        *n += 1;
+        out.push(link_occurrences::OccurrenceInput {
+            fingerprint,
+            anchor_text: m.anchor_text.clone(),
+            link_type: Some(link_type.to_string()),
+            image_alt: m.image_alt.clone(),
+            href_raw: Some(m.href_raw.clone()),
+            is_nofollow: m.rel.contains(RelType::Nofollow),
+            is_sponsored: m.rel.contains(RelType::Sponsored),
+            is_ugc: m.rel.contains(RelType::Ugc),
+            rel_raw: m.rel.to_sorted_vec(),
+            placement: m.placement.clone(),
+            surrounding_text: m.surrounding_text.clone(),
+            position: Some(m.position as i32),
+        });
+    }
+    out
 }
 
 /// Build the state-machine input from the persisted row.

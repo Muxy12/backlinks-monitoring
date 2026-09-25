@@ -247,6 +247,104 @@ async fn check_target_records_target_final_url_and_status() {
 }
 
 #[tokio::test]
+async fn multiple_occurrences_recorded_for_one_backlink() {
+    let Some(pool) = pool().await else { return };
+
+    // One page, two links to the same target, in different regions.
+    let server = MockServer::start().await;
+    let body = "<html><body>\
+        <p>see <a href=\"https://acme.com/product\">great tool</a></p>\
+        <footer><a href=\"https://acme.com/product\">Voir les tarifs</a></footer>\
+        </body></html>";
+    Mock::given(method("GET"))
+        .and(path("/article"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(body.as_bytes().to_vec(), "text/html"),
+        )
+        .mount(&server)
+        .await;
+
+    let user = users::create(
+        &pool,
+        Uuid::now_v7(),
+        &format!("{}@x.com", uniq("u")),
+        "hash",
+        "U",
+    )
+    .await
+    .unwrap();
+    let org = orgs::create_with_owner(&pool, Uuid::now_v7(), "Acme", &uniq("acme"), user.id)
+        .await
+        .unwrap();
+    let scope = authorize_org(&pool, user.id, org.id).await.unwrap();
+    let project = db::repositories::projects::create(
+        &pool,
+        &scope,
+        Uuid::now_v7(),
+        "Site",
+        "acme.com",
+        7 * 24 * 3600,
+        None,
+    )
+    .await
+    .unwrap();
+    let source_url = format!("{}/article", server.uri());
+    let backlink = backlinks::create(
+        &pool,
+        &scope,
+        Uuid::now_v7(),
+        backlinks::NewBacklink {
+            project_id: project.id,
+            campaign_id: None,
+            publisher_id: None,
+            source_url: &source_url,
+            target_url: "https://acme.com/product",
+            expected_anchor_text: None,
+            expected_rel_type: "dofollow",
+            cost: None,
+            currency: None,
+            warranty_type: "none",
+            warranty_value: None,
+            warranty_expiration: None,
+        },
+    )
+    .await
+    .unwrap();
+
+    let cfg = CrawlerConfig {
+        allow_private_addresses: true,
+        ..CrawlerConfig::default()
+    };
+    worker::engine::process_backlink_check(&pool, &cfg, &TransitionPolicy::default(), backlink.id)
+        .await
+        .unwrap();
+
+    // Two occurrences, still exactly one backlink relation.
+    let (occ,): (i64,) = sqlx::query_as(
+        "SELECT count(*) FROM link_occurrences WHERE backlink_id=$1 AND removed_at IS NULL",
+    )
+    .bind(backlink.id)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(occ, 2, "both physical occurrences recorded");
+    let (bl,): (i64,) = sqlx::query_as("SELECT count(*) FROM backlinks WHERE id=$1")
+        .bind(backlink.id)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(bl, 1, "still one logical relation");
+    let (footer,): (i64,) = sqlx::query_as(
+        "SELECT count(*) FROM link_occurrences WHERE backlink_id=$1 AND placement='footer'",
+    )
+    .bind(backlink.id)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(footer, 1, "the footer occurrence is classified as footer");
+}
+
+#[tokio::test]
 async fn check_of_absent_link_does_not_lose_it_on_first_miss() {
     let Some(pool) = pool().await else { return };
 

@@ -10,12 +10,16 @@ use backlio_core::{Detected, NormalizeOptions, Observation, RelSet, normalize};
 pub struct LinkMatch {
     /// The normalized href (equals the normalized target).
     pub href_normalized: String,
+    /// The raw href attribute as written on the page, before normalization.
+    pub href_raw: String,
     pub anchor_text: Option<String>,
     pub rel: RelSet,
     /// Already accounts for page-level nofollow (docs/06 §3.3).
     pub is_dofollow: bool,
     pub is_image: bool,
     pub image_alt: Option<String>,
+    pub placement: String,
+    pub surrounding_text: Option<String>,
     pub position: usize,
 }
 
@@ -40,11 +44,14 @@ pub fn find_matches(
         {
             matches.push(LinkMatch {
                 href_normalized: href_norm,
+                href_raw: link.href_raw.clone(),
                 anchor_text: link.anchor_text.clone(),
                 rel: link.rel.clone(),
                 is_dofollow: link.rel.is_dofollow(page.robots_nofollow),
                 is_image: link.is_image,
                 image_alt: link.image_alt.clone(),
+                placement: link.placement.clone(),
+                surrounding_text: link.surrounding_text.clone(),
                 position: link.position,
             });
         }

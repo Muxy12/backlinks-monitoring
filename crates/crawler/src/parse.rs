@@ -4,7 +4,7 @@
 //! (§27, docs/06 §4).
 
 use backlio_core::{RelSet, RelType};
-use scraper::{Html, Selector};
+use scraper::{ElementRef, Html, Selector};
 use std::sync::OnceLock;
 
 /// A single `<a href>` found on the page, before normalization/matching.
@@ -22,8 +22,73 @@ pub struct ExtractedLink {
     pub is_image: bool,
     /// The image's `alt` when `is_image` (may be empty); `None` for text links.
     pub image_alt: Option<String>,
+    /// Best-effort page region the link sits in (docs/06): content, header,
+    /// footer, sidebar, navigation, author_bio, comment, or unknown.
+    pub placement: String,
+    /// A short snippet of the text around the link, for context (may be None).
+    pub surrounding_text: Option<String>,
     /// Document order (0-based) — used to break ties between multiple matches.
     pub position: usize,
+}
+
+/// Classify where a link sits on the page by walking its ancestors from nearest
+/// to farthest and taking the first recognizable region. Heuristic and
+/// deliberately conservative — unknown is fine, a wrong guess is not.
+fn detect_placement(a: ElementRef) -> String {
+    for anc in a.ancestors() {
+        let Some(el) = anc.value().as_element() else {
+            continue;
+        };
+        let tag = el.name();
+        let idc = format!(
+            "{} {}",
+            el.attr("id").unwrap_or(""),
+            el.attr("class").unwrap_or("")
+        )
+        .to_ascii_lowercase();
+        let role = el.attr("role").unwrap_or("").to_ascii_lowercase();
+        let has = |kw: &str| idc.contains(kw);
+
+        if has("comment") {
+            return "comment".into();
+        }
+        if has("author") || has("byline") || has("bio") {
+            return "author_bio".into();
+        }
+        if tag == "footer" || role == "contentinfo" || has("footer") {
+            return "footer".into();
+        }
+        if tag == "header" || role == "banner" || has("masthead") {
+            return "header".into();
+        }
+        if tag == "nav" || role == "navigation" || has("menu") || has("navbar") || has("nav") {
+            return "navigation".into();
+        }
+        if tag == "aside" || role == "complementary" || has("sidebar") || has("widget") {
+            return "sidebar".into();
+        }
+        if tag == "main" || tag == "article" || has("content") || has("post") || has("entry") {
+            return "content".into();
+        }
+    }
+    "unknown".into()
+}
+
+/// A short, whitespace-collapsed snippet from the link's nearest block ancestor,
+/// for showing the link in context. Truncated so it never bloats a row.
+fn surrounding_text(a: ElementRef) -> Option<String> {
+    let parent = a.parent().and_then(ElementRef::wrap)?;
+    let text: String = parent
+        .text()
+        .collect::<String>()
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
+    if text.is_empty() {
+        return None;
+    }
+    let snippet: String = text.chars().take(280).collect();
+    Some(snippet)
 }
 
 /// Everything the matcher needs from one parsed page.
@@ -132,6 +197,8 @@ pub fn parse_page(html: &str) -> ParsedPage {
         };
 
         let rel = parse_rel(a.value().attr("rel").unwrap_or(""));
+        let placement = detect_placement(a);
+        let surrounding = surrounding_text(a);
 
         links.push(ExtractedLink {
             href_raw,
@@ -139,6 +206,8 @@ pub fn parse_page(html: &str) -> ParsedPage {
             rel,
             is_image,
             image_alt,
+            placement,
+            surrounding_text: surrounding,
             position,
         });
     }

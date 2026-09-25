@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, type CSSProperties, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { api, orgApi, backlinksExportUrl, type BacklinkView, type ClientView, type DashboardResponse, type EventView, type MeResponse, type NotificationsResponse, type ProjectView, type TagView } from "@/lib/api";
+import { api, orgApi, backlinksExportUrl, type BacklinkView, type ClientView, type DashboardResponse, type EventView, type MeResponse, type NotificationsResponse, type OccurrenceView, type ProjectView, type TagView } from "@/lib/api";
 import { statusColor, statusLabel } from "@/lib/status";
 import "@/app/auth.css";
 import "./dashboard.css";
@@ -17,6 +17,7 @@ export default function DashboardPage() {
   const [backlinks, setBacklinks] = useState<BacklinkView[]>([]);
   const [selected, setSelected] = useState<BacklinkView | null>(null);
   const [events, setEvents] = useState<EventView[] | null>(null);
+  const [occurrences, setOccurrences] = useState<OccurrenceView[]>([]);
   const [warranties, setWarranties] = useState<BacklinkView[]>([]);
   const [notifs, setNotifs] = useState<NotificationsResponse | null>(null);
   const [showNotifs, setShowNotifs] = useState(false);
@@ -122,14 +123,17 @@ export default function DashboardPage() {
     setSelected(b);
     setEvents(null);
     setBlTags([]);
+    setOccurrences([]);
     setNewTag("");
     if (orgId) {
-      const [ev, tg] = await Promise.all([
+      const [ev, tg, oc] = await Promise.all([
         orgApi.backlinkEvents(orgId, b.id),
         orgApi.backlinkTags(orgId, b.id),
+        orgApi.backlinkOccurrences(orgId, b.id),
       ]);
       setEvents(ev.ok ? ev.data : []);
       if (tg.ok) setBlTags(tg.data);
+      if (oc.ok) setOccurrences(oc.data);
     }
   }
 
@@ -312,6 +316,14 @@ export default function DashboardPage() {
             <Tile label="Needs attention" value={summary?.needs_attention ?? 0} accent="var(--yellow)" icon="!" hint="Lost, changed or errored" />
             <Tile label="Value at risk" value={money(summary?.value_at_risk ?? [])} accent="var(--red)" icon="⚠" hint="Cost of at-risk links" />
           </section>
+
+          {summary && (
+            <div className="substats">
+              <span><b>{summary.referring_domains}</b> referring domains</span>
+              <span><b>{summary.referring_pages}</b> referring pages</span>
+              <span><b>{summary.occurrences}</b> occurrences</span>
+            </div>
+          )}
 
           {distTotal > 0 && (
             <section className="dist">
@@ -603,6 +615,37 @@ export default function DashboardPage() {
               <div><dt>Lost at</dt><dd>{fmtLong(selected.lost_at)}</dd></div>
               <div><dt>Cost</dt><dd>{selected.cost ? `${selected.cost} ${selected.currency ?? ""}` : "—"}</dd></div>
             </dl>
+            {occurrences.length > 0 && (
+              <>
+                <h3 className="drawer-sub">Occurrences ({occurrences.length})</h3>
+                <ul className="occ-list">
+                  {occurrences.map((o) => (
+                    <li key={o.id} className="occ">
+                      <div className="occ-top">
+                        <span className="occ-anchor">
+                          {o.anchor_text ||
+                            (o.link_type === "image"
+                              ? `[image${o.image_alt ? ": " + o.image_alt : ""}]`
+                              : "—")}
+                        </span>
+                        <span className="occ-place">{o.placement}</span>
+                      </div>
+                      <div className="rel-chips">
+                        {o.link_type === "image" && <span className="rel-chip">image</span>}
+                        {o.is_nofollow ? (
+                          <span className="rel-chip rel-nofollow">nofollow</span>
+                        ) : (
+                          <span className="rel-chip rel-dofollow">dofollow</span>
+                        )}
+                        {o.is_sponsored && <span className="rel-chip rel-sponsored">sponsored</span>}
+                        {o.is_ugc && <span className="rel-chip rel-ugc">ugc</span>}
+                      </div>
+                      {o.surrounding_text && <div className="occ-ctx muted">“{o.surrounding_text}”</div>}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
             <div className="tags-row">
               {blTags.map((t) => (
                 <span key={t.id} className="tag-chip" style={t.color ? { borderColor: t.color, color: t.color } : undefined}>
