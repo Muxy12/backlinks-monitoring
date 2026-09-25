@@ -1392,6 +1392,37 @@ pub mod competitors {
             .map_err(DbError::from_insert)?;
         }
 
+        // Phase 2 alert: a NEW referring domain to a competitor is notable enough
+        // to raise an in-app notification immediately (org-wide, deduped). Per-
+        // backlink noise is left to a digest. The notifications table already
+        // carries channel/digest columns for email/slack/webhook fan-out later.
+        if domain_seen == 0 {
+            let dedupe = format!("comp_dom:{}:{}", competitor.id, source_domain);
+            sqlx::query(
+                "INSERT INTO notifications \
+                    (id, organization_id, backlink_id, kind, title, body, data, dedupe_key) \
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8) \
+                 ON CONFLICT (dedupe_key) WHERE dedupe_key IS NOT NULL DO NOTHING",
+            )
+            .bind(Uuid::now_v7())
+            .bind(org)
+            .bind(id)
+            .bind("competitor_new_referring_domain")
+            .bind(format!(
+                "New referring domain for {}",
+                competitor.normalized_domain
+            ))
+            .bind(format!(
+                "{source_domain} now links to {}",
+                competitor.normalized_domain
+            ))
+            .bind(&payload)
+            .bind(&dedupe)
+            .execute(&mut *tx)
+            .await
+            .map_err(DbError::from_insert)?;
+        }
+
         tx.commit().await?;
         Ok((id, true))
     }
