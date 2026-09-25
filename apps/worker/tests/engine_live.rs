@@ -155,17 +155,30 @@ async fn check_target_records_target_final_url_and_status() {
         .mount(&server)
         .await;
 
-    let user = users::create(&pool, Uuid::now_v7(), &format!("{}@x.com", uniq("u")), "hash", "U")
-        .await
-        .unwrap();
+    let user = users::create(
+        &pool,
+        Uuid::now_v7(),
+        &format!("{}@x.com", uniq("u")),
+        "hash",
+        "U",
+    )
+    .await
+    .unwrap();
     let org = orgs::create_with_owner(&pool, Uuid::now_v7(), "Acme", &uniq("acme"), user.id)
         .await
         .unwrap();
     let scope = authorize_org(&pool, user.id, org.id).await.unwrap();
-    let project =
-        db::repositories::projects::create(&pool, &scope, Uuid::now_v7(), "Site", "acme.com", 7 * 24 * 3600, None)
-            .await
-            .unwrap();
+    let project = db::repositories::projects::create(
+        &pool,
+        &scope,
+        Uuid::now_v7(),
+        "Site",
+        "acme.com",
+        7 * 24 * 3600,
+        None,
+    )
+    .await
+    .unwrap();
     let source_url = format!("{}/article", server.uri());
     let backlink = backlinks::create(
         &pool,
@@ -195,10 +208,14 @@ async fn check_target_records_target_final_url_and_status() {
         check_target: true,
         ..CrawlerConfig::default()
     };
-    let applied =
-        worker::engine::process_backlink_check(&pool, &cfg, &TransitionPolicy::default(), backlink.id)
-            .await
-            .expect("engine ran");
+    let applied = worker::engine::process_backlink_check(
+        &pool,
+        &cfg,
+        &TransitionPolicy::default(),
+        backlink.id,
+    )
+    .await
+    .expect("engine ran");
     assert!(applied);
 
     // The target fetch was recorded on the backlink row and the check row.
@@ -210,7 +227,10 @@ async fn check_target_records_target_final_url_and_status() {
             .unwrap();
     assert_eq!(status, Some(200), "target answered 200");
     assert!(
-        final_url.as_deref().map(|u| u.contains("/lp")).unwrap_or(false),
+        final_url
+            .as_deref()
+            .map(|u| u.contains("/lp"))
+            .unwrap_or(false),
         "target_final_url points at the target: {final_url:?}"
     );
     let (check_target_status,): (Option<i32>,) =
@@ -219,7 +239,11 @@ async fn check_target_records_target_final_url_and_status() {
             .fetch_one(&pool)
             .await
             .unwrap();
-    assert_eq!(check_target_status, Some(200), "check row carries target status");
+    assert_eq!(
+        check_target_status,
+        Some(200),
+        "check row carries target status"
+    );
 }
 
 #[tokio::test]
