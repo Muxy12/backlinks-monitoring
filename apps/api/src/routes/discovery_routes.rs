@@ -9,11 +9,23 @@ use axum::Json;
 use axum::extract::{Path, State};
 use axum::http::HeaderMap;
 use axum_extra::extract::cookie::CookieJar;
+use chrono::{DateTime, Utc};
 use common::Role;
 use db::authorize_org;
 use db::repositories::{competitors, projects, seeds};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+
+/// Parse a provider timestamp (RFC3339, or DataForSEO's "YYYY-MM-DD HH:MM:SS +ZZ:ZZ").
+fn parse_dt(s: &Option<String>) -> Option<DateTime<Utc>> {
+    let s = s.as_deref()?.trim();
+    if let Ok(d) = DateTime::parse_from_rfc3339(s) {
+        return Some(d.with_timezone(&Utc));
+    }
+    DateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S %z")
+        .ok()
+        .map(|d| d.with_timezone(&Utc))
+}
 
 #[derive(Serialize)]
 pub struct SeedView {
@@ -158,8 +170,13 @@ pub async fn run_discovery(
     let mut new = 0usize;
     for l in links {
         let rel = if l.dofollow { "dofollow" } else { "nofollow" };
+        let meta = db::repositories::DiscoveredMeta {
+            first_seen: parse_dt(&l.first_seen),
+            last_seen: parse_dt(&l.last_seen),
+            source_status: l.source_status,
+        };
         let is_new = match &competitor {
-            Some(c) => competitors::record_backlink(
+            Some(c) => competitors::record_backlink_with_meta(
                 &state.pool,
                 &scope,
                 c,
@@ -167,11 +184,12 @@ pub async fn run_discovery(
                 &l.target_url,
                 l.anchor.as_deref(),
                 rel,
+                Some(&meta),
             )
             .await
             .map(|(_, n)| n)
             .unwrap_or(false),
-            None => seeds::record_backlink(
+            None => seeds::record_backlink_with_meta(
                 &state.pool,
                 org_id,
                 project_id,
@@ -179,6 +197,7 @@ pub async fn run_discovery(
                 &l.target_url,
                 l.anchor.as_deref(),
                 rel,
+                Some(&meta),
             )
             .await
             .unwrap_or(false),

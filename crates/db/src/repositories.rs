@@ -16,6 +16,16 @@ use common::Role;
 use sqlx::PgPool;
 use uuid::Uuid;
 
+/// Optional provider-supplied metadata for a discovered backlink (e.g. DataForSEO
+/// first_seen / last_seen / page HTTP status), so a discovered row is populated
+/// before our own first crawl. None for sources that don't supply it.
+#[derive(Debug, Clone, Default)]
+pub struct DiscoveredMeta {
+    pub first_seen: Option<DateTime<Utc>>,
+    pub last_seen: Option<DateTime<Utc>>,
+    pub source_status: Option<i32>,
+}
+
 // ─── Users ───────────────────────────────────────────────────────────────────
 pub mod users {
     use super::*;
@@ -1347,6 +1357,25 @@ pub mod competitors {
         anchor: Option<&str>,
         rel_type: &str,
     ) -> Result<(Uuid, bool), DbError> {
+        record_backlink_with_meta(
+            pool, scope, competitor, source_url, target_url, anchor, rel_type, None,
+        )
+        .await
+    }
+
+    /// As `record_backlink`, pre-populating first_checked_at / last_seen_at /
+    /// source_http_status from provider metadata when supplied (spec §21).
+    #[allow(clippy::too_many_arguments)]
+    pub async fn record_backlink_with_meta(
+        pool: &PgPool,
+        scope: &OrgScope,
+        competitor: &ProjectCompetitor,
+        source_url: &str,
+        target_url: &str,
+        anchor: Option<&str>,
+        rel_type: &str,
+        meta: Option<&super::DiscoveredMeta>,
+    ) -> Result<(Uuid, bool), DbError> {
         let opts = NormalizeOptions::default();
         let source_norm = normalize(source_url, None, opts)
             .ok_or_else(|| DbError::Config("invalid source_url".into()))?;
@@ -1355,6 +1384,10 @@ pub mod competitors {
         let source_domain = host_of(&source_norm).unwrap_or_default();
         let target_domain = host_of(&target_norm).unwrap_or_default();
         let org = scope.organization_id();
+        let (m_first, m_last, m_status) = match meta {
+            Some(m) => (m.first_seen, m.last_seen, m.source_status),
+            None => (None, None, None),
+        };
 
         let mut tx = pool.begin().await?;
 
@@ -1399,8 +1432,9 @@ pub mod competitors {
             "INSERT INTO backlinks (id, organization_id, project_id, \
                 source_url, source_url_normalized, source_domain, \
                 target_url, target_url_normalized, target_domain, \
-                expected_anchor_text, expected_rel_type, subject, competitor_id, next_check_at) \
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::rel_type,'competitor',$12, now())",
+                expected_anchor_text, expected_rel_type, subject, competitor_id, \
+                first_checked_at, last_seen_at, source_http_status, next_check_at) \
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::rel_type,'competitor',$12,$13,$14,$15, now())",
         )
         .bind(id)
         .bind(org)
@@ -1414,6 +1448,9 @@ pub mod competitors {
         .bind(anchor)
         .bind(rel_type)
         .bind(competitor.id)
+        .bind(m_first)
+        .bind(m_last)
+        .bind(m_status)
         .execute(&mut *tx)
         .await
         .map_err(DbError::from_insert)?;
@@ -1725,6 +1762,32 @@ pub mod seeds {
         anchor: Option<&str>,
         rel_type: &str,
     ) -> Result<bool, DbError> {
+        record_backlink_with_meta(
+            pool,
+            organization_id,
+            project_id,
+            source_url,
+            target_url,
+            anchor,
+            rel_type,
+            None,
+        )
+        .await
+    }
+
+    /// As `record_backlink`, but pre-populates first_checked_at / last_seen_at /
+    /// source_http_status from provider metadata when supplied (spec §21).
+    #[allow(clippy::too_many_arguments)]
+    pub async fn record_backlink_with_meta(
+        pool: &PgPool,
+        organization_id: Uuid,
+        project_id: Uuid,
+        source_url: &str,
+        target_url: &str,
+        anchor: Option<&str>,
+        rel_type: &str,
+        meta: Option<&super::DiscoveredMeta>,
+    ) -> Result<bool, DbError> {
         let opts = NormalizeOptions::default();
         let source_norm = match normalize(source_url, None, opts) {
             Some(s) => s,
@@ -1736,6 +1799,10 @@ pub mod seeds {
         };
         let source_domain = host_of(&source_norm).unwrap_or_default();
         let target_domain = host_of(&target_norm).unwrap_or_default();
+        let (first_seen, last_seen, source_status) = match meta {
+            Some(m) => (m.first_seen, m.last_seen, m.source_status),
+            None => (None, None, None),
+        };
 
         let mut tx = pool.begin().await?;
         let existing: Option<(Uuid,)> = sqlx::query_as(
@@ -1757,8 +1824,9 @@ pub mod seeds {
             "INSERT INTO backlinks (id, organization_id, project_id, \
                 source_url, source_url_normalized, source_domain, \
                 target_url, target_url_normalized, target_domain, \
-                expected_anchor_text, expected_rel_type, subject, tier, next_check_at) \
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::rel_type,'own',1, now())",
+                expected_anchor_text, expected_rel_type, subject, tier, \
+                first_checked_at, last_seen_at, source_http_status, next_check_at) \
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::rel_type,'own',1,$12,$13,$14, now())",
         )
         .bind(Uuid::now_v7())
         .bind(organization_id)
@@ -1771,6 +1839,9 @@ pub mod seeds {
         .bind(&target_domain)
         .bind(anchor)
         .bind(rel_type)
+        .bind(first_seen)
+        .bind(last_seen)
+        .bind(source_status)
         .execute(&mut *tx)
         .await
         .map_err(DbError::from_insert)?;

@@ -16,6 +16,11 @@ pub struct DiscoveredLink {
     pub target_url: String,
     pub anchor: Option<String>,
     pub dofollow: bool,
+    /// Provider-supplied metadata (RFC-ish timestamps as the provider returns
+    /// them; None when the provider doesn't supply them, e.g. the crawler).
+    pub first_seen: Option<String>,
+    pub last_seen: Option<String>,
+    pub source_status: Option<i32>,
 }
 
 #[async_trait]
@@ -99,6 +104,12 @@ impl DiscoveryProvider for DataForSeoProvider {
             .unwrap_or_default();
         let mut out = Vec::new();
         for it in items {
+            // Only real backlink rows — skip redirects/canonicals/etc.
+            if let Some(t) = it["item_type"].as_str()
+                && t != "backlink"
+            {
+                continue;
+            }
             let source_url = it["url_from"].as_str().unwrap_or("").to_string();
             let target_url = it["url_to"].as_str().unwrap_or("").to_string();
             if source_url.is_empty() || target_url.is_empty() {
@@ -112,6 +123,9 @@ impl DiscoveryProvider for DataForSeoProvider {
                     .filter(|s| !s.is_empty())
                     .map(str::to_string),
                 dofollow: it["dofollow"].as_bool().unwrap_or(true),
+                first_seen: it["first_seen"].as_str().map(str::to_string),
+                last_seen: it["last_seen"].as_str().map(str::to_string),
+                source_status: it["page_from_status_code"].as_i64().map(|n| n as i32),
             });
         }
         Ok(out)
@@ -175,6 +189,9 @@ impl DiscoveryProvider for BingProvider {
                     .filter(|s| !s.is_empty())
                     .map(str::to_string),
                 dofollow: true,
+                first_seen: None,
+                last_seen: None,
+                source_status: None,
             });
         }
         Ok(out)
