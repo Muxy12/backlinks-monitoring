@@ -50,7 +50,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .collect();
         if !emails.is_empty() {
             match db::repositories::users::promote_admins_by_email(&db.pool, &emails).await {
-                Ok(n) => tracing::info!(promoted = n, configured = emails.len(), "platform admins ensured"),
+                Ok(n) => tracing::info!(
+                    promoted = n,
+                    configured = emails.len(),
+                    "platform admins ensured"
+                ),
                 Err(e) => tracing::warn!(error = %e, "platform admin bootstrap failed"),
             }
         }

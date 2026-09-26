@@ -104,10 +104,7 @@ pub mod users {
     /// admins. Idempotent — only flips rows that aren't already set. Returns how
     /// many were newly promoted. Called at API boot from the ADMIN_EMAILS env, so
     /// no credentials are committed: the operator registers, then is promoted.
-    pub async fn promote_admins_by_email(
-        pool: &PgPool,
-        emails: &[String],
-    ) -> Result<u64, DbError> {
+    pub async fn promote_admins_by_email(pool: &PgPool, emails: &[String]) -> Result<u64, DbError> {
         if emails.is_empty() {
             return Ok(0);
         }
