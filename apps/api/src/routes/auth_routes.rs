@@ -26,6 +26,8 @@ pub struct UserView {
     pub email: String,
     pub name: String,
     pub email_verified: bool,
+    /// Platform operator flag — the frontend uses it to reveal the admin nav.
+    pub is_admin: bool,
 }
 
 impl From<db::entities::User> for UserView {
@@ -35,6 +37,7 @@ impl From<db::entities::User> for UserView {
             email: u.email,
             name: u.name,
             email_verified: u.email_verified_at.is_some(),
+            is_admin: u.is_platform_admin,
         }
     }
 }

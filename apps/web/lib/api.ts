@@ -28,6 +28,7 @@ export interface UserView {
   email: string;
   name: string;
   email_verified: boolean;
+  is_admin?: boolean;
 }
 export interface OrgView {
   id: string;
@@ -569,3 +570,44 @@ export interface EventView {
   current_data: unknown;
   detected_at: string;
 }
+
+// ─── Platform admin backoffice (only usable by platform admins; 404 otherwise) ──
+export interface AdminStats {
+  users: number;
+  organizations: number;
+  projects: number;
+  backlinks: number;
+  backlinks_live: number;
+  backlinks_lost: number;
+}
+export interface AdminOrg {
+  id: string;
+  name: string;
+  slug: string;
+  created_at: string;
+  members: number;
+  projects: number;
+  backlinks: number;
+  owner_email: string | null;
+}
+export interface AdminUser {
+  id: string;
+  email: string;
+  name: string;
+  is_platform_admin: boolean;
+  email_verified: boolean;
+  created_at: string;
+  organizations: number;
+}
+
+export const adminApi = {
+  stats: () => request<AdminStats>("/v1/admin/stats"),
+  organizations: () => request<AdminOrg[]>("/v1/admin/organizations"),
+  users: () => request<AdminUser[]>("/v1/admin/users"),
+  setAdmin: (userId: string, isAdmin: boolean) =>
+    request<AdminUser>(`/v1/admin/users/${userId}/admin`, {
+      method: "POST",
+      headers: csrfHeader(),
+      body: JSON.stringify({ is_admin: isAdmin }),
+    }),
+};

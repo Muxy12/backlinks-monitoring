@@ -40,7 +40,8 @@ pub mod users {
         sqlx::query_as::<_, User>(
             "INSERT INTO users (id, email, password_hash, name) \
              VALUES ($1, $2, $3, $4) \
-             RETURNING id, email, password_hash, name, email_verified_at, created_at, updated_at",
+             RETURNING id, email, password_hash, name, email_verified_at, \
+                       is_platform_admin, created_at, updated_at",
         )
         .bind(id)
         .bind(email)
@@ -53,7 +54,8 @@ pub mod users {
 
     pub async fn find_by_email(pool: &PgPool, email: &str) -> Result<Option<User>, DbError> {
         Ok(sqlx::query_as::<_, User>(
-            "SELECT id, email, password_hash, name, email_verified_at, created_at, updated_at \
+            "SELECT id, email, password_hash, name, email_verified_at, \
+                    is_platform_admin, created_at, updated_at \
              FROM users WHERE email = $1",
         )
         .bind(email)
@@ -63,7 +65,8 @@ pub mod users {
 
     pub async fn find_by_id(pool: &PgPool, id: Uuid) -> Result<User, DbError> {
         sqlx::query_as::<_, User>(
-            "SELECT id, email, password_hash, name, email_verified_at, created_at, updated_at \
+            "SELECT id, email, password_hash, name, email_verified_at, \
+                    is_platform_admin, created_at, updated_at \
              FROM users WHERE id = $1",
         )
         .bind(id)
@@ -81,6 +84,134 @@ pub mod users {
         .execute(pool)
         .await?;
         Ok(())
+    }
+
+    /// Grant or revoke the platform-admin flag (backoffice; migration 0022).
+    pub async fn set_platform_admin(pool: &PgPool, id: Uuid, on: bool) -> Result<User, DbError> {
+        sqlx::query_as::<_, User>(
+            "UPDATE users SET is_platform_admin = $2, updated_at = now() WHERE id = $1 \
+             RETURNING id, email, password_hash, name, email_verified_at, \
+                       is_platform_admin, created_at, updated_at",
+        )
+        .bind(id)
+        .bind(on)
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_fetch)
+    }
+
+    /// Bootstrap: ensure the accounts in `emails` (case-insensitive) are platform
+    /// admins. Idempotent — only flips rows that aren't already set. Returns how
+    /// many were newly promoted. Called at API boot from the ADMIN_EMAILS env, so
+    /// no credentials are committed: the operator registers, then is promoted.
+    pub async fn promote_admins_by_email(
+        pool: &PgPool,
+        emails: &[String],
+    ) -> Result<u64, DbError> {
+        if emails.is_empty() {
+            return Ok(0);
+        }
+        let lowered: Vec<String> = emails.iter().map(|e| e.to_lowercase()).collect();
+        let res = sqlx::query(
+            "UPDATE users SET is_platform_admin = true, updated_at = now() \
+             WHERE lower(email) = ANY($1) AND is_platform_admin = false",
+        )
+        .bind(&lowered)
+        .execute(pool)
+        .await?;
+        Ok(res.rows_affected())
+    }
+}
+
+// ─── Platform admin backoffice (cross-tenant; migration 0022) ─────────────────
+//
+// The ONLY sanctioned cross-tenant read surface. Every caller is gated on
+// `users.is_platform_admin` in the route layer before any of these run. Reads are
+// capped so a large instance can't return an unbounded payload.
+pub mod admin {
+    use super::*;
+
+    #[derive(Debug, Clone, sqlx::FromRow)]
+    pub struct PlatformStats {
+        pub users: i64,
+        pub organizations: i64,
+        pub projects: i64,
+        pub backlinks: i64,
+        pub backlinks_live: i64,
+        pub backlinks_lost: i64,
+    }
+
+    pub async fn platform_stats(pool: &PgPool) -> Result<PlatformStats, DbError> {
+        sqlx::query_as::<_, PlatformStats>(
+            "SELECT \
+               (SELECT count(*) FROM users)::bigint AS users, \
+               (SELECT count(*) FROM organizations)::bigint AS organizations, \
+               (SELECT count(*) FROM projects)::bigint AS projects, \
+               (SELECT count(*) FROM backlinks)::bigint AS backlinks, \
+               (SELECT count(*) FROM backlinks WHERE status = 'live')::bigint AS backlinks_live, \
+               (SELECT count(*) FROM backlinks WHERE status = 'lost')::bigint AS backlinks_lost",
+        )
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_fetch)
+    }
+
+    #[derive(Debug, Clone, sqlx::FromRow)]
+    pub struct AdminOrg {
+        pub id: Uuid,
+        pub name: String,
+        pub slug: String,
+        pub created_at: DateTime<Utc>,
+        pub members: i64,
+        pub projects: i64,
+        pub backlinks: i64,
+        pub owner_email: Option<String>,
+    }
+
+    pub async fn list_organizations(pool: &PgPool) -> Result<Vec<AdminOrg>, DbError> {
+        Ok(sqlx::query_as::<_, AdminOrg>(
+            "SELECT o.id, o.name, o.slug, o.created_at, \
+               (SELECT count(*) FROM organization_members m \
+                  WHERE m.organization_id = o.id)::bigint AS members, \
+               (SELECT count(*) FROM projects p \
+                  WHERE p.organization_id = o.id)::bigint AS projects, \
+               (SELECT count(*) FROM backlinks b \
+                  WHERE b.organization_id = o.id)::bigint AS backlinks, \
+               (SELECT u.email FROM organization_members m \
+                  JOIN users u ON u.id = m.user_id \
+                  WHERE m.organization_id = o.id AND m.role = 'owner' \
+                  ORDER BY u.created_at LIMIT 1) AS owner_email \
+             FROM organizations o \
+             ORDER BY o.created_at DESC \
+             LIMIT 500",
+        )
+        .fetch_all(pool)
+        .await?)
+    }
+
+    #[derive(Debug, Clone, sqlx::FromRow)]
+    pub struct AdminUser {
+        pub id: Uuid,
+        pub email: String,
+        pub name: String,
+        pub is_platform_admin: bool,
+        pub email_verified_at: Option<DateTime<Utc>>,
+        pub created_at: DateTime<Utc>,
+        pub organizations: i64,
+    }
+
+    pub async fn list_users(pool: &PgPool) -> Result<Vec<AdminUser>, DbError> {
+        Ok(sqlx::query_as::<_, AdminUser>(
+            "SELECT u.id, u.email, u.name, u.is_platform_admin, u.email_verified_at, \
+               u.created_at, \
+               (SELECT count(*) FROM organization_members m \
+                  WHERE m.user_id = u.id)::bigint AS organizations \
+             FROM users u \
+             ORDER BY u.created_at DESC \
+             LIMIT 500",
+        )
+        .fetch_all(pool)
+        .await?)
     }
 }
 

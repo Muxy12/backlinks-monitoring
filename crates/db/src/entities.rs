@@ -13,6 +13,9 @@ pub struct User {
     pub password_hash: String,
     pub name: String,
     pub email_verified_at: Option<DateTime<Utc>>,
+    /// Cross-tenant operator flag (docs migration 0022). Grants access to the
+    /// admin backoffice only; unrelated to per-org roles.
+    pub is_platform_admin: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }

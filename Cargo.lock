@@ -553,9 +553,12 @@ dependencies = [
 name = "crawler"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "async-trait",
  "backlio-core",
  "reqwest",
  "scraper",
+ "serde_json",
  "thiserror 2.0.21",
  "tokio",
  "tracing",

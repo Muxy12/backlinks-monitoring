@@ -217,6 +217,18 @@ pub fn app(state: AppState) -> Router {
             "/v1/tools/backlink-check",
             post(routes::tools_routes::backlink_check),
         )
+        // Platform admin backoffice (migration 0022) — cross-tenant, gated on
+        // users.is_platform_admin inside each handler.
+        .route("/v1/admin/stats", get(routes::admin_routes::stats))
+        .route(
+            "/v1/admin/organizations",
+            get(routes::admin_routes::list_organizations),
+        )
+        .route("/v1/admin/users", get(routes::admin_routes::list_users))
+        .route(
+            "/v1/admin/users/{user_id}/admin",
+            post(routes::admin_routes::set_admin),
+        )
         // Machine-triggered monitoring tick (docs/17), auth by SCHEDULER_SECRET.
         .route("/internal/tick", post(routes::internal_routes::tick))
         // Global 1 MiB body cap (docs/09 §1, S7). The CSV upload route will

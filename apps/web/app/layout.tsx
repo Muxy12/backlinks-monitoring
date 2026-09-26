@@ -1,11 +1,19 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
+import { SITE_URL } from "@/lib/site";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Backlio — Backlink Monitoring for SEO Teams",
+  // metadataBase makes every page's `alternates.canonical` (and OG URLs) resolve
+  // to an absolute URL on the canonical origin.
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "Backlio — Backlink Monitoring for SEO Teams",
+    template: "%s — Backlio",
+  },
   description:
     "Monitor every backlink you build. Track lost links, nofollow changes, anchors, campaigns, costs and warranties from one dashboard.",
+  alternates: { canonical: "/" },
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

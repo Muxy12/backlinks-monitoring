@@ -39,6 +39,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         session_ttl_hours,
         ..ApiConfig::default()
     };
+    // Bootstrap platform admins from ADMIN_EMAILS (comma-separated). The operator
+    // signs up normally; matching accounts are promoted here at boot. No admin
+    // credentials are ever committed or baked in (docs/01 §1.2).
+    if let Ok(raw) = std::env::var("ADMIN_EMAILS") {
+        let emails: Vec<String> = raw
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect();
+        if !emails.is_empty() {
+            match db::repositories::users::promote_admins_by_email(&db.pool, &emails).await {
+                Ok(n) => tracing::info!(promoted = n, configured = emails.len(), "platform admins ensured"),
+                Err(e) => tracing::warn!(error = %e, "platform admin bootstrap failed"),
+            }
+        }
+    }
+
     let state = AppState::new(db.pool, cfg);
 
     let port: u16 = std::env::var("PORT")

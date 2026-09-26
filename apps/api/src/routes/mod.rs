@@ -1,6 +1,7 @@
 //! HTTP route handlers. Thin: validate input, call a crate, map to a response
 //! (docs/02 §apps). Business rules live in the crates, not here.
 
+pub mod admin_routes;
 pub mod auth_routes;
 pub mod billing_routes;
 pub mod competitor_routes;

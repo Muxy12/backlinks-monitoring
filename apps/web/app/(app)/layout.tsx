@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import "./dashboard/dashboard.css";
@@ -25,6 +25,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Reveal the Admin link only for platform admins (best-effort; the /admin page
+  // and API enforce access regardless of what the nav shows).
+  useEffect(() => {
+    let alive = true;
+    api.me().then((res) => {
+      if (alive && res.ok) setIsAdmin(!!res.data.user.is_admin);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const isActive = (href: string) => pathname === href || pathname?.startsWith(href + "/");
 
@@ -52,6 +65,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               {l.label}
             </a>
           ))}
+          {isAdmin && (
+            <a
+              href="/admin"
+              className={`side-link${isActive("/admin") ? " active" : ""}`}
+              aria-current={isActive("/admin") ? "page" : undefined}
+              onClick={() => setOpen(false)}
+            >
+              <span className="side-ico">🛡️</span>
+              Admin
+            </a>
+          )}
         </nav>
         <div className="side-spacer" />
         <a
