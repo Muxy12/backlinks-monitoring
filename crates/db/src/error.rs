@@ -22,6 +22,11 @@ pub enum DbError {
     #[error("forbidden")]
     Forbidden,
 
+    /// The organization has been suspended by a platform admin (migration 0023).
+    /// A member is refused a scope until it is unsuspended.
+    #[error("organization suspended")]
+    Suspended,
+
     /// A uniqueness constraint was violated (e.g. duplicate email or slug).
     /// Carries the constraint name so callers can map it to a field error.
     #[error("conflict: {0}")]

@@ -49,9 +49,13 @@ pub async fn authorize_org(
     user_id: Uuid,
     organization_id: Uuid,
 ) -> Result<OrgScope, DbError> {
-    let row: Option<(String,)> = sqlx::query_as(
-        "SELECT role::text FROM organization_members \
-         WHERE organization_id = $1 AND user_id = $2",
+    // Join the org so we can enforce suspension in the same lookup (migration
+    // 0023): a suspended org is frozen for its members regardless of role.
+    let row: Option<(String, bool)> = sqlx::query_as(
+        "SELECT m.role::text, (o.suspended_at IS NOT NULL) \
+         FROM organization_members m \
+         JOIN organizations o ON o.id = m.organization_id \
+         WHERE m.organization_id = $1 AND m.user_id = $2",
     )
     .bind(organization_id)
     .bind(user_id)
@@ -60,7 +64,8 @@ pub async fn authorize_org(
 
     match row {
         None => Err(DbError::NotFound),
-        Some((role,)) => {
+        Some((_, suspended)) if suspended => Err(DbError::Suspended),
+        Some((role, _)) => {
             let role = role.parse::<Role>().map_err(|_| {
                 DbError::Config(format!("unknown role {role:?} in organization_members"))
             })?;

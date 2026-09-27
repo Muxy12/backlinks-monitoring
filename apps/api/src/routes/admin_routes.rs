@@ -12,8 +12,9 @@ use axum::extract::{Path, State};
 use axum::http::HeaderMap;
 use axum_extra::extract::cookie::CookieJar;
 use db::entities::User;
-use db::repositories::{admin, users};
+use db::repositories::{admin, audit, users};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use uuid::Uuid;
 
 /// Resolve the current user and require the platform-admin flag. A non-admin
@@ -60,6 +61,8 @@ pub struct AdminOrgView {
     pub name: String,
     pub slug: String,
     pub created_at: String,
+    pub suspended: bool,
+    pub plan: String,
     pub members: i64,
     pub projects: i64,
     pub backlinks: i64,
@@ -80,10 +83,150 @@ pub async fn list_organizations(
                 name: o.name,
                 slug: o.slug,
                 created_at: o.created_at.to_rfc3339(),
+                suspended: o.suspended,
+                plan: o.plan,
                 members: o.members,
                 projects: o.projects,
                 backlinks: o.backlinks,
                 owner_email: o.owner_email,
+            })
+            .collect(),
+    ))
+}
+
+#[derive(Deserialize)]
+pub struct SuspendBody {
+    pub suspended: bool,
+}
+
+/// POST /v1/admin/organizations/{org_id}/suspend — freeze/unfreeze a workspace.
+pub async fn set_suspended(
+    State(state): State<AppState>,
+    Path(org_id): Path<Uuid>,
+    jar: CookieJar,
+    headers: HeaderMap,
+    Json(body): Json<SuspendBody>,
+) -> Result<axum::http::StatusCode, ApiError> {
+    let admin_user = require_admin(&state, &jar).await?;
+    let (_, session) = current(&state, &jar).await?;
+    check_csrf(&jar, &headers, &session)?;
+    let name = admin::set_suspended(&state.pool, org_id, body.suspended).await?;
+    let action = if body.suspended {
+        "admin.org.suspend"
+    } else {
+        "admin.org.unsuspend"
+    };
+    let _ = audit::log(
+        &state.pool,
+        Some(org_id),
+        Some(admin_user.id),
+        Some(admin_user.email.as_str()),
+        action,
+        Some("organization"),
+        Some(org_id),
+        None,
+        Some(json!({ "name": name, "suspended": body.suspended })),
+    )
+    .await;
+    Ok(axum::http::StatusCode::NO_CONTENT)
+}
+
+#[derive(Deserialize)]
+pub struct SetPlanBody {
+    pub plan: String,
+}
+
+/// POST /v1/admin/organizations/{org_id}/plan — override the org's plan (manual,
+/// no Stripe). Validates the slug against the plan catalog.
+pub async fn set_plan(
+    State(state): State<AppState>,
+    Path(org_id): Path<Uuid>,
+    jar: CookieJar,
+    headers: HeaderMap,
+    Json(body): Json<SetPlanBody>,
+) -> Result<axum::http::StatusCode, ApiError> {
+    let admin_user = require_admin(&state, &jar).await?;
+    let (_, session) = current(&state, &jar).await?;
+    check_csrf(&jar, &headers, &session)?;
+    let plan = billing::Plan::from_slug(&body.plan)
+        .ok_or_else(|| ApiError::Validation(format!("unknown plan '{}'", body.plan)))?;
+    admin::set_plan(&state.pool, org_id, plan.spec().slug).await?;
+    let _ = audit::log(
+        &state.pool,
+        Some(org_id),
+        Some(admin_user.id),
+        Some(admin_user.email.as_str()),
+        "admin.org.plan_change",
+        Some("organization"),
+        Some(org_id),
+        None,
+        Some(json!({ "plan": plan.spec().slug })),
+    )
+    .await;
+    Ok(axum::http::StatusCode::NO_CONTENT)
+}
+
+/// DELETE /v1/admin/organizations/{org_id} — permanently delete a workspace and
+/// all its data (FK cascades). Irreversible.
+pub async fn delete_organization(
+    State(state): State<AppState>,
+    Path(org_id): Path<Uuid>,
+    jar: CookieJar,
+    headers: HeaderMap,
+) -> Result<axum::http::StatusCode, ApiError> {
+    let admin_user = require_admin(&state, &jar).await?;
+    let (_, session) = current(&state, &jar).await?;
+    check_csrf(&jar, &headers, &session)?;
+    let name = admin::delete_organization(&state.pool, org_id).await?;
+    // org_id is None here: the org is gone, so an org-scoped audit row would be
+    // cascade-deleted with it. Keep the id in resource_id instead.
+    let _ = audit::log(
+        &state.pool,
+        None,
+        Some(admin_user.id),
+        Some(admin_user.email.as_str()),
+        "admin.org.delete",
+        Some("organization"),
+        Some(org_id),
+        Some(json!({ "name": name })),
+        None,
+    )
+    .await;
+    Ok(axum::http::StatusCode::NO_CONTENT)
+}
+
+#[derive(Serialize)]
+pub struct AuditView {
+    pub id: Uuid,
+    pub created_at: String,
+    pub organization_id: Option<Uuid>,
+    pub org_name: Option<String>,
+    pub actor_email: Option<String>,
+    pub action: String,
+    pub resource_type: Option<String>,
+    pub resource_id: Option<Uuid>,
+    pub after: Option<String>,
+}
+
+/// GET /v1/admin/audit — recent audit entries across all tenants.
+pub async fn list_audit(
+    State(state): State<AppState>,
+    jar: CookieJar,
+) -> Result<Json<Vec<AuditView>>, ApiError> {
+    require_admin(&state, &jar).await?;
+    let rows = audit::list_recent(&state.pool, 200).await?;
+    Ok(Json(
+        rows.into_iter()
+            .map(|a| AuditView {
+                id: a.id,
+                created_at: a.created_at.to_rfc3339(),
+                organization_id: a.organization_id,
+                org_name: a.org_name,
+                actor_email: a.actor_email,
+                action: a.action,
+                resource_type: a.resource_type,
+                resource_id: a.resource_id,
+                after: a.after,
             })
             .collect(),
     ))

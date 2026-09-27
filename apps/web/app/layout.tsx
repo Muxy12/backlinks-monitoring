@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { SITE_URL } from "@/lib/site";
+import { CookieBanner } from "./cookie-banner";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -23,7 +24,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   await headers();
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        {children}
+        <CookieBanner />
+      </body>
     </html>
   );
 }

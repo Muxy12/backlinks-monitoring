@@ -585,11 +585,25 @@ export interface AdminOrg {
   name: string;
   slug: string;
   created_at: string;
+  suspended: boolean;
+  plan: string;
   members: number;
   projects: number;
   backlinks: number;
   owner_email: string | null;
 }
+export interface AdminAudit {
+  id: string;
+  created_at: string;
+  organization_id: string | null;
+  org_name: string | null;
+  actor_email: string | null;
+  action: string;
+  resource_type: string | null;
+  resource_id: string | null;
+  after: string | null;
+}
+export const ADMIN_PLANS = ["starter", "pro", "agency", "agency_plus"] as const;
 export interface AdminUser {
   id: string;
   email: string;
@@ -604,10 +618,28 @@ export const adminApi = {
   stats: () => request<AdminStats>("/v1/admin/stats"),
   organizations: () => request<AdminOrg[]>("/v1/admin/organizations"),
   users: () => request<AdminUser[]>("/v1/admin/users"),
+  audit: () => request<AdminAudit[]>("/v1/admin/audit"),
   setAdmin: (userId: string, isAdmin: boolean) =>
     request<AdminUser>(`/v1/admin/users/${userId}/admin`, {
       method: "POST",
       headers: csrfHeader(),
       body: JSON.stringify({ is_admin: isAdmin }),
+    }),
+  setOrgSuspended: (orgId: string, suspended: boolean) =>
+    request<null>(`/v1/admin/organizations/${orgId}/suspend`, {
+      method: "POST",
+      headers: csrfHeader(),
+      body: JSON.stringify({ suspended }),
+    }),
+  setOrgPlan: (orgId: string, plan: string) =>
+    request<null>(`/v1/admin/organizations/${orgId}/plan`, {
+      method: "POST",
+      headers: csrfHeader(),
+      body: JSON.stringify({ plan }),
+    }),
+  deleteOrg: (orgId: string) =>
+    request<null>(`/v1/admin/organizations/${orgId}`, {
+      method: "DELETE",
+      headers: csrfHeader(),
     }),
 };

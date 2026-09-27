@@ -159,6 +159,8 @@ pub mod admin {
         pub name: String,
         pub slug: String,
         pub created_at: DateTime<Utc>,
+        pub suspended: bool,
+        pub plan: String,
         pub members: i64,
         pub projects: i64,
         pub backlinks: i64,
@@ -168,6 +170,10 @@ pub mod admin {
     pub async fn list_organizations(pool: &PgPool) -> Result<Vec<AdminOrg>, DbError> {
         Ok(sqlx::query_as::<_, AdminOrg>(
             "SELECT o.id, o.name, o.slug, o.created_at, \
+               (o.suspended_at IS NOT NULL) AS suspended, \
+               COALESCE((SELECT s.plan::text FROM subscriptions s \
+                  WHERE s.organization_id = o.id \
+                    AND s.status IN ('trialing','active','past_due') LIMIT 1), 'starter') AS plan, \
                (SELECT count(*) FROM organization_members m \
                   WHERE m.organization_id = o.id)::bigint AS members, \
                (SELECT count(*) FROM projects p \
@@ -184,6 +190,53 @@ pub mod admin {
         )
         .fetch_all(pool)
         .await?)
+    }
+
+    /// Suspend or unsuspend an org (migration 0023). Returns the org name for the
+    /// audit trail. Idempotent.
+    pub async fn set_suspended(pool: &PgPool, org_id: Uuid, on: bool) -> Result<String, DbError> {
+        let row: Option<(String,)> = sqlx::query_as(
+            "UPDATE organizations \
+             SET suspended_at = CASE WHEN $2 THEN COALESCE(suspended_at, now()) ELSE NULL END, \
+                 updated_at = now() \
+             WHERE id = $1 RETURNING name",
+        )
+        .bind(org_id)
+        .bind(on)
+        .fetch_optional(pool)
+        .await?;
+        row.map(|(n,)| n).ok_or(DbError::NotFound)
+    }
+
+    /// Hard-delete an org and everything it owns (FK cascades). Returns the name
+    /// for the audit trail, or NotFound. Destructive and irreversible.
+    pub async fn delete_organization(pool: &PgPool, org_id: Uuid) -> Result<String, DbError> {
+        let row: Option<(String,)> =
+            sqlx::query_as("DELETE FROM organizations WHERE id = $1 RETURNING name")
+                .bind(org_id)
+                .fetch_optional(pool)
+                .await?;
+        row.map(|(n,)| n).ok_or(DbError::NotFound)
+    }
+
+    /// Admin plan override: upsert an `active` subscription so `plan_for_org`
+    /// resolves to `plan_slug`. Keeps any existing Stripe customer id on update;
+    /// only sets a placeholder on first insert (manual/comped plan, no Stripe).
+    pub async fn set_plan(pool: &PgPool, org_id: Uuid, plan_slug: &str) -> Result<(), DbError> {
+        sqlx::query(
+            "INSERT INTO subscriptions (id, organization_id, stripe_customer_id, plan, status) \
+             VALUES ($1, $2, $3, $4::subscription_plan, 'active') \
+             ON CONFLICT (organization_id) DO UPDATE \
+               SET plan = EXCLUDED.plan, status = 'active', updated_at = now()",
+        )
+        .bind(Uuid::now_v7())
+        .bind(org_id)
+        .bind(format!("admin:{org_id}"))
+        .bind(plan_slug)
+        .execute(pool)
+        .await
+        .map_err(DbError::from_insert)?;
+        Ok(())
     }
 
     #[derive(Debug, Clone, sqlx::FromRow)]
@@ -207,6 +260,78 @@ pub mod admin {
              ORDER BY u.created_at DESC \
              LIMIT 500",
         )
+        .fetch_all(pool)
+        .await?)
+    }
+}
+
+// ─── Audit log (docs/03 §3.8, §45) — append-only trail of privileged actions ───
+pub mod audit {
+    use super::*;
+    use serde_json::Value;
+
+    /// Append one audit entry. Best-effort at the call site: a failure to log must
+    /// not fail the action it records, so callers typically `let _ =` the result.
+    /// `org_id` is None for actions whose org is being deleted (so the row is not
+    /// cascade-removed with it — the org id then lives in `resource_id`).
+    #[allow(clippy::too_many_arguments)]
+    pub async fn log(
+        pool: &PgPool,
+        org_id: Option<Uuid>,
+        actor_user_id: Option<Uuid>,
+        actor_email: Option<&str>,
+        action: &str,
+        resource_type: Option<&str>,
+        resource_id: Option<Uuid>,
+        before: Option<Value>,
+        after: Option<Value>,
+    ) -> Result<(), DbError> {
+        sqlx::query(
+            "INSERT INTO audit_logs \
+               (id, organization_id, actor_user_id, actor_email, action, \
+                resource_type, resource_id, before, after) \
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+        )
+        .bind(Uuid::now_v7())
+        .bind(org_id)
+        .bind(actor_user_id)
+        .bind(actor_email)
+        .bind(action)
+        .bind(resource_type)
+        .bind(resource_id)
+        .bind(before)
+        .bind(after)
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    #[derive(Debug, Clone, sqlx::FromRow)]
+    pub struct AuditEntry {
+        pub id: Uuid,
+        pub created_at: DateTime<Utc>,
+        pub organization_id: Option<Uuid>,
+        pub org_name: Option<String>,
+        pub actor_email: Option<String>,
+        pub action: String,
+        pub resource_type: Option<String>,
+        pub resource_id: Option<Uuid>,
+        pub after: Option<String>,
+    }
+
+    /// Cross-tenant recent audit list for the platform backoffice (admin-gated at
+    /// the route layer). `after` is rendered as text for display.
+    pub async fn list_recent(pool: &PgPool, limit: i64) -> Result<Vec<AuditEntry>, DbError> {
+        Ok(sqlx::query_as::<_, AuditEntry>(
+            "SELECT a.id, a.created_at, a.organization_id, o.name AS org_name, \
+               a.actor_email::text AS actor_email, a.action, a.resource_type, \
+               a.resource_id, a.after::text AS after \
+             FROM audit_logs a \
+             LEFT JOIN organizations o ON o.id = a.organization_id \
+             ORDER BY a.created_at DESC \
+             LIMIT $1",
+        )
+        .bind(limit.clamp(1, 500))
         .fetch_all(pool)
         .await?)
     }

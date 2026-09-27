@@ -14,6 +14,8 @@ pub enum ApiError {
     Unauthorized,
     #[error("forbidden")]
     Forbidden,
+    #[error("suspended")]
+    Suspended,
     #[error("not found")]
     NotFound,
     #[error("conflict")]
@@ -41,6 +43,11 @@ impl ApiError {
                 StatusCode::FORBIDDEN,
                 "forbidden",
                 "insufficient role".into(),
+            ),
+            ApiError::Suspended => (
+                StatusCode::FORBIDDEN,
+                "suspended",
+                "this organization has been suspended".into(),
             ),
             ApiError::NotFound => (StatusCode::NOT_FOUND, "not_found", "not found".into()),
             ApiError::Conflict(d) => (StatusCode::CONFLICT, "conflict", d.clone()),
@@ -95,6 +102,7 @@ impl From<db::DbError> for ApiError {
         match e {
             db::DbError::NotFound => ApiError::NotFound,
             db::DbError::Forbidden => ApiError::Forbidden,
+            db::DbError::Suspended => ApiError::Suspended,
             db::DbError::Conflict(constraint) => ApiError::Conflict(field_for(&constraint)),
             other => {
                 tracing::error!(error = %other, "database error");

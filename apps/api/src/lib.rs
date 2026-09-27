@@ -224,6 +224,19 @@ pub fn app(state: AppState) -> Router {
             "/v1/admin/organizations",
             get(routes::admin_routes::list_organizations),
         )
+        .route(
+            "/v1/admin/organizations/{org_id}",
+            axum::routing::delete(routes::admin_routes::delete_organization),
+        )
+        .route(
+            "/v1/admin/organizations/{org_id}/suspend",
+            post(routes::admin_routes::set_suspended),
+        )
+        .route(
+            "/v1/admin/organizations/{org_id}/plan",
+            post(routes::admin_routes::set_plan),
+        )
+        .route("/v1/admin/audit", get(routes::admin_routes::list_audit))
         .route("/v1/admin/users", get(routes::admin_routes::list_users))
         .route(
             "/v1/admin/users/{user_id}/admin",
