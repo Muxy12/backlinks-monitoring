@@ -208,7 +208,8 @@ impl DiscoveryProvider for BingProvider {
 /// expect a bare host (`site.com`).
 fn bare_host(input: &str) -> String {
     let s = input.trim();
-    let s = s.split("://").next_back().unwrap_or(s);
+    // rsplit (not split().next_back()): a &str-pattern Split isn't double-ended.
+    let s = s.rsplit("://").next().unwrap_or(s);
     let s = s.split(['/', '?', '#']).next().unwrap_or(s);
     let s = s.rsplit('@').next().unwrap_or(s);
     let s = s.split(':').next().unwrap_or(s);
