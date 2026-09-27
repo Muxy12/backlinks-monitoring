@@ -79,8 +79,12 @@ impl DiscoveryProvider for DataForSeoProvider {
         target_domain: &str,
         limit: usize,
     ) -> anyhow::Result<Vec<DiscoveredLink>> {
+        // DataForSEO wants a bare domain for domain mode — no scheme/www/path.
+        // Project domains are stored with the scheme (e.g. "https://site.com"),
+        // so normalize before sending or the target is read as a page URL.
+        let target = bare_host(target_domain);
         let body = serde_json::json!([{
-            "target": target_domain,
+            "target": target,
             "limit": limit.min(1000),
             "mode": "as_is",
             "backlinks_status_type": "live",
@@ -150,7 +154,7 @@ impl DiscoveryProvider for BingProvider {
         target_domain: &str,
         limit: usize,
     ) -> anyhow::Result<Vec<DiscoveredLink>> {
-        let site = format!("https://{target_domain}/");
+        let site = format!("https://{}/", bare_host(target_domain));
         let url = format!(
             "https://ssl.bing.com/webmaster/api.svc/json/GetUrlLinks?apikey={}&siteUrl={}&link=&page=0",
             urlencode(&self.api_key),
@@ -198,6 +202,20 @@ impl DiscoveryProvider for BingProvider {
     }
 }
 
+/// Reduce a stored domain or URL to a bare registrable host: strip scheme,
+/// userinfo, port, path/query/fragment and a leading `www.`, lowercased. Project
+/// domains are stored with a scheme (`https://site.com`), but discovery providers
+/// expect a bare host (`site.com`).
+fn bare_host(input: &str) -> String {
+    let s = input.trim();
+    let s = s.split("://").next_back().unwrap_or(s);
+    let s = s.split(['/', '?', '#']).next().unwrap_or(s);
+    let s = s.rsplit('@').next().unwrap_or(s);
+    let s = s.split(':').next().unwrap_or(s);
+    let s = s.strip_prefix("www.").unwrap_or(s);
+    s.to_ascii_lowercase()
+}
+
 fn urlencode(s: &str) -> String {
     // Minimal query-component encoding (enough for keys and https URLs).
     let mut out = String::with_capacity(s.len());
@@ -210,4 +228,24 @@ fn urlencode(s: &str) -> String {
         }
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::bare_host;
+
+    #[test]
+    fn strips_scheme_www_path_and_port() {
+        assert_eq!(
+            bare_host("https://seo-acquisition.com"),
+            "seo-acquisition.com"
+        );
+        assert_eq!(bare_host("http://www.Example.com/path?q=1"), "example.com");
+        assert_eq!(bare_host("example.com"), "example.com");
+        assert_eq!(
+            bare_host("https://sub.example.com:8443/x"),
+            "sub.example.com"
+        );
+        assert_eq!(bare_host("  https://user@Example.COM/  "), "example.com");
+    }
 }
