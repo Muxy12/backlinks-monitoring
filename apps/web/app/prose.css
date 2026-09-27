@@ -199,3 +199,33 @@
     gap: 12px;
   }
 }
+
+/* Dark theme for the standalone legal + docs pages. `.prose-shell` above defines
+   the light palette as the base; this flips it when <html data-theme="dark"> is
+   set (by the no-flash script / theme toggle in the root layout). `pre` is dark
+   in both themes, so it is left alone. */
+html[data-theme="dark"] .prose-shell {
+  --ink: #e6e9ef;
+  --muted: #94a3b8;
+  --line: rgba(255, 255, 255, 0.1);
+  --accent: #a78bfa;
+  --bg: #0b0e14;
+}
+html[data-theme="dark"] .prose-top {
+  background: #0f131b;
+}
+html[data-theme="dark"] .prose-main p,
+html[data-theme="dark"] .prose-main li {
+  color: #cbd2dc;
+}
+html[data-theme="dark"] .prose-toc,
+html[data-theme="dark"] .prose-cards a {
+  background: #111722;
+}
+html[data-theme="dark"] .prose-main code {
+  background: #1e223a;
+  color: #c7b5ff;
+}
+html[data-theme="dark"] .prose-note {
+  background: rgba(59, 130, 246, 0.12);
+}
