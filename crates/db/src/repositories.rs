@@ -585,6 +585,35 @@ pub mod clients {
         tx.commit().await?;
         Ok(())
     }
+
+    /// Full-form edit of a client (§20): name plus the optional contact/company
+    /// fields (a `None`/empty field clears it). `NotFound` if not in the org.
+    pub async fn update(
+        pool: &PgPool,
+        scope: &OrgScope,
+        id: Uuid,
+        name: &str,
+        extra: NewClient<'_>,
+    ) -> Result<Client, DbError> {
+        sqlx::query_as::<_, Client>(
+            "UPDATE clients SET name = $3, company_name = $4, website = $5, \
+                    contact_name = $6, contact_email = $7, notes = $8, updated_at = now() \
+             WHERE id = $1 AND organization_id = $2 \
+             RETURNING id, organization_id, name, company_name, website, \
+                       contact_name, contact_email, notes, created_at, updated_at",
+        )
+        .bind(id)
+        .bind(scope.organization_id())
+        .bind(name)
+        .bind(extra.company_name)
+        .bind(extra.website)
+        .bind(extra.contact_name)
+        .bind(extra.contact_email)
+        .bind(extra.notes)
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_fetch)
+    }
 }
 
 // ─── Projects (§21) — tenant-scoped ──────────────────────────────────────────
@@ -693,6 +722,24 @@ pub mod projects {
             .fetch_one(pool)
             .await
             .map_err(DbError::from_fetch)
+    }
+
+    /// Delete a project and everything under it — backlinks, campaigns, imports,
+    /// competitors, discovery seeds all cascade via their composite FK
+    /// (`… REFERENCES projects (organization_id, id) ON DELETE CASCADE`).
+    /// Irreversible. `NotFound` if not in the org.
+    pub async fn delete(pool: &PgPool, scope: &OrgScope, id: Uuid) -> Result<(), DbError> {
+        let row: Option<(Uuid,)> = sqlx::query_as(
+            "DELETE FROM projects WHERE id = $1 AND organization_id = $2 RETURNING id",
+        )
+        .bind(id)
+        .bind(scope.organization_id())
+        .fetch_optional(pool)
+        .await?;
+        if row.is_none() {
+            return Err(DbError::NotFound);
+        }
+        Ok(())
     }
 }
 

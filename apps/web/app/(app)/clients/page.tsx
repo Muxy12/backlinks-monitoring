@@ -20,6 +20,7 @@ export default function ClientsPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [editId, setEditId] = useState<string | null>(null);
 
   useEffect(() => {
     api.me().then((res) => {
@@ -42,35 +43,60 @@ export default function ClientsPage() {
     if (orgId) void load(orgId);
   }, [orgId, load]);
 
-  async function create(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    if (!orgId) return;
-    setBusy(true);
-    const res = await orgApi.createClient(orgId, {
-      name: name.trim(),
-      company_name: company.trim() || undefined,
-      website: website.trim() || undefined,
-      contact_name: contactName.trim() || undefined,
-      contact_email: contactEmail.trim() || undefined,
-    });
-    setBusy(false);
-    if (!res.ok) {
-      setError(res.detail);
-      return;
-    }
+  function resetForm() {
+    setEditId(null);
     setName("");
     setCompany("");
     setWebsite("");
     setContactName("");
     setContactEmail("");
+    setError(null);
+  }
+
+  function startEdit(c: ClientView) {
+    setEditId(c.id);
+    setName(c.name);
+    setCompany(c.company_name ?? "");
+    setWebsite(c.website ?? "");
+    setContactName(c.contact_name ?? "");
+    setContactEmail(c.contact_email ?? "");
+    setError(null);
+  }
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (!orgId) return;
+    const body = {
+      name: name.trim(),
+      company_name: company.trim() || undefined,
+      website: website.trim() || undefined,
+      contact_name: contactName.trim() || undefined,
+      contact_email: contactEmail.trim() || undefined,
+    };
+    setBusy(true);
+    const res = editId
+      ? await orgApi.updateClient(orgId, editId, body)
+      : await orgApi.createClient(orgId, body);
+    setBusy(false);
+    if (!res.ok) {
+      setError(res.detail);
+      return;
+    }
+    resetForm();
     void load(orgId);
   }
 
-  async function remove(id: string) {
+  async function remove(c: ClientView) {
     if (!orgId) return;
-    const res = await orgApi.deleteClient(orgId, id);
-    if (res.ok) void load(orgId);
+    if (!confirm(`Delete client "${c.name}"? Projects linked to it will be unassigned.`)) return;
+    const res = await orgApi.deleteClient(orgId, c.id);
+    if (!res.ok) {
+      setError(res.detail);
+      return;
+    }
+    if (editId === c.id) resetForm();
+    void load(orgId);
   }
 
   if (loading) return <div className="auth-wrap"><p style={{ color: "var(--muted)" }}>Loading…</p></div>;
@@ -98,12 +124,19 @@ export default function ClientsPage() {
                 </thead>
                 <tbody>
                   {clients.map((c) => (
-                    <tr key={c.id}>
+                    <tr key={c.id} style={editId === c.id ? { background: "color-mix(in srgb, var(--accent) 10%, transparent)" } : undefined}>
                       <td>{c.name}</td>
                       <td>{c.company_name ?? "—"}</td>
                       <td className="mono">{c.contact_email ?? c.contact_name ?? "—"}</td>
-                      <td style={{ textAlign: "right" }}>
-                        <button className="btn sm" onClick={() => void remove(c.id)}>Delete</button>
+                      <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                        <button className="btn sm" onClick={() => startEdit(c)}>Edit</button>{" "}
+                        <button
+                          className="btn sm"
+                          style={{ color: "#b91c1c", borderColor: "#fecaca" }}
+                          onClick={() => void remove(c)}
+                        >
+                          Delete
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -113,8 +146,8 @@ export default function ClientsPage() {
           </section>
 
           <section className="panel">
-            <div className="panel-head"><h2>New client</h2></div>
-            <form onSubmit={create} className="ops-form">
+            <div className="panel-head"><h2>{editId ? "Edit client" : "New client"}</h2></div>
+            <form onSubmit={submit} className="ops-form">
               {error && <div className="auth-error">{error}</div>}
               <label className="auth-field">
                 <span>Name</span>
@@ -136,7 +169,14 @@ export default function ClientsPage() {
                 <span>Contact email (optional)</span>
                 <input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} />
               </label>
-              <button className="auth-btn" type="submit" disabled={busy}>{busy ? "Creating…" : "Create client"}</button>
+              <button className="auth-btn" type="submit" disabled={busy}>
+                {busy ? "Saving…" : editId ? "Save changes" : "Create client"}
+              </button>
+              {editId && (
+                <button type="button" className="btn" style={{ marginTop: 8 }} onClick={resetForm}>
+                  Cancel
+                </button>
+              )}
             </form>
           </section>
         </div>

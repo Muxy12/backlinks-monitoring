@@ -355,6 +355,11 @@ export const orgApi = {
       headers: csrfHeader(),
       body: JSON.stringify(body),
     }),
+  deleteProject: (org: string, id: string) =>
+    request<null>(`/v1/organizations/${org}/projects/${id}`, {
+      method: "DELETE",
+      headers: csrfHeader(),
+    }),
   backlinks: (org: string, projectId: string) =>
     request<BacklinkView[]>(`/v1/organizations/${org}/backlinks?project_id=${projectId}`),
   searchBacklinks: (
@@ -530,6 +535,12 @@ export const orgApi = {
   createClient: (org: string, body: NewClient) =>
     request<ClientView>(`/v1/organizations/${org}/clients`, {
       method: "POST",
+      headers: csrfHeader(),
+      body: JSON.stringify(body),
+    }),
+  updateClient: (org: string, id: string, body: NewClient) =>
+    request<ClientView>(`/v1/organizations/${org}/clients/${id}`, {
+      method: "PATCH",
       headers: csrfHeader(),
       body: JSON.stringify(body),
     }),

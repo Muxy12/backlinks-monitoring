@@ -50,7 +50,8 @@ pub fn app(state: AppState) -> Router {
         )
         .route(
             "/v1/organizations/{org_id}/clients/{client_id}",
-            axum::routing::delete(routes::resource_routes::delete_client),
+            axum::routing::patch(routes::resource_routes::update_client)
+                .delete(routes::resource_routes::delete_client),
         )
         .route(
             "/v1/organizations/{org_id}/projects",
@@ -60,7 +61,8 @@ pub fn app(state: AppState) -> Router {
         .route(
             "/v1/organizations/{org_id}/projects/{project_id}",
             get(routes::resource_routes::get_project)
-                .patch(routes::resource_routes::update_project),
+                .patch(routes::resource_routes::update_project)
+                .delete(routes::resource_routes::delete_project),
         )
         .route(
             "/v1/organizations/{org_id}/campaigns",

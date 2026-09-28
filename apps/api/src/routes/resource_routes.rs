@@ -133,6 +133,42 @@ pub async fn delete_client(
     Ok(StatusCode::NO_CONTENT)
 }
 
+/// PATCH a client — full-form edit of name + contact/company fields.
+pub async fn update_client(
+    State(state): State<AppState>,
+    Path((org_id, client_id)): Path<(Uuid, Uuid)>,
+    jar: CookieJar,
+    headers: HeaderMap,
+    Json(body): Json<CreateClientBody>,
+) -> Result<Json<ClientView>, ApiError> {
+    let (user, session) = current(&state, &jar).await?;
+    check_csrf(&jar, &headers, &session)?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Member)?;
+
+    let name = body.name.trim();
+    if name.is_empty() || name.len() > 200 {
+        return Err(ApiError::Validation("name must be 1–200 characters".into()));
+    }
+    let email = clean(body.contact_email.as_deref());
+    if let Some(e) = email
+        && !e.contains('@')
+    {
+        return Err(ApiError::Validation(
+            "contact_email must be an email".into(),
+        ));
+    }
+    let extra = clients::NewClient {
+        company_name: clean(body.company_name.as_deref()),
+        website: clean(body.website.as_deref()),
+        contact_name: clean(body.contact_name.as_deref()),
+        contact_email: email,
+        notes: clean(body.notes.as_deref()),
+    };
+    let client = clients::update(&state.pool, &scope, client_id, name, extra).await?;
+    Ok(Json(client.into()))
+}
+
 // ─── Projects ────────────────────────────────────────────────────────────────
 #[derive(Debug, Serialize)]
 pub struct ProjectView {
@@ -255,6 +291,22 @@ pub async fn update_project(
     let project =
         projects::update(&state.pool, &scope, project_id, name, secs, body.client_id).await?;
     Ok(Json(project.into()))
+}
+
+/// DELETE a project and all its data (backlinks, campaigns, seeds, competitors
+/// cascade). Irreversible.
+pub async fn delete_project(
+    State(state): State<AppState>,
+    Path((org_id, project_id)): Path<(Uuid, Uuid)>,
+    jar: CookieJar,
+    headers: HeaderMap,
+) -> Result<StatusCode, ApiError> {
+    let (user, session) = current(&state, &jar).await?;
+    check_csrf(&jar, &headers, &session)?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Member)?;
+    projects::delete(&state.pool, &scope, project_id).await?;
+    Ok(StatusCode::NO_CONTENT)
 }
 
 pub async fn list_projects(

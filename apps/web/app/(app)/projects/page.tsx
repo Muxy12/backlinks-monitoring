@@ -20,6 +20,10 @@ export default function ProjectsPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editHours, setEditHours] = useState("168");
+  const [rowBusy, setRowBusy] = useState<string | null>(null);
 
   useEffect(() => {
     api.me().then((res) => {
@@ -76,6 +80,57 @@ export default function ProjectsPage() {
     if (res.ok) void load(orgId);
   }
 
+  function startEdit(p: ProjectView) {
+    setEditId(p.id);
+    setEditName(p.name);
+    setEditHours(String(Math.round(p.check_frequency_secs / 3600)));
+    setError(null);
+  }
+
+  async function saveEdit() {
+    if (!orgId || !editId) return;
+    const name = editName.trim();
+    const hours = Number(editHours);
+    if (!name) {
+      setError("Name is required.");
+      return;
+    }
+    if (!Number.isFinite(hours) || hours < 1 || hours > 4320) {
+      setError("Check frequency must be between 1 and 4320 hours.");
+      return;
+    }
+    setRowBusy(editId);
+    const res = await orgApi.updateProject(orgId, editId, {
+      name,
+      check_frequency_hours: hours,
+    });
+    setRowBusy(null);
+    if (!res.ok) {
+      setError(res.detail);
+      return;
+    }
+    setEditId(null);
+    void load(orgId);
+  }
+
+  async function remove(p: ProjectView) {
+    if (!orgId) return;
+    if (
+      !confirm(
+        `Delete project "${p.name}" and ALL its data (backlinks, campaigns, competitors, discovery seeds)?\nThis cannot be undone.`,
+      )
+    )
+      return;
+    setRowBusy(p.id);
+    const res = await orgApi.deleteProject(orgId, p.id);
+    setRowBusy(null);
+    if (!res.ok) {
+      setError(res.detail);
+      return;
+    }
+    void load(orgId);
+  }
+
   if (loading) return <div className="auth-wrap"><p style={{ color: "var(--muted)" }}>Loading…</p></div>;
   if (!me) return null;
 
@@ -97,28 +152,81 @@ export default function ProjectsPage() {
             ) : (
               <table className="bl-table">
                 <thead>
-                  <tr><th>Name</th><th>Domain</th><th>Every</th><th>Client</th></tr>
+                  <tr><th>Name</th><th>Domain</th><th>Crawl every</th><th>Client</th><th></th></tr>
                 </thead>
                 <tbody>
-                  {projects.map((p) => (
-                    <tr key={p.id}>
-                      <td>{p.name}</td>
-                      <td className="mono">{p.domain}</td>
-                      <td>{Math.round(p.check_frequency_secs / 3600)}h</td>
-                      <td>
-                        <select
-                          value={p.client_id ?? ""}
-                          onChange={(e) => void reassign(p.id, e.target.value)}
-                          title={clientName(p.client_id)}
-                        >
-                          <option value="">— none —</option>
-                          {clients.map((c) => (
-                            <option key={c.id} value={c.id}>{c.name}</option>
-                          ))}
-                        </select>
-                      </td>
-                    </tr>
-                  ))}
+                  {projects.map((p) =>
+                    editId === p.id ? (
+                      <tr key={p.id}>
+                        <td>
+                          <input
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            style={{ width: "100%" }}
+                          />
+                        </td>
+                        <td className="mono muted">{p.domain}</td>
+                        <td>
+                          <input
+                            type="number"
+                            min="1"
+                            max="4320"
+                            value={editHours}
+                            onChange={(e) => setEditHours(e.target.value)}
+                            style={{ width: 80 }}
+                          />{" "}
+                          h
+                        </td>
+                        <td>
+                          <select
+                            value={p.client_id ?? ""}
+                            onChange={(e) => void reassign(p.id, e.target.value)}
+                            title={clientName(p.client_id)}
+                          >
+                            <option value="">— none —</option>
+                            {clients.map((c) => (
+                              <option key={c.id} value={c.id}>{c.name}</option>
+                            ))}
+                          </select>
+                        </td>
+                        <td style={{ whiteSpace: "nowrap" }}>
+                          <button className="btn sm primary" disabled={rowBusy === p.id} onClick={() => void saveEdit()}>
+                            {rowBusy === p.id ? "…" : "Save"}
+                          </button>{" "}
+                          <button className="btn sm" onClick={() => setEditId(null)}>Cancel</button>
+                        </td>
+                      </tr>
+                    ) : (
+                      <tr key={p.id}>
+                        <td>{p.name}</td>
+                        <td className="mono">{p.domain}</td>
+                        <td>{Math.round(p.check_frequency_secs / 3600)}h</td>
+                        <td>
+                          <select
+                            value={p.client_id ?? ""}
+                            onChange={(e) => void reassign(p.id, e.target.value)}
+                            title={clientName(p.client_id)}
+                          >
+                            <option value="">— none —</option>
+                            {clients.map((c) => (
+                              <option key={c.id} value={c.id}>{c.name}</option>
+                            ))}
+                          </select>
+                        </td>
+                        <td style={{ whiteSpace: "nowrap" }}>
+                          <button className="btn sm" onClick={() => startEdit(p)}>Edit</button>{" "}
+                          <button
+                            className="btn sm"
+                            style={{ color: "#b91c1c", borderColor: "#fecaca" }}
+                            disabled={rowBusy === p.id}
+                            onClick={() => void remove(p)}
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ),
+                  )}
                 </tbody>
               </table>
             )}
