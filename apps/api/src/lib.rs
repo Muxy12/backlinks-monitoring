@@ -99,6 +99,10 @@ pub fn app(state: AppState) -> Router {
             get(routes::tags_routes::list_tags).post(routes::tags_routes::create_tag),
         )
         .route(
+            "/v1/organizations/{org_id}/backlink-tags",
+            get(routes::tags_routes::backlink_tags_bulk),
+        )
+        .route(
             "/v1/organizations/{org_id}/tags/{tag_id}",
             axum::routing::delete(routes::tags_routes::delete_tag),
         )

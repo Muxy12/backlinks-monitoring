@@ -34,6 +34,7 @@ export default function DashboardPage() {
   const [searchQ, setSearchQ] = useState("");
   const [domainFilter, setDomainFilter] = useState("");
   const [tagFilter, setTagFilter] = useState("");
+  const [pageTags, setPageTags] = useState<Record<string, TagView[]>>({});
   const [page, setPage] = useState(0);
   const [hasNext, setHasNext] = useState(false);
   const [autoTagBusy, setAutoTagBusy] = useState(false);
@@ -128,10 +129,17 @@ export default function DashboardPage() {
           limit: PAGE_SIZE,
           offset: page * PAGE_SIZE,
         })
-        .then((res) => {
+        .then(async (res) => {
           if (res.ok) {
             setBacklinks(res.data);
             setHasNext(res.data.length === PAGE_SIZE);
+            const ids = res.data.map((b) => b.id);
+            if (ids.length > 0) {
+              const tagsRes = await orgApi.backlinkTagsBulk(orgId, ids);
+              setPageTags(tagsRes.ok ? tagsRes.data : {});
+            } else {
+              setPageTags({});
+            }
           }
         });
     }, 200); // debounce the search box
@@ -590,6 +598,7 @@ export default function DashboardPage() {
                     <th>Source</th>
                     <th>Target</th>
                     <th>Anchor</th>
+                    <th>Tags</th>
                     <th>Rel</th>
                     <th>HTTP</th>
                     <th>Checked</th>
@@ -598,7 +607,7 @@ export default function DashboardPage() {
                 <tbody>
                   {visibleBacklinks.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="muted" style={{ padding: 16 }}>
+                      <td colSpan={8} className="muted" style={{ padding: 16 }}>
                         No backlinks from <b className="mono">{domainFilter}</b> in this view.
                       </td>
                     </tr>
@@ -609,6 +618,24 @@ export default function DashboardPage() {
                       <td className="mono" title={b.source_url}>{b.source_domain}</td>
                       <td className="mono" title={b.target_url}>{b.target_domain}</td>
                       <td className="cell-anchor" title={b.detected_anchor_text ?? b.expected_anchor_text ?? ""}>{b.detected_anchor_text ?? b.expected_anchor_text ?? "—"}</td>
+                      <td>
+                        <span className="bl-tags">
+                          {(pageTags[b.id] ?? []).map((t) => (
+                            <span
+                              key={t.id}
+                              className="bl-tag"
+                              style={
+                                t.color
+                                  ? ({ background: `${t.color}22`, color: t.color, borderColor: `${t.color}55` } as CSSProperties)
+                                  : undefined
+                              }
+                            >
+                              {t.name}
+                            </span>
+                          ))}
+                          {(pageTags[b.id] ?? []).length === 0 && <span className="muted">—</span>}
+                        </span>
+                      </td>
                       <td><RelChips b={b} /></td>
                       <td className="mono">{httpPair(b)}</td>
                       <td className="mono">{fmtShort(b.last_checked_at)}</td>

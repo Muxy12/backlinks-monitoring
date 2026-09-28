@@ -3239,6 +3239,37 @@ pub mod tags {
         row.map(|_| ()).ok_or(DbError::NotFound)
     }
 
+    /// One (backlink_id, tag) pairing — for listing tags across a page of
+    /// backlinks in a single query.
+    #[derive(Debug, Clone, sqlx::FromRow)]
+    pub struct BacklinkTagRow {
+        pub backlink_id: Uuid,
+        pub id: Uuid,
+        pub name: String,
+        pub color: Option<String>,
+    }
+
+    /// Tags for many backlinks at once (the list view's Tags column). Tenant-scoped.
+    pub async fn for_backlinks(
+        pool: &PgPool,
+        scope: &OrgScope,
+        ids: &[Uuid],
+    ) -> Result<Vec<BacklinkTagRow>, DbError> {
+        if ids.is_empty() {
+            return Ok(Vec::new());
+        }
+        Ok(sqlx::query_as::<_, BacklinkTagRow>(
+            "SELECT bt.backlink_id, t.id, t.name::text AS name, t.color \
+             FROM tags t JOIN backlink_tags bt ON bt.tag_id = t.id \
+             WHERE bt.organization_id = $1 AND bt.backlink_id = ANY($2) \
+             ORDER BY t.name",
+        )
+        .bind(scope.organization_id())
+        .bind(ids)
+        .fetch_all(pool)
+        .await?)
+    }
+
     /// The tags attached to one backlink, alphabetical. Tenant-scoped via the
     /// backlink_tags.organization_id column.
     pub async fn for_backlink(

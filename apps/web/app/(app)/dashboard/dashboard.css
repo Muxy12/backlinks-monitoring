@@ -359,3 +359,21 @@
   min-width: 90px;
   text-align: center;
 }
+
+/* Tag chips in the backlinks table. */
+.bl-tags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.bl-tag {
+  display: inline-block;
+  font-size: 11px;
+  line-height: 1.4;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+  color: var(--muted);
+  white-space: nowrap;
+}

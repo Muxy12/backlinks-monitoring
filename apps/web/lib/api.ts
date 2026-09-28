@@ -560,6 +560,10 @@ export const orgApi = {
     }),
   backlinkTags: (org: string, id: string) =>
     request<TagView[]>(`/v1/organizations/${org}/backlinks/${id}/tags`),
+  backlinkTagsBulk: (org: string, ids: string[]) =>
+    request<Record<string, TagView[]>>(
+      `/v1/organizations/${org}/backlink-tags?ids=${encodeURIComponent(ids.join(","))}`,
+    ),
   attachTag: (org: string, id: string, tagId: string) =>
     request<null>(`/v1/organizations/${org}/backlinks/${id}/tags`, {
       method: "POST",

@@ -113,6 +113,40 @@ pub async fn list_backlink_tags(
 }
 
 #[derive(Debug, Deserialize)]
+pub struct BulkTagsQuery {
+    /// Comma-separated backlink ids (one page's worth).
+    pub ids: String,
+}
+
+/// Tags for a page of backlinks, as `{ backlink_id: [tags] }` — the list view's
+/// Tags column, in one request instead of N.
+pub async fn backlink_tags_bulk(
+    State(state): State<AppState>,
+    Path(org_id): Path<Uuid>,
+    axum::extract::Query(q): axum::extract::Query<BulkTagsQuery>,
+    jar: CookieJar,
+) -> Result<Json<std::collections::HashMap<Uuid, Vec<TagView>>>, ApiError> {
+    let (user, _s) = current(&state, &jar).await?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    let ids: Vec<Uuid> = q
+        .ids
+        .split(',')
+        .filter_map(|s| Uuid::parse_str(s.trim()).ok())
+        .take(200)
+        .collect();
+    let rows = tags::for_backlinks(&state.pool, &scope, &ids).await?;
+    let mut map: std::collections::HashMap<Uuid, Vec<TagView>> = std::collections::HashMap::new();
+    for r in rows {
+        map.entry(r.backlink_id).or_default().push(TagView {
+            id: r.id,
+            name: r.name,
+            color: r.color,
+        });
+    }
+    Ok(Json(map))
+}
+
+#[derive(Debug, Deserialize)]
 pub struct AttachTagBody {
     pub tag_id: Uuid,
 }
