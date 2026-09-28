@@ -32,6 +32,7 @@ export default function DashboardPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [clientFilter, setClientFilter] = useState("");
   const [searchQ, setSearchQ] = useState("");
+  const [domainFilter, setDomainFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [wsName, setWsName] = useState("");
   const [wsBusy, setWsBusy] = useState(false);
@@ -124,6 +125,13 @@ export default function DashboardPage() {
     }, 200); // debounce the search box
     return () => clearTimeout(t);
   }, [orgId, projectId, clientFilter, statusFilter, searchQ]);
+
+  // Drop a referring-domain filter that no longer matches the reloaded list.
+  useEffect(() => {
+    if (domainFilter && !backlinks.some((b) => b.source_domain === domainFilter)) {
+      setDomainFilter("");
+    }
+  }, [backlinks, domainFilter]);
 
   async function openDetail(b: BacklinkView) {
     setSelected(b);
@@ -229,6 +237,15 @@ export default function DashboardPage() {
   const selectedClient = activeClientId
     ? clients.find((c) => c.id === activeClientId) ?? null
     : null;
+
+  // Referring-domain filter (client-side, over the loaded list). Options are the
+  // distinct source domains currently loaded; picking one narrows the table.
+  const referringDomains = Array.from(
+    new Set(backlinks.map((b) => b.source_domain).filter(Boolean)),
+  ).sort();
+  const visibleBacklinks = domainFilter
+    ? backlinks.filter((b) => b.source_domain === domainFilter)
+    : backlinks;
 
   async function createWorkspace(e: FormEvent) {
     e.preventDefault();
@@ -442,6 +459,16 @@ export default function DashboardPage() {
                     <option key={st} value={st}>{statusLabel(st)}</option>
                   ))}
                 </select>
+                <select
+                  value={domainFilter}
+                  onChange={(e) => setDomainFilter(e.target.value)}
+                  title="Filter by referring domain"
+                >
+                  <option value="">All domains</option>
+                  {referringDomains.map((d) => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
                 {projects.length > 0 && (
                   <button className="btn sm primary" onClick={openAdd}>+ Add backlink</button>
                 )}
@@ -501,7 +528,14 @@ export default function DashboardPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {backlinks.map((b) => (
+                  {visibleBacklinks.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="muted" style={{ padding: 16 }}>
+                        No backlinks from <b className="mono">{domainFilter}</b> in this view.
+                      </td>
+                    </tr>
+                  )}
+                  {visibleBacklinks.map((b) => (
                     <tr key={b.id} className="row-click" onClick={() => void openDetail(b)}>
                       <td><span className="badge" style={{ "--st": statusColor(b.status) } as CSSProperties}><span className="dot" />{statusLabel(b.status)}</span></td>
                       <td className="mono" title={b.source_url}>{b.source_domain}</td>
