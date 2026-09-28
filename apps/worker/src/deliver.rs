@@ -65,43 +65,131 @@ pub async fn deliver_tick(
     per_dest: i64,
 ) -> anyhow::Result<usize> {
     let dests = alerts::list_all_active(pool).await?;
+    let now = chrono::Utc::now();
     let mut sent = 0usize;
     for d in dests {
-        let pending =
-            alerts::pending_for_destination(pool, d.id, d.organization_id, per_dest).await?;
-        if pending.is_empty() {
-            continue;
-        }
-        let mut last_err: Option<String> = None;
-        let mut any_ok = false;
-        for n in pending {
-            match deliver_one(cfg, &d, &n).await {
-                Ok(code) if (200..300).contains(&code) => {
-                    alerts::record_delivery(pool, d.id, n.id, "ok", Some(code as i32), None)
-                        .await?;
-                    sent += 1;
-                    any_ok = true;
-                }
-                Ok(code) => {
-                    let e = format!("HTTP {code}");
-                    alerts::record_delivery(pool, d.id, n.id, "error", Some(code as i32), Some(&e))
-                        .await?;
-                    last_err = Some(e);
-                }
-                Err(e) => {
-                    alerts::record_delivery(pool, d.id, n.id, "error", None, Some(&e)).await?;
-                    last_err = Some(e);
-                }
-            }
-        }
-        let status = if last_err.is_some() && !any_ok {
-            "error"
-        } else {
-            "ok"
+        // Digest window: batch into one message per hour/day; None = immediate.
+        let window_secs = match d.digest.as_str() {
+            "hourly" => Some(3600i64),
+            "daily" => Some(86400i64),
+            _ => None,
         };
-        let _ = alerts::set_status(pool, d.id, status, last_err.as_deref()).await;
+
+        if let Some(win) = window_secs {
+            // Only send once per window; otherwise let alerts accumulate.
+            let due = d
+                .last_delivered_at
+                .map(|t| (now - t).num_seconds() >= win)
+                .unwrap_or(true);
+            if !due {
+                continue;
+            }
+            let pending =
+                alerts::pending_for_destination(pool, d.id, d.organization_id, per_dest.max(50))
+                    .await?;
+            if pending.is_empty() {
+                continue;
+            }
+            sent += deliver_digest(pool, cfg, &d, &pending).await?;
+        } else {
+            let pending =
+                alerts::pending_for_destination(pool, d.id, d.organization_id, per_dest).await?;
+            if pending.is_empty() {
+                continue;
+            }
+            sent += deliver_immediate(pool, cfg, &d, &pending).await?;
+        }
     }
     Ok(sent)
+}
+
+/// One message per pending notification (digest = immediate).
+async fn deliver_immediate(
+    pool: &PgPool,
+    cfg: &CrawlerConfig,
+    d: &AlertDestination,
+    pending: &[PendingNotification],
+) -> anyhow::Result<usize> {
+    let mut sent = 0usize;
+    let mut last_err: Option<String> = None;
+    let mut any_ok = false;
+    for n in pending {
+        match deliver_one(cfg, d, n).await {
+            Ok(code) if (200..300).contains(&code) => {
+                alerts::record_delivery(pool, d.id, n.id, "ok", Some(code as i32), None).await?;
+                sent += 1;
+                any_ok = true;
+            }
+            Ok(code) => {
+                let e = format!("HTTP {code}");
+                alerts::record_delivery(pool, d.id, n.id, "error", Some(code as i32), Some(&e))
+                    .await?;
+                last_err = Some(e);
+            }
+            Err(e) => {
+                alerts::record_delivery(pool, d.id, n.id, "error", None, Some(&e)).await?;
+                last_err = Some(e);
+            }
+        }
+    }
+    let status = if last_err.is_some() && !any_ok {
+        "error"
+    } else {
+        "ok"
+    };
+    let _ = alerts::set_status(pool, d.id, status, last_err.as_deref()).await;
+    Ok(sent)
+}
+
+/// One combined message summarizing all pending notifications (hourly/daily).
+async fn deliver_digest(
+    pool: &PgPool,
+    cfg: &CrawlerConfig,
+    d: &AlertDestination,
+    pending: &[PendingNotification],
+) -> anyhow::Result<usize> {
+    let n = pending.len();
+    let subject = format!("{n} Backlio alert{}", if n > 1 { "s" } else { "" });
+    let mut lines: Vec<String> = pending
+        .iter()
+        .take(20)
+        .map(|p| format!("• {}", p.title))
+        .collect();
+    if n > 20 {
+        lines.push(format!("…and {} more", n - 20));
+    }
+    let digest = PendingNotification {
+        id: uuid::Uuid::now_v7(),
+        kind: "digest".into(),
+        title: subject,
+        body: Some(lines.join("\n")),
+        created_at: chrono::Utc::now(),
+    };
+    match deliver_one(cfg, d, &digest).await {
+        Ok(code) if (200..300).contains(&code) => {
+            for p in pending {
+                alerts::record_delivery(pool, d.id, p.id, "ok", Some(code as i32), None).await?;
+            }
+            let _ = alerts::set_status(pool, d.id, "ok", None).await;
+            Ok(n)
+        }
+        Ok(code) => {
+            let e = format!("HTTP {code}");
+            for p in pending {
+                alerts::record_delivery(pool, d.id, p.id, "error", Some(code as i32), Some(&e))
+                    .await?;
+            }
+            let _ = alerts::set_status(pool, d.id, "error", Some(&e)).await;
+            Ok(0)
+        }
+        Err(e) => {
+            for p in pending {
+                alerts::record_delivery(pool, d.id, p.id, "error", None, Some(&e)).await?;
+            }
+            let _ = alerts::set_status(pool, d.id, "error", Some(&e)).await;
+            Ok(0)
+        }
+    }
 }
 
 /// Send a one-off test payload to a destination (the "Test" button). Records the

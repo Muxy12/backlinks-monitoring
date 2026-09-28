@@ -75,6 +75,7 @@ pub struct AlertDestination {
     pub target: String,
     pub name: String,
     pub enabled: bool,
+    pub digest: String,
     pub last_status: Option<String>,
     pub last_error: Option<String>,
     pub last_delivered_at: Option<DateTime<Utc>>,

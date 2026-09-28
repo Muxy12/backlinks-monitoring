@@ -37,6 +37,7 @@ export default function NotificationSettingsPage() {
   // Alert destinations (webhook / Slack).
   const [dests, setDests] = useState<AlertDestination[]>([]);
   const [dkind, setDkind] = useState("slack");
+  const [ddigest, setDdigest] = useState("immediate");
   const [dtarget, setDtarget] = useState("");
   const [dname, setDname] = useState("");
   const [dbusy, setDbusy] = useState(false);
@@ -84,7 +85,13 @@ export default function NotificationSettingsPage() {
       return;
     }
     setDbusy(true);
-    const res = await orgApi.createAlertDestination(orgId, dkind, dtarget.trim(), dname.trim() || undefined);
+    const res = await orgApi.createAlertDestination(
+      orgId,
+      dkind,
+      dtarget.trim(),
+      dname.trim() || undefined,
+      ddigest,
+    );
     setDbusy(false);
     if (!res.ok) {
       setDmsg(res.detail);
@@ -99,6 +106,13 @@ export default function NotificationSettingsPage() {
     if (!orgId) return;
     const res = await orgApi.toggleAlertDestination(orgId, d.id, !d.enabled);
     if (res.ok) void reloadDests(orgId);
+  }
+
+  async function changeDigest(d: AlertDestination, digest: string) {
+    if (!orgId || digest === d.digest) return;
+    const res = await orgApi.setAlertDigest(orgId, d.id, digest);
+    if (res.ok) void reloadDests(orgId);
+    else setDmsg(res.detail);
   }
 
   async function testDest(d: AlertDestination) {
@@ -207,14 +221,25 @@ export default function NotificationSettingsPage() {
           {dests.length > 0 && (
             <table className="bl-table" style={{ marginBottom: 14 }}>
               <thead>
-                <tr><th>Name</th><th>Type</th><th>Target</th><th>Last</th><th></th></tr>
+                <tr><th>Name</th><th>Type</th><th>Target</th><th>Frequency</th><th>Last</th><th></th></tr>
               </thead>
               <tbody>
                 {dests.map((d) => (
                   <tr key={d.id} style={d.enabled ? undefined : { opacity: 0.5 }}>
                     <td>{d.name || <span className="muted">—</span>}</td>
                     <td>{d.kind}</td>
-                    <td className="mono sm" style={{ maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={d.target}>{d.target}</td>
+                    <td className="mono sm" style={{ maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={d.target}>{d.target}</td>
+                    <td>
+                      <select
+                        value={d.digest}
+                        title="Delivery frequency"
+                        onChange={(e) => void changeDigest(d, e.target.value)}
+                      >
+                        <option value="immediate">Immediate</option>
+                        <option value="hourly">Hourly digest</option>
+                        <option value="daily">Daily digest</option>
+                      </select>
+                    </td>
                     <td className="sm">
                       {d.last_status === "ok" ? (
                         <span className="badge" style={{ background: "#dcfce7", color: "#166534" }}>ok</span>
@@ -261,6 +286,14 @@ export default function NotificationSettingsPage() {
             <label className="auth-field" style={{ margin: 0 }}>
               <span>Name (optional)</span>
               <input value={dname} onChange={(e) => setDname(e.target.value)} placeholder="Team Slack" />
+            </label>
+            <label className="auth-field" style={{ margin: 0 }}>
+              <span>Frequency</span>
+              <select value={ddigest} onChange={(e) => setDdigest(e.target.value)}>
+                <option value="immediate">Immediate</option>
+                <option value="hourly">Hourly digest</option>
+                <option value="daily">Daily digest</option>
+              </select>
             </label>
             <button className="btn primary" disabled={dbusy} onClick={() => void addDest()}>Add destination</button>
           </div>

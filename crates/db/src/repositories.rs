@@ -2998,11 +2998,12 @@ pub mod alerts {
         kind: &str,
         target: &str,
         name: &str,
+        digest: &str,
     ) -> Result<AlertDestination, DbError> {
         sqlx::query_as::<_, AlertDestination>(
-            "INSERT INTO alert_destinations (id, organization_id, kind, target, name) \
-             VALUES ($1, $2, $3, $4, $5) \
-             RETURNING id, organization_id, kind, target, name, enabled, \
+            "INSERT INTO alert_destinations (id, organization_id, kind, target, name, digest) \
+             VALUES ($1, $2, $3, $4, $5, $6) \
+             RETURNING id, organization_id, kind, target, name, enabled, digest, \
                        last_status, last_error, last_delivered_at, created_at",
         )
         .bind(id)
@@ -3010,6 +3011,7 @@ pub mod alerts {
         .bind(kind)
         .bind(target)
         .bind(name)
+        .bind(digest)
         .fetch_one(pool)
         .await
         .map_err(DbError::from_insert)
@@ -3017,7 +3019,7 @@ pub mod alerts {
 
     pub async fn list(pool: &PgPool, scope: &OrgScope) -> Result<Vec<AlertDestination>, DbError> {
         Ok(sqlx::query_as::<_, AlertDestination>(
-            "SELECT id, organization_id, kind, target, name, enabled, \
+            "SELECT id, organization_id, kind, target, name, enabled, digest, \
                     last_status, last_error, last_delivered_at, created_at \
              FROM alert_destinations WHERE organization_id = $1 ORDER BY created_at",
         )
@@ -3032,7 +3034,7 @@ pub mod alerts {
         id: Uuid,
     ) -> Result<AlertDestination, DbError> {
         sqlx::query_as::<_, AlertDestination>(
-            "SELECT id, organization_id, kind, target, name, enabled, \
+            "SELECT id, organization_id, kind, target, name, enabled, digest, \
                     last_status, last_error, last_delivered_at, created_at \
              FROM alert_destinations WHERE id = $1 AND organization_id = $2",
         )
@@ -3052,12 +3054,32 @@ pub mod alerts {
         sqlx::query_as::<_, AlertDestination>(
             "UPDATE alert_destinations SET enabled = $3 \
              WHERE id = $1 AND organization_id = $2 \
-             RETURNING id, organization_id, kind, target, name, enabled, \
+             RETURNING id, organization_id, kind, target, name, enabled, digest, \
                        last_status, last_error, last_delivered_at, created_at",
         )
         .bind(id)
         .bind(scope.organization_id())
         .bind(enabled)
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_fetch)
+    }
+
+    pub async fn set_digest(
+        pool: &PgPool,
+        scope: &OrgScope,
+        id: Uuid,
+        digest: &str,
+    ) -> Result<AlertDestination, DbError> {
+        sqlx::query_as::<_, AlertDestination>(
+            "UPDATE alert_destinations SET digest = $3 \
+             WHERE id = $1 AND organization_id = $2 \
+             RETURNING id, organization_id, kind, target, name, enabled, digest, \
+                       last_status, last_error, last_delivered_at, created_at",
+        )
+        .bind(id)
+        .bind(scope.organization_id())
+        .bind(digest)
         .fetch_one(pool)
         .await
         .map_err(DbError::from_fetch)
@@ -3100,7 +3122,7 @@ pub mod alerts {
     /// these. Bounded so a huge instance can't build an unbounded worklist.
     pub async fn list_all_active(pool: &PgPool) -> Result<Vec<AlertDestination>, DbError> {
         Ok(sqlx::query_as::<_, AlertDestination>(
-            "SELECT id, organization_id, kind, target, name, enabled, \
+            "SELECT id, organization_id, kind, target, name, enabled, digest, \
                     last_status, last_error, last_delivered_at, created_at \
              FROM alert_destinations WHERE enabled ORDER BY created_at LIMIT 500",
         )

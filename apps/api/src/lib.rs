@@ -220,7 +220,7 @@ pub fn app(state: AppState) -> Router {
         )
         .route(
             "/v1/organizations/{org_id}/alert-destinations/{dest_id}",
-            axum::routing::patch(routes::alerts_routes::toggle_destination)
+            axum::routing::patch(routes::alerts_routes::update_destination)
                 .delete(routes::alerts_routes::delete_destination),
         )
         .route(

@@ -338,6 +338,7 @@ export interface AlertDestination {
   target: string;
   name: string;
   enabled: boolean;
+  digest: string;
   last_status: string | null;
   last_error: string | null;
   last_delivered_at: string | null;
@@ -585,17 +586,29 @@ export const orgApi = {
     }),
   alertDestinations: (org: string) =>
     request<AlertDestination[]>(`/v1/organizations/${org}/alert-destinations`),
-  createAlertDestination: (org: string, kind: string, target: string, name?: string) =>
+  createAlertDestination: (
+    org: string,
+    kind: string,
+    target: string,
+    name?: string,
+    digest?: string,
+  ) =>
     request<AlertDestination>(`/v1/organizations/${org}/alert-destinations`, {
       method: "POST",
       headers: csrfHeader(),
-      body: JSON.stringify({ kind, target, name }),
+      body: JSON.stringify({ kind, target, name, digest }),
     }),
   toggleAlertDestination: (org: string, id: string, enabled: boolean) =>
     request<AlertDestination>(`/v1/organizations/${org}/alert-destinations/${id}`, {
       method: "PATCH",
       headers: csrfHeader(),
       body: JSON.stringify({ enabled }),
+    }),
+  setAlertDigest: (org: string, id: string, digest: string) =>
+    request<AlertDestination>(`/v1/organizations/${org}/alert-destinations/${id}`, {
+      method: "PATCH",
+      headers: csrfHeader(),
+      body: JSON.stringify({ digest }),
     }),
   deleteAlertDestination: (org: string, id: string) =>
     request<null>(`/v1/organizations/${org}/alert-destinations/${id}`, {
