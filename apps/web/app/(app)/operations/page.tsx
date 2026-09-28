@@ -137,6 +137,45 @@ function CampaignsTab({
     if (res.ok) setRollups((r) => ({ ...r, [id]: res.data }));
   }
 
+  const [editId, setEditId] = useState<string | null>(null);
+  const [eName, setEName] = useState("");
+  const [eTarget, setETarget] = useState("");
+  const [eBudget, setEBudget] = useState("");
+  const [eCurrency, setECurrency] = useState("USD");
+  const [eBusy, setEBusy] = useState(false);
+
+  function startEdit(c: CampaignView) {
+    setEditId(c.id);
+    setEName(c.name);
+    setETarget(c.target_backlinks != null ? String(c.target_backlinks) : "");
+    setEBudget(c.budget ?? "");
+    setECurrency(c.currency ?? "USD");
+    setError(null);
+  }
+
+  async function saveEdit(id: string) {
+    const name = eName.trim();
+    if (!name) {
+      setError("Name is required.");
+      return;
+    }
+    const body: { name: string; target_backlinks?: number; budget?: number; currency?: string } = { name };
+    if (eTarget.trim()) body.target_backlinks = Number(eTarget);
+    if (eBudget.trim()) {
+      body.budget = Number(eBudget);
+      body.currency = eCurrency.trim() || "USD";
+    }
+    setEBusy(true);
+    const res = await orgApi.updateCampaign(org, id, body);
+    setEBusy(false);
+    if (!res.ok) {
+      setError(res.detail);
+      return;
+    }
+    setEditId(null);
+    onCreated();
+  }
+
   async function changeStatus(id: string, status: string) {
     const res = await orgApi.updateCampaign(org, id, { status });
     if (res.ok) onCreated();
@@ -186,30 +225,65 @@ function CampaignsTab({
           <ul className="ops-list">
             {campaigns.map((c) => (
               <li key={c.id}>
-                <div className="ops-row-wrap">
-                  <button className="ops-row" onClick={() => void toggle(c.id)}>
-                    <span className="ops-name">{c.name}</span>
-                    <span className="muted">{c.target_backlinks ? `target ${c.target_backlinks}` : "no target"}</span>
-                  </button>
-                  <div className="ops-actions">
-                    <select
-                      value={c.status}
-                      title="Campaign status"
-                      onChange={(e) => void changeStatus(c.id, e.target.value)}
-                    >
-                      {["draft", "active", "paused", "completed", "archived"].map((s) => (
-                        <option key={s} value={s}>{s}</option>
-                      ))}
-                    </select>
-                    <button
-                      className="btn sm"
-                      style={{ color: "#b91c1c", borderColor: "#fecaca" }}
-                      onClick={() => void removeCampaign(c.id, c.name)}
-                    >
-                      Delete
+                {editId === c.id ? (
+                  <div className="ops-edit">
+                    <input value={eName} onChange={(e) => setEName(e.target.value)} placeholder="Name" />
+                    <input
+                      type="number"
+                      min="1"
+                      value={eTarget}
+                      onChange={(e) => setETarget(e.target.value)}
+                      placeholder="Target"
+                      style={{ width: 90 }}
+                    />
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={eBudget}
+                      onChange={(e) => setEBudget(e.target.value)}
+                      placeholder="Budget"
+                      style={{ width: 110 }}
+                    />
+                    <input
+                      value={eCurrency}
+                      onChange={(e) => setECurrency(e.target.value.toUpperCase())}
+                      maxLength={3}
+                      placeholder="USD"
+                      style={{ width: 60 }}
+                    />
+                    <button className="btn sm primary" disabled={eBusy} onClick={() => void saveEdit(c.id)}>
+                      {eBusy ? "…" : "Save"}
                     </button>
+                    <button className="btn sm" onClick={() => setEditId(null)}>Cancel</button>
                   </div>
-                </div>
+                ) : (
+                  <div className="ops-row-wrap">
+                    <button className="ops-row" onClick={() => void toggle(c.id)}>
+                      <span className="ops-name">{c.name}</span>
+                      <span className="muted">{c.target_backlinks ? `target ${c.target_backlinks}` : "no target"}</span>
+                    </button>
+                    <div className="ops-actions">
+                      <select
+                        value={c.status}
+                        title="Campaign status"
+                        onChange={(e) => void changeStatus(c.id, e.target.value)}
+                      >
+                        {["draft", "active", "paused", "completed", "archived"].map((s) => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
+                      <button className="btn sm" onClick={() => startEdit(c)}>Edit</button>
+                      <button
+                        className="btn sm"
+                        style={{ color: "#b91c1c", borderColor: "#fecaca" }}
+                        onClick={() => void removeCampaign(c.id, c.name)}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                )}
                 {rollups[c.id] && <CampaignRollupCard r={rollups[c.id]} />}
               </li>
             ))}

@@ -167,3 +167,22 @@
   padding: 5px 8px;
   font-size: 12px;
 }
+
+/* Inline campaign edit row. */
+.ops-edit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.ops-edit input {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 6px 9px;
+  font-size: 13px;
+}
+.ops-edit input:first-child {
+  flex: 1 1 160px;
+}
