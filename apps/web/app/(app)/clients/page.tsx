@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { api, orgApi, type ClientView, type MeResponse } from "@/lib/api";
+import { api, orgApi, type ClientView, type MeResponse, type ProjectView } from "@/lib/api";
 import "@/app/auth.css";
 import "../dashboard/dashboard.css";
 import "../operations/operations.css";
@@ -12,6 +12,8 @@ export default function ClientsPage() {
   const [me, setMe] = useState<MeResponse | null>(null);
   const [orgId, setOrgId] = useState<string | null>(null);
   const [clients, setClients] = useState<ClientView[]>([]);
+  const [projects, setProjects] = useState<ProjectView[]>([]);
+  const [rowBusy, setRowBusy] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [company, setCompany] = useState("");
   const [website, setWebsite] = useState("");
@@ -35,9 +37,22 @@ export default function ClientsPage() {
   }, [router]);
 
   const load = useCallback(async (org: string) => {
-    const res = await orgApi.clients(org);
-    if (res.ok) setClients(res.data);
+    const [c, p] = await Promise.all([orgApi.clients(org), orgApi.projects(org)]);
+    if (c.ok) setClients(c.data);
+    if (p.ok) setProjects(p.data);
   }, []);
+
+  async function attachProject(projectId: string, clientId: string | null) {
+    if (!orgId) return;
+    setRowBusy(clientId ?? projectId);
+    const res = await orgApi.updateProject(orgId, projectId, { client_id: clientId });
+    setRowBusy(null);
+    if (!res.ok) {
+      setError(res.detail);
+      return;
+    }
+    void load(orgId);
+  }
 
   useEffect(() => {
     if (orgId) void load(orgId);
@@ -120,14 +135,52 @@ export default function ClientsPage() {
             ) : (
               <table className="bl-table">
                 <thead>
-                  <tr><th>Name</th><th>Company</th><th>Contact</th><th></th></tr>
+                  <tr><th>Name</th><th>Company</th><th>Contact</th><th>Projects</th><th></th></tr>
                 </thead>
                 <tbody>
-                  {clients.map((c) => (
+                  {clients.map((c) => {
+                    const attached = projects.filter((p) => p.client_id === c.id);
+                    const unattached = projects.filter((p) => p.client_id !== c.id);
+                    return (
                     <tr key={c.id} style={editId === c.id ? { background: "color-mix(in srgb, var(--accent) 10%, transparent)" } : undefined}>
                       <td>{c.name}</td>
                       <td>{c.company_name ?? "—"}</td>
                       <td className="mono">{c.contact_email ?? c.contact_name ?? "—"}</td>
+                      <td>
+                        <div className="tags-row" style={{ marginBottom: attached.length ? 6 : 0 }}>
+                          {attached.map((p) => (
+                            <span key={p.id} className="tag-chip" title={p.domain}>
+                              {p.name}
+                              <button
+                                className="tag-x"
+                                title="Detach"
+                                disabled={rowBusy === c.id}
+                                onClick={() => void attachProject(p.id, null)}
+                              >
+                                ×
+                              </button>
+                            </span>
+                          ))}
+                          {attached.length === 0 && <span className="muted sm">— none —</span>}
+                        </div>
+                        {unattached.length > 0 && (
+                          <select
+                            value=""
+                            disabled={rowBusy === c.id}
+                            onChange={(e) => {
+                              if (e.target.value) void attachProject(e.target.value, c.id);
+                            }}
+                          >
+                            <option value="">+ Attach project…</option>
+                            {unattached.map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.name}
+                                {p.client_id ? " (move here)" : ""}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                      </td>
                       <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
                         <button className="btn sm" onClick={() => startEdit(c)}>Edit</button>{" "}
                         <button
@@ -139,7 +192,8 @@ export default function ClientsPage() {
                         </button>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             )}
