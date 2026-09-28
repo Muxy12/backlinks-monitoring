@@ -38,7 +38,7 @@ export default function DashboardPage() {
   const [page, setPage] = useState(0);
   const [hasNext, setHasNext] = useState(false);
   const [autoTagBusy, setAutoTagBusy] = useState(false);
-  const PAGE_SIZE = 50;
+  const [pageSize, setPageSize] = useState(50);
   const [loading, setLoading] = useState(true);
   const [wsName, setWsName] = useState("");
   const [wsBusy, setWsBusy] = useState(false);
@@ -126,13 +126,13 @@ export default function DashboardPage() {
           status: statusFilter || undefined,
           q: searchQ.trim() || undefined,
           tagId: tagFilter || undefined,
-          limit: PAGE_SIZE,
-          offset: page * PAGE_SIZE,
+          limit: pageSize,
+          offset: page * pageSize,
         })
         .then(async (res) => {
           if (res.ok) {
             setBacklinks(res.data);
-            setHasNext(res.data.length === PAGE_SIZE);
+            setHasNext(res.data.length === pageSize);
             const ids = res.data.map((b) => b.id);
             if (ids.length > 0) {
               const tagsRes = await orgApi.backlinkTagsBulk(orgId, ids);
@@ -144,13 +144,13 @@ export default function DashboardPage() {
         });
     }, 200); // debounce the search box
     return () => clearTimeout(t);
-  }, [orgId, projectId, clientFilter, statusFilter, searchQ, tagFilter, page]);
+  }, [orgId, projectId, clientFilter, statusFilter, searchQ, tagFilter, page, pageSize]);
 
-  // Any filter change resets to the first page. (The load effect's debounce
-  // cleanup cancels the stale-page fetch, so this doesn't double-request.)
+  // Any filter (or page-size) change resets to the first page. (The load effect's
+  // debounce cleanup cancels the stale-page fetch, so this doesn't double-request.)
   useEffect(() => {
     setPage(0);
-  }, [orgId, projectId, clientFilter, statusFilter, searchQ, tagFilter]);
+  }, [orgId, projectId, clientFilter, statusFilter, searchQ, tagFilter, pageSize]);
 
   // Drop a referring-domain filter that no longer matches the reloaded list.
   useEffect(() => {
@@ -660,6 +660,16 @@ export default function DashboardPage() {
                 <button className="btn sm" disabled={!hasNext} onClick={() => setPage((p) => p + 1)}>
                   Next →
                 </button>
+                <select
+                  value={pageSize}
+                  onChange={(e) => setPageSize(Number(e.target.value))}
+                  title="Rows per page"
+                  style={{ marginLeft: 8 }}
+                >
+                  {[10, 50, 100].map((n) => (
+                    <option key={n} value={n}>{n} / page</option>
+                  ))}
+                </select>
               </div>
             )}
           </section>
