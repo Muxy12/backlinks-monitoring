@@ -104,6 +104,8 @@ export interface DashboardResponse {
   referring_domains: number;
   referring_pages: number;
   occurrences: number;
+  rel: number[];
+  link_types: Record<string, number>;
 }
 
 export interface SeedView {
@@ -360,7 +362,10 @@ export interface AlertDestination {
 }
 
 export const orgApi = {
-  dashboard: (org: string) => request<DashboardResponse>(`/v1/organizations/${org}/dashboard`),
+  dashboard: (org: string, days?: number) =>
+    request<DashboardResponse>(
+      `/v1/organizations/${org}/dashboard${days ? `?days=${days}` : ""}`,
+    ),
   projects: (org: string) => request<ProjectView[]>(`/v1/organizations/${org}/projects`),
   createProject: (
     org: string,
@@ -403,6 +408,7 @@ export const orgApi = {
       tagId?: string;
       limit?: number;
       offset?: number;
+      days?: number;
     },
   ) => {
     const p = new URLSearchParams();
@@ -413,6 +419,7 @@ export const orgApi = {
     if (opts.tagId) p.set("tag_id", opts.tagId);
     if (opts.limit != null) p.set("limit", String(opts.limit));
     if (opts.offset != null) p.set("offset", String(opts.offset));
+    if (opts.days) p.set("days", String(opts.days));
     const qs = p.toString();
     return request<BacklinkView[]>(
       `/v1/organizations/${org}/backlinks${qs ? `?${qs}` : ""}`,

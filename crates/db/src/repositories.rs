@@ -975,6 +975,8 @@ pub mod backlinks {
         pub q: Option<&'a str>,
         /// Pagination offset (rows to skip); 0 = first page.
         pub offset: i64,
+        /// Acquisition-period cutoff on first-seen; None = all time.
+        pub since: Option<DateTime<Utc>>,
     }
 
     /// Filtered backlink list (§35). Built with sqlx's `QueryBuilder`, so every
@@ -1027,6 +1029,10 @@ pub mod backlinks {
             qb.push(" AND tag_id = ");
             qb.push_bind(tag);
             qb.push(")");
+        }
+        if let Some(s) = filter.since {
+            qb.push(" AND COALESCE(first_checked_at, created_at) >= ");
+            qb.push_bind(s);
         }
         qb.push(" ORDER BY created_at DESC LIMIT ");
         qb.push_bind(limit.clamp(1, 200));
@@ -2454,18 +2460,75 @@ pub mod events {
 pub mod dashboard {
     use super::*;
 
-    /// (status, count) for every non-archived backlink in the org.
+    /// Common WHERE for own/tier-1/non-archived backlinks, with an optional
+    /// "acquired since" cutoff on first-seen (COALESCE(first_checked_at, created_at)).
+    /// Common WHERE for own/tier-1/non-archived backlinks (aliased `b`), with an
+    /// optional acquisition-period cutoff on first-seen.
+    fn scoped<'a>(
+        prefix: &str,
+        scope: &OrgScope,
+        since: Option<DateTime<Utc>>,
+    ) -> sqlx::QueryBuilder<'a, sqlx::Postgres> {
+        let mut qb = sqlx::QueryBuilder::<sqlx::Postgres>::new(prefix.to_string());
+        qb.push(" WHERE b.organization_id = ");
+        qb.push_bind(scope.organization_id());
+        qb.push(" AND b.archived_at IS NULL AND b.subject = 'own' AND b.tier = 1");
+        if let Some(s) = since {
+            qb.push(" AND COALESCE(b.first_checked_at, b.created_at) >= ");
+            qb.push_bind(s);
+        }
+        qb
+    }
+
+    /// (status, count) for own backlinks, optionally within an acquisition period.
     pub async fn status_counts(
         pool: &PgPool,
         scope: &OrgScope,
+        since: Option<DateTime<Utc>>,
     ) -> Result<Vec<(String, i64)>, DbError> {
-        Ok(sqlx::query_as::<_, (String, i64)>(
-            "SELECT status::text, count(*) FROM backlinks \
-             WHERE organization_id = $1 AND archived_at IS NULL AND subject = 'own' AND tier = 1 GROUP BY status",
-        )
-        .bind(scope.organization_id())
-        .fetch_all(pool)
-        .await?)
+        let mut qb = scoped(
+            "SELECT b.status::text, count(*) FROM backlinks b",
+            scope,
+            since,
+        );
+        qb.push(" GROUP BY b.status");
+        Ok(qb.build_query_as::<(String, i64)>().fetch_all(pool).await?)
+    }
+
+    /// (dofollow, nofollow) split — detected when known, else the expected rel.
+    pub async fn rel_split(
+        pool: &PgPool,
+        scope: &OrgScope,
+        since: Option<DateTime<Utc>>,
+    ) -> Result<(i64, i64), DbError> {
+        let mut qb = scoped(
+            "SELECT \
+               count(*) FILTER (WHERE COALESCE(b.detected_is_dofollow, b.expected_rel_type::text = 'dofollow'))::bigint, \
+               count(*) FILTER (WHERE NOT COALESCE(b.detected_is_dofollow, b.expected_rel_type::text = 'dofollow'))::bigint \
+             FROM backlinks b",
+            scope,
+            since,
+        );
+        Ok(qb.build_query_as::<(i64, i64)>().fetch_one(pool).await?)
+    }
+
+    /// (tag_name, count) for the auto-tagger link-type tags only.
+    pub async fn type_counts(
+        pool: &PgPool,
+        scope: &OrgScope,
+        since: Option<DateTime<Utc>>,
+    ) -> Result<Vec<(String, i64)>, DbError> {
+        let mut qb = scoped(
+            "SELECT t.name::text, count(DISTINCT b.id)::bigint \
+             FROM backlinks b \
+             JOIN backlink_tags bt ON bt.backlink_id = b.id \
+             JOIN tags t ON t.id = bt.tag_id \
+                AND lower(t.name) IN ('pbn','forum-profile','self-built','earned')",
+            scope,
+            since,
+        );
+        qb.push(" GROUP BY t.name");
+        Ok(qb.build_query_as::<(String, i64)>().fetch_all(pool).await?)
     }
 
     /// (referring domains, referring pages): distinct source domains and distinct

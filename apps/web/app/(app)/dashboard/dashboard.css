@@ -377,3 +377,13 @@
   color: var(--muted);
   white-space: nowrap;
 }
+
+/* Two side-by-side distribution illustrations (follow ratio + link type). */
+.dist-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+.dist-row .dist { margin-bottom: 0; }
+.dist-head a { color: var(--accent-2); }

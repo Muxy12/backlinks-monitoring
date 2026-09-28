@@ -970,6 +970,8 @@ pub struct ListBacklinksQuery {
     pub limit: Option<i64>,
     /// Pagination offset (rows to skip); 0/absent = first page.
     pub offset: Option<i64>,
+    /// Acquisition window in days (first-seen); omit/0 = all time.
+    pub days: Option<i64>,
 }
 
 const BACKLINK_STATUSES: &[&str] = &[
@@ -1000,6 +1002,10 @@ pub async fn list_backlinks(
     {
         return Err(ApiError::Validation("unknown status filter".into()));
     }
+    let since = q
+        .days
+        .filter(|d| *d > 0)
+        .map(|d| chrono::Utc::now() - chrono::Duration::days(d));
     let filter = db::repositories::backlinks::BacklinkFilter {
         project_id: q.project_id,
         client_id: q.client_id,
@@ -1007,6 +1013,7 @@ pub async fn list_backlinks(
         tag_id: q.tag_id,
         q: q.q.as_deref(),
         offset: q.offset.unwrap_or(0).max(0),
+        since,
     };
     let rows =
         db::repositories::backlinks::search(&state.pool, &scope, &filter, q.limit.unwrap_or(50))
@@ -1143,17 +1150,35 @@ pub struct DashboardView {
     pub referring_domains: i64,
     pub referring_pages: i64,
     pub occurrences: i64,
+    /// [dofollow, nofollow] over the selected period.
+    pub rel: [i64; 2],
+    /// link-type tag -> count (pbn / forum-profile / self-built / earned).
+    pub link_types: std::collections::BTreeMap<String, i64>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct DashboardQuery {
+    /// Acquisition window in days (first-seen); omit/0 = all time.
+    pub days: Option<i64>,
 }
 
 pub async fn dashboard(
     State(state): State<AppState>,
     Path(org_id): Path<Uuid>,
+    axum::extract::Query(q): axum::extract::Query<DashboardQuery>,
     jar: CookieJar,
 ) -> Result<Json<DashboardView>, ApiError> {
     let (user, _s) = current(&state, &jar).await?;
     let scope = authorize_org(&state.pool, user.id, org_id).await?;
 
-    let counts_rows = db::repositories::dashboard::status_counts(&state.pool, &scope).await?;
+    // Acquisition period (first-seen) filter for the counts + illustrations.
+    let since = q
+        .days
+        .filter(|d| *d > 0)
+        .map(|d| chrono::Utc::now() - chrono::Duration::days(d));
+
+    let counts_rows =
+        db::repositories::dashboard::status_counts(&state.pool, &scope, since).await?;
     let mut counts = std::collections::BTreeMap::new();
     let mut monitored = 0i64;
     let mut needs_attention = 0i64;
@@ -1187,6 +1212,13 @@ pub async fn dashboard(
         db::repositories::dashboard::referring_counts(&state.pool, &scope).await?;
     let occurrences = db::repositories::link_occurrences::count_active(&state.pool, org_id).await?;
 
+    let (dofollow, nofollow) =
+        db::repositories::dashboard::rel_split(&state.pool, &scope, since).await?;
+    let link_types = db::repositories::dashboard::type_counts(&state.pool, &scope, since)
+        .await?
+        .into_iter()
+        .collect::<std::collections::BTreeMap<_, _>>();
+
     Ok(Json(DashboardView {
         counts,
         monitored,
@@ -1196,6 +1228,8 @@ pub async fn dashboard(
         referring_domains,
         referring_pages,
         occurrences,
+        rel: [dofollow, nofollow],
+        link_types,
     }))
 }
 

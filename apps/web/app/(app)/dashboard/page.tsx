@@ -34,6 +34,7 @@ export default function DashboardPage() {
   const [searchQ, setSearchQ] = useState("");
   const [domainFilter, setDomainFilter] = useState("");
   const [tagFilter, setTagFilter] = useState("");
+  const [periodDays, setPeriodDays] = useState(0); // 0 = all time
   const [pageTags, setPageTags] = useState<Record<string, TagView[]>>({});
   const [page, setPage] = useState(0);
   const [hasNext, setHasNext] = useState(false);
@@ -126,6 +127,7 @@ export default function DashboardPage() {
           status: statusFilter || undefined,
           q: searchQ.trim() || undefined,
           tagId: tagFilter || undefined,
+          days: periodDays || undefined,
           limit: pageSize,
           offset: page * pageSize,
         })
@@ -144,13 +146,13 @@ export default function DashboardPage() {
         });
     }, 200); // debounce the search box
     return () => clearTimeout(t);
-  }, [orgId, projectId, clientFilter, statusFilter, searchQ, tagFilter, page, pageSize]);
+  }, [orgId, projectId, clientFilter, statusFilter, searchQ, tagFilter, periodDays, page, pageSize]);
 
   // Any filter (or page-size) change resets to the first page. (The load effect's
   // debounce cleanup cancels the stale-page fetch, so this doesn't double-request.)
   useEffect(() => {
     setPage(0);
-  }, [orgId, projectId, clientFilter, statusFilter, searchQ, tagFilter, pageSize]);
+  }, [orgId, projectId, clientFilter, statusFilter, searchQ, tagFilter, periodDays, pageSize]);
 
   // Drop a referring-domain filter that no longer matches the reloaded list.
   useEffect(() => {
@@ -158,6 +160,14 @@ export default function DashboardPage() {
       setDomainFilter("");
     }
   }, [backlinks, domainFilter]);
+
+  // Reload the dashboard stats + illustrations when the period changes.
+  useEffect(() => {
+    if (!orgId) return;
+    orgApi.dashboard(orgId, periodDays || undefined).then((r) => {
+      if (r.ok) setSummary(r.data);
+    });
+  }, [orgId, periodDays]);
 
   async function runAutoTag() {
     if (!orgId || !projectId) return;
@@ -378,6 +388,25 @@ export default function DashboardPage() {
   const distSegments = STATUSES.map((st) => ({ st, n: summary?.counts[st] ?? 0 })).filter((s) => s.n > 0);
   const distTotal = distSegments.reduce((acc, s) => acc + s.n, 0);
 
+  // Follow ratio (do/nofollow) illustration.
+  const relSegments = [
+    { label: "Dofollow", n: summary?.rel?.[0] ?? 0, color: "#36d399" },
+    { label: "Nofollow", n: summary?.rel?.[1] ?? 0, color: "#fbbf24" },
+  ].filter((s) => s.n > 0);
+  const relTotal = relSegments.reduce((acc, s) => acc + s.n, 0);
+
+  // Link-type illustration (auto-tagger categories).
+  const TYPE_COLORS: Record<string, string> = {
+    pbn: "#fb7185",
+    "forum-profile": "#a78bfa",
+    "self-built": "#fbbf24",
+    earned: "#36d399",
+  };
+  const typeSegments = ["earned", "self-built", "forum-profile", "pbn"]
+    .map((k) => ({ label: k, n: summary?.link_types?.[k] ?? 0, color: TYPE_COLORS[k] }))
+    .filter((s) => s.n > 0);
+  const typeTotal = typeSegments.reduce((acc, s) => acc + s.n, 0);
+
   return (
     <main className="dash">
       <header className="dash-head">
@@ -474,6 +503,58 @@ export default function DashboardPage() {
             </section>
           )}
 
+          {summary && (
+            <div className="dist-row">
+              {relSegments.length > 0 && (
+                <section className="dist">
+                  <div className="dist-head">
+                    <h2>Follow ratio</h2>
+                    <span className="dist-total">{relTotal} link{relTotal > 1 ? "s" : ""}</span>
+                  </div>
+                  <div className="dist-bar">
+                    {relSegments.map((s) => (
+                      <div key={s.label} className="dist-seg" style={{ flexGrow: s.n, background: s.color }} title={`${s.label}: ${s.n}`} />
+                    ))}
+                  </div>
+                  <div className="legend">
+                    {relSegments.map((s) => (
+                      <span key={s.label} className="legend-item" style={{ color: s.color }}>
+                        <span className="legend-dot" />
+                        <span style={{ color: "var(--muted)" }}>{s.label}</span>
+                        <b>{s.n}</b>
+                        <span style={{ color: "var(--muted)" }}>({relTotal ? Math.round((s.n / relTotal) * 100) : 0}%)</span>
+                      </span>
+                    ))}
+                  </div>
+                </section>
+              )}
+              {typeSegments.length > 0 && (
+                <section className="dist">
+                  <div className="dist-head">
+                    <h2>Link type</h2>
+                    <span className="dist-total">
+                      {typeTotal} tagged · <a href="#" onClick={(e) => { e.preventDefault(); void runAutoTag(); }}>re-tag</a>
+                    </span>
+                  </div>
+                  <div className="dist-bar">
+                    {typeSegments.map((s) => (
+                      <div key={s.label} className="dist-seg" style={{ flexGrow: s.n, background: s.color }} title={`${s.label}: ${s.n}`} />
+                    ))}
+                  </div>
+                  <div className="legend">
+                    {typeSegments.map((s) => (
+                      <span key={s.label} className="legend-item" style={{ color: s.color }}>
+                        <span className="legend-dot" />
+                        <span style={{ color: "var(--muted)" }}>{s.label}</span>
+                        <b>{s.n}</b>
+                      </span>
+                    ))}
+                  </div>
+                </section>
+              )}
+            </div>
+          )}
+
           <section className="panel">
             <div className="panel-head">
               <h2>
@@ -512,6 +593,16 @@ export default function DashboardPage() {
                   {STATUSES.map((st) => (
                     <option key={st} value={st}>{statusLabel(st)}</option>
                   ))}
+                </select>
+                <select
+                  value={periodDays}
+                  onChange={(e) => setPeriodDays(Number(e.target.value))}
+                  title="Filter by acquisition period (first seen)"
+                >
+                  <option value={0}>All time</option>
+                  <option value={7}>Last 7 days</option>
+                  <option value={30}>Last 30 days</option>
+                  <option value={90}>Last 90 days</option>
                 </select>
                 <select
                   value={domainFilter}
