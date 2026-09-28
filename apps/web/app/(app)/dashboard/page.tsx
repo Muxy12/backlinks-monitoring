@@ -35,6 +35,7 @@ export default function DashboardPage() {
   const [domainFilter, setDomainFilter] = useState("");
   const [page, setPage] = useState(0);
   const [hasNext, setHasNext] = useState(false);
+  const [autoTagBusy, setAutoTagBusy] = useState(false);
   const PAGE_SIZE = 50;
   const [loading, setLoading] = useState(true);
   const [wsName, setWsName] = useState("");
@@ -147,6 +148,34 @@ export default function DashboardPage() {
       setDomainFilter("");
     }
   }, [backlinks, domainFilter]);
+
+  async function runAutoTag() {
+    if (!orgId || !projectId) return;
+    if (
+      !confirm(
+        "Auto-tag this project's backlinks by footprint?\n\n" +
+          "Adds a category tag to each link: pbn, forum-profile, self-built, or earned. " +
+          "Reversible — you can retag or remove tags afterward.",
+      )
+    )
+      return;
+    setAutoTagBusy(true);
+    const res = await orgApi.autoTagBacklinks(orgId, projectId);
+    setAutoTagBusy(false);
+    if (!res.ok) {
+      alert(`Auto-tag failed: ${res.detail}`);
+      return;
+    }
+    const c = res.data.counts;
+    const summary = Object.keys(c)
+      .sort((a, b) => (c[b] ?? 0) - (c[a] ?? 0))
+      .map((k) => `${k}: ${c[k]}`)
+      .join("\n");
+    alert(`Tagged ${res.data.total} backlinks.\n\n${summary}\n\nOpen a backlink to see its tag.`);
+    // Refresh the org tag list so the new category tags are available.
+    const tags = await orgApi.tags(orgId);
+    if (tags.ok) setOrgTags(tags.data);
+  }
 
   async function openDetail(b: BacklinkView) {
     setSelected(b);
@@ -488,6 +517,16 @@ export default function DashboardPage() {
                   <button className="btn sm primary" onClick={openAdd}>+ Add backlink</button>
                 )}
                 <a className="btn sm" href="/import">Import</a>
+                {orgId && projectId && (
+                  <button
+                    className="btn sm"
+                    disabled={autoTagBusy}
+                    title="Classify this project's backlinks by footprint (PBN / forum / self-built / earned)"
+                    onClick={() => void runAutoTag()}
+                  >
+                    {autoTagBusy ? "Tagging…" : "🏷️ Auto-tag"}
+                  </button>
+                )}
                 {orgId && (
                   <a className="btn sm" href={backlinksExportUrl(orgId, projectId ?? undefined, clientFilter || undefined)}>
                     Export CSV

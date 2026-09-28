@@ -13,8 +13,9 @@ use axum::http::{HeaderMap, StatusCode};
 use axum_extra::extract::cookie::CookieJar;
 use common::Role;
 use db::authorize_org;
-use db::repositories::{clients, projects};
+use db::repositories::{backlinks, clients, projects, tags};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use uuid::Uuid;
 
 /// Enforce the org's plan backlink cap before adding `count` (§39). Existing
@@ -1523,5 +1524,114 @@ pub async fn import_csv(
         imported,
         duplicates,
         errors,
+    }))
+}
+
+// ─── Footprint auto-tagger (§35) ─────────────────────────────────────────────
+// Classify a project's own backlinks by footprint and attach a category tag, so
+// self-placed / PBN / forum-profile links are told apart from earned ones at a
+// glance. Heuristic and reversible (the user can retag or detach). Idempotent:
+// re-running only adds missing attachments.
+
+const AUTOTAG_TAGS: &[(&str, &str)] = &[
+    ("pbn", "#fb7185"),
+    ("forum-profile", "#a78bfa"),
+    ("self-built", "#fbbf24"),
+    ("earned", "#36d399"),
+];
+
+fn classify_footprint(anchor: &str, domain: &str, domain_count: usize) -> &'static str {
+    let a = anchor.to_lowercase();
+    let d = domain.to_lowercase();
+    // Promotional / PBN anchor text (bulk-built or bought).
+    const PROMO: &[&str] = &[
+        "premium",
+        "pbn",
+        "dofollow backlink",
+        "link building",
+        "outreach",
+        "rank higher",
+        "buy backlink",
+        "da 50",
+        "pa 40",
+        "high quality",
+        "backlinks da",
+        "seo strateg",
+    ];
+    if PROMO.iter().any(|k| a.contains(k)) {
+        return "pbn";
+    }
+    // Many links from one domain → sitewide / forum profile / signature.
+    if domain_count >= 8 {
+        return "forum-profile";
+    }
+    // Spammy TLDs or SEO-keyword domains → self-built / auto network.
+    const SPAM_TLD: &[&str] = &[
+        ".link", ".shop", ".store", ".site", ".online", ".info", ".website", ".space", ".click",
+        ".xyz",
+    ];
+    const SEO_KW: &[&str] = &[
+        "seo", "backlink", "checker", "boost", "traffic", "rank", "dapa", "casino",
+    ];
+    if SPAM_TLD.iter().any(|t| d.ends_with(t)) || SEO_KW.iter().any(|k| d.contains(k)) {
+        return "self-built";
+    }
+    "earned"
+}
+
+#[derive(Serialize)]
+pub struct AutoTagResult {
+    pub total: usize,
+    pub counts: HashMap<String, usize>,
+}
+
+pub async fn auto_tag_backlinks(
+    State(state): State<AppState>,
+    Path((org_id, project_id)): Path<(Uuid, Uuid)>,
+    jar: CookieJar,
+    headers: HeaderMap,
+) -> Result<Json<AutoTagResult>, ApiError> {
+    let (user, session) = current(&state, &jar).await?;
+    check_csrf(&jar, &headers, &session)?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Member)?;
+    projects::get(&state.pool, &scope, project_id).await?; // 404 if not in scope
+
+    let rows = backlinks::list_for_autotag(&state.pool, &scope, project_id).await?;
+
+    // Links-per-domain, to spot sitewide / forum-profile footprints.
+    let mut domain_count: HashMap<&str, usize> = HashMap::new();
+    for r in &rows {
+        *domain_count.entry(r.source_domain.as_str()).or_default() += 1;
+    }
+
+    // Get-or-create the category tags (idempotent across re-runs).
+    let existing = tags::list(&state.pool, &scope).await?;
+    let mut tag_ids: HashMap<&str, Uuid> = HashMap::new();
+    for (name, color) in AUTOTAG_TAGS {
+        let id = match existing.iter().find(|t| t.name.eq_ignore_ascii_case(name)) {
+            Some(t) => t.id,
+            None => {
+                tags::create(&state.pool, &scope, Uuid::now_v7(), name, Some(color))
+                    .await?
+                    .id
+            }
+        };
+        tag_ids.insert(name, id);
+    }
+
+    let mut counts: HashMap<String, usize> = HashMap::new();
+    for r in &rows {
+        let n = *domain_count.get(r.source_domain.as_str()).unwrap_or(&1);
+        let cat = classify_footprint(&r.anchor, &r.source_domain, n);
+        if let Some(&tid) = tag_ids.get(cat) {
+            let _ = tags::attach(&state.pool, &scope, r.id, tid).await;
+        }
+        *counts.entry(cat.to_string()).or_default() += 1;
+    }
+
+    Ok(Json(AutoTagResult {
+        total: rows.len(),
+        counts,
     }))
 }

@@ -371,6 +371,11 @@ export const orgApi = {
       method: "DELETE",
       headers: csrfHeader(),
     }),
+  autoTagBacklinks: (org: string, projectId: string) =>
+    request<{ total: number; counts: Record<string, number> }>(
+      `/v1/organizations/${org}/projects/${projectId}/auto-tag`,
+      { method: "POST", headers: csrfHeader() },
+    ),
   backlinks: (org: string, projectId: string) =>
     request<BacklinkView[]>(`/v1/organizations/${org}/backlinks?project_id=${projectId}`),
   searchBacklinks: (

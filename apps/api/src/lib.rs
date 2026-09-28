@@ -65,6 +65,10 @@ pub fn app(state: AppState) -> Router {
                 .delete(routes::resource_routes::delete_project),
         )
         .route(
+            "/v1/organizations/{org_id}/projects/{project_id}/auto-tag",
+            post(routes::resource_routes::auto_tag_backlinks),
+        )
+        .route(
             "/v1/organizations/{org_id}/campaigns",
             get(routes::ops_routes::list_campaigns).post(routes::ops_routes::create_campaign),
         )

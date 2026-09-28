@@ -980,6 +980,35 @@ pub mod backlinks {
         Ok(qb.build_query_as::<Backlink>().fetch_all(pool).await?)
     }
 
+    /// Minimal rows for the footprint auto-tagger: id + the fields the classifier
+    /// reads (referring domain, source URL, discovered anchor).
+    #[derive(Debug, Clone, sqlx::FromRow)]
+    pub struct AutoTagRow {
+        pub id: Uuid,
+        pub source_domain: String,
+        pub source_url: String,
+        pub anchor: String,
+    }
+
+    pub async fn list_for_autotag(
+        pool: &PgPool,
+        scope: &OrgScope,
+        project_id: Uuid,
+    ) -> Result<Vec<AutoTagRow>, DbError> {
+        Ok(sqlx::query_as::<_, AutoTagRow>(
+            "SELECT id, source_domain, source_url, \
+                    COALESCE(expected_anchor_text, '') AS anchor \
+             FROM backlinks \
+             WHERE project_id = $1 AND organization_id = $2 \
+               AND subject = 'own' AND tier = 1 AND archived_at IS NULL \
+             LIMIT 5000",
+        )
+        .bind(project_id)
+        .bind(scope.organization_id())
+        .fetch_all(pool)
+        .await?)
+    }
+
     pub async fn get(pool: &PgPool, scope: &OrgScope, id: Uuid) -> Result<Backlink, DbError> {
         sqlx::query_as::<_, Backlink>(concat!(
             "SELECT ",
