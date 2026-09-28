@@ -33,12 +33,24 @@ fn payload(kind: &str, n: &PendingNotification) -> serde_json::Value {
     }
 }
 
-/// One POST to a destination. Returns Ok(http_status) or an error string.
-async fn post_one(
+/// Deliver one notification to one destination. Webhook/Slack go through the
+/// SSRF-safe POST; email goes through Resend. Returns Ok(http_status) or an
+/// error string.
+async fn deliver_one(
     cfg: &CrawlerConfig,
     dest: &AlertDestination,
     n: &PendingNotification,
 ) -> Result<u16, String> {
+    if dest.kind == "email" {
+        let subject = format!("[Backlio] {}", n.title);
+        let text = match &n.body {
+            Some(b) if !b.is_empty() => format!("{}\n\n{}\n\n— Backlio", n.title, b),
+            _ => format!("{}\n\n— Backlio", n.title),
+        };
+        return notifications::resend::send_email(&dest.target, &subject, &text)
+            .await
+            .map(|_| 200u16);
+    }
     let body = payload(&dest.kind, n);
     crawler::fetch::post_json(cfg, &dest.target, &body)
         .await
@@ -63,7 +75,7 @@ pub async fn deliver_tick(
         let mut last_err: Option<String> = None;
         let mut any_ok = false;
         for n in pending {
-            match post_one(cfg, &d, &n).await {
+            match deliver_one(cfg, &d, &n).await {
                 Ok(code) if (200..300).contains(&code) => {
                     alerts::record_delivery(pool, d.id, n.id, "ok", Some(code as i32), None)
                         .await?;
@@ -107,7 +119,7 @@ pub async fn send_test(
         body: Some("If you can read this, your alert destination is wired up correctly.".into()),
         created_at: chrono::Utc::now(),
     };
-    let result = post_one(cfg, dest, &test).await;
+    let result = deliver_one(cfg, dest, &test).await;
     match &result {
         Ok(code) if (200..300).contains(code) => {
             let _ = alerts::set_status(pool, dest.id, "ok", None).await;

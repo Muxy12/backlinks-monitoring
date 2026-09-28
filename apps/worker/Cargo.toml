@@ -30,6 +30,7 @@ sqlx = { workspace = true }
 db = { workspace = true }
 crawler = { workspace = true }
 jobs = { workspace = true }
+notifications = { workspace = true }
 
 [dev-dependencies]
 wiremock = "0.6"

@@ -198,9 +198,10 @@ export default function NotificationSettingsPage() {
         <section className="panel" style={{ marginTop: 16 }}>
           <div className="panel-head"><h2>Alert destinations</h2></div>
           <p className="muted" style={{ marginBottom: 12 }}>
-            Push new alerts to Slack or a webhook. For Slack, paste an{" "}
-            <b>Incoming Webhook</b> URL; for a webhook, any HTTPS endpoint that accepts a JSON POST.
-            Delivery runs on the monitoring tick.
+            Push new alerts to Slack, a webhook, or email. For Slack, paste an{" "}
+            <b>Incoming Webhook</b> URL; for a webhook, any HTTPS endpoint that accepts a JSON POST;
+            for email, an address (email requires Resend to be configured on the server). Delivery
+            runs on the monitoring tick.
           </p>
 
           {dests.length > 0 && (
@@ -240,11 +241,22 @@ export default function NotificationSettingsPage() {
               <select value={dkind} onChange={(e) => setDkind(e.target.value)}>
                 <option value="slack">Slack</option>
                 <option value="webhook">Webhook</option>
+                <option value="email">Email</option>
               </select>
             </label>
             <label className="auth-field" style={{ margin: 0, flex: "1 1 320px" }}>
-              <span>Destination URL</span>
-              <input value={dtarget} onChange={(e) => setDtarget(e.target.value)} placeholder="https://hooks.slack.com/services/…" />
+              <span>{dkind === "email" ? "Email address" : "Destination URL"}</span>
+              <input
+                value={dtarget}
+                onChange={(e) => setDtarget(e.target.value)}
+                placeholder={
+                  dkind === "email"
+                    ? "alerts@yourcompany.com"
+                    : dkind === "slack"
+                      ? "https://hooks.slack.com/services/…"
+                      : "https://your-app.com/webhooks/backlio"
+                }
+              />
             </label>
             <label className="auth-field" style={{ margin: 0 }}>
               <span>Name (optional)</span>

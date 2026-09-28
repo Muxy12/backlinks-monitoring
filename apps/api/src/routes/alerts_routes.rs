@@ -68,23 +68,35 @@ pub struct CreateDestinationBody {
 /// host. The full SSRF check runs when we actually POST (test / delivery), so
 /// this only rejects obviously wrong input (no url-crate dependency needed).
 fn validate(kind: &str, target: &str) -> Result<(), ApiError> {
-    if kind != "webhook" && kind != "slack" {
-        return Err(ApiError::Validation(
-            "kind must be 'webhook' or 'slack'".into(),
-        ));
-    }
     let t = target.trim();
-    let rest = t
-        .strip_prefix("https://")
-        .or_else(|| t.strip_prefix("http://"))
-        .ok_or_else(|| ApiError::Validation("target must be an http(s) URL".into()))?;
-    let host = rest.split(['/', '?', '#']).next().unwrap_or("");
-    let host = host.rsplit('@').next().unwrap_or(host); // strip userinfo
-    let host = host.split(':').next().unwrap_or(host); // strip port
-    if host.is_empty() {
-        return Err(ApiError::Validation("target must have a host".into()));
+    match kind {
+        "email" => {
+            let ok = t.find('@').is_some_and(|i| i > 0 && i < t.len() - 1)
+                && !t.contains(char::is_whitespace);
+            if !ok {
+                return Err(ApiError::Validation(
+                    "target must be an email address".into(),
+                ));
+            }
+            Ok(())
+        }
+        "webhook" | "slack" => {
+            let rest = t
+                .strip_prefix("https://")
+                .or_else(|| t.strip_prefix("http://"))
+                .ok_or_else(|| ApiError::Validation("target must be an http(s) URL".into()))?;
+            let host = rest.split(['/', '?', '#']).next().unwrap_or("");
+            let host = host.rsplit('@').next().unwrap_or(host); // strip userinfo
+            let host = host.split(':').next().unwrap_or(host); // strip port
+            if host.is_empty() {
+                return Err(ApiError::Validation("target must have a host".into()));
+            }
+            Ok(())
+        }
+        _ => Err(ApiError::Validation(
+            "kind must be 'webhook', 'slack' or 'email'".into(),
+        )),
     }
-    Ok(())
 }
 
 pub async fn create_destination(

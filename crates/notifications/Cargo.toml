@@ -9,6 +9,7 @@ publish = false
 [dependencies]
 tokio = { workspace = true }
 lettre = { workspace = true }
+reqwest = { workspace = true }
 sqlx = { workspace = true }
 uuid = { workspace = true }
 chrono = { workspace = true }
