@@ -79,8 +79,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </nav>
         <div className="side-spacer" />
         <a
+          href="/settings/billing"
+          className={`side-link${isActive("/settings/billing") ? " active" : ""}`}
+          onClick={() => setOpen(false)}
+        >
+          <span className="side-ico">💳</span>
+          Billing
+        </a>
+        <a
           href="/settings/notifications"
-          className={`side-link${isActive("/settings") ? " active" : ""}`}
+          className={`side-link${isActive("/settings/notifications") ? " active" : ""}`}
           onClick={() => setOpen(false)}
         >
           <span className="side-ico">⚙️</span>

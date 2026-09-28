@@ -309,6 +309,7 @@ name = "billing"
 version = "0.1.0"
 dependencies = [
  "hmac",
+ "reqwest",
  "serde",
  "serde_json",
  "sha2 0.11.0",

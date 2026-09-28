@@ -236,6 +236,18 @@ pub fn app(state: AppState) -> Router {
             post(routes::resource_routes::import_csv),
         )
         .route(
+            "/v1/organizations/{org_id}/billing",
+            get(routes::billing_routes::billing_status),
+        )
+        .route(
+            "/v1/organizations/{org_id}/billing/checkout",
+            post(routes::billing_routes::create_checkout),
+        )
+        .route(
+            "/v1/organizations/{org_id}/billing/portal",
+            post(routes::billing_routes::create_portal),
+        )
+        .route(
             "/v1/billing/webhook",
             post(routes::billing_routes::stripe_webhook),
         )

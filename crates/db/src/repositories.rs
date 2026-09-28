@@ -2510,6 +2510,89 @@ pub mod billing {
         .await?;
         Ok(row.is_some())
     }
+
+    /// The org's Stripe customer id, if it has a subscription row (for the Portal).
+    pub async fn customer_for_org(
+        pool: &PgPool,
+        organization_id: Uuid,
+    ) -> Result<Option<String>, DbError> {
+        let row: Option<(String,)> = sqlx::query_as(
+            "SELECT stripe_customer_id FROM subscriptions WHERE organization_id = $1",
+        )
+        .bind(organization_id)
+        .fetch_optional(pool)
+        .await?;
+        Ok(row.map(|(c,)| c))
+    }
+
+    /// Plan + status for display (defaults to starter / none when unsubscribed).
+    pub async fn status_for_org(
+        pool: &PgPool,
+        organization_id: Uuid,
+    ) -> Result<(String, String), DbError> {
+        let row: Option<(String, String)> = sqlx::query_as(
+            "SELECT plan::text, status FROM subscriptions WHERE organization_id = $1",
+        )
+        .bind(organization_id)
+        .fetch_optional(pool)
+        .await?;
+        Ok(row.unwrap_or_else(|| ("starter".to_string(), "none".to_string())))
+    }
+
+    /// Upsert the org's subscription from a completed checkout (webhook). One row
+    /// per org (organization_id is UNIQUE); a re-subscribe updates in place.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn upsert_subscription(
+        pool: &PgPool,
+        organization_id: Uuid,
+        customer_id: &str,
+        subscription_id: Option<&str>,
+        plan_slug: &str,
+        status: &str,
+    ) -> Result<(), DbError> {
+        sqlx::query(
+            "INSERT INTO subscriptions \
+                (id, organization_id, stripe_customer_id, stripe_subscription_id, plan, status) \
+             VALUES ($1, $2, $3, $4, $5::subscription_plan, $6) \
+             ON CONFLICT (organization_id) DO UPDATE SET \
+                stripe_customer_id = EXCLUDED.stripe_customer_id, \
+                stripe_subscription_id = EXCLUDED.stripe_subscription_id, \
+                plan = EXCLUDED.plan, status = EXCLUDED.status, updated_at = now()",
+        )
+        .bind(Uuid::now_v7())
+        .bind(organization_id)
+        .bind(customer_id)
+        .bind(subscription_id)
+        .bind(plan_slug)
+        .bind(status)
+        .execute(pool)
+        .await
+        .map_err(DbError::from_insert)?;
+        Ok(())
+    }
+
+    /// Update plan/status by Stripe subscription id (subscription.updated/deleted).
+    pub async fn update_subscription_by_stripe_id(
+        pool: &PgPool,
+        subscription_id: &str,
+        plan_slug: Option<&str>,
+        status: &str,
+    ) -> Result<(), DbError> {
+        // COALESCE keeps the existing plan when the event carries no price we map.
+        sqlx::query(
+            "UPDATE subscriptions SET \
+                status = $2, \
+                plan = COALESCE($3::subscription_plan, plan), \
+                updated_at = now() \
+             WHERE stripe_subscription_id = $1",
+        )
+        .bind(subscription_id)
+        .bind(status)
+        .bind(plan_slug)
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
 }
 
 // ─── Campaigns (§22) — tenant-scoped, with read-time rollups ──────────────────

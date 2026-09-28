@@ -620,6 +620,21 @@ export const orgApi = {
       `/v1/organizations/${org}/alert-destinations/${id}/test`,
       { method: "POST", headers: csrfHeader() },
     ),
+  billingStatus: (org: string) =>
+    request<{ plan: string; status: string; configured: boolean }>(
+      `/v1/organizations/${org}/billing`,
+    ),
+  startCheckout: (org: string, plan: string) =>
+    request<{ url: string }>(`/v1/organizations/${org}/billing/checkout`, {
+      method: "POST",
+      headers: csrfHeader(),
+      body: JSON.stringify({ plan }),
+    }),
+  openBillingPortal: (org: string) =>
+    request<{ url: string }>(`/v1/organizations/${org}/billing/portal`, {
+      method: "POST",
+      headers: csrfHeader(),
+    }),
   clients: (org: string) => request<ClientView[]>(`/v1/organizations/${org}/clients`),
   createClient: (org: string, body: NewClient) =>
     request<ClientView>(`/v1/organizations/${org}/clients`, {

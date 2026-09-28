@@ -9,6 +9,7 @@
 
 pub mod entitlements;
 pub mod plans;
+pub mod stripe;
 pub mod webhook;
 
 pub use entitlements::{AddOutcome, Entitlements};
