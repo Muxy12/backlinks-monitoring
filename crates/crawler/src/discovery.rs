@@ -136,10 +136,12 @@ impl DiscoveryProvider for DataForSeoProvider {
             .unwrap_or_default();
         let mut out = Vec::new();
         for it in items {
-            // Only real backlink rows — skip redirects/canonicals/etc.
-            if let Some(t) = it["item_type"].as_str()
-                && t != "backlink"
-            {
+            // Guard on the object marker `type` (always "backlink" for this
+            // endpoint) — NOT `item_type`, which is the LINK KIND (anchor, image,
+            // meta, canonical, alternate, redirect). Filtering on
+            // `item_type == "backlink"` was wrong: no row ever has that value, so
+            // it dropped almost every real backlink.
+            if it["type"].as_str().is_some_and(|t| t != "backlink") {
                 continue;
             }
             let source_url = it["url_from"].as_str().unwrap_or("").to_string();
