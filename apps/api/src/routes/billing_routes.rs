@@ -169,12 +169,10 @@ pub async fn stripe_webhook(
     // Idempotent: only the first delivery of an event id applies state.
     let first_time =
         db::repositories::billing::record_stripe_event(&state.pool, event_id, event_type).await?;
-    if first_time {
-        if let Err(e) = apply_event(&state, event_type, &event["data"]["object"]).await {
-            tracing::error!(event_type, error = %e, "failed to apply stripe event");
-            // Still 200: Stripe would retry, but our receipt is recorded. We log
-            // and move on rather than loop forever on a malformed event.
-        }
+    // Still 200 even on apply error: Stripe would retry, and our receipt is
+    // recorded — we log rather than loop forever on a malformed event.
+    if first_time && let Err(e) = apply_event(&state, event_type, &event["data"]["object"]).await {
+        tracing::error!(event_type, error = %e, "failed to apply stripe event");
     }
     Ok(StatusCode::OK)
 }
