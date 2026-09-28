@@ -967,6 +967,8 @@ pub struct ListBacklinksQuery {
     /// Free-text over source/target domain + anchor.
     pub q: Option<String>,
     pub limit: Option<i64>,
+    /// Pagination offset (rows to skip); 0/absent = first page.
+    pub offset: Option<i64>,
 }
 
 const BACKLINK_STATUSES: &[&str] = &[
@@ -1003,6 +1005,7 @@ pub async fn list_backlinks(
         status: q.status.as_deref(),
         tag_id: q.tag_id,
         q: q.q.as_deref(),
+        offset: q.offset.unwrap_or(0).max(0),
     };
     let rows =
         db::repositories::backlinks::search(&state.pool, &scope, &filter, q.limit.unwrap_or(50))

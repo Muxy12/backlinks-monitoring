@@ -33,6 +33,9 @@ export default function DashboardPage() {
   const [clientFilter, setClientFilter] = useState("");
   const [searchQ, setSearchQ] = useState("");
   const [domainFilter, setDomainFilter] = useState("");
+  const [page, setPage] = useState(0);
+  const [hasNext, setHasNext] = useState(false);
+  const PAGE_SIZE = 50;
   const [loading, setLoading] = useState(true);
   const [wsName, setWsName] = useState("");
   const [wsBusy, setWsBusy] = useState(false);
@@ -109,6 +112,7 @@ export default function DashboardPage() {
     // otherwise the view is scoped to the selected project.
     if (!orgId || (!clientFilter && !projectId)) {
       setBacklinks([]);
+      setHasNext(false);
       return;
     }
     const t = setTimeout(() => {
@@ -118,12 +122,23 @@ export default function DashboardPage() {
           clientId: clientFilter || undefined,
           status: statusFilter || undefined,
           q: searchQ.trim() || undefined,
+          limit: PAGE_SIZE,
+          offset: page * PAGE_SIZE,
         })
         .then((res) => {
-          if (res.ok) setBacklinks(res.data);
+          if (res.ok) {
+            setBacklinks(res.data);
+            setHasNext(res.data.length === PAGE_SIZE);
+          }
         });
     }, 200); // debounce the search box
     return () => clearTimeout(t);
+  }, [orgId, projectId, clientFilter, statusFilter, searchQ, page]);
+
+  // Any filter change resets to the first page. (The load effect's debounce
+  // cleanup cancels the stale-page fetch, so this doesn't double-request.)
+  useEffect(() => {
+    setPage(0);
   }, [orgId, projectId, clientFilter, statusFilter, searchQ]);
 
   // Drop a referring-domain filter that no longer matches the reloaded list.
@@ -548,6 +563,24 @@ export default function DashboardPage() {
                   ))}
                 </tbody>
               </table>
+            )}
+            {(backlinks.length > 0 || page > 0) && (
+              <div className="pager">
+                <button
+                  className="btn sm"
+                  disabled={page === 0}
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                >
+                  ← Prev
+                </button>
+                <span className="muted">
+                  Page {page + 1}
+                  {domainFilter ? ` · ${visibleBacklinks.length} shown` : ""}
+                </span>
+                <button className="btn sm" disabled={!hasNext} onClick={() => setPage((p) => p + 1)}>
+                  Next →
+                </button>
+              </div>
             )}
           </section>
         </>

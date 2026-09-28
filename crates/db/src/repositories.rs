@@ -915,6 +915,8 @@ pub mod backlinks {
         pub tag_id: Option<Uuid>,
         /// Free-text: matches source/target domain or anchor (case-insensitive).
         pub q: Option<&'a str>,
+        /// Pagination offset (rows to skip); 0 = first page.
+        pub offset: i64,
     }
 
     /// Filtered backlink list (§35). Built with sqlx's `QueryBuilder`, so every
@@ -970,6 +972,10 @@ pub mod backlinks {
         }
         qb.push(" ORDER BY created_at DESC LIMIT ");
         qb.push_bind(limit.clamp(1, 200));
+        if filter.offset > 0 {
+            qb.push(" OFFSET ");
+            qb.push_bind(filter.offset.max(0));
+        }
 
         Ok(qb.build_query_as::<Backlink>().fetch_all(pool).await?)
     }

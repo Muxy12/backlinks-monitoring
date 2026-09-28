@@ -375,7 +375,15 @@ export const orgApi = {
     request<BacklinkView[]>(`/v1/organizations/${org}/backlinks?project_id=${projectId}`),
   searchBacklinks: (
     org: string,
-    opts: { projectId?: string; clientId?: string; status?: string; q?: string; tagId?: string },
+    opts: {
+      projectId?: string;
+      clientId?: string;
+      status?: string;
+      q?: string;
+      tagId?: string;
+      limit?: number;
+      offset?: number;
+    },
   ) => {
     const p = new URLSearchParams();
     if (opts.projectId) p.set("project_id", opts.projectId);
@@ -383,6 +391,8 @@ export const orgApi = {
     if (opts.status) p.set("status", opts.status);
     if (opts.q) p.set("q", opts.q);
     if (opts.tagId) p.set("tag_id", opts.tagId);
+    if (opts.limit != null) p.set("limit", String(opts.limit));
+    if (opts.offset != null) p.set("offset", String(opts.offset));
     const qs = p.toString();
     return request<BacklinkView[]>(
       `/v1/organizations/${org}/backlinks${qs ? `?${qs}` : ""}`,
