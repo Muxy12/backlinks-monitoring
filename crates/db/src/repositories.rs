@@ -2898,6 +2898,190 @@ pub mod notifications {
     }
 }
 
+// ─── Alert destinations + delivery ledger (§37, migration 0024) ──────────────
+pub mod alerts {
+    use super::*;
+    use crate::entities::AlertDestination;
+
+    pub async fn create(
+        pool: &PgPool,
+        scope: &OrgScope,
+        id: Uuid,
+        kind: &str,
+        target: &str,
+        name: &str,
+    ) -> Result<AlertDestination, DbError> {
+        sqlx::query_as::<_, AlertDestination>(
+            "INSERT INTO alert_destinations (id, organization_id, kind, target, name) \
+             VALUES ($1, $2, $3, $4, $5) \
+             RETURNING id, organization_id, kind, target, name, enabled, \
+                       last_status, last_error, last_delivered_at, created_at",
+        )
+        .bind(id)
+        .bind(scope.organization_id())
+        .bind(kind)
+        .bind(target)
+        .bind(name)
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_insert)
+    }
+
+    pub async fn list(pool: &PgPool, scope: &OrgScope) -> Result<Vec<AlertDestination>, DbError> {
+        Ok(sqlx::query_as::<_, AlertDestination>(
+            "SELECT id, organization_id, kind, target, name, enabled, \
+                    last_status, last_error, last_delivered_at, created_at \
+             FROM alert_destinations WHERE organization_id = $1 ORDER BY created_at",
+        )
+        .bind(scope.organization_id())
+        .fetch_all(pool)
+        .await?)
+    }
+
+    pub async fn get(
+        pool: &PgPool,
+        scope: &OrgScope,
+        id: Uuid,
+    ) -> Result<AlertDestination, DbError> {
+        sqlx::query_as::<_, AlertDestination>(
+            "SELECT id, organization_id, kind, target, name, enabled, \
+                    last_status, last_error, last_delivered_at, created_at \
+             FROM alert_destinations WHERE id = $1 AND organization_id = $2",
+        )
+        .bind(id)
+        .bind(scope.organization_id())
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_fetch)
+    }
+
+    pub async fn set_enabled(
+        pool: &PgPool,
+        scope: &OrgScope,
+        id: Uuid,
+        enabled: bool,
+    ) -> Result<AlertDestination, DbError> {
+        sqlx::query_as::<_, AlertDestination>(
+            "UPDATE alert_destinations SET enabled = $3 \
+             WHERE id = $1 AND organization_id = $2 \
+             RETURNING id, organization_id, kind, target, name, enabled, \
+                       last_status, last_error, last_delivered_at, created_at",
+        )
+        .bind(id)
+        .bind(scope.organization_id())
+        .bind(enabled)
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_fetch)
+    }
+
+    pub async fn delete(pool: &PgPool, scope: &OrgScope, id: Uuid) -> Result<(), DbError> {
+        let row: Option<(Uuid,)> = sqlx::query_as(
+            "DELETE FROM alert_destinations WHERE id = $1 AND organization_id = $2 RETURNING id",
+        )
+        .bind(id)
+        .bind(scope.organization_id())
+        .fetch_optional(pool)
+        .await?;
+        row.map(|_| ()).ok_or(DbError::NotFound)
+    }
+
+    /// Record the last outbound attempt on a destination (not tenant-scoped: the
+    /// delivery tick already holds the destination row).
+    pub async fn set_status(
+        pool: &PgPool,
+        id: Uuid,
+        status: &str,
+        error: Option<&str>,
+    ) -> Result<(), DbError> {
+        sqlx::query(
+            "UPDATE alert_destinations \
+             SET last_status = $2, last_error = $3, \
+                 last_delivered_at = CASE WHEN $2 = 'ok' THEN now() ELSE last_delivered_at END \
+             WHERE id = $1",
+        )
+        .bind(id)
+        .bind(status)
+        .bind(error)
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    /// All enabled destinations across every org — the delivery tick iterates
+    /// these. Bounded so a huge instance can't build an unbounded worklist.
+    pub async fn list_all_active(pool: &PgPool) -> Result<Vec<AlertDestination>, DbError> {
+        Ok(sqlx::query_as::<_, AlertDestination>(
+            "SELECT id, organization_id, kind, target, name, enabled, \
+                    last_status, last_error, last_delivered_at, created_at \
+             FROM alert_destinations WHERE enabled ORDER BY created_at LIMIT 500",
+        )
+        .fetch_all(pool)
+        .await?)
+    }
+
+    /// A notification queued for a destination: recent, and not yet delivered
+    /// there (no ledger row).
+    #[derive(Debug, Clone, sqlx::FromRow)]
+    pub struct PendingNotification {
+        pub id: Uuid,
+        pub kind: String,
+        pub title: String,
+        pub body: Option<String>,
+        pub created_at: DateTime<Utc>,
+    }
+
+    pub async fn pending_for_destination(
+        pool: &PgPool,
+        destination_id: Uuid,
+        organization_id: Uuid,
+        limit: i64,
+    ) -> Result<Vec<PendingNotification>, DbError> {
+        Ok(sqlx::query_as::<_, PendingNotification>(
+            "SELECT n.id, n.kind, n.title, n.body, n.created_at \
+             FROM notifications n \
+             WHERE n.organization_id = $2 \
+               AND n.created_at > now() - interval '24 hours' \
+               AND NOT EXISTS ( \
+                 SELECT 1 FROM alert_deliveries d \
+                 WHERE d.destination_id = $1 AND d.notification_id = n.id) \
+             ORDER BY n.created_at \
+             LIMIT $3",
+        )
+        .bind(destination_id)
+        .bind(organization_id)
+        .bind(limit.clamp(1, 100))
+        .fetch_all(pool)
+        .await?)
+    }
+
+    /// Append a delivery ledger row (idempotent on the unique constraint).
+    pub async fn record_delivery(
+        pool: &PgPool,
+        destination_id: Uuid,
+        notification_id: Uuid,
+        status: &str,
+        http_status: Option<i32>,
+        error: Option<&str>,
+    ) -> Result<(), DbError> {
+        sqlx::query(
+            "INSERT INTO alert_deliveries \
+               (id, destination_id, notification_id, status, http_status, error) \
+             VALUES ($1, $2, $3, $4, $5, $6) \
+             ON CONFLICT (destination_id, notification_id) DO NOTHING",
+        )
+        .bind(Uuid::now_v7())
+        .bind(destination_id)
+        .bind(notification_id)
+        .bind(status)
+        .bind(http_status)
+        .bind(error)
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+}
+
 // ─── Tags (§35) — tenant-scoped, with backlink tagging ───────────────────────
 pub mod tags {
     use super::*;

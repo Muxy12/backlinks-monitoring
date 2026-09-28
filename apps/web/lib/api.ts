@@ -332,6 +332,17 @@ export interface PreferenceItem {
   enabled: boolean;
   digest?: string;
 }
+export interface AlertDestination {
+  id: string;
+  kind: string;
+  target: string;
+  name: string;
+  enabled: boolean;
+  last_status: string | null;
+  last_error: string | null;
+  last_delivered_at: string | null;
+  created_at: string;
+}
 
 export const orgApi = {
   dashboard: (org: string) => request<DashboardResponse>(`/v1/organizations/${org}/dashboard`),
@@ -531,6 +542,30 @@ export const orgApi = {
       headers: csrfHeader(),
       body: JSON.stringify({ preferences }),
     }),
+  alertDestinations: (org: string) =>
+    request<AlertDestination[]>(`/v1/organizations/${org}/alert-destinations`),
+  createAlertDestination: (org: string, kind: string, target: string, name?: string) =>
+    request<AlertDestination>(`/v1/organizations/${org}/alert-destinations`, {
+      method: "POST",
+      headers: csrfHeader(),
+      body: JSON.stringify({ kind, target, name }),
+    }),
+  toggleAlertDestination: (org: string, id: string, enabled: boolean) =>
+    request<AlertDestination>(`/v1/organizations/${org}/alert-destinations/${id}`, {
+      method: "PATCH",
+      headers: csrfHeader(),
+      body: JSON.stringify({ enabled }),
+    }),
+  deleteAlertDestination: (org: string, id: string) =>
+    request<null>(`/v1/organizations/${org}/alert-destinations/${id}`, {
+      method: "DELETE",
+      headers: csrfHeader(),
+    }),
+  testAlertDestination: (org: string, id: string) =>
+    request<{ ok: boolean; http_status: number | null; detail: string }>(
+      `/v1/organizations/${org}/alert-destinations/${id}/test`,
+      { method: "POST", headers: csrfHeader() },
+    ),
   clients: (org: string) => request<ClientView[]>(`/v1/organizations/${org}/clients`),
   createClient: (org: string, body: NewClient) =>
     request<ClientView>(`/v1/organizations/${org}/clients`, {

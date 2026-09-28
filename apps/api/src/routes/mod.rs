@@ -2,6 +2,7 @@
 //! (docs/02 §apps). Business rules live in the crates, not here.
 
 pub mod admin_routes;
+pub mod alerts_routes;
 pub mod auth_routes;
 pub mod billing_routes;
 pub mod competitor_routes;

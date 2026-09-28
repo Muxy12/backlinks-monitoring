@@ -103,11 +103,21 @@ pub async fn tick(
     // Reclaim any leases from a tick that died mid-flight (docs/07).
     let _ = db::repositories::job_queue::reap(&state.pool, 900).await;
 
+    // Fan out new notifications to webhook / Slack destinations (SSRF-safe,
+    // bounded, idempotent). Independent of crawling — runs every tick.
+    let delivered = worker::deliver::deliver_tick(&state.pool, &ctx.crawler, 20)
+        .await
+        .unwrap_or_else(|e| {
+            tracing::warn!(error = %e, "tick: alert delivery failed");
+            0
+        });
+
     Ok(Json(serde_json::json!({
         "scheduled_jobs": scheduled_jobs,
         "scheduled_backlinks": scheduled_backlinks,
         "processed": processed,
         "warranty_alerts": warranty_alerts,
         "discovered": discovered,
+        "delivered": delivered,
     })))
 }

@@ -204,6 +204,20 @@ pub fn app(state: AppState) -> Router {
             get(routes::prefs_routes::list_preferences).put(routes::prefs_routes::set_preferences),
         )
         .route(
+            "/v1/organizations/{org_id}/alert-destinations",
+            get(routes::alerts_routes::list_destinations)
+                .post(routes::alerts_routes::create_destination),
+        )
+        .route(
+            "/v1/organizations/{org_id}/alert-destinations/{dest_id}",
+            axum::routing::patch(routes::alerts_routes::toggle_destination)
+                .delete(routes::alerts_routes::delete_destination),
+        )
+        .route(
+            "/v1/organizations/{org_id}/alert-destinations/{dest_id}/test",
+            post(routes::alerts_routes::test_destination),
+        )
+        .route(
             "/v1/organizations/{org_id}/backlinks/export",
             get(routes::resource_routes::export_backlinks),
         )

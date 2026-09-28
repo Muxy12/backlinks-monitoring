@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { api, orgApi, type MeResponse, type PreferenceItem } from "@/lib/api";
+import { api, orgApi, type AlertDestination, type MeResponse, type PreferenceItem } from "@/lib/api";
 import "@/app/auth.css";
 import "../../dashboard/dashboard.css";
 
@@ -34,6 +34,13 @@ export default function NotificationSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
+  // Alert destinations (webhook / Slack).
+  const [dests, setDests] = useState<AlertDestination[]>([]);
+  const [dkind, setDkind] = useState("slack");
+  const [dtarget, setDtarget] = useState("");
+  const [dname, setDname] = useState("");
+  const [dbusy, setDbusy] = useState(false);
+  const [dmsg, setDmsg] = useState<string | null>(null);
 
   useEffect(() => {
     api.me().then((res) => {
@@ -48,17 +55,68 @@ export default function NotificationSettingsPage() {
   }, [router]);
 
   const load = useCallback(async (org: string) => {
-    const res = await orgApi.notificationPreferences(org);
+    const [res, d] = await Promise.all([
+      orgApi.notificationPreferences(org),
+      orgApi.alertDestinations(org),
+    ]);
     if (res.ok) {
       const map: Record<string, boolean> = {};
       for (const p of res.data) map[keyFor(p.event_type, p.channel)] = p.enabled;
       setOn(map);
     }
+    if (d.ok) setDests(d.data);
   }, []);
 
   useEffect(() => {
     if (orgId) void load(orgId);
   }, [orgId, load]);
+
+  const reloadDests = useCallback(async (org: string) => {
+    const d = await orgApi.alertDestinations(org);
+    if (d.ok) setDests(d.data);
+  }, []);
+
+  async function addDest() {
+    if (!orgId) return;
+    setDmsg(null);
+    if (!dtarget.trim()) {
+      setDmsg("Paste the destination URL.");
+      return;
+    }
+    setDbusy(true);
+    const res = await orgApi.createAlertDestination(orgId, dkind, dtarget.trim(), dname.trim() || undefined);
+    setDbusy(false);
+    if (!res.ok) {
+      setDmsg(res.detail);
+      return;
+    }
+    setDtarget("");
+    setDname("");
+    void reloadDests(orgId);
+  }
+
+  async function toggleDest(d: AlertDestination) {
+    if (!orgId) return;
+    const res = await orgApi.toggleAlertDestination(orgId, d.id, !d.enabled);
+    if (res.ok) void reloadDests(orgId);
+  }
+
+  async function testDest(d: AlertDestination) {
+    if (!orgId) return;
+    setDbusy(true);
+    setDmsg(`Testing ${d.name || d.kind}…`);
+    const res = await orgApi.testAlertDestination(orgId, d.id);
+    setDbusy(false);
+    setDmsg(res.ok ? res.data.detail : res.detail);
+    void reloadDests(orgId);
+  }
+
+  async function delDest(d: AlertDestination) {
+    if (!orgId) return;
+    if (!confirm(`Delete alert destination "${d.name || d.target}"?`)) return;
+    const res = await orgApi.deleteAlertDestination(orgId, d.id);
+    if (res.ok) void reloadDests(orgId);
+  }
 
   const isOn = (event: string, channel: string) => on[keyFor(event, channel)] ?? true;
 
@@ -99,6 +157,7 @@ export default function NotificationSettingsPage() {
       {!orgId ? (
         <p className="muted">Create a workspace first.</p>
       ) : (
+        <>
         <section className="panel">
           <table className="bl-table">
             <thead>
@@ -135,6 +194,67 @@ export default function NotificationSettingsPage() {
             Email delivery is being wired up; in-app notifications appear in the bell menu.
           </p>
         </section>
+
+        <section className="panel" style={{ marginTop: 16 }}>
+          <div className="panel-head"><h2>Alert destinations</h2></div>
+          <p className="muted" style={{ marginBottom: 12 }}>
+            Push new alerts to Slack or a webhook. For Slack, paste an{" "}
+            <b>Incoming Webhook</b> URL; for a webhook, any HTTPS endpoint that accepts a JSON POST.
+            Delivery runs on the monitoring tick.
+          </p>
+
+          {dests.length > 0 && (
+            <table className="bl-table" style={{ marginBottom: 14 }}>
+              <thead>
+                <tr><th>Name</th><th>Type</th><th>Target</th><th>Last</th><th></th></tr>
+              </thead>
+              <tbody>
+                {dests.map((d) => (
+                  <tr key={d.id} style={d.enabled ? undefined : { opacity: 0.5 }}>
+                    <td>{d.name || <span className="muted">—</span>}</td>
+                    <td>{d.kind}</td>
+                    <td className="mono sm" style={{ maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={d.target}>{d.target}</td>
+                    <td className="sm">
+                      {d.last_status === "ok" ? (
+                        <span className="badge" style={{ background: "#dcfce7", color: "#166534" }}>ok</span>
+                      ) : d.last_status === "error" ? (
+                        <span className="badge" style={{ background: "#fee2e2", color: "#991b1b" }} title={d.last_error ?? ""}>error</span>
+                      ) : (
+                        <span className="muted">—</span>
+                      )}
+                    </td>
+                    <td style={{ whiteSpace: "nowrap", textAlign: "right" }}>
+                      <button className="btn sm" disabled={dbusy} onClick={() => void testDest(d)}>Test</button>{" "}
+                      <button className="btn sm" onClick={() => void toggleDest(d)}>{d.enabled ? "Disable" : "Enable"}</button>{" "}
+                      <button className="btn sm" style={{ color: "#b91c1c", borderColor: "#fecaca" }} onClick={() => void delDest(d)}>Delete</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
+            <label className="auth-field" style={{ margin: 0 }}>
+              <span>Type</span>
+              <select value={dkind} onChange={(e) => setDkind(e.target.value)}>
+                <option value="slack">Slack</option>
+                <option value="webhook">Webhook</option>
+              </select>
+            </label>
+            <label className="auth-field" style={{ margin: 0, flex: "1 1 320px" }}>
+              <span>Destination URL</span>
+              <input value={dtarget} onChange={(e) => setDtarget(e.target.value)} placeholder="https://hooks.slack.com/services/…" />
+            </label>
+            <label className="auth-field" style={{ margin: 0 }}>
+              <span>Name (optional)</span>
+              <input value={dname} onChange={(e) => setDname(e.target.value)} placeholder="Team Slack" />
+            </label>
+            <button className="btn primary" disabled={dbusy} onClick={() => void addDest()}>Add destination</button>
+          </div>
+          {dmsg && <p className="muted" style={{ marginTop: 10 }}>{dmsg}</p>}
+        </section>
+        </>
       )}
     </main>
   );

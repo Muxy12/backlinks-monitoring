@@ -184,6 +184,44 @@ async fn fetch_inner(cfg: &CrawlerConfig, start_url: &str) -> Result<FetchOk, Fe
     Err(FetchError::TooManyRedirects)
 }
 
+/// SSRF-safe `POST <url>` with a JSON body, for delivering alerts to
+/// user-supplied webhook / Slack URLs. Same guard as `fetch`: validate
+/// scheme/host/port, resolve + pin the IP, and DO NOT follow redirects (a 3xx to
+/// an internal address must not be chased). Returns the HTTP status code.
+pub async fn post_json(
+    cfg: &CrawlerConfig,
+    url: &str,
+    body: &serde_json::Value,
+) -> Result<u16, FetchError> {
+    match tokio::time::timeout(cfg.total_timeout, post_inner(cfg, url, body)).await {
+        Ok(res) => res,
+        Err(_) => Err(FetchError::Timeout),
+    }
+}
+
+async fn post_inner(
+    cfg: &CrawlerConfig,
+    url: &str,
+    body: &serde_json::Value,
+) -> Result<u16, FetchError> {
+    let (parsed, host, port) = validate_url(url, cfg.allow_private_addresses)?;
+    let addr = resolve_and_validate(&host, port, cfg.allow_private_addresses).await?;
+    let client = reqwest::Client::builder()
+        .user_agent(cfg.user_agent.clone())
+        .redirect(reqwest::redirect::Policy::none())
+        .timeout(cfg.request_timeout)
+        .resolve(&host, SocketAddr::new(addr.ip(), port))
+        .build()
+        .map_err(|e| FetchError::Connect(e.to_string()))?;
+    let resp = client
+        .post(parsed.as_str())
+        .json(body)
+        .send()
+        .await
+        .map_err(|e| classify_reqwest_error(&e))?;
+    Ok(resp.status().as_u16())
+}
+
 fn classify_reqwest_error(e: &reqwest::Error) -> FetchError {
     if e.is_timeout() {
         FetchError::Timeout

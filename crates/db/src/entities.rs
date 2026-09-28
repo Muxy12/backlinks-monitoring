@@ -65,6 +65,22 @@ pub struct Client {
     pub updated_at: DateTime<Utc>,
 }
 
+/// An org-level alert destination — a Slack Incoming Webhook or a generic
+/// webhook URL that new notifications are POSTed to (migration 0024).
+#[derive(Debug, Clone, FromRow)]
+pub struct AlertDestination {
+    pub id: Uuid,
+    pub organization_id: Uuid,
+    pub kind: String,
+    pub target: String,
+    pub name: String,
+    pub enabled: bool,
+    pub last_status: Option<String>,
+    pub last_error: Option<String>,
+    pub last_delivered_at: Option<DateTime<Utc>>,
+    pub created_at: DateTime<Utc>,
+}
+
 /// A project row. `check_frequency_secs` is `default_check_frequency` read via
 /// `EXTRACT(EPOCH ...)`, and `status` is the `project_status` enum read as text
 /// — both cast in the query so no custom sqlx type mapping is needed.

@@ -2,6 +2,7 @@
 //! it. The loop claims jobs with FOR UPDATE SKIP LOCKED, dispatches by type,
 //! and completes/retries/reaps — long-running, NOT on Vercel (ADR-0002).
 
+pub mod deliver;
 pub mod discover;
 pub mod engine;
 
