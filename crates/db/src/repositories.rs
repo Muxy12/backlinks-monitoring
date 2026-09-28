@@ -2464,11 +2464,11 @@ pub mod dashboard {
     /// "acquired since" cutoff on first-seen (COALESCE(first_checked_at, created_at)).
     /// Common WHERE for own/tier-1/non-archived backlinks (aliased `b`), with an
     /// optional acquisition-period cutoff on first-seen.
-    fn scoped<'a>(
+    fn scoped(
         prefix: &str,
         scope: &OrgScope,
         since: Option<DateTime<Utc>>,
-    ) -> sqlx::QueryBuilder<'a, sqlx::Postgres> {
+    ) -> sqlx::QueryBuilder<sqlx::Postgres> {
         let mut qb = sqlx::QueryBuilder::<sqlx::Postgres>::new(prefix.to_string());
         qb.push(" WHERE b.organization_id = ");
         qb.push_bind(scope.organization_id());
