@@ -156,6 +156,88 @@ pub async fn get_campaign(
     Ok(Json(campaign.into()))
 }
 
+const CAMPAIGN_STATUSES: &[&str] = &["draft", "active", "paused", "completed", "archived"];
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateCampaignBody {
+    pub name: Option<String>,
+    pub description: Option<String>,
+    /// draft | active | paused | completed | archived
+    pub status: Option<String>,
+    pub target_backlinks: Option<i32>,
+    pub budget: Option<f64>,
+    pub currency: Option<String>,
+}
+
+/// PATCH a campaign — change status (draft → active …), rename, or edit its
+/// target / budget.
+pub async fn update_campaign(
+    State(state): State<AppState>,
+    Path((org_id, campaign_id)): Path<(Uuid, Uuid)>,
+    jar: CookieJar,
+    headers: HeaderMap,
+    Json(body): Json<UpdateCampaignBody>,
+) -> Result<Json<CampaignView>, ApiError> {
+    let (user, session) = current(&state, &jar).await?;
+    check_csrf(&jar, &headers, &session)?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Member)?;
+
+    let name = match body.name.as_deref().map(str::trim) {
+        Some(n) if n.is_empty() || n.len() > 200 => {
+            return Err(ApiError::Validation("name must be 1–200 characters".into()));
+        }
+        other => other,
+    };
+    if let Some(s) = body.status.as_deref()
+        && !CAMPAIGN_STATUSES.contains(&s)
+    {
+        return Err(ApiError::Validation(format!("unknown status {s:?}")));
+    }
+    if let Some(t) = body.target_backlinks
+        && t <= 0
+    {
+        return Err(ApiError::Validation(
+            "target_backlinks must be positive".into(),
+        ));
+    }
+    let budget = match (body.budget, body.currency.as_deref()) {
+        (Some(_), None) => {
+            return Err(ApiError::Validation(
+                "currency is required when budget is set".into(),
+            ));
+        }
+        (Some(b), Some(_)) if b < 0.0 => {
+            return Err(ApiError::Validation("budget cannot be negative".into()));
+        }
+        (Some(b), Some(_)) => Some(format!("{b:.2}")),
+        (None, _) => None,
+    };
+    let description = body.description.as_deref().map(str::trim);
+    if name.is_none()
+        && description.is_none()
+        && body.status.is_none()
+        && body.target_backlinks.is_none()
+        && budget.is_none()
+    {
+        return Err(ApiError::Validation("nothing to update".into()));
+    }
+
+    let campaign = campaigns::update(
+        &state.pool,
+        &scope,
+        campaign_id,
+        name,
+        description,
+        body.status.as_deref(),
+        body.target_backlinks,
+        budget.as_deref(),
+        body.currency.as_deref(),
+    )
+    .await?;
+    Ok(Json(campaign.into()))
+}
+
 pub async fn delete_campaign(
     State(state): State<AppState>,
     Path((org_id, campaign_id)): Path<(Uuid, Uuid)>,

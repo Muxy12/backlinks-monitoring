@@ -495,6 +495,28 @@ export const orgApi = {
       headers: csrfHeader(),
       body: JSON.stringify(body),
     }),
+  updateCampaign: (
+    org: string,
+    id: string,
+    body: {
+      name?: string;
+      description?: string;
+      status?: string;
+      target_backlinks?: number;
+      budget?: number;
+      currency?: string;
+    },
+  ) =>
+    request<CampaignView>(`/v1/organizations/${org}/campaigns/${id}`, {
+      method: "PATCH",
+      headers: csrfHeader(),
+      body: JSON.stringify(body),
+    }),
+  deleteCampaign: (org: string, id: string) =>
+    request<null>(`/v1/organizations/${org}/campaigns/${id}`, {
+      method: "DELETE",
+      headers: csrfHeader(),
+    }),
   campaignRollup: (org: string, id: string) =>
     request<CampaignRollup>(`/v1/organizations/${org}/campaigns/${id}/rollup`),
   publishers: (org: string) => request<PublisherView[]>(`/v1/organizations/${org}/publishers`),

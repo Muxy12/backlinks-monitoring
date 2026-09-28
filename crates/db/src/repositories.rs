@@ -2586,6 +2586,59 @@ pub mod campaigns {
         .map_err(DbError::from_fetch)
     }
 
+    /// Partial edit of a campaign (§22): any subset of name/description/status/
+    /// target/budget+currency. `NotFound` if not in the org.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn update(
+        pool: &PgPool,
+        scope: &OrgScope,
+        id: Uuid,
+        name: Option<&str>,
+        description: Option<&str>,
+        status: Option<&str>,
+        target_backlinks: Option<i32>,
+        budget: Option<&str>,
+        currency: Option<&str>,
+    ) -> Result<Campaign, DbError> {
+        let mut qb = sqlx::QueryBuilder::<sqlx::Postgres>::new("UPDATE campaigns SET ");
+        let mut sep = qb.separated(", ");
+        if let Some(n) = name {
+            sep.push("name = ");
+            sep.push_bind_unseparated(n);
+        }
+        if let Some(d) = description {
+            sep.push("description = ");
+            sep.push_bind_unseparated(d);
+        }
+        if let Some(s) = status {
+            sep.push("status = ");
+            sep.push_bind_unseparated(s.to_string());
+            sep.push_unseparated("::campaign_status");
+        }
+        if let Some(t) = target_backlinks {
+            sep.push("target_backlinks = ");
+            sep.push_bind_unseparated(t);
+        }
+        if let Some(b) = budget {
+            sep.push("budget = ");
+            sep.push_bind_unseparated(b.to_string());
+            sep.push_unseparated("::numeric");
+        }
+        if let Some(c) = currency {
+            sep.push("currency = ");
+            sep.push_bind_unseparated(c);
+        }
+        qb.push(" WHERE id = ");
+        qb.push_bind(id);
+        qb.push(" AND organization_id = ");
+        qb.push_bind(scope.organization_id());
+        qb.push(concat!(" RETURNING ", cols!()));
+        qb.build_query_as::<Campaign>()
+            .fetch_one(pool)
+            .await
+            .map_err(DbError::from_fetch)
+    }
+
     /// Delete a campaign (§22). Attached backlinks are unassigned first — the
     /// composite FK's plain `SET NULL` would also try to null the NOT NULL
     /// `organization_id`, so we clear `campaign_id` ourselves in one

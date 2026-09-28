@@ -142,3 +142,28 @@
   margin: 6px 0;
   color: var(--text);
 }
+
+/* Campaign row: name toggle + inline status/delete actions. */
+.ops-row-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.ops-row-wrap .ops-row {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ops-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+.ops-actions select {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 5px 8px;
+  font-size: 12px;
+}

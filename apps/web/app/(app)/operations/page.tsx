@@ -137,6 +137,19 @@ function CampaignsTab({
     if (res.ok) setRollups((r) => ({ ...r, [id]: res.data }));
   }
 
+  async function changeStatus(id: string, status: string) {
+    const res = await orgApi.updateCampaign(org, id, { status });
+    if (res.ok) onCreated();
+    else setError(res.detail);
+  }
+
+  async function removeCampaign(id: string, cname: string) {
+    if (!confirm(`Delete campaign "${cname}"? Its backlinks stay but are unassigned from it.`)) return;
+    const res = await orgApi.deleteCampaign(org, id);
+    if (res.ok) onCreated();
+    else setError(res.detail);
+  }
+
   async function create(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -173,10 +186,30 @@ function CampaignsTab({
           <ul className="ops-list">
             {campaigns.map((c) => (
               <li key={c.id}>
-                <button className="ops-row" onClick={() => void toggle(c.id)}>
-                  <span className="ops-name">{c.name}</span>
-                  <span className="muted">{c.status}{c.target_backlinks ? ` · target ${c.target_backlinks}` : ""}</span>
-                </button>
+                <div className="ops-row-wrap">
+                  <button className="ops-row" onClick={() => void toggle(c.id)}>
+                    <span className="ops-name">{c.name}</span>
+                    <span className="muted">{c.target_backlinks ? `target ${c.target_backlinks}` : "no target"}</span>
+                  </button>
+                  <div className="ops-actions">
+                    <select
+                      value={c.status}
+                      title="Campaign status"
+                      onChange={(e) => void changeStatus(c.id, e.target.value)}
+                    >
+                      {["draft", "active", "paused", "completed", "archived"].map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                    <button
+                      className="btn sm"
+                      style={{ color: "#b91c1c", borderColor: "#fecaca" }}
+                      onClick={() => void removeCampaign(c.id, c.name)}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
                 {rollups[c.id] && <CampaignRollupCard r={rollups[c.id]} />}
               </li>
             ))}

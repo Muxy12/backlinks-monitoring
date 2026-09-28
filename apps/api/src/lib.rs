@@ -74,7 +74,9 @@ pub fn app(state: AppState) -> Router {
         )
         .route(
             "/v1/organizations/{org_id}/campaigns/{campaign_id}",
-            get(routes::ops_routes::get_campaign).delete(routes::ops_routes::delete_campaign),
+            get(routes::ops_routes::get_campaign)
+                .patch(routes::ops_routes::update_campaign)
+                .delete(routes::ops_routes::delete_campaign),
         )
         .route(
             "/v1/organizations/{org_id}/campaigns/{campaign_id}/rollup",
