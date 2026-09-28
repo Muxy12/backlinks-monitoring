@@ -58,6 +58,20 @@ export const api = {
   login: (email: string, password: string) =>
     request<{ user: UserView }>("/v1/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
   logout: () => request<null>("/v1/auth/logout", { method: "POST" }),
+  verifyEmail: (token: string) =>
+    request<null>("/v1/auth/verify", { method: "POST", body: JSON.stringify({ token }) }),
+  resendVerification: (email: string) =>
+    request<null>("/v1/auth/resend-verification", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }),
+  forgotPassword: (email: string) =>
+    request<null>("/v1/auth/forgot", { method: "POST", body: JSON.stringify({ email }) }),
+  resetPassword: (token: string, password: string) =>
+    request<null>("/v1/auth/reset", {
+      method: "POST",
+      body: JSON.stringify({ token, password }),
+    }),
   me: () => request<MeResponse>("/v1/me"),
   // Create a workspace (organization). Slug is derived from the name server-side
   // when omitted. The caller is made the owner.

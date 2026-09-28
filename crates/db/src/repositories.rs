@@ -86,6 +86,16 @@ pub mod users {
         Ok(())
     }
 
+    /// Replace a user's password hash (password reset).
+    pub async fn set_password(pool: &PgPool, id: Uuid, password_hash: &str) -> Result<(), DbError> {
+        sqlx::query("UPDATE users SET password_hash = $2, updated_at = now() WHERE id = $1")
+            .bind(id)
+            .bind(password_hash)
+            .execute(pool)
+            .await?;
+        Ok(())
+    }
+
     /// Grant or revoke the platform-admin flag (backoffice; migration 0022).
     pub async fn set_platform_admin(pool: &PgPool, id: Uuid, on: bool) -> Result<User, DbError> {
         sqlx::query_as::<_, User>(
@@ -117,6 +127,54 @@ pub mod users {
         .execute(pool)
         .await?;
         Ok(res.rows_affected())
+    }
+}
+
+// ─── Auth tokens: single-use email-verify / password-reset (table from 0002) ──
+// Purpose values are 'email_verification' | 'password_reset' (0002 CHECK).
+pub mod auth_tokens {
+    use super::*;
+
+    pub async fn create(
+        pool: &PgPool,
+        id: Uuid,
+        user_id: Uuid,
+        purpose: &str,
+        token_hash: &[u8],
+        expires_at: DateTime<Utc>,
+    ) -> Result<(), DbError> {
+        sqlx::query(
+            "INSERT INTO auth_tokens (id, user_id, purpose, token_hash, expires_at) \
+             VALUES ($1, $2, $3, $4, $5)",
+        )
+        .bind(id)
+        .bind(user_id)
+        .bind(purpose)
+        .bind(token_hash)
+        .bind(expires_at)
+        .execute(pool)
+        .await
+        .map_err(DbError::from_insert)?;
+        Ok(())
+    }
+
+    /// Atomically spend a token: mark it consumed and return its user id, only if
+    /// it matches the purpose, is unconsumed and unexpired. `None` otherwise.
+    pub async fn consume(
+        pool: &PgPool,
+        purpose: &str,
+        token_hash: &[u8],
+    ) -> Result<Option<Uuid>, DbError> {
+        let row: Option<(Uuid,)> = sqlx::query_as(
+            "UPDATE auth_tokens SET consumed_at = now() \
+             WHERE token_hash = $1 AND purpose = $2 AND consumed_at IS NULL AND expires_at > now() \
+             RETURNING user_id",
+        )
+        .bind(token_hash)
+        .bind(purpose)
+        .fetch_optional(pool)
+        .await?;
+        Ok(row.map(|(u,)| u))
     }
 }
 

@@ -23,6 +23,16 @@ pub fn app(state: AppState) -> Router {
         .route("/v1/auth/register", post(routes::auth_routes::register))
         .route("/v1/auth/login", post(routes::auth_routes::login))
         .route("/v1/auth/logout", post(routes::auth_routes::logout))
+        .route("/v1/auth/verify", post(routes::auth_routes::verify_email))
+        .route(
+            "/v1/auth/resend-verification",
+            post(routes::auth_routes::resend_verification),
+        )
+        .route(
+            "/v1/auth/forgot",
+            post(routes::auth_routes::forgot_password),
+        )
+        .route("/v1/auth/reset", post(routes::auth_routes::reset_password))
         .route("/v1/me", get(routes::me_routes::me))
         .route(
             "/v1/organizations",

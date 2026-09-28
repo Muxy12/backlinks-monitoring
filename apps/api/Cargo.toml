@@ -26,6 +26,7 @@ tracing-subscriber = { workspace = true }
 common = { workspace = true }
 backlio-core = { workspace = true }
 billing = { workspace = true }
+notifications = { workspace = true }
 db = { workspace = true }
 auth = { workspace = true }
 jobs = { workspace = true }

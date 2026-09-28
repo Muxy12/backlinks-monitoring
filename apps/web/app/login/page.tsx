@@ -43,6 +43,9 @@ export default function LoginPage() {
           {busy ? "Signing in…" : "Log in"}
         </button>
         <p className="auth-alt">
+          <a href="/forgot">Forgot password?</a>
+        </p>
+        <p className="auth-alt">
           No account? <a href="/register">Start monitoring</a>
         </p>
       </form>
