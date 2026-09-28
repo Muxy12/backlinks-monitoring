@@ -31,6 +31,7 @@ export default function ImportPage() {
   const [seedText, setSeedText] = useState("");
   const [seeds, setSeeds] = useState<SeedView[]>([]);
   const [seedMsg, setSeedMsg] = useState<string | null>(null);
+  const [discBusy, setDiscBusy] = useState(false);
 
   useEffect(() => {
     api.me().then((res) => {
@@ -75,7 +76,9 @@ export default function ImportPage() {
       setSeedMsg("Paste domains, or a GSC 'Top linking sites' export (first column).");
       return;
     }
+    setDiscBusy(true);
     const res = await orgApi.importSeeds(orgId, projectId, domains, "gsc");
+    setDiscBusy(false);
     if (!res.ok) {
       setSeedMsg(res.detail || "Import failed.");
       return;
@@ -88,13 +91,17 @@ export default function ImportPage() {
 
   async function runProvider(provider: string) {
     if (!orgId || !projectId) return;
+    setDiscBusy(true);
     setSeedMsg(`Running ${provider}…`);
     const res = await orgApi.runDiscovery(orgId, projectId, provider);
+    setDiscBusy(false);
     if (!res.ok) {
       setSeedMsg(res.detail || `${provider} failed`);
       return;
     }
     setSeedMsg(`${provider}: ${res.data.discovered} found, ${res.data.new} new backlinks.`);
+    const s = await orgApi.discoverySeeds(orgId, projectId);
+    if (s.ok) setSeeds(s.data);
   }
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -126,6 +133,8 @@ export default function ImportPage() {
 
   if (loading) return <div className="auth-wrap"><p style={{ color: "var(--muted)" }}>Loading…</p></div>;
   if (!me) return null;
+
+  const targetDomain = projects.find((p) => p.id === projectId)?.domain ?? "";
 
   return (
     <main className="dash">
@@ -211,24 +220,58 @@ export default function ImportPage() {
           <div className="panel-head">
             <h2>Discover from referring domains</h2>
           </div>
-          <p className="muted" style={{ marginBottom: 10 }}>
+
+          {/* Link the discovery to a project first — everything found is attached
+              to this project's site. */}
+          <label className="auth-field">
+            <span>Target project — discovered backlinks are linked to this site</span>
+            <select value={projectId} onChange={(e) => setProjectId(e.target.value)}>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>{p.name} — {p.domain}</option>
+              ))}
+            </select>
+          </label>
+          {targetDomain && (
+            <p className="muted" style={{ margin: "2px 0 4px" }}>
+              Finding backlinks that point to <b className="mono">{targetDomain}</b>.
+            </p>
+          )}
+
+          <h3 className="disc-h">Automatic discovery</h3>
+          <p className="muted" style={{ marginBottom: 8 }}>
+            Query a backlink index for pages pointing to <b className="mono">{targetDomain || "the project"}</b>.
+            No paste needed. Bing is free (your own verified site); DataForSEO is paid and covers any domain.
+          </p>
+          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+            <button className="btn" disabled={!projectId || discBusy} onClick={() => void runProvider("dataforseo")}>
+              Discover via DataForSEO
+            </button>
+            <button className="btn" disabled={!projectId || discBusy} onClick={() => void runProvider("bing")}>
+              Discover via Bing (free)
+            </button>
+          </div>
+
+          <h3 className="disc-h" style={{ marginTop: 18 }}>Seed &amp; crawl known domains</h3>
+          <p className="muted" style={{ marginBottom: 8 }}>
             Paste referring <b>domains</b> (one per line) — or a Google Search Console
-            “Top linking sites” export (first column). Backlio crawls each domain (SSRF-safe,
-            bounded) to find the actual pages that link to your site and records them.
+            “Top linking sites” export (first column). Backlio crawls each (SSRF-safe, bounded)
+            to find the actual pages that link to <b className="mono">{targetDomain || "your site"}</b>.
           </p>
           <textarea
             className="csv-area"
-            rows={6}
+            rows={5}
             value={seedText}
             onChange={(e) => setSeedText(e.target.value)}
             placeholder={"forbes.com\ntechcrunch.com\nsomeblog.com"}
           />
-          <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 8, flexWrap: "wrap" }}>
-            <button className="btn primary" onClick={() => void addSeeds()}>Add &amp; crawl</button>
-            <button className="btn sm" onClick={() => void runProvider("bing")}>Discover via Bing (free)</button>
-            <button className="btn sm" onClick={() => void runProvider("dataforseo")}>Discover via DataForSEO</button>
-            {seedMsg && <span className="muted">{seedMsg}</span>}
+          <div style={{ marginTop: 8 }}>
+            <button className="btn primary" disabled={!projectId || discBusy} onClick={() => void addSeeds()}>
+              Add &amp; crawl
+            </button>
           </div>
+
+          {seedMsg && <p className="muted" style={{ marginTop: 10 }}>{seedMsg}</p>}
+
           {seeds.length > 0 && (
             <table className="bl-table" style={{ marginTop: 14 }}>
               <thead><tr><th>Domain</th><th>Status</th><th>Pages</th><th>Backlinks</th></tr></thead>
