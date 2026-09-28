@@ -33,6 +33,7 @@ export default function DashboardPage() {
   const [clientFilter, setClientFilter] = useState("");
   const [searchQ, setSearchQ] = useState("");
   const [domainFilter, setDomainFilter] = useState("");
+  const [tagFilter, setTagFilter] = useState("");
   const [page, setPage] = useState(0);
   const [hasNext, setHasNext] = useState(false);
   const [autoTagBusy, setAutoTagBusy] = useState(false);
@@ -123,6 +124,7 @@ export default function DashboardPage() {
           clientId: clientFilter || undefined,
           status: statusFilter || undefined,
           q: searchQ.trim() || undefined,
+          tagId: tagFilter || undefined,
           limit: PAGE_SIZE,
           offset: page * PAGE_SIZE,
         })
@@ -134,13 +136,13 @@ export default function DashboardPage() {
         });
     }, 200); // debounce the search box
     return () => clearTimeout(t);
-  }, [orgId, projectId, clientFilter, statusFilter, searchQ, page]);
+  }, [orgId, projectId, clientFilter, statusFilter, searchQ, tagFilter, page]);
 
   // Any filter change resets to the first page. (The load effect's debounce
   // cleanup cancels the stale-page fetch, so this doesn't double-request.)
   useEffect(() => {
     setPage(0);
-  }, [orgId, projectId, clientFilter, statusFilter, searchQ]);
+  }, [orgId, projectId, clientFilter, statusFilter, searchQ, tagFilter]);
 
   // Drop a referring-domain filter that no longer matches the reloaded list.
   useEffect(() => {
@@ -513,6 +515,18 @@ export default function DashboardPage() {
                     <option key={d} value={d}>{d}</option>
                   ))}
                 </select>
+                {orgTags.length > 0 && (
+                  <select
+                    value={tagFilter}
+                    onChange={(e) => setTagFilter(e.target.value)}
+                    title="Filter by tag"
+                  >
+                    <option value="">All tags</option>
+                    {orgTags.map((t) => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
+                )}
                 {projects.length > 0 && (
                   <button className="btn sm primary" onClick={openAdd}>+ Add backlink</button>
                 )}
