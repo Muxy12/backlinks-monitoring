@@ -163,8 +163,11 @@ pub async fn run_discovery(
         .discover(&target_domain, limit)
         .await
         .map_err(|e| {
+            // Surface the provider's own message (bad key, no API access, no funds,
+            // invalid target) to the operator instead of a generic 500 — this is an
+            // authenticated action on the caller's own org/keys.
             tracing::warn!(provider = %body.provider, error = %e, "discovery provider failed");
-            ApiError::Internal
+            ApiError::Validation(format!("{} discovery failed: {e}", body.provider))
         })?;
     let discovered = links.len();
     let mut new = 0usize;

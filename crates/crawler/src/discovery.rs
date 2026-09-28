@@ -97,11 +97,39 @@ impl DiscoveryProvider for DataForSeoProvider {
             .send()
             .await?;
         if !resp.status().is_success() {
-            anyhow::bail!("dataforseo HTTP {}", resp.status());
+            // Surface DataForSEO's own message on auth/quota failures (401/402/…),
+            // not just the numeric status — that's what tells the operator whether
+            // it's bad credentials, no Backlinks-API access, or no funds.
+            let status = resp.status();
+            let text = resp.text().await.unwrap_or_default();
+            let msg = serde_json::from_str::<serde_json::Value>(&text)
+                .ok()
+                .and_then(|v| v["status_message"].as_str().map(str::to_string))
+                .unwrap_or_else(|| text.chars().take(200).collect());
+            anyhow::bail!("dataforseo HTTP {status}: {msg}");
         }
         let v: serde_json::Value = resp.json().await?;
-        let items = v["tasks"]
-            .get(0)
+        // DataForSEO returns HTTP 200 even for task-level failures; the real
+        // outcome is in status_code (20000 = ok). Bail with the message so an
+        // empty result isn't silently reported as "0 found".
+        if v["status_code"].as_i64() != Some(20000) {
+            anyhow::bail!(
+                "dataforseo: {} (code {})",
+                v["status_message"].as_str().unwrap_or("error"),
+                v["status_code"].as_i64().unwrap_or(0)
+            );
+        }
+        let task = v["tasks"].get(0);
+        if let Some(t) = task
+            && t["status_code"].as_i64() != Some(20000)
+        {
+            anyhow::bail!(
+                "dataforseo task: {} (code {})",
+                t["status_message"].as_str().unwrap_or("error"),
+                t["status_code"].as_i64().unwrap_or(0)
+            );
+        }
+        let items = task
             .and_then(|t| t["result"].get(0))
             .and_then(|r| r["items"].as_array())
             .cloned()
