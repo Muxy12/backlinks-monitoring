@@ -19,28 +19,52 @@
 }
 .graph-legend {
   display: flex;
-  gap: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
   margin-bottom: 10px;
   font-size: 12px;
   color: var(--muted);
 }
+.legend-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.legend-group i {
+  margin-left: 10px;
+}
+.legend-group i:first-child {
+  margin-left: 0;
+}
+.legend-sep {
+  width: 1px;
+  height: 14px;
+  background: var(--border);
+}
 .graph-legend i {
   display: inline-block;
-  width: 10px;
-  height: 10px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
-  margin-right: 6px;
   vertical-align: middle;
+  box-shadow: 0 0 6px currentColor;
 }
 .graph-stage {
   position: relative;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background:
-    radial-gradient(circle at 50% 40%, rgba(139, 92, 246, 0.1), transparent 60%),
-    var(--surface);
+    radial-gradient(circle at 50% 38%, rgba(139, 92, 246, 0.16), transparent 62%),
+    radial-gradient(circle at 82% 88%, rgba(96, 165, 250, 0.08), transparent 55%),
+    linear-gradient(180deg, color-mix(in srgb, var(--surface) 92%, #000), var(--surface));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 10px 40px rgba(2, 6, 23, 0.25);
   overflow: hidden;
   min-height: 420px;
+  cursor: grab;
+}
+.graph-stage:active {
+  cursor: grabbing;
 }
 .graph-detail {
   margin-top: 14px;

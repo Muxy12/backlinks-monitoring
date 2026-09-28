@@ -24,6 +24,44 @@ function tierColor(tier: number): string {
   return TIER_COLOR[tier] ?? "#8b949e";
 }
 
+// Edges are colored by the backlink's health, so the graph reads at a glance.
+const STATUS_COLOR: Record<string, string> = {
+  live: "#36d399",
+  lost: "#fb7185",
+  suspected_lost: "#fb7185",
+  nofollow: "#fbbf24",
+  changed: "#fb923c",
+  redirected: "#fb923c",
+  source_error: "#f472b6",
+  target_error: "#f472b6",
+  blocked: "#f472b6",
+  pending: "#8b949e",
+  unknown: "#8b949e",
+};
+function statusColor(status: string): string {
+  return STATUS_COLOR[status] ?? "#8b949e";
+}
+const LIVE = new Set(["live", ""]);
+
+// Radius grows with tier importance and in-degree (how many links point at it),
+// so hub referring domains stand out.
+function nodeRadius(tier: number, deg: number): number {
+  const base = tier === 0 ? 9 : tier === 1 ? 4.5 : 3;
+  return base + Math.min(6, Math.sqrt(deg) * 1.1);
+}
+
+function isLightTheme(): boolean {
+  return typeof document !== "undefined" && document.documentElement.getAttribute("data-theme") === "light";
+}
+
+// "#rrggbb" + alpha → "rgba(r,g,b,a)".
+function withAlpha(hex: string, a: number): string {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex);
+  if (!m) return hex;
+  const n = parseInt(m[1], 16);
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})`;
+}
+
 type SelNode = { id: string; label: string; domain: string; tier: number; type: string } | null;
 type SelEdge = { source: string; target: string; status: string; tier: number; backlink_id: string } | null;
 
@@ -44,6 +82,9 @@ export default function GraphPage() {
 
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const [size, setSize] = useState({ w: 800, h: 520 });
+  // Hovered node id — kept in a ref so the per-frame canvas renderer can read it
+  // without forcing a React re-render.
+  const hoverRef = useRef<string | null>(null);
 
   useEffect(() => {
     api.me().then((res) => {
@@ -91,41 +132,88 @@ export default function GraphPage() {
     if (!data) return { nodes: [], links: [] };
     const keep = (tier: number) => tierFilter === -1 || tier === tierFilter || tier === 0;
     const query = q.trim().toLowerCase();
-    const nodes = data.nodes
-      .filter((n) => keep(n.tier))
-      .map((n) => ({
-        id: n.id,
-        label: n.label,
-        domain: n.domain,
-        tier: n.tier,
-        type: n.type,
-        __match: query.length > 0 && n.label.toLowerCase().includes(query),
-      }));
-    const nodeIds = new Set(nodes.map((n) => n.id));
+    const kept = data.nodes.filter((n) => keep(n.tier));
+    const nodeIds = new Set(kept.map((n) => n.id));
     const links = data.edges
       .filter((e) => nodeIds.has(e.source) && nodeIds.has(e.target))
       .map((e) => ({ source: e.source, target: e.target, status: e.status, tier: e.tier, backlink_id: e.backlink_id }));
+    // In-degree per node → drives node size (hubs look bigger).
+    const deg: Record<string, number> = {};
+    for (const l of links) deg[l.target] = (deg[l.target] ?? 0) + 1;
+    const nodes = kept.map((n) => ({
+      id: n.id,
+      label: n.label,
+      domain: n.domain,
+      tier: n.tier,
+      type: n.type,
+      deg: deg[n.id] ?? 0,
+      __match: query.length > 0 && n.label.toLowerCase().includes(query),
+    }));
     return { nodes, links };
   }, [data, tierFilter, q]);
+
+  // Adjacency for hover highlighting (dim everything not connected to the
+  // hovered node).
+  const neighbors = useMemo(() => {
+    const idOf = (v: unknown) => (typeof v === "object" && v ? (v as { id: string }).id : (v as string));
+    const m: Record<string, Set<string>> = {};
+    for (const l of graphData.links) {
+      const s = idOf(l.source);
+      const t = idOf(l.target);
+      (m[s] ??= new Set()).add(t);
+      (m[t] ??= new Set()).add(s);
+    }
+    return m;
+  }, [graphData]);
 
   if (loading) return <div className="auth-wrap"><p style={{ color: "var(--muted)" }}>Loading…</p></div>;
   if (!me) return null;
 
+  const linkId = (l: { source: unknown; target: unknown }) => {
+    const s = typeof l.source === "object" ? (l.source as { id: string }).id : (l.source as string);
+    const t = typeof l.target === "object" ? (l.target as { id: string }).id : (l.target as string);
+    return { s, t };
+  };
+  const connectedToHover = (s: string, t: string) => {
+    const h = hoverRef.current;
+    return !h || s === h || t === h;
+  };
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const commonProps: any = {
+  const baseProps: any = {
     graphData,
     width: size.w,
     height: size.h,
     backgroundColor: "rgba(0,0,0,0)",
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    nodeLabel: (n: any) => `${n.label} (tier ${n.tier})`,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    nodeColor: (n: any) => (n.__match ? "#fbbf24" : tierColor(n.tier)),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    nodeVal: (n: any) => (n.tier === 0 ? 14 : n.tier === 1 ? 5 : 2),
-    linkColor: () => "rgba(255,255,255,0.18)",
-    linkDirectionalArrowLength: 3,
+    nodeLabel: (n: any) => `${n.label} · tier ${n.tier}${n.deg ? ` · ${n.deg} in` : ""}`,
+    linkCurvature: 0.12,
+    linkDirectionalArrowLength: 2.5,
     linkDirectionalArrowRelPos: 1,
+    // Animate particles along live links only — a subtle sense of "flow".
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    linkDirectionalParticles: (l: any) => (LIVE.has(l.status) ? 2 : 0),
+    linkDirectionalParticleWidth: 1.8,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    linkDirectionalParticleColor: (l: any) => statusColor(l.status),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    linkColor: (l: any) => {
+      const { s, t } = linkId(l);
+      const on = connectedToHover(s, t);
+      const c = statusColor(l.status);
+      return withAlpha(c, on ? 0.6 : 0.08);
+    },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    linkWidth: (l: any) => {
+      const { s, t } = linkId(l);
+      const hot = hoverRef.current && connectedToHover(s, t);
+      return (l.tier === 1 ? 1.1 : 0.6) * (hot ? 2.4 : 1);
+    },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    onNodeHover: (n: any) => {
+      hoverRef.current = n ? n.id : null;
+      if (wrapRef.current) wrapRef.current.style.cursor = n ? "pointer" : "grab";
+    },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onNodeClick: (n: any) => {
       setSelEdge(null);
@@ -134,10 +222,72 @@ export default function GraphPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onLinkClick: (l: any) => {
       setSelNode(null);
-      const src = typeof l.source === "object" ? l.source.id : l.source;
-      const tgt = typeof l.target === "object" ? l.target.id : l.target;
-      setSelEdge({ source: src, target: tgt, status: l.status, tier: l.tier, backlink_id: l.backlink_id });
+      const { s, t } = linkId(l);
+      setSelEdge({ source: s, target: t, status: l.status, tier: l.tier, backlink_id: l.backlink_id });
     },
+  };
+
+  // 2D: fully custom node — soft glow, degree-scaled radius, ring for
+  // root/match/hover, and a label for the root, hovered, or when zoomed in.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const twoDProps: any = {
+    ...baseProps,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    nodeCanvasObject: (n: any, ctx: CanvasRenderingContext2D, scale: number) => {
+      const h = hoverRef.current;
+      const focused = !h || n.id === h || neighbors[h]?.has(n.id);
+      const r = nodeRadius(n.tier, n.deg);
+      const color = n.__match ? "#fbbf24" : tierColor(n.tier);
+      ctx.globalAlpha = focused ? 1 : 0.25;
+      // glow
+      ctx.save();
+      ctx.shadowColor = color;
+      ctx.shadowBlur = (n.tier === 0 ? 16 : 7) / Math.max(1, scale * 0.6);
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, r, 0, 2 * Math.PI);
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.restore();
+      // ring
+      if (n.__match || n.id === h || n.tier === 0) {
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, r + 2.5, 0, 2 * Math.PI);
+        ctx.strokeStyle = n.__match ? "#fbbf24" : isLightTheme() ? "rgba(15,23,42,.55)" : "rgba(255,255,255,.75)";
+        ctx.lineWidth = 1.4 / scale;
+        ctx.stroke();
+      }
+      // label
+      const showLabel = n.tier === 0 || n.id === h || scale > 2.4;
+      if (showLabel && focused) {
+        const label = n.label.length > 30 ? n.label.slice(0, 29) + "…" : n.label;
+        const fs = Math.max(11 / scale, 3.5);
+        ctx.font = `600 ${fs}px ui-sans-serif, system-ui, -apple-system, sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+        ctx.fillStyle = isLightTheme() ? "#0f172a" : "#e6e9ef";
+        ctx.fillText(label, n.x, n.y + r + 2 / scale);
+      }
+      ctx.globalAlpha = 1;
+    },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    nodePointerAreaPaint: (n: any, color: string, ctx: CanvasRenderingContext2D) => {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, nodeRadius(n.tier, n.deg) + 2, 0, 2 * Math.PI);
+      ctx.fill();
+    },
+  };
+
+  // 3D: keep the built-in spheres but colored/sized like the 2D nodes.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const threeDProps: any = {
+    ...baseProps,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    nodeColor: (n: any) => (n.__match ? "#fbbf24" : tierColor(n.tier)),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    nodeVal: (n: any) => (n.tier === 0 ? 16 : n.tier === 1 ? 5 : 2) + n.deg,
+    nodeOpacity: 0.92,
+    nodeResolution: 14,
   };
 
   return (
@@ -177,18 +327,27 @@ export default function GraphPage() {
           </div>
 
           <div className="graph-legend">
-            <span><i style={{ background: tierColor(0) }} /> Target</span>
-            <span><i style={{ background: tierColor(1) }} /> Tier 1</span>
-            <span><i style={{ background: tierColor(2) }} /> Tier 2</span>
+            <span className="legend-group">
+              <i style={{ background: tierColor(0) }} /> Target
+              <i style={{ background: tierColor(1) }} /> Tier 1
+              <i style={{ background: tierColor(2) }} /> Tier 2
+            </span>
+            <span className="legend-sep" />
+            <span className="legend-group">
+              <i style={{ background: statusColor("live") }} /> Live
+              <i style={{ background: statusColor("lost") }} /> Lost
+              <i style={{ background: statusColor("nofollow") }} /> Nofollow
+              <i style={{ background: statusColor("redirected") }} /> Changed
+            </span>
           </div>
 
           <div className="graph-stage" ref={wrapRef}>
             {graphData.nodes.length === 0 ? (
               <p className="muted" style={{ padding: 24 }}>No backlinks to graph yet for this project.</p>
             ) : mode === "2d" ? (
-              <ForceGraph2D {...commonProps} />
+              <ForceGraph2D {...twoDProps} />
             ) : (
-              <ForceGraph3D {...commonProps} />
+              <ForceGraph3D {...threeDProps} />
             )}
           </div>
 
