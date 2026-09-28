@@ -44,15 +44,42 @@ fn client() -> reqwest::Client {
         .unwrap_or_default()
 }
 
+/// Percent-encode a form value (application/x-www-form-urlencoded). Keys are
+/// literal ASCII with brackets, which Stripe accepts as-is.
+fn enc(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for b in s.bytes() {
+        match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                out.push(b as char)
+            }
+            b' ' => out.push('+'),
+            _ => out.push_str(&format!("%{b:02X}")),
+        }
+    }
+    out
+}
+
 async fn post_form(
     secret: &str,
     url: &str,
     form: &[(&str, String)],
 ) -> Result<serde_json::Value, String> {
+    // Build the urlencoded body ourselves — the workspace reqwest is built with
+    // default-features off, so `.form()` isn't available.
+    let body = form
+        .iter()
+        .map(|(k, v)| format!("{k}={}", enc(v)))
+        .collect::<Vec<_>>()
+        .join("&");
     let resp = client()
         .post(url)
         .bearer_auth(secret)
-        .form(form)
+        .header(
+            reqwest::header::CONTENT_TYPE,
+            "application/x-www-form-urlencoded",
+        )
+        .body(body)
         .send()
         .await
         .map_err(|e| format!("stripe request failed: {e}"))?;
