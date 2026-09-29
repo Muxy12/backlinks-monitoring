@@ -438,7 +438,7 @@ export default function DashboardPage() {
         </div>
         <div className="head-actions">
           <button className="btn bell" onClick={() => setShowNotifs((v) => !v)} aria-label="Notifications">
-            🔔
+            <Icon name="bell" size={17} />
             {notifs && notifs.unread > 0 && <span className="bell-badge">{notifs.unread}</span>}
           </button>
         </div>
@@ -446,7 +446,7 @@ export default function DashboardPage() {
 
       {me.organizations.length === 0 ? (
         <section className="panel create-ws">
-          <div className="empty-icon">🚀</div>
+          <div className="empty-icon"><Icon name="rocket" size={26} /></div>
           <h2>Create your workspace</h2>
           <p className="muted">A workspace holds your clients, projects and backlinks. Name it after your agency or your own site.</p>
           <form onSubmit={createWorkspace} className="ws-form">
@@ -467,10 +467,10 @@ export default function DashboardPage() {
       ) : (
         <>
           <section className="tiles">
-            <Tile label="Monitored" value={summary?.monitored ?? 0} icon="📡" hint="Active backlinks" />
-            <Tile label="Live" value={summary?.counts["live"] ?? 0} accent="var(--green)" icon="✓" hint="Confirmed present" />
-            <Tile label="Needs attention" value={summary?.needs_attention ?? 0} accent="var(--yellow)" icon="!" hint="Lost, changed or errored" />
-            <Tile label="Value at risk" value={money(summary?.value_at_risk ?? [])} accent="var(--red)" icon="⚠" hint="Cost of at-risk links" />
+            <Tile label="Monitored" value={summary?.monitored ?? 0} icon={<Icon name="signal" size={16} />} hint="Active backlinks" />
+            <Tile label="Live" value={summary?.counts["live"] ?? 0} accent="var(--green)" icon={<Icon name="check" size={16} />} hint="Confirmed present" />
+            <Tile label="Needs attention" value={summary?.needs_attention ?? 0} accent="var(--yellow)" icon={<Icon name="warn" size={16} />} hint="Lost, changed or errored" />
+            <Tile label="Value at risk" value={money(summary?.value_at_risk ?? [])} accent="var(--red)" icon={<Icon name="alert" size={16} />} hint="Cost of at-risk links" />
           </section>
 
           {summary && (
@@ -668,7 +668,7 @@ export default function DashboardPage() {
             </div>
             {warranties.length > 0 && (
               <div className="warranty-note">
-                ⚠ {warranties.length} backlink{warranties.length > 1 ? "s" : ""} with a warranty
+                <Icon name="alert" size={15} /> {warranties.length} backlink{warranties.length > 1 ? "s" : ""} with a warranty
                 expiring soon or lapsed:{" "}
                 {warranties
                   .slice(0, 5)
@@ -679,7 +679,7 @@ export default function DashboardPage() {
             )}
             {backlinks.length === 0 ? (
               <div className="empty">
-                <div className="empty-icon">🔗</div>
+                <div className="empty-icon"><Icon name="link" size={30} /></div>
                 <h3>{projectId || clientFilter ? "No backlinks here yet" : "Pick a project to view its backlinks"}</h3>
                 <p>
                   {projects.length === 0
@@ -1086,7 +1086,7 @@ function Tile({
   label: string;
   value: number | string;
   accent?: string;
-  icon?: string;
+  icon?: React.ReactNode;
   hint?: string;
 }) {
   return (

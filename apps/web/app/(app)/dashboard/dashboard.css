@@ -247,6 +247,7 @@
 .empty-icon {
   width: 52px; height: 52px; margin: 0 auto 16px; border-radius: 14px;
   display: grid; place-items: center; font-size: 24px;
+  color: var(--accent);
   background: color-mix(in srgb, var(--accent) 12%, transparent);
   border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
 }
@@ -266,6 +267,7 @@
   border: 1px solid color-mix(in srgb, var(--yellow) 40%, transparent);
   border-radius: 10px;
 }
+.warranty-note svg { vertical-align: -3px; color: var(--yellow); }
 
 /* ── Drawer (backlink history / notifications) ──────────────────────────── */
 .drawer-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.55); backdrop-filter: blur(2px); display: flex; justify-content: flex-end; z-index: 50; animation: fade-in .15s ease; }
