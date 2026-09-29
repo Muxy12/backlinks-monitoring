@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, type CSSProperties, type FormEvent } 
 import { useRouter } from "next/navigation";
 import { api, orgApi, backlinksExportUrl, type BacklinkView, type ClientView, type DashboardResponse, type EventsSummary, type EventView, type MeResponse, type NotificationsResponse, type OccurrenceView, type ProjectView, type TagView } from "@/lib/api";
 import { statusColor, statusLabel } from "@/lib/status";
+import { toast } from "../toast";
 import "@/app/auth.css";
 import "./dashboard.css";
 
@@ -183,18 +184,19 @@ export default function DashboardPage() {
     const res = await orgApi.autoTagBacklinks(orgId, projectId);
     setAutoTagBusy(false);
     if (!res.ok) {
-      alert(`Auto-tag failed: ${res.detail}`);
+      toast(`Auto-tag failed: ${res.detail}`, "error");
       return;
     }
     const c = res.data.counts;
     const summary = Object.keys(c)
       .sort((a, b) => (c[b] ?? 0) - (c[a] ?? 0))
-      .map((k) => `${k}: ${c[k]}`)
-      .join("\n");
-    alert(`Tagged ${res.data.total} backlinks.\n\n${summary}\n\nOpen a backlink to see its tag.`);
-    // Refresh the org tag list so the new category tags are available.
-    const tags = await orgApi.tags(orgId);
+      .map((k) => `${k} ${c[k]}`)
+      .join(" · ");
+    toast(`Tagged ${res.data.total} backlinks — ${summary}`, "success");
+    // Refresh the org tag list + the illustrations so the new tags show up.
+    const [tags, dash] = await Promise.all([orgApi.tags(orgId), orgApi.dashboard(orgId, periodDays || undefined)]);
     if (tags.ok) setOrgTags(tags.data);
+    if (dash.ok) setSummary(dash.data);
   }
 
   async function openDetail(b: BacklinkView) {
