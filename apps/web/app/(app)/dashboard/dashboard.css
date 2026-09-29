@@ -387,3 +387,10 @@
 }
 .dist-row .dist { margin-bottom: 0; }
 .dist-head a { color: var(--accent-2); }
+
+/* Horizontal scroll wrapper for the backlinks table on narrow screens
+   (ui-ux-pro-max: Responsive/Table Handling — overflow-x-auto wrapper). */
+.bl-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}

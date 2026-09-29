@@ -291,7 +291,22 @@ export default function DashboardPage() {
     }
   }
 
-  if (loading) return <div className="auth-wrap"><p style={{ color: "var(--muted)" }}>Loading…</p></div>;
+  if (loading)
+    return (
+      <div className="dash" aria-busy="true" aria-label="Loading dashboard">
+        <div className="page-head"><h1>Dashboard</h1></div>
+        <div className="tiles">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div className="tile" key={i}><div className="sk-row" style={{ height: 52 }} /></div>
+          ))}
+        </div>
+        <div className="skeleton-rows" style={{ marginTop: 18 }}>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div className="sk-row" key={i} />
+          ))}
+        </div>
+      </div>
+    );
   if (!me) return null;
 
   const money = (rows: { currency: string; amount: string }[]) =>
@@ -685,6 +700,7 @@ export default function DashboardPage() {
                 </div>
               </div>
             ) : (
+              <div className="bl-scroll">
               <table className="bl-table">
                 <thead>
                   <tr>
@@ -737,6 +753,7 @@ export default function DashboardPage() {
                   ))}
                 </tbody>
               </table>
+              </div>
             )}
             {(backlinks.length > 0 || page > 0) && (
               <div className="pager">
