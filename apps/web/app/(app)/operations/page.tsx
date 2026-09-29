@@ -12,6 +12,7 @@ import {
   type PublisherRollup,
   type PublisherView,
 } from "@/lib/api";
+import { selectedOrg, selectedOrgId } from "@/lib/workspace";
 import "@/app/auth.css";
 import "../dashboard/dashboard.css";
 import "./operations.css";
@@ -35,7 +36,7 @@ export default function OperationsPage() {
         return;
       }
       setMe(res.data);
-      setOrgId(res.data.organizations[0]?.id ?? null);
+      setOrgId(selectedOrgId(res.data.organizations));
       setLoading(false);
     });
   }, [router]);
@@ -62,7 +63,7 @@ export default function OperationsPage() {
     <main className="dash">
       <header className="page-head">
         <h1>Operations</h1>
-        <p className="muted">Campaigns &amp; publishers · {me.organizations[0]?.name ?? "No workspace"}</p>
+        <p className="muted">Campaigns &amp; publishers · {selectedOrg(me.organizations)?.name ?? "No workspace"}</p>
       </header>
 
       {!orgId ? (

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, orgApi, type ClientView, type MeResponse, type ProjectView } from "@/lib/api";
+import { selectedOrgId } from "@/lib/workspace";
 import "@/app/auth.css";
 import "../dashboard/dashboard.css";
 import "../operations/operations.css";
@@ -31,7 +32,7 @@ export default function ClientsPage() {
         return;
       }
       setMe(res.data);
-      setOrgId(res.data.organizations[0]?.id ?? null);
+      setOrgId(selectedOrgId(res.data.organizations));
       setLoading(false);
     });
   }, [router]);

@@ -10,6 +10,7 @@ import {
   type MeResponse,
   type ProjectView,
 } from "@/lib/api";
+import { selectedOrgId } from "@/lib/workspace";
 import { statusColor, statusLabel } from "@/lib/status";
 import "@/app/auth.css";
 import "../dashboard/dashboard.css";
@@ -40,7 +41,7 @@ export default function CompetitorsPage() {
         return;
       }
       setMe(res.data);
-      setOrgId(res.data.organizations[0]?.id ?? null);
+      setOrgId(selectedOrgId(res.data.organizations));
       setLoading(false);
     });
   }, [router]);

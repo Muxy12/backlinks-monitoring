@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { api, orgApi, type GraphResponse, type MeResponse, type ProjectView } from "@/lib/api";
+import { selectedOrgId } from "@/lib/workspace";
 import "@/app/auth.css";
 import "../dashboard/dashboard.css";
 import "./graph.css";
@@ -93,7 +94,7 @@ export default function GraphPage() {
         return;
       }
       setMe(res.data);
-      setOrgId(res.data.organizations[0]?.id ?? null);
+      setOrgId(selectedOrgId(res.data.organizations));
       setLoading(false);
     });
   }, [router]);

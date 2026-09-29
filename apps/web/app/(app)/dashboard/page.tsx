@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, type CSSProperties, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { api, orgApi, backlinksExportUrl, type BacklinkView, type ClientView, type DashboardResponse, type EventsSummary, type EventView, type MeResponse, type NotificationsResponse, type OccurrenceView, type ProjectView, type TagView } from "@/lib/api";
+import { selectedOrg, selectedOrgId } from "@/lib/workspace";
 import { statusColor, statusLabel } from "@/lib/status";
 import { toast } from "../toast";
 import "@/app/auth.css";
@@ -67,7 +68,7 @@ export default function DashboardPage() {
         return;
       }
       setMe(res.data);
-      const first = res.data.organizations[0]?.id ?? null;
+      const first = selectedOrgId(res.data.organizations);
       setOrgId(first);
       setLoading(false);
     });
@@ -333,7 +334,7 @@ export default function DashboardPage() {
     setWsBusy(false);
     if (meRes.ok) {
       setMe(meRes.data);
-      setOrgId(meRes.data.organizations[0]?.id ?? null);
+      setOrgId(selectedOrgId(meRes.data.organizations));
       setWsName("");
     }
   }
@@ -414,8 +415,8 @@ export default function DashboardPage() {
       <header className="dash-head">
         <div className="dash-id">
           <h1>
-            {me.organizations[0]?.name ?? "Dashboard"}
-            {me.organizations[0]?.role && <span className="role-pill">{me.organizations[0].role}</span>}
+            {selectedOrg(me.organizations)?.name ?? "Dashboard"}
+            {selectedOrg(me.organizations)?.role && <span className="role-pill">{selectedOrg(me.organizations)?.role}</span>}
           </h1>
           <p className="muted">{me.user.email}</p>
         </div>

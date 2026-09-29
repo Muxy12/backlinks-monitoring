@@ -10,6 +10,7 @@ import {
   type ProjectView,
   type SeedView,
 } from "@/lib/api";
+import { selectedOrgId } from "@/lib/workspace";
 import "@/app/auth.css";
 import "../dashboard/dashboard.css";
 import "../operations/operations.css";
@@ -40,7 +41,7 @@ export default function ImportPage() {
         return;
       }
       setMe(res.data);
-      setOrgId(res.data.organizations[0]?.id ?? null);
+      setOrgId(selectedOrgId(res.data.organizations));
       setLoading(false);
     });
   }, [router]);

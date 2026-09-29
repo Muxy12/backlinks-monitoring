@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, orgApi, type AlertDestination, type MeResponse, type PreferenceItem } from "@/lib/api";
+import { selectedOrgId } from "@/lib/workspace";
 import "@/app/auth.css";
 import "../../dashboard/dashboard.css";
 
@@ -50,7 +51,7 @@ export default function NotificationSettingsPage() {
         return;
       }
       setMe(res.data);
-      setOrgId(res.data.organizations[0]?.id ?? null);
+      setOrgId(selectedOrgId(res.data.organizations));
       setLoading(false);
     });
   }, [router]);

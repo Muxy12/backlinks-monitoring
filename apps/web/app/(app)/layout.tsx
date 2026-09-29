@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { api, type MeResponse } from "@/lib/api";
+import { selectedOrg, setSelectedOrg } from "@/lib/workspace";
 import { ToastHost } from "./toast";
 import "./dashboard/dashboard.css";
 import "./shell.css";
@@ -44,7 +45,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const [me, setMe] = useState<MeResponse | null>(null);
   const isAdmin = !!me?.user.is_admin;
-  const workspace = me?.organizations[0]?.name ?? null;
+  const orgs = me?.organizations ?? [];
+  const current = selectedOrg(orgs);
+  const workspace = current?.name ?? null;
+
+  function switchOrg(id: string) {
+    setSelectedOrg(id);
+    // A full reload is the simplest way to re-scope every page to the new org.
+    window.location.href = "/dashboard";
+  }
 
   useEffect(() => {
     let alive = true;
@@ -87,6 +96,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="shell">
       <aside className={`sidebar${open ? " open" : ""}`}>
         {brand}
+        {orgs.length > 1 && (
+          <select
+            className="side-switcher"
+            value={current?.id ?? ""}
+            onChange={(e) => switchOrg(e.target.value)}
+            title="Switch workspace"
+            aria-label="Switch workspace"
+          >
+            {orgs.map((o) => (
+              <option key={o.id} value={o.id}>{o.name}</option>
+            ))}
+          </select>
+        )}
         <nav className="side-nav" aria-label="Sections">
           {SECTIONS.map((s) => (
             <div className="side-group" key={s.title}>

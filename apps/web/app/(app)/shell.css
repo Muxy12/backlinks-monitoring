@@ -243,3 +243,17 @@
 .toast-error .toast-ico { background: #dc2626; }
 .toast-info .toast-ico { background: var(--accent); }
 .toast-error { border-color: color-mix(in srgb, #dc2626 40%, var(--border)); }
+
+/* Workspace switcher (multi-org accounts). */
+.side-switcher {
+  width: 100%;
+  margin: 0 0 10px;
+  padding: 7px 10px;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}

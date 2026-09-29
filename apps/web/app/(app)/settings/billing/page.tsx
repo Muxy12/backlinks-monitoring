@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, orgApi, type MeResponse } from "@/lib/api";
+import { selectedOrgId } from "@/lib/workspace";
 import "@/app/auth.css";
 import "../../dashboard/dashboard.css";
 
@@ -52,7 +53,7 @@ export default function BillingPage() {
         return;
       }
       setMe(res.data);
-      const org = res.data.organizations[0]?.id ?? null;
+      const org = selectedOrgId(res.data.organizations);
       setOrgId(org);
       setLoading(false);
     });

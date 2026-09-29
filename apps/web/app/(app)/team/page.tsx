@@ -9,6 +9,7 @@ import {
   type MemberView,
   type MeResponse,
 } from "@/lib/api";
+import { selectedOrg } from "@/lib/workspace";
 import "@/app/auth.css";
 import "../dashboard/dashboard.css";
 import "../operations/operations.css";
@@ -36,7 +37,7 @@ export default function TeamPage() {
         return;
       }
       setMe(res.data);
-      const org = res.data.organizations[0];
+      const org = selectedOrg(res.data.organizations);
       setOrgId(org?.id ?? null);
       setCanManage(org?.role === "owner" || org?.role === "admin");
       setLoading(false);
@@ -89,7 +90,7 @@ export default function TeamPage() {
     <main className="dash">
       <header className="page-head">
         <h1>Team</h1>
-        <p className="muted">{me.organizations[0]?.name ?? "No workspace"}</p>
+        <p className="muted">{selectedOrg(me.organizations)?.name ?? "No workspace"}</p>
       </header>
 
       {!orgId ? (
