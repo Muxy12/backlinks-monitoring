@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { api, type MeResponse } from "@/lib/api";
 import { selectedOrg, setSelectedOrg } from "@/lib/workspace";
 import { ToastHost } from "./toast";
+import { Icon } from "./icons";
 import "./dashboard/dashboard.css";
 import "./shell.css";
 
@@ -17,24 +18,24 @@ const SECTIONS: { title: string; links: Link[] }[] = [
   {
     title: "Monitor",
     links: [
-      { href: "/dashboard", label: "Dashboard", icon: "📊" },
-      { href: "/projects", label: "Projects", icon: "🗂️" },
-      { href: "/graph", label: "Graph", icon: "🕸️" },
+      { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
+      { href: "/projects", label: "Projects", icon: "projects" },
+      { href: "/graph", label: "Graph", icon: "graph" },
     ],
   },
   {
     title: "Grow",
     links: [
-      { href: "/competitors", label: "Competitors", icon: "🥊" },
-      { href: "/operations", label: "Operations", icon: "🎯" },
-      { href: "/import", label: "Import", icon: "⬆️" },
+      { href: "/competitors", label: "Competitors", icon: "competitors" },
+      { href: "/operations", label: "Operations", icon: "operations" },
+      { href: "/import", label: "Import", icon: "import" },
     ],
   },
   {
     title: "Workspace",
     links: [
-      { href: "/clients", label: "Clients", icon: "🏢" },
-      { href: "/team", label: "Team", icon: "👥" },
+      { href: "/clients", label: "Clients", icon: "clients" },
+      { href: "/team", label: "Team", icon: "team" },
     ],
   },
 ];
@@ -85,7 +86,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       aria-current={isActive(l.href) ? "page" : undefined}
       onClick={() => setOpen(false)}
     >
-      <span className="side-ico">{l.icon}</span>
+      <span className="side-ico"><Icon name={l.icon} /></span>
       {l.label}
     </a>
   );
@@ -119,14 +120,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           {isAdmin && (
             <div className="side-group">
               <div className="side-group-title">Admin</div>
-              {navLink({ href: "/admin", label: "Admin", icon: "🛡️" })}
+              {navLink({ href: "/admin", label: "Admin", icon: "admin" })}
             </div>
           )}
         </nav>
         <div className="side-spacer" />
         <div className="side-group">
-          {navLink({ href: "/settings/billing", label: "Billing", icon: "💳" })}
-          {navLink({ href: "/settings/notifications", label: "Settings", icon: "⚙️" })}
+          {navLink({ href: "/settings/billing", label: "Billing", icon: "billing" })}
+          {navLink({ href: "/settings/notifications", label: "Settings", icon: "settings" })}
         </div>
 
         {me && (
@@ -145,7 +146,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 router.push("/login");
               }}
             >
-              ↩
+              <Icon name="logout" size={15} />
             </button>
           </div>
         )}

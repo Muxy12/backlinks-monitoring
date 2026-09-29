@@ -6,6 +6,7 @@ import { api, orgApi, backlinksExportUrl, type BacklinkView, type ClientView, ty
 import { selectedOrg, selectedOrgId } from "@/lib/workspace";
 import { statusColor, statusLabel } from "@/lib/status";
 import { toast } from "../toast";
+import { Icon } from "../icons";
 import "@/app/auth.css";
 import "./dashboard.css";
 
@@ -655,7 +656,7 @@ export default function DashboardPage() {
                     title="Classify this project's backlinks by footprint (PBN / forum / self-built / earned)"
                     onClick={() => void runAutoTag()}
                   >
-                    {autoTagBusy ? "Tagging…" : "🏷️ Auto-tag"}
+                    {autoTagBusy ? "Tagging…" : <><Icon name="tag" size={14} /> Auto-tag</>}
                   </button>
                 )}
                 {orgId && (
