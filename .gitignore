@@ -30,3 +30,6 @@ coverage/
 
 # Next.js generated
 next-env.d.ts
+
+# Locally-installed agent skills (npx skills add) — not app code
+.agents/
