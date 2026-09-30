@@ -177,7 +177,7 @@ export default function DashboardPage() {
     if (
       !confirm(
         "Auto-tag this project's backlinks by footprint?\n\n" +
-          "Adds a category tag to each link: pbn, forum-profile, self-built, or earned. " +
+          "Adds a category tag to each link: comment (ninja linking), pbn, forum-profile, self-built, or earned. " +
           "Reversible — you can retag or remove tags afterward.",
       )
     )
@@ -416,12 +416,13 @@ export default function DashboardPage() {
 
   // Link-type illustration (auto-tagger categories).
   const TYPE_COLORS: Record<string, string> = {
+    comment: "#22d3ee",
     pbn: "#fb7185",
     "forum-profile": "#a78bfa",
     "self-built": "#fbbf24",
     earned: "#36d399",
   };
-  const typeSegments = ["earned", "self-built", "forum-profile", "pbn"]
+  const typeSegments = ["earned", "self-built", "forum-profile", "pbn", "comment"]
     .map((k) => ({ label: k, n: summary?.link_types?.[k] ?? 0, color: TYPE_COLORS[k] }))
     .filter((s) => s.n > 0);
   const typeTotal = typeSegments.reduce((acc, s) => acc + s.n, 0);
@@ -653,7 +654,7 @@ export default function DashboardPage() {
                   <button
                     className="btn sm"
                     disabled={autoTagBusy}
-                    title="Classify this project's backlinks by footprint (PBN / forum / self-built / earned)"
+                    title="Classify this project's backlinks by footprint (comment / PBN / forum / self-built / earned)"
                     onClick={() => void runAutoTag()}
                   >
                     {autoTagBusy ? "Tagging…" : <><Icon name="tag" size={14} /> Auto-tag</>}

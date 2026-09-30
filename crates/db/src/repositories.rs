@@ -2523,7 +2523,7 @@ pub mod dashboard {
              FROM backlinks b \
              JOIN backlink_tags bt ON bt.backlink_id = b.id \
              JOIN tags t ON t.id = bt.tag_id \
-                AND lower(t.name) IN ('pbn','forum-profile','self-built','earned')",
+                AND lower(t.name) IN ('comment','pbn','forum-profile','self-built','earned')",
             scope,
             since,
         );

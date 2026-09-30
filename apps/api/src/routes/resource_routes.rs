@@ -1152,7 +1152,7 @@ pub struct DashboardView {
     pub occurrences: i64,
     /// [dofollow, nofollow] over the selected period.
     pub rel: [i64; 2],
-    /// link-type tag -> count (pbn / forum-profile / self-built / earned).
+    /// link-type tag -> count (comment / pbn / forum-profile / self-built / earned).
     pub link_types: std::collections::BTreeMap<String, i64>,
 }
 
@@ -1568,15 +1568,44 @@ pub async fn import_csv(
 // re-running only adds missing attachments.
 
 const AUTOTAG_TAGS: &[(&str, &str)] = &[
+    ("comment", "#22d3ee"),
     ("pbn", "#fb7185"),
     ("forum-profile", "#a78bfa"),
     ("self-built", "#fbbf24"),
     ("earned", "#36d399"),
 ];
 
-fn classify_footprint(anchor: &str, domain: &str, domain_count: usize) -> &'static str {
+// Links dropped in a blog/article comment section ("ninja linking"). The tell is
+// in the source URL, not the anchor: WordPress/Disqus and most comment engines
+// point at a comment fragment or a reply query param. Placement is the defining
+// footprint here, so this is checked before anchor/domain heuristics.
+fn is_comment_link(source_url: &str) -> bool {
+    let u = source_url.to_lowercase();
+    const MARKERS: &[&str] = &[
+        "#comment",    // #comment-12345, #comments (WordPress, generic)
+        "#respond",    // WordPress reply form anchor
+        "#disqus",     // #disqus_thread
+        "#li-comment", // some themes
+        "#reply",      // #reply-title / #reply-12
+        "replytocom=", // ?replytocom= / &replytocom= (WordPress)
+        "/comment-page-",
+        "/comments/",
+    ];
+    MARKERS.iter().any(|m| u.contains(m))
+}
+
+fn classify_footprint(
+    anchor: &str,
+    domain: &str,
+    source_url: &str,
+    domain_count: usize,
+) -> &'static str {
     let a = anchor.to_lowercase();
     let d = domain.to_lowercase();
+    // Comment-placed link (ninja linking) — most specific footprint, so first.
+    if is_comment_link(source_url) {
+        return "comment";
+    }
     // Promotional / PBN anchor text (bulk-built or bought).
     const PROMO: &[&str] = &[
         "premium",
@@ -1657,7 +1686,7 @@ pub async fn auto_tag_backlinks(
     let mut counts: HashMap<String, usize> = HashMap::new();
     for r in &rows {
         let n = *domain_count.get(r.source_domain.as_str()).unwrap_or(&1);
-        let cat = classify_footprint(&r.anchor, &r.source_domain, n);
+        let cat = classify_footprint(&r.anchor, &r.source_domain, &r.source_url, n);
         if let Some(&tid) = tag_ids.get(cat) {
             let _ = tags::attach(&state.pool, &scope, r.id, tid).await;
         }
