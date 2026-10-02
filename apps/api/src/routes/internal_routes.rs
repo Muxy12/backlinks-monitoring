@@ -95,6 +95,12 @@ pub async fn tick(
             check_target: true,
             request_timeout: Duration::from_secs(8),
             total_timeout: Duration::from_secs(10),
+            // Smaller body cap than the default 2 MiB: HTML parsing is synchronous
+            // and CPU-bound, and on the free tier's ~0.1 shared CPU a big page can
+            // block the runtime for tens of seconds (long enough that the budget
+            // timer below can't even fire). 768 KiB keeps each parse short; the
+            // link we monitor is virtually always in the first few hundred KiB.
+            max_response_bytes: 768 * 1024,
             ..CrawlerConfig::default()
         },
         policy: TransitionPolicy::default(),
@@ -102,12 +108,25 @@ pub async fn tick(
         worker_id: "api-tick".to_string(),
     };
 
-    // Enqueue due checks (safe in any env — advisory-locked, no crawling, fast).
-    let (scheduled_jobs, scheduled_backlinks) =
-        worker::schedule_tick(&ctx, 500, 900).await.map_err(|e| {
+    // Enqueue due checks (advisory-locked, no crawling). Bounded in batch and
+    // time: on a cold Neon pooler enqueueing can be slow, and it runs OUTSIDE the
+    // crawl budget below, so cap it so it can't dominate the request on its own.
+    let (scheduled_jobs, scheduled_backlinks) = match tokio::time::timeout(
+        Duration::from_secs(12),
+        worker::schedule_tick(&ctx, 150, 900),
+    )
+    .await
+    {
+        Ok(Ok(counts)) => counts,
+        Ok(Err(e)) => {
             tracing::error!(error = %e, "tick: schedule failed");
-            ApiError::Internal
-        })?;
+            (0, 0)
+        }
+        Err(_) => {
+            tracing::warn!("tick: schedule timed out");
+            (0, 0)
+        }
+    };
 
     // The crawl-heavy work (process batch + warranty sweep + discovery + alert
     // delivery) runs under a HARD wall-clock budget. On the free/cron model the
@@ -122,7 +141,7 @@ pub async fn tick(
         if !guards.may_process_jobs() {
             return (0usize, 0usize, 0usize, 0usize);
         }
-        let processed = worker::tick(&ctx, 15).await.unwrap_or_else(|e| {
+        let processed = worker::tick(&ctx, 8).await.unwrap_or_else(|e| {
             tracing::error!(error = %e, "tick: process failed");
             0
         });
