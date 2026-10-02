@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { api, type BacklinkCheckResult } from "../../../lib/api";
+import { Turnstile, TURNSTILE_ENABLED } from "../../turnstile";
 import "./checker.css";
 
 const ERROR_LABELS: Record<string, string> = {
@@ -18,15 +19,20 @@ export default function BacklinkCheckerPage() {
   const [sourceUrl, setSourceUrl] = useState("");
   const [targetUrl, setTargetUrl] = useState("");
   const [busy, setBusy] = useState(false);
+  const [token, setToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<BacklinkCheckResult | null>(null);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (TURNSTILE_ENABLED && !token) {
+      setError("Please complete the anti-spam challenge.");
+      return;
+    }
     setBusy(true);
     setError(null);
     setResult(null);
-    const res = await api.checkBacklink(sourceUrl.trim(), targetUrl.trim());
+    const res = await api.checkBacklink(sourceUrl.trim(), targetUrl.trim(), token ?? undefined);
     setBusy(false);
     if (!res.ok) {
       setError(res.detail);
@@ -65,7 +71,8 @@ export default function BacklinkCheckerPage() {
               required
             />
           </label>
-          <button className="checker-btn" type="submit" disabled={busy}>
+          <Turnstile onToken={setToken} />
+          <button className="checker-btn" type="submit" disabled={busy || (TURNSTILE_ENABLED && !token)}>
             {busy ? "Checking…" : "Check backlink"}
           </button>
         </form>

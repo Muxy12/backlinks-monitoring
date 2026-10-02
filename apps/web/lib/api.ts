@@ -53,8 +53,11 @@ export interface BacklinkCheckResult {
 }
 
 export const api = {
-  register: (email: string, password: string, name: string) =>
-    request<UserView>("/v1/auth/register", { method: "POST", body: JSON.stringify({ email, password, name }) }),
+  register: (email: string, password: string, name: string, turnstileToken?: string) =>
+    request<UserView>("/v1/auth/register", {
+      method: "POST",
+      body: JSON.stringify({ email, password, name, turnstile_token: turnstileToken }),
+    }),
   login: (email: string, password: string) =>
     request<{ user: UserView }>("/v1/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
   logout: () => request<null>("/v1/auth/logout", { method: "POST" }),
@@ -65,8 +68,11 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ email }),
     }),
-  forgotPassword: (email: string) =>
-    request<null>("/v1/auth/forgot", { method: "POST", body: JSON.stringify({ email }) }),
+  forgotPassword: (email: string, turnstileToken?: string) =>
+    request<null>("/v1/auth/forgot", {
+      method: "POST",
+      body: JSON.stringify({ email, turnstile_token: turnstileToken }),
+    }),
   resetPassword: (token: string, password: string) =>
     request<null>("/v1/auth/reset", {
       method: "POST",
@@ -88,10 +94,14 @@ export const api = {
       body: JSON.stringify({ token }),
     }),
   // Public, no auth (§50).
-  checkBacklink: (sourceUrl: string, targetUrl: string) =>
+  checkBacklink: (sourceUrl: string, targetUrl: string, turnstileToken?: string) =>
     request<BacklinkCheckResult>("/v1/tools/backlink-check", {
       method: "POST",
-      body: JSON.stringify({ source_url: sourceUrl, target_url: targetUrl }),
+      body: JSON.stringify({
+        source_url: sourceUrl,
+        target_url: targetUrl,
+        turnstile_token: turnstileToken,
+      }),
     }),
 };
 

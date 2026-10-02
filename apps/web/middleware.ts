@@ -26,23 +26,36 @@ const API_ORIGIN = (() => {
   return "";
 })();
 
+// Cloudflare Turnstile (anti-spam widget) needs its own CSP allowances when
+// enabled: its iframe (frame-src) and the script/XHR it issues. Added only when
+// the public site key is configured, so the policy stays tight otherwise. The
+// host in script-src is a fallback for browsers that ignore 'strict-dynamic'.
+const TURNSTILE_ORIGIN = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
+  ? "https://challenges.cloudflare.com"
+  : "";
+
 export function middleware(request: NextRequest) {
   const dev = process.env.NODE_ENV !== "production";
   const nonce = btoa(crypto.randomUUID());
 
   // Dev needs eval + websockets for React Refresh / HMR; prod does not.
   const scriptExtra = dev ? " 'unsafe-eval'" : "";
-  const connectSrc = ["'self'", API_ORIGIN, ...(dev ? ["ws:", "http://localhost:*"] : [])]
+  const connectSrc = ["'self'", API_ORIGIN, TURNSTILE_ORIGIN, ...(dev ? ["ws:", "http://localhost:*"] : [])]
     .filter(Boolean)
     .join(" ");
+  const scriptSrc = ["'self'", `'nonce-${nonce}'`, "'strict-dynamic'", TURNSTILE_ORIGIN]
+    .filter(Boolean)
+    .join(" ");
+  const frameSrc = ["'self'", TURNSTILE_ORIGIN].filter(Boolean).join(" ");
 
   const csp = [
     `default-src 'self'`,
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${scriptExtra}`,
+    `script-src ${scriptSrc}${scriptExtra}`,
     `style-src 'self' 'unsafe-inline'`,
     `img-src 'self' data: https:`,
     `font-src 'self' data:`,
     `connect-src ${connectSrc}`,
+    `frame-src ${frameSrc}`,
     `object-src 'none'`,
     `base-uri 'self'`,
     `form-action 'self'`,

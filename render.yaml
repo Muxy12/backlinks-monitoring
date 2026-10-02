@@ -52,3 +52,6 @@ services:
         sync: false
       - key: EMAIL_FROM
         sync: false
+      # Cloudflare Turnstile anti-spam. Unset → public forms skip verification.
+      - key: TURNSTILE_SECRET_KEY
+        sync: false

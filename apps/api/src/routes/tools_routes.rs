@@ -23,6 +23,10 @@ use serde::{Deserialize, Serialize};
 pub struct CheckBody {
     pub source_url: String,
     pub target_url: String,
+    /// Cloudflare Turnstile token (anti-spam). Optional: only enforced when
+    /// `TURNSTILE_SECRET_KEY` is set on the server.
+    #[serde(default)]
+    pub turnstile_token: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -88,6 +92,10 @@ pub async fn backlink_check(
         }
         Err(LimitError::Busy) => return Err(ApiError::Busy),
     };
+
+    // Anti-spam: reject bots before spending a fetch on them (no-op unless
+    // TURNSTILE_SECRET_KEY is configured).
+    crate::turnstile::verify(body.turnstile_token.as_deref()).await?;
 
     if !is_http_url(&body.source_url) || !is_http_url(&body.target_url) {
         return Err(ApiError::Validation(

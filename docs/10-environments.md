@@ -113,9 +113,15 @@ STRIPE_PRICE_AGENCY_PLUS=
 EMAIL_PROVIDER_API_KEY=
 EMAIL_FROM=alerts@backlio.app
 
+# ─── Anti-spam: Cloudflare Turnstile ──────────────────────────────────
+# Both unset → public forms (register / forgot / backlink-checker) skip the
+# challenge. Set both (secret on the API, site key on the frontend) to enforce.
+TURNSTILE_SECRET_KEY=                     # API — verifies submitted tokens
+
 # ─── Frontend (Vercel) ────────────────────────────────────────────────
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 NEXT_PUBLIC_API_URL=http://localhost:8080
+NEXT_PUBLIC_TURNSTILE_SITE_KEY=           # frontend — renders the widget
 ```
 
 `.env.example` carries every key with **no** real values (§43). The config loader fails fast at boot

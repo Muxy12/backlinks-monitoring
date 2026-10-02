@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "../../lib/api";
+import { Turnstile, TURNSTILE_ENABLED } from "../turnstile";
 import "../auth.css";
 
 export default function RegisterPage() {
@@ -10,14 +11,19 @@ export default function RegisterPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [token, setToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (TURNSTILE_ENABLED && !token) {
+      setError("Please complete the anti-spam challenge.");
+      return;
+    }
     setBusy(true);
     setError(null);
-    const reg = await api.register(email, password, name);
+    const reg = await api.register(email, password, name, token ?? undefined);
     if (!reg.ok) {
       setBusy(false);
       setError(reg.detail);
@@ -48,7 +54,8 @@ export default function RegisterPage() {
           <span>Password</span>
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} autoComplete="new-password" />
         </label>
-        <button className="auth-btn" type="submit" disabled={busy}>
+        <Turnstile onToken={setToken} />
+        <button className="auth-btn" type="submit" disabled={busy || (TURNSTILE_ENABLED && !token)}>
           {busy ? "Creating…" : "Create account"}
         </button>
         <p className="auth-alt">

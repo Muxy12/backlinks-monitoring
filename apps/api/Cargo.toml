@@ -25,6 +25,7 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 common = { workspace = true }
 backlio-core = { workspace = true }
+reqwest = { workspace = true }
 billing = { workspace = true }
 notifications = { workspace = true }
 db = { workspace = true }

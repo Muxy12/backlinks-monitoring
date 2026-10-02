@@ -2,17 +2,20 @@
 
 import { useState } from "react";
 import { api } from "../../lib/api";
+import { Turnstile, TURNSTILE_ENABLED } from "../turnstile";
 import "../auth.css";
 
 export default function ForgotPage() {
   const [email, setEmail] = useState("");
+  const [token, setToken] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (TURNSTILE_ENABLED && !token) return;
     setBusy(true);
-    await api.forgotPassword(email);
+    await api.forgotPassword(email, token ?? undefined);
     setBusy(false);
     setSent(true); // always show the same message (never reveal if the email exists)
   }
@@ -37,7 +40,8 @@ export default function ForgotPage() {
               <span>Email</span>
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
             </label>
-            <button className="auth-btn" type="submit" disabled={busy}>
+            <Turnstile onToken={setToken} />
+            <button className="auth-btn" type="submit" disabled={busy || (TURNSTILE_ENABLED && !token)}>
               {busy ? "Sending…" : "Send reset link"}
             </button>
             <p className="auth-alt">

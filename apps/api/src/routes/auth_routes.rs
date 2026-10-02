@@ -59,6 +59,10 @@ pub struct RegisterBody {
     pub email: String,
     pub password: String,
     pub name: String,
+    /// Cloudflare Turnstile token (anti-spam). Optional: only enforced when
+    /// `TURNSTILE_SECRET_KEY` is set on the server.
+    #[serde(default)]
+    pub turnstile_token: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -104,6 +108,7 @@ pub async fn register(
     State(state): State<AppState>,
     Json(body): Json<RegisterBody>,
 ) -> Result<(axum::http::StatusCode, Json<UserView>), ApiError> {
+    crate::turnstile::verify(body.turnstile_token.as_deref()).await?;
     validate_credentials(&body.email, &body.password)?;
     let name = body.name.trim();
     if name.is_empty() {
@@ -150,6 +155,10 @@ pub async fn verify_email(
 #[derive(Debug, Deserialize)]
 pub struct EmailBody {
     pub email: String,
+    /// Cloudflare Turnstile token (anti-spam). Enforced on `/forgot` when
+    /// `TURNSTILE_SECRET_KEY` is set; ignored by `/resend-verification`.
+    #[serde(default)]
+    pub turnstile_token: Option<String>,
 }
 
 /// POST /v1/auth/resend-verification — re-send the verification email. Always
@@ -180,6 +189,7 @@ pub async fn forgot_password(
     State(state): State<AppState>,
     Json(body): Json<EmailBody>,
 ) -> Result<axum::http::StatusCode, ApiError> {
+    crate::turnstile::verify(body.turnstile_token.as_deref()).await?;
     if let Ok(Some(user)) = users::find_by_email(&state.pool, body.email.trim()).await
         && let Ok(secret) = issue_token(&state, user.id, "password_reset", Duration::hours(1)).await
     {
