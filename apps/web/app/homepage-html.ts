@@ -66,6 +66,7 @@ export const HOMEPAGE_HTML = `
 #lp-home .ph.logo-ph{min-height:56px;font-size:.75rem;padding:8px}
 
 /* hero */
+#lp-home .hero{text-align:left;overflow:visible}
 #lp-home .hero .grid{display:grid;grid-template-columns:1.05fr 1fr;gap:48px;align-items:center}
 @media(max-width:900px){#lp-home .hero .grid{grid-template-columns:1fr}}
 #lp-home .badge{display:inline-block;font-size:.8rem;font-weight:700;color:var(--brand);background:color-mix(in srgb,var(--brand) 12%,transparent);padding:4px 12px;border-radius:99px;margin-bottom:16px}
@@ -212,7 +213,10 @@ export const HOMEPAGE_HTML = `
       "image": "https://www.linkpulz.com/images/og-linkpulz.jpg",
       "publisher": { "@id": "https://www.linkpulz.com/#organization" },
       "featureList": [
-        "Lost backlink alerts",
+        "Verify your backlinks",
+        "Detect lost backlinks",
+        "Find broken backlinks",
+        "Monitor backlink health",
         "Dofollow, nofollow, sponsored and UGC attribute tracking",
         "Noindex and deindexation detection",
         "Anchor text change detection",
@@ -298,8 +302,14 @@ export const HOMEPAGE_HTML = `
   <div class="wrap grid">
     <div>
       <span class="badge">Backlink monitoring software</span>
-      <h1 id="h1">Backlink Monitoring That Alerts You Before a Link Is Lost</h1>
+      <h1 id="h1">Backlink Monitoring: Protect the Links You Worked Hard to Earn</h1>
       <p class="lead">LinkPulz checks every backlink you've earned or paid for, and tells you the moment one disappears, turns nofollow, redirects or gets deindexed. Stop finding out three months too late.</p>
+      <ul class="check">
+        <li>Verify your backlinks</li>
+        <li>Detect lost backlinks</li>
+        <li>Find broken backlinks</li>
+        <li>Monitor backlink health</li>
+      </ul>
       <div class="cta-row">
         <a class="btn" href="/signup/">Start free trial</a>
         <a class="btn ghost" href="#how-it-works">See how it works</a>
@@ -360,14 +370,14 @@ export const HOMEPAGE_HTML = `
       <p class="lead">A link isn't just "there" or "gone". LinkPulz tracks the changes that cost you rankings and referral traffic.</p>
     </div>
     <div class="cards">
-      <div class="card"><div class="ic">✕</div><h3>Lost links</h3><p>The page removes your link or disappears altogether.</p></div>
-      <div class="card"><div class="ic">404</div><h3>Broken pages</h3><p>The linking page returns a 404 or 5xx error.</p></div>
-      <div class="card"><div class="ic">↪</div><h3>Redirects</h3><p>The linking page now redirects somewhere else.</p></div>
+      <div class="card"><div class="ic">✓</div><h3>Verify your backlinks</h3><p>Confirm that each link is still on the page, with the right anchor text and target URL.</p></div>
+      <div class="card"><div class="ic">✕</div><h3>Detect lost backlinks</h3><p>Get alerted when the page removes your link or disappears altogether.</p></div>
+      <div class="card"><div class="ic">404</div><h3>Find broken backlinks</h3><p>Spot linking pages that return a 404 or 5xx error, and links that now redirect elsewhere.</p></div>
+      <div class="card"><div class="ic">♥</div><h3>Monitor backlink health</h3><p>Track status, attributes and indexation for every link in one view <span class="tc">TO CONFIRM</span>.</p></div>
       <div class="card"><div class="ic">rel</div><h3>Attribute changes</h3><p>Dofollow switches to nofollow, sponsored or UGC.</p></div>
       <div class="card"><div class="ic">NI</div><h3>Noindex</h3><p>The linking page is set to noindex and passes little value.</p></div>
       <div class="card"><div class="ic">G</div><h3>Deindexation</h3><p>The linking page drops out of Google's index <span class="tc">TO CONFIRM how detected</span>.</p></div>
       <div class="card"><div class="ic">Aa</div><h3>Anchor text changes</h3><p>Your agreed anchor is edited or replaced.</p></div>
-      <div class="card"><div class="ic">+</div><h3>New backlinks</h3><p>Links you didn't track yet show up <span class="tc">TO CONFIRM source</span>.</p></div>
     </div>
   </div>
 </section>
