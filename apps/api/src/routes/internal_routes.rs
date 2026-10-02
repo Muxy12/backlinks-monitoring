@@ -82,16 +82,17 @@ pub async fn tick(
     // The crawl-heavy work (process batch + warranty sweep + discovery + alert
     // delivery) runs under a HARD wall-clock budget. On the free/cron model the
     // tick is a single HTTP request, so it must always return well under the
-    // platform's request ceiling — otherwise a slow batch (dead source pages,
-    // hanging webhooks) runs for minutes and the proxy answers 502. Whatever
-    // doesn't finish stays leased and is picked up by the next tick, so progress
-    // is just spread across ticks rather than lost.
-    const TICK_BUDGET: Duration = Duration::from_secs(70);
+    // platform's request ceiling — empirically Render answers 502 once a request
+    // runs past ~55s (observed under contention when a manual tick overlapped the
+    // cron), so the budget is kept comfortably below that. Whatever doesn't
+    // finish stays leased and is picked up by the next tick, so progress is just
+    // spread across ticks rather than lost.
+    const TICK_BUDGET: Duration = Duration::from_secs(40);
     let work = async {
         if !guards.may_process_jobs() {
             return (0usize, 0usize, 0usize, 0usize);
         }
-        let processed = worker::tick(&ctx, 24).await.unwrap_or_else(|e| {
+        let processed = worker::tick(&ctx, 20).await.unwrap_or_else(|e| {
             tracing::error!(error = %e, "tick: process failed");
             0
         });
