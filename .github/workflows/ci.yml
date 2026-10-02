@@ -58,17 +58,22 @@ jobs:
           rustup show active-toolchain || rustup toolchain install
           rustup component add rustfmt clippy
       - uses: Swatinem/rust-cache@v2
+      # Fail fast if Cargo.lock is out of sync with the manifests. The Dockerfile
+      # (Render deploy) builds with `cargo build --release --locked`, which
+      # refuses a stale lock — so catch that here instead of at deploy time.
+      - name: Verify Cargo.lock is in sync
+        run: cargo metadata --locked --format-version 1 > /dev/null
       - name: cargo fmt
         run: cargo fmt --all --check
       - name: cargo clippy
-        run: cargo clippy --workspace --all-targets -- -D warnings
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: cargo test
-        run: cargo test --workspace
+        run: cargo test --workspace --locked
       # Debug build of all bin/test targets — catches compile errors fast on
       # every push. The full LTO release build is verified separately by the
       # `release-build` job (tags / manual only), so PR feedback stays quick.
       - name: cargo build (all targets, debug)
-        run: cargo build --workspace --all-targets
+        run: cargo build --workspace --all-targets --locked
       - name: No format!-built SQL (S9 guard, docs/11)
         run: |
           if grep -rnE 'query(_as)?\(&?format!' crates apps --include='*.rs'; then
@@ -169,4 +174,4 @@ jobs:
         run: rustup show active-toolchain || rustup toolchain install
       - uses: Swatinem/rust-cache@v2
       - name: cargo build --release
-        run: cargo build --workspace --release
+        run: cargo build --workspace --release --locked
