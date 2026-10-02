@@ -80,6 +80,28 @@ export const HOMEPAGE_HTML = `
 #lp-home .result-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;font-size:.85rem}
 #lp-home .result-list span{background:var(--bg-alt);border:1px solid var(--line);border-radius:99px;padding:3px 12px}
 
+/* verify-backlink section */
+#lp-home .tool.verify form{grid-template-columns:1fr 1fr;gap:14px}
+#lp-home .tool.verify form label{display:flex;flex-direction:column;gap:6px;text-align:left;font-size:.9rem;font-weight:600}
+#lp-home .tool.verify form button{grid-column:1 / -1}
+@media(max-width:620px){#lp-home .tool.verify form{grid-template-columns:1fr}}
+#lp-home .verify-result{max-width:420px;margin:20px auto 0;padding:16px 20px;border:1px solid var(--line);border-radius:var(--radius);background:var(--bg-alt);text-align:left}
+#lp-home .verify-label{margin:0 0 8px;text-transform:uppercase;letter-spacing:.04em}
+#lp-home .verify-result ul.check{margin:0}
+#lp-home .verify-cta{margin-top:24px}
+#lp-home .verify-cta p{margin-bottom:12px}
+
+/* lost-backlinks section */
+#lp-home .lost-demo{border:1px solid var(--line);border-radius:var(--radius);background:var(--bg-alt);padding:18px 20px}
+#lp-home .lost-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 0;border-bottom:1px solid var(--line);font-size:.92rem}
+#lp-home .lost-row small{color:var(--muted);min-width:72px}
+#lp-home .lost-row .url{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#lp-home .status{font-weight:700;font-size:.8rem;white-space:nowrap}
+#lp-home .status.live{color:var(--green)}
+#lp-home .status.lost{color:var(--danger)}
+#lp-home .lost-alert{margin-top:14px;border:1px solid var(--line);border-left:4px solid var(--danger);border-radius:10px;padding:12px 14px;font-size:.9rem;background:var(--bg)}
+#lp-home .lost-alert b{color:var(--danger)}
+
 /* proof */
 #lp-home .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin:32px 0}
 @media(max-width:700px){#lp-home .stats{grid-template-columns:1fr}}
@@ -338,6 +360,94 @@ export const HOMEPAGE_HTML = `
         <span>Link found / not found</span><span>HTTP status</span><span>dofollow · nofollow · sponsored · UGC</span><span>Indexed or not</span><span>Anchor text</span>
       </div>
       <p class="micro" style="margin:16px 0 0">Want this checked automatically? <a href="/signup/">Monitor this link free</a> <span class="tc">frequency: TO CONFIRM</span></p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ VERIFY BACKLINKS ============ -->
+<section id="verify-backlinks" aria-labelledby="verify-h">
+  <div class="wrap center">
+    <h2 id="verify-h">Verify a Backlink</h2>
+    <p class="lead">Check if a backlink exists, whether it's live, and how it's set up. Paste the page that links to you and your URL. Our backlink verification tool does the rest.</p>
+
+    <div class="tool verify">
+      <form action="/verify-backlinks/" method="get">
+        <label>Source URL
+          <input type="url" name="source" placeholder="https://example.com/article" required>
+        </label>
+        <label>Your URL
+          <input type="url" name="target" placeholder="https://mysite.com" required>
+        </label>
+        <button class="btn" type="submit">Verify backlink</button>
+      </form>
+
+      <div class="verify-result" aria-live="polite">
+        <p class="micro verify-label">Example result</p>
+        <ul class="check">
+          <li><b>Backlink found</b></li>
+          <li>HTTP 200</li>
+          <li>Dofollow</li>
+          <li>Anchor: "SEO tool"</li>
+          <li>Target URL correct</li>
+        </ul>
+      </div>
+
+      <div class="verify-cta">
+        <p><b>Want us to check it automatically every day?</b> <span class="tc">frequency: TO CONFIRM</span></p>
+        <a class="btn" href="/signup/">Monitor this backlink with LinkPulz →</a>
+      </div>
+    </div>
+
+    <p class="micro">Looking for more? See the full <a href="/verify-backlinks/">backlink verification tool</a>.</p>
+  </div>
+</section>
+
+<!-- ============ LOST BACKLINKS ============ -->
+<section class="alt" id="lost-backlinks" aria-labelledby="lost-h">
+  <div class="wrap">
+    <div class="center">
+      <h2 id="lost-h">Lost Backlinks: Find Them Before They Cost You Rankings</h2>
+      <p class="lead">You had a backlink, and now it's gone. A lost backlink checker tells you which links disappeared, when, and why, so you can win them back.</p>
+    </div>
+
+    <div class="split" style="margin-top:36px">
+      <div>
+        <h3>Why backlinks disappear</h3>
+        <ul class="check">
+          <li>The publisher removes the link</li>
+          <li>The page is deleted or returns a 404</li>
+          <li>The article is edited or rewritten</li>
+          <li>A site migration breaks the URL</li>
+          <li>A bad redirect sends the link elsewhere</li>
+          <li>The link switches to nofollow or the page goes noindex</li>
+        </ul>
+        <h3 style="margin-top:24px">How to find lost backlinks</h3>
+        <p>Add your links to LinkPulz. We re-check each linking page on a schedule and flag any link that is no longer there, with the likely cause <span class="tc">TO CONFIRM</span>.</p>
+        <p>Then contact the site owner while the change is recent. <a href="/lost-backlinks/">Read our guide on how to regain lost backlinks</a>.</p>
+      </div>
+
+      <!-- Example timeline (illustrative, not live data) -->
+      <div class="lost-demo" role="img" aria-label="Example: a backlink goes from live yesterday to lost today, with a LinkPulz alert">
+        <p class="micro verify-label">Example</p>
+        <div class="lost-row">
+          <small>Yesterday</small>
+          <span class="url">example.com/article</span>
+          <span class="status live">● LIVE</span>
+        </div>
+        <div class="lost-row">
+          <small>Today</small>
+          <span class="url">example.com/article</span>
+          <span class="status lost">● LOST</span>
+        </div>
+        <div class="lost-alert">
+          <b>LinkPulz Alert</b><br>
+          Backlink lost 23 minutes ago.
+        </div>
+      </div>
+    </div>
+
+    <div class="center" style="margin-top:36px">
+      <a class="btn" href="/signup/">Get Alerted When a Backlink Disappears</a>
     </div>
   </div>
 </section>
