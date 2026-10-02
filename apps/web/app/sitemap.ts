@@ -12,6 +12,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
   const routes: { path: string; priority: number; changeFrequency: MetadataRoute.Sitemap[number]["changeFrequency"] }[] = [
     { path: "/", priority: 1.0, changeFrequency: "weekly" },
+    { path: "/verify-backlinks", priority: 0.8, changeFrequency: "monthly" },
+    { path: "/lost-backlinks", priority: 0.8, changeFrequency: "monthly" },
+    { path: "/broken-backlinks", priority: 0.8, changeFrequency: "monthly" },
+    { path: "/backlink-health-check", priority: 0.8, changeFrequency: "monthly" },
     { path: "/docs", priority: 0.8, changeFrequency: "weekly" },
     { path: "/tools/backlink-checker", priority: 0.7, changeFrequency: "monthly" },
   ];

@@ -33,3 +33,9 @@ next-env.d.ts
 
 # Locally-installed agent skills (npx skills add) — not app code
 .agents/
+
+# Locally-installed skills via `npx skills add` (not app code)
+.claude/skills/schema/
+.claude/skills/seo-audit/
+.claude/skills/programmatic-seo/
+skills-lock.json
