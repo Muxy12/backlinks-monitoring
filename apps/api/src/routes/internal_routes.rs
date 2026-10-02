@@ -117,12 +117,12 @@ pub async fn tick(
     // cron), so the budget is kept comfortably below that. Whatever doesn't
     // finish stays leased and is picked up by the next tick, so progress is just
     // spread across ticks rather than lost.
-    const TICK_BUDGET: Duration = Duration::from_secs(40);
+    const TICK_BUDGET: Duration = Duration::from_secs(30);
     let work = async {
         if !guards.may_process_jobs() {
             return (0usize, 0usize, 0usize, 0usize);
         }
-        let processed = worker::tick(&ctx, 20).await.unwrap_or_else(|e| {
+        let processed = worker::tick(&ctx, 15).await.unwrap_or_else(|e| {
             tracing::error!(error = %e, "tick: process failed");
             0
         });

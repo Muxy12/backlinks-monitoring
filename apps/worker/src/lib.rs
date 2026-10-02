@@ -30,7 +30,7 @@ pub struct WorkerCtx {
 /// free tier's memory (a handful of in-flight response bodies). Concurrency is
 /// cooperative (single task, no `tokio::spawn`) because the engine holds a
 /// `!Send` parsed page across awaits — so the futures cannot cross threads.
-const CRAWL_CONCURRENCY: usize = 4;
+const CRAWL_CONCURRENCY: usize = 2;
 
 pub async fn tick(ctx: &WorkerCtx, batch: i64) -> anyhow::Result<usize> {
     let claimed = job_queue::claim(&ctx.pool, &ctx.worker_id, batch).await?;
