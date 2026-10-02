@@ -102,6 +102,29 @@ export const HOMEPAGE_HTML = `
 #lp-home .lost-alert{margin-top:14px;border:1px solid var(--line);border-left:4px solid var(--danger);border-radius:10px;padding:12px 14px;font-size:.9rem;background:var(--bg)}
 #lp-home .lost-alert b{color:var(--danger)}
 
+/* broken-backlinks section */
+#lp-home .flow{display:flex;flex-direction:column;align-items:center;gap:6px;margin:14px 0;padding:14px;border:1px solid var(--line);border-radius:10px;background:var(--bg-alt);text-align:center}
+#lp-home .flow .url{font-size:.9rem;word-break:break-all}
+#lp-home .flow .arrow{color:var(--muted);font-size:1.2rem;line-height:1}
+#lp-home .alt-box{border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:var(--radius);background:var(--bg-alt);padding:22px 24px}
+#lp-home .alt-box .btn{margin-top:8px}
+
+/* backlink-health-check section */
+#lp-home .health{max-width:900px;margin:36px auto 0;padding:24px;border:1px solid var(--line);border-radius:var(--radius);background:var(--bg-alt)}
+#lp-home .health-top{display:flex;gap:32px;align-items:center;flex-wrap:wrap}
+#lp-home .health-score{text-align:center;flex:none}
+#lp-home .health-score small{display:block;color:var(--muted);font-size:.78rem;text-transform:uppercase;letter-spacing:.05em}
+#lp-home .health-score b{display:block;font-size:3rem;font-weight:800;color:var(--accent);line-height:1.05}
+#lp-home .health-score span{color:var(--muted);font-size:.85rem}
+#lp-home .health-main{flex:1;min-width:280px}
+#lp-home .health-bar{display:flex;height:14px;border-radius:8px;overflow:hidden;margin-bottom:18px;background:var(--bg)}
+#lp-home .health-bar i{display:block;height:100%}
+#lp-home .health-table{width:100%;border-collapse:collapse;background:transparent;min-width:0}
+#lp-home .health-table th{text-align:left;font-weight:500;padding:6px 0;width:100%}
+#lp-home .health-table td{text-align:right;padding:6px 0;font-variant-numeric:tabular-nums;white-space:nowrap}
+#lp-home .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px}
+#lp-home .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
 /* proof */
 #lp-home .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin:32px 0}
 @media(max-width:700px){#lp-home .stats{grid-template-columns:1fr}}
@@ -448,6 +471,117 @@ export const HOMEPAGE_HTML = `
 
     <div class="center" style="margin-top:36px">
       <a class="btn" href="/signup/">Get Alerted When a Backlink Disappears</a>
+    </div>
+  </div>
+</section>
+
+<!-- ============ BROKEN BACKLINKS ============ -->
+<section id="broken-backlinks" aria-labelledby="broken-h">
+  <div class="wrap">
+    <div class="center">
+      <h2 id="broken-h">Broken Backlinks: Find Them Before They Waste Your Link Equity</h2>
+      <p class="lead">A broken backlink isn't always a lost one. The link can still be there while the page it points to, or the page it sits on, is returning an error. A broken backlink checker catches both.</p>
+    </div>
+
+    <div class="cards">
+      <!-- Case 1 -->
+      <div class="card broken-case">
+        <h3>Case 1: Your link works, but the destination is broken</h3>
+        <p>Another site still links to you, but the URL it points to no longer exists.</p>
+        <div class="flow" role="img" aria-label="Example: a backlink points to example.com/my-old-page, which returns a 404 error">
+          <span class="url">example.com/my-old-page</span>
+          <span class="arrow" aria-hidden="true">↓</span>
+          <span class="status lost">● 404</span>
+        </div>
+        <p class="micro">Typical causes: a deleted page, a changed URL, a missing redirect after a migration.</p>
+      </div>
+
+      <!-- Case 2 -->
+      <div class="card broken-case">
+        <h3>Case 2: The page holding your link is broken</h3>
+        <p>Your backlink is on a page that now returns an error, so the link is no longer reachable.</p>
+        <div class="flow" role="img" aria-label="Example: the page that contains your backlink returns a 404 or 5xx error">
+          <span class="url">othersite.com/article-with-your-link</span>
+          <span class="arrow" aria-hidden="true">↓</span>
+          <span class="status lost">● 404 / 5xx</span>
+        </div>
+        <p class="micro">Typical causes: the publisher deleted the article, a server error, or the site went offline.</p>
+      </div>
+    </div>
+
+    <div class="split" style="margin-top:48px">
+      <div>
+        <h3>How to find broken backlinks</h3>
+        <ul class="check">
+          <li>Check the HTTP status of the page that links to you</li>
+          <li>Check the HTTP status of the URL it points to</li>
+          <li>Spot redirects that send visitors somewhere else</li>
+          <li>Fix your own broken pages with a 301 redirect, or ask the site to update the link</li>
+        </ul>
+      </div>
+      <div class="alt-box">
+        <p><b>LinkPulz monitors the status of your backlinks and their destinations.</b> <span class="tc">TO CONFIRM that both are checked</span></p>
+        <p>You get an alert when either side starts returning an error, so you can fix it while it still matters.</p>
+        <a class="btn" href="/signup/">Find Broken Backlinks Automatically</a>
+        <p class="micro" style="margin-top:12px">Learn more: <a href="/broken-backlinks/">how to find and fix broken backlinks</a>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ BACKLINK HEALTH CHECK ============ -->
+<section class="alt" id="backlink-health-check" aria-labelledby="health-h">
+  <div class="wrap">
+    <div class="center">
+      <h2 id="health-h">Backlink Health Check: See the State of Your Entire Backlink Profile</h2>
+      <p class="lead">It's not just "does this link exist?" Know how healthy your whole backlink portfolio is, and which links need attention first.</p>
+    </div>
+
+    <!-- Example dashboard (illustrative data, not live) -->
+    <div class="health" role="group" aria-label="Example backlink health dashboard">
+      <p class="micro verify-label">Example data</p>
+
+      <div class="health-top">
+        <div class="health-score">
+          <small>Overall Health</small>
+          <b>93%</b>
+          <span>1,284 monitored backlinks</span>
+        </div>
+
+        <div class="health-main">
+          <div class="health-bar" role="img" aria-label="1,198 healthy, 43 lost, 17 changed, 12 redirected, 8 nofollow, 6 broken">
+            <i style="width:93.3%;background:var(--accent)"></i>
+            <i style="width:3.35%;background:var(--danger)"></i>
+            <i style="width:1.32%;background:var(--warn)"></i>
+            <i style="width:.93%;background:#1c7ed6"></i>
+            <i style="width:.62%;background:#9c36b5"></i>
+            <i style="width:.47%;background:#495057"></i>
+          </div>
+
+          <table class="health-table">
+            <caption class="sr-only">Backlinks by status</caption>
+            <tbody>
+              <tr><th scope="row"><span class="dot" style="background:var(--accent)"></span>Healthy</th><td>1,198</td></tr>
+              <tr><th scope="row"><span class="dot" style="background:var(--danger)"></span>Lost</th><td>43</td></tr>
+              <tr><th scope="row"><span class="dot" style="background:var(--warn)"></span>Changed</th><td>17</td></tr>
+              <tr><th scope="row"><span class="dot" style="background:#1c7ed6"></span>Redirected</th><td>12</td></tr>
+              <tr><th scope="row"><span class="dot" style="background:#9c36b5"></span>Nofollow</th><td>8</td></tr>
+              <tr><th scope="row"><span class="dot" style="background:#495057"></span>Broken</th><td>6</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="cards">
+      <div class="card"><h3>One score for your whole profile</h3><p>Get a single health percentage, calculated from the status of every link you track <span class="tc">TO CONFIRM how it's calculated</span>.</p></div>
+      <div class="card"><h3>Every problem, sorted</h3><p>Lost, changed, redirected, nofollow and broken links are grouped so you see what to fix first.</p></div>
+      <div class="card"><h3>Track it over time</h3><p>Watch your backlink health improve or drop, and catch trends before they hurt rankings <span class="tc">TO CONFIRM history</span>.</p></div>
+    </div>
+
+    <div class="center" style="margin-top:36px">
+      <a class="btn" href="/signup/">Check Your Backlink Health</a>
+      <p class="micro" style="margin-top:12px">Learn more: <a href="/backlink-health-check/">how to run a backlink health check</a>.</p>
     </div>
   </div>
 </section>
