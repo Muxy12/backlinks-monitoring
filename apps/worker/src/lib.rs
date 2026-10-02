@@ -9,6 +9,7 @@ pub mod engine;
 use backlio_core::TransitionPolicy;
 use crawler::CrawlerConfig;
 use db::repositories::job_queue::{self, ClaimedJob};
+use futures_util::StreamExt;
 use jobs::{BackoffPolicy, JobKind, RetryDecision, retry_delay};
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -23,12 +24,20 @@ pub struct WorkerCtx {
 }
 
 /// Claim and run up to `batch` jobs. Returns how many were processed (0 = idle).
+/// How many claimed jobs to crawl at once. The work is I/O-bound (each job waits
+/// on network fetches), so running a few concurrently overlaps those waits and
+/// cuts wall-clock several-fold. Kept modest to stay within the DB pool and the
+/// free tier's memory (a handful of in-flight response bodies). Concurrency is
+/// cooperative (single task, no `tokio::spawn`) because the engine holds a
+/// `!Send` parsed page across awaits — so the futures cannot cross threads.
+const CRAWL_CONCURRENCY: usize = 6;
+
 pub async fn tick(ctx: &WorkerCtx, batch: i64) -> anyhow::Result<usize> {
     let claimed = job_queue::claim(&ctx.pool, &ctx.worker_id, batch).await?;
     let n = claimed.len();
-    for job in claimed {
-        run_one(ctx, job).await;
-    }
+    futures_util::stream::iter(claimed)
+        .for_each_concurrent(CRAWL_CONCURRENCY, |job| run_one(ctx, job))
+        .await;
     Ok(n)
 }
 

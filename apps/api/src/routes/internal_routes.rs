@@ -91,7 +91,7 @@ pub async fn tick(
         if !guards.may_process_jobs() {
             return (0usize, 0usize, 0usize, 0usize);
         }
-        let processed = worker::tick(&ctx, 15).await.unwrap_or_else(|e| {
+        let processed = worker::tick(&ctx, 24).await.unwrap_or_else(|e| {
             tracing::error!(error = %e, "tick: process failed");
             0
         });

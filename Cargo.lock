@@ -3557,6 +3557,7 @@ dependencies = [
  "common",
  "crawler",
  "db",
+ "futures-util",
  "jobs",
  "notifications",
  "serde",
