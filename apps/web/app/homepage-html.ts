@@ -99,14 +99,14 @@ export const HOMEPAGE_HTML = `
 #lp-home .status{font-weight:700;font-size:.8rem;white-space:nowrap}
 #lp-home .status.live{color:var(--green)}
 #lp-home .status.lost{color:var(--danger)}
-#lp-home .lost-alert{margin-top:14px;border:1px solid var(--line);border-left:4px solid var(--danger);border-radius:10px;padding:12px 14px;font-size:.9rem;background:var(--bg)}
+#lp-home .lost-alert{margin-top:14px;border:1px solid color-mix(in srgb,var(--danger) 32%,var(--line));border-radius:10px;padding:12px 14px;font-size:.9rem;background:color-mix(in srgb,var(--danger) 8%,var(--bg))}
 #lp-home .lost-alert b{color:var(--danger)}
 
 /* broken-backlinks section */
 #lp-home .flow{display:flex;flex-direction:column;align-items:center;gap:6px;margin:14px 0;padding:14px;border:1px solid var(--line);border-radius:10px;background:var(--bg-alt);text-align:center}
 #lp-home .flow .url{font-size:.9rem;word-break:break-all}
 #lp-home .flow .arrow{color:var(--muted);font-size:1.2rem;line-height:1}
-#lp-home .alt-box{border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:var(--radius);background:var(--bg-alt);padding:22px 24px}
+#lp-home .alt-box{border:1px solid color-mix(in srgb,var(--brand) 32%,var(--line));border-radius:var(--radius);background:color-mix(in srgb,var(--brand) 8%,var(--bg-alt));padding:22px 24px}
 #lp-home .alt-box .btn{margin-top:8px}
 
 /* backlink-health-check section */
@@ -156,7 +156,7 @@ export const HOMEPAGE_HTML = `
 #lp-home ul.check li::before{content:"✓";position:absolute;left:0;color:var(--accent);font-weight:800}
 
 /* alert mock */
-#lp-home .alert-mock{border:1px solid var(--line);border-left:4px solid var(--danger);border-radius:10px;padding:14px 16px;background:var(--bg);font-size:.9rem;margin-top:20px}
+#lp-home .alert-mock{border:1px solid color-mix(in srgb,var(--danger) 32%,var(--line));border-radius:10px;padding:14px 16px;background:color-mix(in srgb,var(--danger) 8%,var(--bg));font-size:.9rem;margin-top:20px}
 #lp-home .alert-mock b{color:var(--danger)}
 
 /* table */
@@ -199,6 +199,27 @@ export const HOMEPAGE_HTML = `
 #lp-home footer.site .cols{display:flex;flex-wrap:wrap;gap:32px;justify-content:space-between}
 #lp-home footer.site a{color:var(--muted);display:block;margin-bottom:6px;text-decoration:none}
 #lp-home footer.site a:hover{color:var(--brand)}
+
+/* ── craft: browser surfaces, focus, numerals, one authored entrance ── */
+#lp-home ::selection{background:color-mix(in srgb,var(--brand) 32%,transparent);color:var(--ink)}
+#lp-home input{caret-color:var(--brand)}
+#lp-home a:not(.btn){text-underline-offset:3px;text-decoration-thickness:1px}
+#lp-home a:not(.btn):hover{text-decoration:underline}
+#lp-home a:focus-visible,#lp-home button:focus-visible,#lp-home input:focus-visible,#lp-home summary:focus-visible{outline:2px solid var(--brand);outline-offset:3px;border-radius:8px}
+#lp-home .tool input:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px color-mix(in srgb,var(--brand) 25%,transparent)}
+#lp-home .stat b,#lp-home .health-score b,#lp-home .plan .price,#lp-home .health-table td{font-variant-numeric:tabular-nums}
+#lp-home .tablewrap{scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+#lp-home .tablewrap::-webkit-scrollbar{height:10px}
+#lp-home .tablewrap::-webkit-scrollbar-thumb{background:var(--line);border-radius:99px}
+
+@keyframes lp-rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+#lp-home .hero .badge,#lp-home .hero h1,#lp-home .hero .lead,#lp-home .hero ul.check,#lp-home .hero .cta-row,#lp-home .hero .micro{animation:lp-rise .7s cubic-bezier(.16,1,.3,1) both}
+#lp-home .hero h1{animation-delay:.05s}
+#lp-home .hero .lead{animation-delay:.1s}
+#lp-home .hero ul.check{animation-delay:.16s}
+#lp-home .hero .cta-row{animation-delay:.22s}
+#lp-home .hero .micro{animation-delay:.28s}
+@media(prefers-reduced-motion:reduce){#lp-home .hero .badge,#lp-home .hero h1,#lp-home .hero .lead,#lp-home .hero ul.check,#lp-home .hero .cta-row,#lp-home .hero .micro{animation:none}}
 </style>
 
 <script type="application/ld+json">
