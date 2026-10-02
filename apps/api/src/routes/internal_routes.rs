@@ -16,6 +16,7 @@ use common::{AppEnv, Guards};
 use crawler::CrawlerConfig;
 use jobs::BackoffPolicy;
 use std::str::FromStr;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 /// Constant-time byte comparison (no early return on length-equal inputs).
@@ -28,6 +29,22 @@ fn ct_eq(a: &[u8], b: &[u8]) -> bool {
         diff |= x ^ y;
     }
     diff == 0
+}
+
+/// In-process gate so only ONE tick runs at a time. On the free tier the API is
+/// a single instance, so this fully serializes monitoring rounds: a second
+/// overlapping call (a manual poke landing on top of the cron, say) returns
+/// immediately instead of doubling the in-flight crawls and OOM-killing the
+/// 512 MB instance. (Job claiming already uses SKIP LOCKED, so correctness never
+/// depended on this — only memory safety does.)
+static TICK_RUNNING: AtomicBool = AtomicBool::new(false);
+
+/// Clears the gate on drop, so a panic or early return can't wedge it shut.
+struct TickGuard;
+impl Drop for TickGuard {
+    fn drop(&mut self) {
+        TICK_RUNNING.store(false, Ordering::SeqCst);
+    }
 }
 
 pub async fn tick(
@@ -46,6 +63,19 @@ pub async fn tick(
     if !ct_eq(provided.as_bytes(), secret.as_bytes()) {
         return Err(ApiError::Unauthorized);
     }
+
+    // Serialize ticks (memory safety — see TICK_RUNNING). If one is already in
+    // flight, this call is a no-op rather than piling a second batch of crawls
+    // on top. `_guard` clears the flag when this handler returns.
+    let _guard =
+        match TICK_RUNNING.compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst) {
+            Ok(_) => TickGuard,
+            Err(_) => {
+                return Ok(Json(
+                    serde_json::json!({ "skipped": "another tick is already running" }),
+                ));
+            }
+        };
 
     // Crawling/processing is gated by the environment (docs/10 §1): production
     // always, development only with WORKER_ENABLE=true, preview never.
