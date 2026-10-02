@@ -9,7 +9,7 @@ export function ProseShell({ children }: { children: React.ReactNode }) {
         <div className="prose-top-inner">
           <a className="prose-brand" href="/">
             <span className="mark" />
-            Backlio
+            LinkPulz
           </a>
           <nav className="prose-top-links" aria-label="Site">
             <a href="/docs">Docs</a>
@@ -27,7 +27,7 @@ export function ProseFooter() {
   const year = new Date().getFullYear();
   return (
     <footer className="prose-footer">
-      <span>© {year} Backlio</span>
+      <span>© {year} LinkPulz</span>
       <a href="/legal/privacy">Privacy</a>
       <a href="/legal/terms">Terms</a>
       <a href="/legal/cookies">Cookies</a>

@@ -1,4 +1,4 @@
-//! Backlio worker (docs/07). The check engine plus the claim loop that drives
+//! LinkPulz worker (docs/07). The check engine plus the claim loop that drives
 //! it. The loop claims jobs with FOR UPDATE SKIP LOCKED, dispatches by type,
 //! and completes/retries/reaps — long-running, NOT on Vercel (ADR-0002).
 

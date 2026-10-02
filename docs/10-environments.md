@@ -83,7 +83,7 @@ ARGON2_ITERATIONS=2
 ARGON2_PARALLELISM=1
 
 # ─── Crawler (§28) ────────────────────────────────────────────────────
-CRAWLER_USER_AGENT=Backlio/1.0 (+https://backlio.app/bot)
+CRAWLER_USER_AGENT=LinkPulz/1.0 (+https://linkpulz.com/bot)
 CRAWLER_MAX_CONCURRENCY=50
 CRAWLER_MAX_PER_DOMAIN=2
 CRAWLER_DOMAIN_MIN_INTERVAL_MS=1000
@@ -111,7 +111,7 @@ STRIPE_PRICE_AGENCY_PLUS=
 
 # ─── Email (§37) ──────────────────────────────────────────────────────
 EMAIL_PROVIDER_API_KEY=
-EMAIL_FROM=alerts@backlio.app
+EMAIL_FROM=alerts@linkpulz.com
 
 # ─── Anti-spam: Cloudflare Turnstile ──────────────────────────────────
 # Both unset → public forms (register / forgot / backlink-checker) skip the

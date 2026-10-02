@@ -55,7 +55,7 @@ pub fn from_env(name: &str) -> Option<Box<dyn DiscoveryProvider>> {
 
 fn client() -> reqwest::Client {
     reqwest::Client::builder()
-        .user_agent("Backlio/1.0")
+        .user_agent("LinkPulz/1.0")
         .timeout(std::time::Duration::from_secs(30))
         .build()
         .unwrap_or_default()

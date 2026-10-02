@@ -79,7 +79,7 @@ impl IntoResponse for ApiError {
         };
         let (status, kind, detail) = self.parts();
         let body = Json(json!({
-            "type": format!("https://backlio.app/errors/{kind}"),
+            "type": format!("https://linkpulz.com/errors/{kind}"),
             "title": kind,
             "status": status.as_u16(),
             "detail": detail,

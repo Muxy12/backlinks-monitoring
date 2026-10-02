@@ -7,7 +7,7 @@ export default function LegalIndex() {
   return (
     <ProseShell>
       <h1>Legal</h1>
-      <p className="prose-updated">The policies that govern your use of Backlio.</p>
+      <p className="prose-updated">The policies that govern your use of LinkPulz.</p>
       <ul className="prose-cards">
         <li>
           <a href="/legal/privacy">
@@ -18,7 +18,7 @@ export default function LegalIndex() {
         <li>
           <a href="/legal/terms">
             <strong>Terms of Service</strong>
-            <span>The agreement between you and Backlio.</span>
+            <span>The agreement between you and LinkPulz.</span>
           </a>
         </li>
         <li>

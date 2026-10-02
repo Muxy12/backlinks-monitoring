@@ -42,10 +42,10 @@ async fn deliver_one(
     n: &PendingNotification,
 ) -> Result<u16, String> {
     if dest.kind == "email" {
-        let subject = format!("[Backlio] {}", n.title);
+        let subject = format!("[LinkPulz] {}", n.title);
         let text = match &n.body {
-            Some(b) if !b.is_empty() => format!("{}\n\n{}\n\n— Backlio", n.title, b),
-            _ => format!("{}\n\n— Backlio", n.title),
+            Some(b) if !b.is_empty() => format!("{}\n\n{}\n\n— LinkPulz", n.title, b),
+            _ => format!("{}\n\n— LinkPulz", n.title),
         };
         return notifications::resend::send_email(&dest.target, &subject, &text)
             .await
@@ -149,7 +149,7 @@ async fn deliver_digest(
     pending: &[PendingNotification],
 ) -> anyhow::Result<usize> {
     let n = pending.len();
-    let subject = format!("{n} Backlio alert{}", if n > 1 { "s" } else { "" });
+    let subject = format!("{n} LinkPulz alert{}", if n > 1 { "s" } else { "" });
     let mut lines: Vec<String> = pending
         .iter()
         .take(20)
@@ -203,7 +203,7 @@ pub async fn send_test(
     let test = PendingNotification {
         id: uuid::Uuid::now_v7(),
         kind: "test".into(),
-        title: "Backlio test alert".into(),
+        title: "LinkPulz test alert".into(),
         body: Some("If you can read this, your alert destination is wired up correctly.".into()),
         created_at: chrono::Utc::now(),
     };

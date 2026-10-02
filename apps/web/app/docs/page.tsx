@@ -4,7 +4,7 @@ import { ProseShell, ProseFooter } from "../prose-chrome";
 export const metadata: Metadata = {
   title: "Documentation",
   description:
-    "How Backlio works: monitor backlinks, track lost links and changes, watch competitors, build link tiers, discover new backlinks, explore the graph, and use the API.",
+    "How LinkPulz works: monitor backlinks, track lost links and changes, watch competitors, build link tiers, discover new backlinks, explore the graph, and use the API.",
   alternates: { canonical: "/docs" },
 };
 
@@ -13,7 +13,7 @@ export default function DocsPage() {
     <ProseShell>
       <h1>Documentation</h1>
       <p className="prose-updated">
-        Everything you need to monitor your backlinks with Backlio.
+        Everything you need to monitor your backlinks with LinkPulz.
       </p>
 
       <nav className="prose-toc" aria-label="Contents">
@@ -37,7 +37,7 @@ export default function DocsPage() {
         <li><a href="/register">Create an account</a> and your first workspace (organization).</li>
         <li>Add a <strong>project</strong> for the site whose backlinks you want to track.</li>
         <li>Add backlinks manually, or <a href="#import">import a CSV</a>.</li>
-        <li>Backlio checks each link on a schedule and records what changes.</li>
+        <li>LinkPulz checks each link on a schedule and records what changes.</li>
       </ol>
 
       <h2 id="projects">Projects &amp; clients</h2>
@@ -49,7 +49,7 @@ export default function DocsPage() {
       </p>
 
       <h2 id="backlinks">Backlinks</h2>
-      <p>A backlink is a link from a source page to your target URL. For each one Backlio tracks:</p>
+      <p>A backlink is a link from a source page to your target URL. For each one LinkPulz tracks:</p>
       <ul>
         <li>Source URL &amp; domain, target URL &amp; domain, and anchor text.</li>
         <li><code>rel</code> attributes — <code>nofollow</code>, <code>sponsored</code>, <code>ugc</code> — and whether the link is dofollow.</li>
@@ -86,14 +86,14 @@ export default function DocsPage() {
       <h2 id="tiers">Link tiers</h2>
       <p>
         Tier&nbsp;1 links point directly at your site. Tier&nbsp;2 links point at your tier&nbsp;1
-        pages to strengthen them. Backlio tracks both and ties tier&nbsp;2 links to their parent, so
+        pages to strengthen them. LinkPulz tracks both and ties tier&nbsp;2 links to their parent, so
         you can see the full support structure behind a link.
       </p>
 
       <h2 id="discovery">Discovery</h2>
       <p>
         Finding <em>unknown</em> backlinks is a reverse-index problem a single crawler cannot solve at
-        web scale. Backlio offers two complementary paths:
+        web scale. LinkPulz offers two complementary paths:
       </p>
       <ul>
         <li>
@@ -123,7 +123,7 @@ https://example.com/post,https://yoursite.com/,Your Brand,dofollow,Q3 Outreach,1
 
       <h2 id="api">API</h2>
       <p>
-        Backlio is built API-first. Endpoints are versioned under <code>/v1</code> and scoped to your
+        LinkPulz is built API-first. Endpoints are versioned under <code>/v1</code> and scoped to your
         organization, e.g.:
       </p>
       <pre><code>GET  /v1/me

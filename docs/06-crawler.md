@@ -248,7 +248,7 @@ DOMAIN MIN INTERVAL    (default 1000 ms between requests to the same domain)
   A blocked source page yields status `blocked`, which is an honest "could not verify," **not**
   `lost`. This distinction is the whole point of §24.
 - User agent identifies us and points at a policy page:
-  `Backlio/1.0 (+https://backlio.app/bot)`.
+  `LinkPulz/1.0 (+https://linkpulz.com/bot)`.
 
 ---
 

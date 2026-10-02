@@ -6,7 +6,7 @@ self-contained, no external assets). Its CSS custom properties are the canonical
 document lifts them into the app.
 
 > **Branding note.** The supplied homepage is branded **LinkOps** throughout — nav, hero, FAQ body
-> copy, footer and the copyright line. That is **draft branding**. The product is **Backlio**.
+> copy, footer and the copyright line. That is **draft branding**. The product is **LinkPulz**.
 > The rebrand is part of the port (§4.1) and touches more than the logo: "LinkOps" appears inside
 > FAQ answers and feature prose, not only in headers. A find-and-replace is not sufficient — each
 > occurrence needs reading, because some sentences scan differently with a different name.
@@ -128,7 +128,7 @@ apps/web/app/(marketing)/
 
 Rules for the port:
 
-- Copy is **kept verbatim apart from the rebrand** (LinkOps → Backlio, see the branding note above).
+- Copy is **kept verbatim apart from the rebrand** (LinkOps → LinkPulz, see the branding note above).
   It is accurate about what the product does, and §51's honesty constraints are already respected —
   the FAQ describes Value at Risk as *"the recorded acquisition cost associated with backlinks that
   currently require attention… not guaranteed SEO or financial loss,"* which is exactly §33, and the

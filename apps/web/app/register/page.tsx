@@ -40,7 +40,7 @@ export default function RegisterPage() {
     <div className="auth-wrap">
       <form className="auth-card" onSubmit={onSubmit}>
         <h1>Start monitoring</h1>
-        <p className="sub">Create your Backlio account.</p>
+        <p className="sub">Create your LinkPulz account.</p>
         {error && <div className="auth-error">{error}</div>}
         <label className="auth-field">
           <span>Name</span>

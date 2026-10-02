@@ -1,4 +1,4 @@
-# Backlio API + worker container (ADR-0002: long-running Rust services, NOT on
+# LinkPulz API + worker container (ADR-0002: long-running Rust services, NOT on
 # Vercel). One image holds all three binaries — `server` (the HTTP API),
 # `worker` (the monitoring loop) and `scheduler` (a one-shot cron tick) — and the
 # process is selected at run time (see fly.toml `[processes]`).

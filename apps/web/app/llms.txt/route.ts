@@ -6,9 +6,9 @@ import { SITE_URL } from "@/lib/site";
 export const revalidate = 3600;
 
 export async function GET() {
-  const body = `# Backlio
+  const body = `# LinkPulz
 
-> Backlio is a backlink monitoring platform for SEO teams and agencies. It tracks
+> LinkPulz is a backlink monitoring platform for SEO teams and agencies. It tracks
 > every backlink you build or earn, detects lost links, nofollow/anchor changes,
 > redirects and warranty expiries, and maps your (and competitors') link graph.
 

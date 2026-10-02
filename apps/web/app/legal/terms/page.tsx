@@ -10,15 +10,15 @@ export default function TermsPage() {
       <p className="prose-updated">Last updated: 26 September 2026</p>
 
       <p>
-        These Terms of Service (&quot;Terms&quot;) govern your access to and use of Backlio (the
+        These Terms of Service (&quot;Terms&quot;) govern your access to and use of LinkPulz (the
         &quot;Service&quot;). By creating an account or using the Service, you agree to these Terms. If
-        you are using Backlio on behalf of an organization, you represent that you have authority to
+        you are using LinkPulz on behalf of an organization, you represent that you have authority to
         bind that organization.
       </p>
 
       <h2>The Service</h2>
       <p>
-        Backlio monitors backlinks and related SEO signals for the URLs you configure. We may add,
+        LinkPulz monitors backlinks and related SEO signals for the URLs you configure. We may add,
         change or remove features over time. We aim for high availability but the Service is provided
         without any guarantee of uninterrupted operation.
       </p>
@@ -55,14 +55,14 @@ export default function TermsPage() {
 
       <h2>Intellectual property</h2>
       <p>
-        The Service, including its software and branding, is owned by Backlio and its licensors. These
+        The Service, including its software and branding, is owned by LinkPulz and its licensors. These
         Terms grant you no rights to our trademarks or source code.
       </p>
 
       <h2>Disclaimer &amp; limitation of liability</h2>
       <p>
         The Service is provided &quot;as is&quot; without warranties of any kind. To the maximum extent
-        permitted by law, Backlio will not be liable for indirect, incidental or consequential
+        permitted by law, LinkPulz will not be liable for indirect, incidental or consequential
         damages, and our total liability will not exceed the amount you paid us in the twelve months
         preceding the claim.
       </p>
@@ -81,7 +81,7 @@ export default function TermsPage() {
 
       <h2>Contact</h2>
       <p>
-        Questions about these Terms? Email <a href="mailto:legal@backlio.app">legal@backlio.app</a>.
+        Questions about these Terms? Email <a href="mailto:legal@linkpulz.com">legal@linkpulz.com</a>.
       </p>
 
       <ProseFooter />

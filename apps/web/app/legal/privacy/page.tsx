@@ -10,7 +10,7 @@ export default function PrivacyPage() {
       <p className="prose-updated">Last updated: 26 September 2026</p>
 
       <p>
-        This Privacy Policy explains how Backlio (&quot;we&quot;, &quot;us&quot;) collects, uses and
+        This Privacy Policy explains how LinkPulz (&quot;we&quot;, &quot;us&quot;) collects, uses and
         protects information when you use our backlink-monitoring service (the &quot;Service&quot;). We
         act as the data controller for your account data and as a data processor for the URLs and
         monitoring data you add on behalf of your own clients.
@@ -94,7 +94,7 @@ export default function PrivacyPage() {
       <h2>Contact</h2>
       <p>
         Questions about this policy or your data? Email{" "}
-        <a href="mailto:privacy@backlio.app">privacy@backlio.app</a>.
+        <a href="mailto:privacy@linkpulz.com">privacy@linkpulz.com</a>.
       </p>
 
       <ProseFooter />

@@ -1,4 +1,4 @@
-# Backlio
+# LinkPulz
 
 **Backlink monitoring and link-building operations for SEO agencies, link builders and consultants.**
 

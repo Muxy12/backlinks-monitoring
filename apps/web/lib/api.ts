@@ -1,4 +1,4 @@
-// Thin client for the Backlio API. Cookies carry the session, so every request
+// Thin client for the LinkPulz API. Cookies carry the session, so every request
 // uses `credentials: "include"`. Base URL is configured per environment.
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 

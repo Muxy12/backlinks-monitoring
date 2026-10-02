@@ -1,4 +1,4 @@
-# Render blueprint for the Backlio API (docs/17). Free plan, Docker build from
+# Render blueprint for the LinkPulz API (docs/17). Free plan, Docker build from
 # the repo Dockerfile (which builds the `server` binary; the CMD runs it).
 #
 # There is no always-on worker on the free tier — monitoring is driven by the

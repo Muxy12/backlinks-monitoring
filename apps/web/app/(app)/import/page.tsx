@@ -255,7 +255,7 @@ export default function ImportPage() {
           <h3 className="disc-h" style={{ marginTop: 18 }}>Seed &amp; crawl known domains</h3>
           <p className="muted" style={{ marginBottom: 8 }}>
             Paste referring <b>domains</b> (one per line) — or a Google Search Console
-            “Top linking sites” export (first column). Backlio crawls each (SSRF-safe, bounded)
+            “Top linking sites” export (first column). LinkPulz crawls each (SSRF-safe, bounded)
             to find the actual pages that link to <b className="mono">{targetDomain || "your site"}</b>.
           </p>
           <textarea

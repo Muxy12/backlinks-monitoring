@@ -15,7 +15,7 @@
   another session is rejected.
 - Errors are RFC 7807 `application/problem+json`:
   ```json
-  { "type": "https://backlio.app/errors/validation",
+  { "type": "https://linkpulz.com/errors/validation",
     "title": "Validation failed", "status": 422,
     "detail": "source_url must be a valid http(s) URL",
     "errors": { "source_url": ["invalid_url"] },

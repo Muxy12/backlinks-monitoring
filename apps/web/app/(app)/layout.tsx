@@ -72,7 +72,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <a className="side-brand" href="/dashboard" onClick={() => setOpen(false)}>
       <span className="brand-mark" />
       <span className="side-brand-text">
-        Backlio
+        LinkPulz
         {workspace && <span className="side-workspace">{workspace}</span>}
       </span>
     </a>

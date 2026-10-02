@@ -48,7 +48,7 @@ async fn issue_token(
 /// fail registration/reset). Logs on failure.
 async fn send_link_email(to: &str, subject: &str, intro: &str, url: &str) {
     let text =
-        format!("{intro}\n\n{url}\n\nIf you didn't request this, ignore this email.\n\n— Backlio");
+        format!("{intro}\n\n{url}\n\nIf you didn't request this, ignore this email.\n\n— LinkPulz");
     if let Err(e) = notifications::resend::send_email(to, subject, &text).await {
         tracing::warn!(error = %e, subject, "auth email not sent");
     }
@@ -125,8 +125,8 @@ pub async fn register(
         let url = format!("{}/verify?token={}", app_url(), secret);
         send_link_email(
             &user.email,
-            "Verify your Backlio email",
-            "Confirm your email address to secure your Backlio account:",
+            "Verify your LinkPulz email",
+            "Confirm your email address to secure your LinkPulz account:",
             &url,
         )
         .await;
@@ -175,8 +175,8 @@ pub async fn resend_verification(
         let url = format!("{}/verify?token={}", app_url(), secret);
         send_link_email(
             &user.email,
-            "Verify your Backlio email",
-            "Confirm your email address to secure your Backlio account:",
+            "Verify your LinkPulz email",
+            "Confirm your email address to secure your LinkPulz account:",
             &url,
         )
         .await;
@@ -196,7 +196,7 @@ pub async fn forgot_password(
         let url = format!("{}/reset?token={}", app_url(), secret);
         send_link_email(
             &user.email,
-            "Reset your Backlio password",
+            "Reset your LinkPulz password",
             "Use this link to set a new password (valid for 1 hour):",
             &url,
         )

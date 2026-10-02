@@ -29,7 +29,7 @@ export default function LoginPage() {
     <div className="auth-wrap">
       <form className="auth-card" onSubmit={onSubmit}>
         <h1>Log in</h1>
-        <p className="sub">Welcome back to Backlio.</p>
+        <p className="sub">Welcome back to LinkPulz.</p>
         {error && <div className="auth-error">{error}</div>}
         <label className="auth-field">
           <span>Email</span>

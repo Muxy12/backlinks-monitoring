@@ -1,4 +1,4 @@
-# Backlio — architecture documentation
+# LinkPulz — architecture documentation
 
 Backlink monitoring and link-building operations platform.
 **Rust + Axum · Neon PostgreSQL · Next.js on Vercel.**

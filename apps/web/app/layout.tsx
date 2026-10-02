@@ -16,8 +16,8 @@ export const metadata: Metadata = {
   // to an absolute URL on the canonical origin.
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Backlio — Backlink Monitoring for SEO Teams",
-    template: "%s — Backlio",
+    default: "LinkPulz — Backlink Monitoring for SEO Teams",
+    template: "%s — LinkPulz",
   },
   description:
     "Monitor every backlink you build. Track lost links, nofollow changes, anchors, campaigns, costs and warranties from one dashboard.",

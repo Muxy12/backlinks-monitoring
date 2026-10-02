@@ -685,7 +685,7 @@ export default function DashboardPage() {
                 <p>
                   {projects.length === 0
                     ? "Create a project first, then import the backlinks you want to monitor."
-                    : "Import a CSV of backlinks and Backlio will track their status, anchors, rel and warranties."}
+                    : "Import a CSV of backlinks and LinkPulz will track their status, anchors, rel and warranties."}
                 </p>
                 <div className="empty-cta">
                   {projects.length === 0 ? (

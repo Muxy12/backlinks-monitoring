@@ -6,5 +6,5 @@ export const SITE_URL = (
   process.env.NEXT_PUBLIC_APP_URL ?? "https://web-sooty-one-68.vercel.app"
 ).replace(/\/$/, "");
 
-export const SITE_NAME = "Backlio";
+export const SITE_NAME = "LinkPulz";
 export const SITE_TAGLINE = "Backlink monitoring for SEO teams";

@@ -5,7 +5,7 @@ import "./cookie-banner.css";
 
 const KEY = "backlio_cookies_ack";
 
-// Lightweight cookie notice. Backlio sets only strictly-necessary cookies
+// Lightweight cookie notice. LinkPulz sets only strictly-necessary cookies
 // (session + CSRF), so this is an informational notice, not a consent gate —
 // there is nothing to opt out of. If optional (e.g. analytics) cookies are ever
 // added, this becomes a real consent choice. Acknowledgement is remembered in

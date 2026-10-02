@@ -1,4 +1,4 @@
-# Backlio — Cargo workspace root (docs/02-monorepo.md, ADR-0001)
+# LinkPulz — Cargo workspace root (docs/02-monorepo.md, ADR-0001)
 #
 # Every shared dependency is pinned here in [workspace.dependencies] so crates
 # cannot drift to different versions. Versions were verified as current stable

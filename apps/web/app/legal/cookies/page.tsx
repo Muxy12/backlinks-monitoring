@@ -10,7 +10,7 @@ export default function CookiesPage() {
       <p className="prose-updated">Last updated: 26 September 2026</p>
 
       <p>
-        Backlio uses a deliberately small number of cookies. We do not use advertising or
+        LinkPulz uses a deliberately small number of cookies. We do not use advertising or
         cross-site tracking cookies.
       </p>
 
@@ -45,7 +45,7 @@ export default function CookiesPage() {
 
       <h2>Contact</h2>
       <p>
-        Questions? Email <a href="mailto:privacy@backlio.app">privacy@backlio.app</a>.
+        Questions? Email <a href="mailto:privacy@linkpulz.com">privacy@linkpulz.com</a>.
       </p>
 
       <ProseFooter />

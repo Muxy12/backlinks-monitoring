@@ -3,7 +3,7 @@
 **Spec refs:** §16, §17. **Decision:** [ADR-0001](adr/0001-modular-monolith-cargo-workspace.md).
 
 ```
-Backlio/
+LinkPulz/
 ├── Cargo.toml                  # Rust workspace root; [workspace.dependencies] pins every version
 ├── pnpm-workspace.yaml
 ├── package.json

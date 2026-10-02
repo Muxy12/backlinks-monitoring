@@ -1,4 +1,4 @@
-# Backlio API + worker on Fly.io (ADR-0002). One app, one image, two long-running
+# LinkPulz API + worker on Fly.io (ADR-0002). One app, one image, two long-running
 # process groups:
 #   web    → /app/server  (the HTTP API; the only group with a public service)
 #   worker → /app/worker  (the monitoring loop; also runs the scheduler on a

@@ -1,4 +1,4 @@
-//! Backlio HTTP API (docs/09). `app()` builds the whole router so both the
+//! LinkPulz HTTP API (docs/09). `app()` builds the whole router so both the
 //! container `server` binary and any other host share one definition (ADR-0002).
 
 pub mod error;

@@ -27,7 +27,7 @@ pub struct CrawlerConfig {
 impl Default for CrawlerConfig {
     fn default() -> Self {
         CrawlerConfig {
-            user_agent: "Backlio/1.0 (+https://backlio.app/bot)".into(),
+            user_agent: "LinkPulz/1.0 (+https://linkpulz.com/bot)".into(),
             request_timeout: Duration::from_secs(15),
             total_timeout: Duration::from_secs(30),
             max_redirects: 5,

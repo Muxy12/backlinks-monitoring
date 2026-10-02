@@ -1,4 +1,4 @@
-//! Backlio domain core — types and the backlink state machine.
+//! LinkPulz domain core — types and the backlink state machine.
 //!
 //! This crate has **no I/O**: no sqlx, no reqwest, no axum, no clock. Every
 //! decision is a pure function of its arguments (ADR-0001, docs/08). That is
