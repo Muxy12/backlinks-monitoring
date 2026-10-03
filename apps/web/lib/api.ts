@@ -90,6 +90,7 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ email, turnstile_token: turnstileToken, attribution }),
     }),
+  waitlistCount: () => request<{ count: number }>("/v1/waitlist/count"),
   register: (
     email: string,
     password: string,

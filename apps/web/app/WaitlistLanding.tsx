@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { readAttribution } from "@/lib/attribution";
 import { Turnstile, TURNSTILE_ENABLED } from "./turnstile";
@@ -22,6 +22,13 @@ export function WaitlistLanding() {
   const [status, setStatus] = useState<"idle" | "busy" | "done">("idle");
   const [already, setAlready] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [count, setCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    api.waitlistCount().then((r) => {
+      if (r.ok) setCount(r.data.count);
+    });
+  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -38,6 +45,8 @@ export function WaitlistLanding() {
       return;
     }
     setAlready(res.data.already);
+    // Reflect a brand-new signup in the live counter.
+    if (!res.data.already) setCount((c) => (c != null ? c + 1 : c));
     setStatus("done");
   }
 
@@ -93,6 +102,16 @@ export function WaitlistLanding() {
               {error && <p className="wl-error">{error}</p>}
               <p className="wl-micro">Early access + one email when we launch. Unsubscribe anytime.</p>
             </>
+          )}
+
+          {count != null && count > 0 && (
+            <div className="wl-social" aria-live="polite">
+              <span className="wl-avatars" aria-hidden="true"><i /><i /><i /></span>
+              <span>
+                <b>{count.toLocaleString()}</b>{" "}
+                {count === 1 ? "person has" : "people have"} joined the waitlist
+              </span>
+            </div>
           )}
         </section>
 
