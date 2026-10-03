@@ -91,6 +91,26 @@ pub async fn create_invitation(
         ));
     }
 
+    // Trial expired or subscription inactive → block new invites (data kept).
+    if !db::repositories::billing::is_access_active(&state.pool, org_id).await? {
+        return Err(ApiError::PlanLimit(
+            "your trial has ended or your subscription is inactive — choose a plan to continue"
+                .into(),
+        ));
+    }
+    // Plan seat limit (docs/20): committed seats = current members + pending invites.
+    let plan = db::repositories::billing::plan_for_org(&state.pool, org_id).await?;
+    let seats_used = (members::count_for_org(&state.pool, org_id).await?
+        + invitations::count_pending_for_org(&state.pool, org_id).await?)
+        as u32;
+    if let billing::AddOutcome::OverLimit { limit, .. } =
+        billing::Entitlements::new(plan).can_add_seat(seats_used)
+    {
+        return Err(ApiError::PlanLimit(format!(
+            "plan limit of {limit} team seats reached — upgrade to invite more"
+        )));
+    }
+
     let token = auth::token::Token::generate();
     let expires_at = chrono::Utc::now() + chrono::Duration::days(INVITE_TTL_DAYS);
     let inv = invitations::create(
@@ -187,6 +207,18 @@ pub async fn accept_invitation(
     if !user.email.eq_ignore_ascii_case(&inv.email) {
         // Do not reveal which org/email — treat as not found for this caller.
         return Err(ApiError::NotFound);
+    }
+
+    // Re-check the seat cap at accept time — the workspace may be full now.
+    let plan = db::repositories::billing::plan_for_org(&state.pool, inv.organization_id).await?;
+    let seats_used = members::count_for_org(&state.pool, inv.organization_id).await? as u32;
+    if !billing::Entitlements::new(plan)
+        .can_add_seat(seats_used)
+        .is_allowed()
+    {
+        return Err(ApiError::PlanLimit(
+            "this workspace has reached its team-seat limit".into(),
+        ));
     }
 
     invitations::accept(&state.pool, inv.id, inv.organization_id, user.id, &inv.role).await?;

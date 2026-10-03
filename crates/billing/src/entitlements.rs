@@ -85,9 +85,9 @@ mod tests {
 
     #[test]
     fn add_within_limit_reports_remaining() {
-        let e = Entitlements::new(Plan::Starter); // 1000
+        let e = Entitlements::new(Plan::Starter); // 500 backlinks
         assert_eq!(
-            e.can_add_backlinks(900, 50),
+            e.can_add_backlinks(400, 50),
             AddOutcome::Allowed {
                 remaining: Some(50)
             }
@@ -96,56 +96,47 @@ mod tests {
 
     #[test]
     fn add_exactly_to_limit_is_allowed() {
-        let e = Entitlements::new(Plan::Starter);
+        let e = Entitlements::new(Plan::Starter); // 500
         assert_eq!(
-            e.can_add_backlinks(999, 1),
+            e.can_add_backlinks(499, 1),
             AddOutcome::Allowed { remaining: Some(0) }
         );
     }
 
     #[test]
     fn add_over_limit_is_blocked_with_context() {
-        let e = Entitlements::new(Plan::Starter);
+        let e = Entitlements::new(Plan::Starter); // 500
         assert_eq!(
-            e.can_add_backlinks(1000, 1),
+            e.can_add_backlinks(500, 1),
             AddOutcome::OverLimit {
-                limit: 1000,
-                current: 1000
+                limit: 500,
+                current: 500
             }
         );
     }
 
     #[test]
     fn bulk_add_that_would_exceed_is_blocked_atomically() {
-        let e = Entitlements::new(Plan::Pro); // 5000
+        let e = Entitlements::new(Plan::Pro); // 2500
         assert!(
-            !e.can_add_backlinks(4990, 20).is_allowed(),
+            !e.can_add_backlinks(2490, 20).is_allowed(),
             "a 20-add crossing the cap is rejected"
         );
-        assert!(e.can_add_backlinks(4990, 10).is_allowed());
-    }
-
-    #[test]
-    fn unlimited_plan_always_allows() {
-        let e = Entitlements::new(Plan::AgencyPlus); // projects unlimited
-        assert_eq!(
-            e.can_add_project(10_000),
-            AddOutcome::Allowed { remaining: None }
-        );
+        assert!(e.can_add_backlinks(2490, 10).is_allowed());
     }
 
     #[test]
     fn downgrade_over_limit_keeps_monitoring_but_blocks_new() {
-        // Org had 4000 backlinks on Pro, downgrades to Starter (1000).
+        // Org had 2000 backlinks on Pro, downgrades to Starter (500).
         let starter = Entitlements::new(Plan::Starter);
         assert!(
-            starter.is_over_backlink_limit(4000),
+            starter.is_over_backlink_limit(2000),
             "existing usage is over the new cap"
         );
         // Existing links keep being monitored (nothing here deletes them);
         // but no new backlink may be added.
         assert!(
-            !starter.can_add_backlinks(4000, 1).is_allowed(),
+            !starter.can_add_backlinks(2000, 1).is_allowed(),
             "new adds blocked while over cap"
         );
     }
@@ -162,5 +153,11 @@ mod tests {
         assert!(starter.can_add_project(2).is_allowed());
         assert!(!starter.can_add_project(3).is_allowed());
         assert!(!starter.can_add_seat(1).is_allowed());
+
+        let business = Entitlements::new(Plan::Business); // 25 projects, 5 seats
+        assert!(business.can_add_project(24).is_allowed());
+        assert!(!business.can_add_project(25).is_allowed());
+        assert!(business.can_add_seat(4).is_allowed());
+        assert!(!business.can_add_seat(5).is_allowed());
     }
 }

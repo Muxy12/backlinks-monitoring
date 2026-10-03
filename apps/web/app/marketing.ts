@@ -240,6 +240,34 @@ export const MARKETING_STYLE = `
 #lp-home .hero .cta-row{animation-delay:.22s}
 #lp-home .hero .micro{animation-delay:.28s}
 @media(prefers-reduced-motion:reduce){#lp-home .hero .badge,#lp-home .hero h1,#lp-home .hero .lead,#lp-home .hero ul.check,#lp-home .hero .cta-row,#lp-home .hero .micro{animation:none}}
+
+/* ── pricing page (pure-CSS monthly/annual toggle) ── */
+#lp-home .bill-radio{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+#lp-home .bill-toggle{display:inline-flex;align-items:center;gap:4px;margin:20px auto 6px;padding:5px;border:1px solid var(--line);border-radius:999px;background:var(--bg-alt)}
+#lp-home .bill-toggle .seg{font-size:.9rem;font-weight:650;color:var(--muted);padding:8px 18px;border-radius:999px;cursor:pointer;transition:.15s;display:inline-flex;align-items:center;gap:8px;user-select:none}
+#lp-home #bill-m:checked~.bill-toggle label[for="bill-m"],#lp-home #bill-a:checked~.bill-toggle label[for="bill-a"]{background:var(--brand);color:#fff}
+#lp-home .bill-radio:focus-visible~.bill-toggle{outline:2px solid var(--brand);outline-offset:2px}
+#lp-home .save-badge{display:inline-block;font-size:.76rem;font-weight:700;color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,transparent);padding:3px 10px;border-radius:999px}
+#lp-home #bill-a:checked~.bill-toggle label[for="bill-a"] .save-badge{background:rgba(255,255,255,.22);color:#fff}
+#lp-home .plan .price-annual{display:none}
+#lp-home #bill-a:checked~.plans .price-monthly{display:none}
+#lp-home #bill-a:checked~.plans .price-annual{display:block}
+#lp-home .plans{grid-template-columns:repeat(auto-fit,minmax(232px,1fr))}
+#lp-home .plan{position:relative;text-align:left}
+#lp-home .plan.hl{box-shadow:0 10px 36px color-mix(in srgb,var(--brand) 20%,transparent)}
+#lp-home .plan .pop{position:absolute;top:-12px;left:50%;transform:translateX(-50%);font-size:.72rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#fff;background:linear-gradient(135deg,var(--brand),var(--violet));padding:4px 13px;border-radius:999px;white-space:nowrap;box-shadow:0 4px 12px color-mix(in srgb,var(--brand) 30%,transparent)}
+#lp-home .plan h3{font-size:1.15rem;margin-bottom:2px}
+#lp-home .plan .pos{font-size:.88rem;color:var(--muted);min-height:40px;margin-bottom:6px}
+#lp-home .plan .price{font-size:2.3rem;font-weight:800;margin:4px 0 0;letter-spacing:-.02em}
+#lp-home .plan .price small{font-size:1rem;color:var(--muted);font-weight:500}
+#lp-home .plan .per{font-size:.84rem;color:var(--muted);min-height:18px;margin-bottom:14px}
+#lp-home .plan .limits{display:grid;gap:5px;margin:0 0 14px;font-size:.92rem}
+#lp-home .plan .limits b{font-weight:700}
+#lp-home .plan .feats{list-style:none;padding:0;margin:4px 0 16px;flex:1;display:grid;gap:9px}
+#lp-home .plan .feats li{padding-left:24px;position:relative;font-size:.9rem;line-height:1.35}
+#lp-home .plan .feats li::before{content:"✓";position:absolute;left:0;top:0;color:var(--accent);font-weight:800}
+#lp-home .plan .btn{justify-content:center;text-align:center}
+#lp-home .price-note{font-size:.9rem;color:var(--muted);margin-top:18px}
 </style>`;
 
 // Shared sticky header. Nav anchors are absolute (/#…) so they work from any
@@ -251,7 +279,7 @@ export const MARKETING_HEADER = `
     <nav class="main" aria-label="Main">
       <a href="/#features">Features</a>
       <a href="/#how-it-works">How it works</a>
-      <a href="/#pricing">Pricing</a>
+      <a href="/pricing">Pricing</a>
       <a href="/#faq">FAQ</a>
       <a class="btn sm" href="/register">Start free trial</a>
     </nav>
@@ -264,7 +292,7 @@ export const MARKETING_FOOTER = `
     <div><a class="logo" href="/">Link<span>Pulz</span></a><p class="micro" style="margin-top:8px">Backlink monitoring software.</p></div>
     <div><b>Product</b><br><a href="/lost-backlinks">Lost backlinks</a><a href="/broken-backlinks">Broken backlinks</a><a href="/verify-backlinks">Verify a backlink</a><a href="/backlink-health-check">Backlink health check</a></div>
     <div><b>Guides</b><br><a href="/backlink-management">Backlink management</a><a href="/backlink-audit">Backlink audit</a><a href="/backlink-profile">Backlink profile</a><a href="/backlink-reporting">Backlink reporting</a></div>
-    <div><b>Tools</b><br><a href="/tools/backlink-checker">Free backlink checker</a><a href="/docs">Documentation</a><a href="/#pricing">Pricing</a></div>
+    <div><b>Tools</b><br><a href="/tools/backlink-checker">Free backlink checker</a><a href="/docs">Documentation</a><a href="/pricing">Pricing</a></div>
     <div><b>Company</b><br><a href="/register">Start free trial</a><a href="/login">Log in</a><a href="/legal/privacy">Privacy</a><a href="/legal/terms">Terms</a></div>
   </div>
   <div class="wrap micro" style="margin-top:24px">© <span id="y">2026</span> LinkPulz. All rights reserved.</div>

@@ -19,22 +19,54 @@ pub fn is_configured() -> bool {
     secret_key().is_some()
 }
 
-/// The Stripe Price id configured for a plan (env `STRIPE_PRICE_<PLAN>`).
-pub fn price_for_plan(plan: Plan) -> Option<String> {
-    let key = match plan {
-        Plan::Starter => "STRIPE_PRICE_STARTER",
-        Plan::Pro => "STRIPE_PRICE_PRO",
-        Plan::Agency => "STRIPE_PRICE_AGENCY",
-        Plan::AgencyPlus => "STRIPE_PRICE_AGENCY_PLUS",
-    };
-    nonempty(key)
+/// Monthly vs. annual billing (docs/20 — P4). Annual ≈ 2 months free.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Interval {
+    Monthly,
+    Annual,
 }
 
-/// Reverse map a Stripe Price id back to a plan (for webhook state application).
+impl Interval {
+    /// Parse a request's interval; anything but an explicit annual = monthly.
+    pub fn from_opt(s: Option<&str>) -> Interval {
+        match s.map(|v| v.trim().to_ascii_lowercase()).as_deref() {
+            Some("annual") | Some("year") | Some("yearly") => Interval::Annual,
+            _ => Interval::Monthly,
+        }
+    }
+}
+
+/// The env var holding a plan's monthly Stripe Price id.
+fn price_env_base(plan: Plan) -> &'static str {
+    match plan {
+        Plan::Starter => "STRIPE_PRICE_STARTER",
+        Plan::Pro => "STRIPE_PRICE_PRO",
+        Plan::Business => "STRIPE_PRICE_BUSINESS",
+        Plan::Agency => "STRIPE_PRICE_AGENCY",
+    }
+}
+
+/// The Stripe Price id for a plan at a given interval. Monthly uses
+/// `STRIPE_PRICE_<PLAN>`; annual uses `STRIPE_PRICE_<PLAN>_ANNUAL`.
+pub fn price_for_plan_interval(plan: Plan, interval: Interval) -> Option<String> {
+    match interval {
+        Interval::Monthly => nonempty(price_env_base(plan)),
+        Interval::Annual => nonempty(&format!("{}_ANNUAL", price_env_base(plan))),
+    }
+}
+
+/// The plan's monthly Stripe Price id (`STRIPE_PRICE_<PLAN>`).
+pub fn price_for_plan(plan: Plan) -> Option<String> {
+    price_for_plan_interval(plan, Interval::Monthly)
+}
+
+/// Reverse map a Stripe Price id back to a plan, for webhook state application.
+/// Matches both the monthly and the annual price of every plan.
 pub fn plan_from_price(price_id: &str) -> Option<Plan> {
-    Plan::ALL
-        .into_iter()
-        .find(|p| price_for_plan(*p).as_deref() == Some(price_id))
+    Plan::ALL.into_iter().find(|p| {
+        price_for_plan_interval(*p, Interval::Monthly).as_deref() == Some(price_id)
+            || price_for_plan_interval(*p, Interval::Annual).as_deref() == Some(price_id)
+    })
 }
 
 fn client() -> reqwest::Client {

@@ -141,6 +141,7 @@ button.plan-chip:focus-visible { outline: 2px solid var(--primary); outline-offs
 .c360-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 4px 0 4px; }
 .c360-head h2 { font-size: 19px; font-weight: 700; letter-spacing: -0.01em; }
 .c360-sub { font-family: var(--font-mono); font-size: 12px; color: var(--muted); margin-bottom: 18px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.c360-subhead { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin: 20px 0 8px; }
 .c360-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 18px; align-items: center; }
 .c360-note { margin-top: 18px; padding: 12px 14px; font-size: 12.5px; line-height: 1.5; color: var(--muted); background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-md); }
 .c360-note b { color: var(--text); }

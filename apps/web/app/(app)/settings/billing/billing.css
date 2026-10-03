@@ -1,0 +1,111 @@
+/* Trial / access notice on the billing page. */
+.trial-note {
+  border-left: 3px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 7%, var(--surface));
+}
+.trial-note.ended {
+  border-left-color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 8%, var(--surface));
+}
+
+/* Monthly / annual toggle above the plan tiles. */
+.bill-interval {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 16px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+}
+.bill-interval .bi-seg {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 650;
+  color: var(--muted);
+  padding: 7px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: 0.15s;
+}
+.bill-interval .bi-seg.on {
+  background: var(--accent);
+  color: #fff;
+}
+.bill-interval .bi-seg:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.bill-interval .bi-save {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent-2);
+}
+.bill-interval .bi-seg.on .bi-save {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+}
+
+/* Usage meters. */
+.usage-panel .usage-head {
+  font-weight: 650;
+  font-size: 0.95rem;
+  margin-bottom: 14px;
+}
+.usage-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 18px 28px;
+}
+.usage-item {
+  min-width: 0;
+}
+.usage-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 7px;
+}
+.usage-label {
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+.usage-count {
+  font-size: 0.9rem;
+  font-weight: 650;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.usage-count.over {
+  color: var(--danger);
+}
+.usage-bar {
+  height: 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text) 9%, transparent);
+  overflow: hidden;
+}
+.usage-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+.usage-fill.high {
+  background: color-mix(in srgb, var(--danger) 55%, var(--accent));
+}
+.usage-fill.over {
+  background: var(--danger);
+}

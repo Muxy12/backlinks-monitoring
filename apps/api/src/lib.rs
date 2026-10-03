@@ -251,6 +251,10 @@ pub fn app(state: AppState) -> Router {
             get(routes::billing_routes::billing_status),
         )
         .route(
+            "/v1/organizations/{org_id}/billing/usage",
+            get(routes::billing_routes::billing_usage),
+        )
+        .route(
             "/v1/organizations/{org_id}/billing/checkout",
             post(routes::billing_routes::create_checkout),
         )
@@ -262,6 +266,8 @@ pub fn app(state: AppState) -> Router {
             "/v1/billing/webhook",
             post(routes::billing_routes::stripe_webhook),
         )
+        // Public plan catalog (one source of truth for pricing/billing UIs).
+        .route("/v1/plans", get(routes::billing_routes::list_plans))
         .route(
             "/v1/tools/backlink-check",
             post(routes::tools_routes::backlink_check),
@@ -295,6 +301,10 @@ pub fn app(state: AppState) -> Router {
         // plan-limit usage. GET-only, gated on is_platform_admin like the rest.
         .route("/v1/admin/ops", get(routes::admin_routes::ops))
         .route("/v1/admin/billing", get(routes::admin_routes::billing))
+        .route(
+            "/v1/admin/subscriptions",
+            get(routes::admin_routes::list_subscriptions),
+        )
         .route(
             "/v1/admin/usage/limits",
             get(routes::admin_routes::usage_limits),

@@ -18,6 +18,20 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use uuid::Uuid;
 
+/// Reject the request when the workspace has no active paid access — an expired
+/// trial or an inactive/canceled subscription (docs/20). Existing data is kept;
+/// only new paid actions are blocked.
+async fn enforce_active_access(state: &AppState, scope: &db::OrgScope) -> Result<(), ApiError> {
+    if db::repositories::billing::is_access_active(&state.pool, scope.organization_id()).await? {
+        Ok(())
+    } else {
+        Err(ApiError::PlanLimit(
+            "your trial has ended or your subscription is inactive — choose a plan to continue"
+                .into(),
+        ))
+    }
+}
+
 /// Enforce the org's plan backlink cap before adding `count` (§39). Existing
 /// links are never touched; only new adds over the cap are blocked.
 async fn enforce_backlink_quota(
@@ -25,6 +39,7 @@ async fn enforce_backlink_quota(
     scope: &db::OrgScope,
     count: u32,
 ) -> Result<(), ApiError> {
+    enforce_active_access(state, scope).await?;
     let plan =
         db::repositories::billing::plan_for_org(&state.pool, scope.organization_id()).await?;
     let current = db::repositories::backlinks::count_active(&state.pool, scope).await? as u32;
@@ -235,6 +250,19 @@ pub async fn create_project(
     if let Some(cid) = body.client_id {
         clients::get(&state.pool, &scope, cid).await?; // 404 if not in org
     }
+    enforce_active_access(&state, &scope).await?;
+    // Plan project limit (docs/20). Over-limit blocks new projects; existing kept.
+    let plan =
+        db::repositories::billing::plan_for_org(&state.pool, scope.organization_id()).await?;
+    let current = projects::count(&state.pool, &scope).await? as u32;
+    if let billing::AddOutcome::OverLimit { limit, .. } =
+        billing::Entitlements::new(plan).can_add_project(current)
+    {
+        return Err(ApiError::PlanLimit(format!(
+            "plan limit of {limit} projects reached — upgrade to add more"
+        )));
+    }
+
     let project = projects::create(
         &state.pool,
         &scope,

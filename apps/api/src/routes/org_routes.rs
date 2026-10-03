@@ -75,6 +75,8 @@ pub async fn create(
     }
 
     let org = orgs::create_with_owner(&state.pool, Uuid::now_v7(), name, &slug, user.id).await?;
+    // Start the 10-day free trial (no card) for the new workspace (docs/20).
+    db::repositories::billing::start_trial(&state.pool, org.id).await?;
     Ok((
         StatusCode::CREATED,
         Json(OrgView {

@@ -65,6 +65,11 @@ async fn scheduler_dedupes_by_source_and_handler_checks_all() {
     let org = orgs::create_with_owner(pool, Uuid::now_v7(), "O", &uniq("o"), user.id)
         .await
         .unwrap();
+    // A new workspace gets a 10-day trial in production (the create-org handler
+    // calls this); the scheduler only monitors orgs with active access (docs/20).
+    db::repositories::billing::start_trial(pool, org.id)
+        .await
+        .unwrap();
     let scope = authorize_org(pool, user.id, org.id).await.unwrap();
     let project = db::repositories::projects::create(
         pool,

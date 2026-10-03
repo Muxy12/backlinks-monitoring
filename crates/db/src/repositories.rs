@@ -372,18 +372,28 @@ pub mod admin {
     pub struct BillingCounts {
         pub active: i64,
         pub trialing: i64,
+        /// Trials still live (`trial_end` in the future).
+        pub trialing_active: i64,
+        /// Trials whose window has elapsed but never converted (access locked).
+        pub trialing_expired: i64,
         pub past_due: i64,
         pub canceled: i64,
         pub comped: i64,
     }
 
-    /// Subscription status counts. `comped` = active/past_due rows with the
-    /// admin placeholder customer id, so the handler can keep them out of MRR.
+    /// Subscription status counts, including the trial funnel split. `comped` =
+    /// active/past_due rows with the admin placeholder customer id, so the handler
+    /// can keep them out of MRR.
     pub async fn billing_counts(pool: &PgPool) -> Result<BillingCounts, DbError> {
         sqlx::query_as::<_, BillingCounts>(
             "SELECT \
                (SELECT count(*) FROM subscriptions WHERE status = 'active')::bigint AS active, \
                (SELECT count(*) FROM subscriptions WHERE status = 'trialing')::bigint AS trialing, \
+               (SELECT count(*) FROM subscriptions \
+                  WHERE status = 'trialing' AND trial_end > now())::bigint AS trialing_active, \
+               (SELECT count(*) FROM subscriptions \
+                  WHERE status = 'trialing' \
+                    AND (trial_end IS NULL OR trial_end <= now()))::bigint AS trialing_expired, \
                (SELECT count(*) FROM subscriptions WHERE status = 'past_due')::bigint AS past_due, \
                (SELECT count(*) FROM subscriptions WHERE status = 'canceled')::bigint AS canceled, \
                (SELECT count(*) FROM subscriptions WHERE status IN ('active','past_due') \
@@ -392,6 +402,47 @@ pub mod admin {
         .fetch_one(pool)
         .await
         .map_err(DbError::from_fetch)
+    }
+
+    #[derive(Debug, Clone, sqlx::FromRow)]
+    pub struct AdminSubscription {
+        pub id: Uuid,
+        pub name: String,
+        pub owner_email: Option<String>,
+        pub plan: String,
+        pub status: String,
+        pub trial_end: Option<DateTime<Utc>>,
+        pub current_period_end: Option<DateTime<Utc>>,
+        pub cancel_at_period_end: bool,
+        pub canceled_at: Option<DateTime<Utc>>,
+        /// Admin-set (comped) subscription — excluded from revenue.
+        pub comped: bool,
+    }
+
+    /// Every org that has a subscription row, with its billing state (plan,
+    /// status, trial end, renewal date, pending cancel). Problem/active states
+    /// first; the handler prices each against the catalog for per-customer MRR.
+    pub async fn list_subscriptions(pool: &PgPool) -> Result<Vec<AdminSubscription>, DbError> {
+        Ok(sqlx::query_as::<_, AdminSubscription>(
+            "SELECT o.id, o.name, \
+               (SELECT u.email FROM organization_members m \
+                  JOIN users u ON u.id = m.user_id \
+                  WHERE m.organization_id = o.id AND m.role = 'owner' \
+                  ORDER BY u.created_at LIMIT 1) AS owner_email, \
+               s.plan::text AS plan, s.status, s.trial_end, s.current_period_end, \
+               s.cancel_at_period_end, s.canceled_at, \
+               (s.stripe_customer_id LIKE 'admin:%') AS comped \
+             FROM subscriptions s \
+             JOIN organizations o ON o.id = s.organization_id \
+             ORDER BY \
+               CASE s.status \
+                 WHEN 'past_due' THEN 0 WHEN 'active' THEN 1 \
+                 WHEN 'trialing' THEN 2 WHEN 'canceled' THEN 4 ELSE 3 END, \
+               s.current_period_end ASC NULLS LAST, s.trial_end ASC NULLS LAST \
+             LIMIT 500",
+        )
+        .fetch_all(pool)
+        .await?)
     }
 
     #[derive(Debug, Clone, sqlx::FromRow)]
@@ -840,6 +891,17 @@ pub mod projects {
         .bind(scope.organization_id())
         .fetch_all(pool)
         .await?)
+    }
+
+    /// Active (non-archived) project count for the org — for plan-limit checks.
+    pub async fn count(pool: &PgPool, scope: &OrgScope) -> Result<i64, DbError> {
+        let (n,): (i64,) = sqlx::query_as(
+            "SELECT count(*) FROM projects WHERE organization_id = $1 AND archived_at IS NULL",
+        )
+        .bind(scope.organization_id())
+        .fetch_one(pool)
+        .await?;
+        Ok(n)
     }
 
     pub async fn get(pool: &PgPool, scope: &OrgScope, id: Uuid) -> Result<Project, DbError> {
@@ -2496,10 +2558,21 @@ pub mod scheduler {
             .execute(&mut *tx)
             .await?;
 
+        // Only monitor workspaces that are actually entitled: not suspended, and
+        // with an active/past_due subscription or an un-expired trial (docs/20).
+        // Expired trials, canceled subscriptions and suspended orgs are skipped —
+        // the cost-protection gate (their data is kept, just not crawled).
         let due: Vec<(Uuid, String, String)> = sqlx::query_as(
-            "SELECT id, source_url, source_url_normalized FROM backlinks \
-             WHERE archived_at IS NULL AND next_check_at IS NOT NULL AND next_check_at <= now() \
-             ORDER BY next_check_at LIMIT $1 FOR UPDATE SKIP LOCKED",
+            "SELECT b.id, b.source_url, b.source_url_normalized FROM backlinks b \
+             WHERE b.archived_at IS NULL AND b.next_check_at IS NOT NULL AND b.next_check_at <= now() \
+               AND EXISTS ( \
+                   SELECT 1 FROM organizations o \
+                   JOIN subscriptions s ON s.organization_id = o.id \
+                   WHERE o.id = b.organization_id \
+                     AND o.suspended_at IS NULL \
+                     AND ( s.status IN ('active','past_due') \
+                        OR (s.status = 'trialing' AND s.trial_end > now()) ) ) \
+             ORDER BY b.next_check_at LIMIT $1 FOR UPDATE SKIP LOCKED",
         )
         .bind(batch)
         .fetch_all(&mut *tx)
@@ -2732,6 +2805,46 @@ pub mod billing {
             .unwrap_or(Plan::Starter))
     }
 
+    /// Open a 10-day, no-card free trial for a new workspace (docs/20). The trial
+    /// entitlement is Starter's limits (500 backlinks / 3 projects / 1 seat).
+    /// No Stripe customer yet, so a placeholder id satisfies the NOT NULL column.
+    /// Idempotent: a workspace that already has a subscription is left untouched.
+    pub async fn start_trial(pool: &PgPool, organization_id: Uuid) -> Result<(), DbError> {
+        sqlx::query(
+            "INSERT INTO subscriptions \
+                (id, organization_id, stripe_customer_id, plan, status, \
+                 current_period_start, current_period_end, trial_end) \
+             VALUES ($1, $2, $3, 'starter'::subscription_plan, 'trialing', \
+                 now(), now() + interval '10 days', now() + interval '10 days') \
+             ON CONFLICT (organization_id) DO NOTHING",
+        )
+        .bind(Uuid::now_v7())
+        .bind(organization_id)
+        .bind(format!("trial:{organization_id}"))
+        .execute(pool)
+        .await
+        .map_err(DbError::from_insert)?;
+        Ok(())
+    }
+
+    /// Whether the org may use paid functionality right now: an `active`/`past_due`
+    /// subscription, or a `trialing` one whose `trial_end` is still in the future.
+    /// An expired trial or canceled subscription returns false — new adds and
+    /// monitoring are blocked, but existing data is never touched (docs/20).
+    pub async fn is_access_active(pool: &PgPool, organization_id: Uuid) -> Result<bool, DbError> {
+        let (ok,): (bool,) = sqlx::query_as(
+            "SELECT EXISTS ( \
+                SELECT 1 FROM subscriptions \
+                WHERE organization_id = $1 \
+                  AND ( status IN ('active','past_due') \
+                     OR (status = 'trialing' AND trial_end > now()) ) )",
+        )
+        .bind(organization_id)
+        .fetch_one(pool)
+        .await?;
+        Ok(ok)
+    }
+
     /// Record a Stripe event id, idempotently (§39, S5). Returns true if this is
     /// the first time we've seen it (should process), false on replay (no-op).
     pub async fn record_stripe_event(
@@ -2764,18 +2877,20 @@ pub mod billing {
         Ok(row.map(|(c,)| c))
     }
 
-    /// Plan + status for display (defaults to starter / none when unsubscribed).
+    /// Plan + status + trial end for display (defaults to starter / none / no
+    /// trial when unsubscribed). `trial_end` is the raw timestamp; the API layer
+    /// derives "days left" from it so we never decode a Postgres interval here.
     pub async fn status_for_org(
         pool: &PgPool,
         organization_id: Uuid,
-    ) -> Result<(String, String), DbError> {
-        let row: Option<(String, String)> = sqlx::query_as(
-            "SELECT plan::text, status FROM subscriptions WHERE organization_id = $1",
+    ) -> Result<(String, String, Option<chrono::DateTime<chrono::Utc>>), DbError> {
+        let row: Option<(String, String, Option<chrono::DateTime<chrono::Utc>>)> = sqlx::query_as(
+            "SELECT plan::text, status, trial_end FROM subscriptions WHERE organization_id = $1",
         )
         .bind(organization_id)
         .fetch_optional(pool)
         .await?;
-        Ok(row.unwrap_or_else(|| ("starter".to_string(), "none".to_string())))
+        Ok(row.unwrap_or_else(|| ("starter".to_string(), "none".to_string(), None)))
     }
 
     /// Upsert the org's subscription from a completed checkout (webhook). One row
@@ -2810,24 +2925,118 @@ pub mod billing {
         Ok(())
     }
 
-    /// Update plan/status by Stripe subscription id (subscription.updated/deleted).
+    /// Update plan/status by Stripe subscription id (subscription.deleted, and
+    /// the invoice fallbacks). COALESCE keeps the existing plan when the event
+    /// carries no price we map. When the new status is `canceled` we stamp
+    /// `canceled_at` and clear the pending cancel flag.
     pub async fn update_subscription_by_stripe_id(
         pool: &PgPool,
         subscription_id: &str,
         plan_slug: Option<&str>,
         status: &str,
     ) -> Result<(), DbError> {
-        // COALESCE keeps the existing plan when the event carries no price we map.
         sqlx::query(
             "UPDATE subscriptions SET \
                 status = $2, \
                 plan = COALESCE($3::subscription_plan, plan), \
+                canceled_at = CASE WHEN $2 = 'canceled' THEN now() ELSE canceled_at END, \
+                cancel_at_period_end = CASE WHEN $2 = 'canceled' THEN false ELSE cancel_at_period_end END, \
                 updated_at = now() \
              WHERE stripe_subscription_id = $1",
         )
         .bind(subscription_id)
         .bind(status)
         .bind(plan_slug)
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    /// Full subscription upsert from a `customer.subscription.*` event (docs/20 —
+    /// P4). Keyed by organization (one row per org), so it is robust to event
+    /// ordering: it creates the row if `checkout.session.completed` has not landed
+    /// yet, otherwise updates it in place. Period/trial fields use COALESCE so a
+    /// later event that omits one keeps the stored value instead of nulling it.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn upsert_subscription_from_stripe(
+        pool: &PgPool,
+        organization_id: Uuid,
+        customer_id: &str,
+        subscription_id: Option<&str>,
+        plan_slug: Option<&str>,
+        status: &str,
+        current_period_start: Option<chrono::DateTime<chrono::Utc>>,
+        current_period_end: Option<chrono::DateTime<chrono::Utc>>,
+        cancel_at_period_end: bool,
+        canceled_at: Option<chrono::DateTime<chrono::Utc>>,
+        trial_end: Option<chrono::DateTime<chrono::Utc>>,
+    ) -> Result<(), DbError> {
+        sqlx::query(
+            "INSERT INTO subscriptions \
+                (id, organization_id, stripe_customer_id, stripe_subscription_id, plan, status, \
+                 current_period_start, current_period_end, cancel_at_period_end, \
+                 canceled_at, trial_end) \
+             VALUES ($1, $2, $3, $4, \
+                     COALESCE($5::subscription_plan, 'starter'::subscription_plan), $6, \
+                     $7, $8, $9, $10, $11) \
+             ON CONFLICT (organization_id) DO UPDATE SET \
+                stripe_customer_id = EXCLUDED.stripe_customer_id, \
+                stripe_subscription_id = \
+                    COALESCE(EXCLUDED.stripe_subscription_id, subscriptions.stripe_subscription_id), \
+                plan = COALESCE($5::subscription_plan, subscriptions.plan), \
+                status = EXCLUDED.status, \
+                current_period_start = \
+                    COALESCE(EXCLUDED.current_period_start, subscriptions.current_period_start), \
+                current_period_end = \
+                    COALESCE(EXCLUDED.current_period_end, subscriptions.current_period_end), \
+                cancel_at_period_end = EXCLUDED.cancel_at_period_end, \
+                canceled_at = EXCLUDED.canceled_at, \
+                trial_end = COALESCE(EXCLUDED.trial_end, subscriptions.trial_end), \
+                updated_at = now()",
+        )
+        .bind(Uuid::now_v7())
+        .bind(organization_id)
+        .bind(customer_id)
+        .bind(subscription_id)
+        .bind(plan_slug)
+        .bind(status)
+        .bind(current_period_start)
+        .bind(current_period_end)
+        .bind(cancel_at_period_end)
+        .bind(canceled_at)
+        .bind(trial_end)
+        .execute(pool)
+        .await
+        .map_err(DbError::from_insert)?;
+        Ok(())
+    }
+
+    /// Dunning: a failed invoice puts a live subscription into `past_due` (the
+    /// grace state — `is_access_active` still grants access). Never resurrects a
+    /// canceled/expired subscription.
+    pub async fn mark_past_due(pool: &PgPool, subscription_id: &str) -> Result<(), DbError> {
+        sqlx::query(
+            "UPDATE subscriptions SET status = 'past_due', updated_at = now() \
+             WHERE stripe_subscription_id = $1 AND status IN ('active', 'trialing', 'past_due')",
+        )
+        .bind(subscription_id)
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    /// Dunning recovery: a succeeded invoice brings a `past_due` subscription back
+    /// to `active`. Only touches `past_due` rows, so it never overrides a trial or
+    /// a cancellation.
+    pub async fn mark_active_if_recoverable(
+        pool: &PgPool,
+        subscription_id: &str,
+    ) -> Result<(), DbError> {
+        sqlx::query(
+            "UPDATE subscriptions SET status = 'active', updated_at = now() \
+             WHERE stripe_subscription_id = $1 AND status = 'past_due'",
+        )
+        .bind(subscription_id)
         .execute(pool)
         .await?;
         Ok(())
@@ -3686,6 +3895,17 @@ pub mod members {
     use super::*;
     use crate::entities::Member;
 
+    /// Seat count (every member; the owner counts as a seat). Takes a raw org id
+    /// because it is also used at invite-accept time, before membership exists.
+    pub async fn count_for_org(pool: &PgPool, organization_id: Uuid) -> Result<i64, DbError> {
+        let (n,): (i64,) =
+            sqlx::query_as("SELECT count(*) FROM organization_members WHERE organization_id = $1")
+                .bind(organization_id)
+                .fetch_one(pool)
+                .await?;
+        Ok(n)
+    }
+
     /// Everyone in the org with their role, owners first then by join time.
     pub async fn list(pool: &PgPool, scope: &OrgScope) -> Result<Vec<Member>, DbError> {
         Ok(sqlx::query_as::<_, Member>(
@@ -3766,6 +3986,21 @@ pub mod invitations {
         .fetch_one(pool)
         .await
         .map_err(DbError::from_insert)
+    }
+
+    /// Count of outstanding (unaccepted) invitations — committed future seats.
+    pub async fn count_pending_for_org(
+        pool: &PgPool,
+        organization_id: Uuid,
+    ) -> Result<i64, DbError> {
+        let (n,): (i64,) = sqlx::query_as(
+            "SELECT count(*) FROM organization_invitations \
+             WHERE organization_id = $1 AND accepted_at IS NULL",
+        )
+        .bind(organization_id)
+        .fetch_one(pool)
+        .await?;
+        Ok(n)
     }
 
     /// Pending (unaccepted) invitations for the org, newest first.

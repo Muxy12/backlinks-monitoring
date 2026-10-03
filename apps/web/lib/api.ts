@@ -52,7 +52,36 @@ export interface BacklinkCheckResult {
   error: string | null;
 }
 
+// The plan catalog, served from the backend's single source of truth (§39).
+// `backlinks`/`projects`/`seats` are null when unlimited.
+export interface PlanView {
+  slug: string;
+  name: string;
+  price_monthly_cents: number;
+  price_annual_cents: number;
+  backlinks: number | null;
+  projects: number | null;
+  seats: number | null;
+  monitoring_interval_hours: number;
+  most_popular: boolean;
+}
+
+/** One usage dimension against the plan's cap (`limit: null` = unlimited). */
+export interface UsageItem {
+  used: number;
+  limit: number | null;
+}
+
+export interface UsageView {
+  plan: string;
+  backlinks: UsageItem;
+  projects: UsageItem;
+  seats: UsageItem;
+}
+
 export const api = {
+  // Public plan catalog for the pricing + billing pages (no auth).
+  plans: () => request<PlanView[]>("/v1/plans"),
   register: (email: string, password: string, name: string, turnstileToken?: string) =>
     request<UserView>("/v1/auth/register", {
       method: "POST",
@@ -652,14 +681,21 @@ export const orgApi = {
       { method: "POST", headers: csrfHeader() },
     ),
   billingStatus: (org: string) =>
-    request<{ plan: string; status: string; configured: boolean }>(
-      `/v1/organizations/${org}/billing`,
-    ),
-  startCheckout: (org: string, plan: string) =>
+    request<{
+      plan: string;
+      status: string;
+      configured: boolean;
+      trial_ends_at?: string;
+      trial_days_left?: number;
+      access_active: boolean;
+    }>(`/v1/organizations/${org}/billing`),
+  billingUsage: (org: string) =>
+    request<UsageView>(`/v1/organizations/${org}/billing/usage`),
+  startCheckout: (org: string, plan: string, interval: "monthly" | "annual" = "monthly") =>
     request<{ url: string }>(`/v1/organizations/${org}/billing/checkout`, {
       method: "POST",
       headers: csrfHeader(),
-      body: JSON.stringify({ plan }),
+      body: JSON.stringify({ plan, interval }),
     }),
   openBillingPortal: (org: string) =>
     request<{ url: string }>(`/v1/organizations/${org}/billing/portal`, {
@@ -749,7 +785,7 @@ export interface AdminAudit {
   resource_id: string | null;
   after: string | null;
 }
-export const ADMIN_PLANS = ["starter", "pro", "agency", "agency_plus"] as const;
+export const ADMIN_PLANS = ["starter", "pro", "business", "agency"] as const;
 export interface AdminUser {
   id: string;
   email: string;
@@ -779,10 +815,26 @@ export interface AdminBilling {
   mrr_cents: number;
   paying: number;
   trialing: number;
+  trialing_active: number;
+  trialing_expired: number;
+  conversion_pct: number | null;
   past_due: number;
   canceled: number;
   comped: number;
   by_plan: { plan: string; subscribers: number; mrr_cents: number }[];
+}
+export interface AdminSubscription {
+  id: string;
+  name: string;
+  owner_email: string | null;
+  plan: string;
+  status: string;
+  mrr_cents: number;
+  comped: boolean;
+  trial_ends_at: string | null;
+  current_period_end: string | null;
+  cancel_at_period_end: boolean;
+  canceled_at: string | null;
 }
 export interface AdminUsageLimit {
   id: string;
@@ -801,6 +853,7 @@ export const adminApi = {
   ops: (windowHours?: number) =>
     request<AdminOps>(`/v1/admin/ops${windowHours ? `?window_hours=${windowHours}` : ""}`),
   billing: () => request<AdminBilling>("/v1/admin/billing"),
+  subscriptions: () => request<AdminSubscription[]>("/v1/admin/subscriptions"),
   usageLimits: () => request<AdminUsageLimit[]>("/v1/admin/usage/limits"),
   setAdmin: (userId: string, isAdmin: boolean) =>
     request<AdminUser>(`/v1/admin/users/${userId}/admin`, {
