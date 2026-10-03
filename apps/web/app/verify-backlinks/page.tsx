@@ -47,21 +47,21 @@ const JSONLD = `{
     },
     {
       "@type": "WebPage",
-      "@id": "https://www.linkpulz.com/verify-backlinks/#webpage",
-      "url": "https://www.linkpulz.com/verify-backlinks/",
+      "@id": "https://www.linkpulz.com/verify-backlinks#webpage",
+      "url": "https://www.linkpulz.com/verify-backlinks",
       "name": "Verify Backlinks: Backlink Verification Tool | LinkPulz",
       "description": "Check if a backlink exists, is live and is dofollow. Use our backlink verification tool, then monitor the link automatically with LinkPulz.",
       "isPartOf": { "@id": "https://www.linkpulz.com/#website" },
       "about": { "@id": "https://www.linkpulz.com/#software" },
-      "breadcrumb": { "@id": "https://www.linkpulz.com/verify-backlinks/#breadcrumb" },
+      "breadcrumb": { "@id": "https://www.linkpulz.com/verify-backlinks#breadcrumb" },
       "inLanguage": "en"
     },
     {
       "@type": "BreadcrumbList",
-      "@id": "https://www.linkpulz.com/verify-backlinks/#breadcrumb",
+      "@id": "https://www.linkpulz.com/verify-backlinks#breadcrumb",
       "itemListElement": [
         { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.linkpulz.com/" },
-        { "@type": "ListItem", "position": 2, "name": "Verify Backlinks", "item": "https://www.linkpulz.com/verify-backlinks/" }
+        { "@type": "ListItem", "position": 2, "name": "Verify Backlinks", "item": "https://www.linkpulz.com/verify-backlinks" }
       ]
     },
     {
@@ -79,14 +79,14 @@ const JSONLD = `{
         "price": "0",
         "priceCurrency": "USD",
         "description": "Free trial. TO CONFIRM: replace with your real starting plan, price and currency.",
-        "url": "https://www.linkpulz.com/pricing/"
+        "url": "https://www.linkpulz.com/#pricing"
       }
     },
     {
       "@type": "WebApplication",
-      "@id": "https://www.linkpulz.com/verify-backlinks/#tool",
+      "@id": "https://www.linkpulz.com/verify-backlinks#tool",
       "name": "LinkPulz Backlink Verification Tool",
-      "url": "https://www.linkpulz.com/verify-backlinks/",
+      "url": "https://www.linkpulz.com/verify-backlinks",
       "applicationCategory": "BusinessApplication",
       "operatingSystem": "Web",
       "description": "Check whether a backlink exists on a page, its HTTP status, link attributes, anchor text and target URL.",
@@ -99,7 +99,7 @@ const JSONLD = `{
     },
     {
       "@type": "FAQPage",
-      "@id": "https://www.linkpulz.com/verify-backlinks/#faq",
+      "@id": "https://www.linkpulz.com/verify-backlinks#faq",
       "mainEntity": [
         {
           "@type": "Question",
@@ -149,7 +149,7 @@ const MAIN = `
     <p class="lead">Paste the page that links to you and your own URL. Find out in seconds whether the backlink is live, how it is set up, and whether it points to the right page.</p>
 
     <div class="tool verify">
-      <form action="/verify-backlinks/" method="get">
+      <form action="/verify-backlinks" method="get">
         <label>Source URL
           <input type="url" name="source" placeholder="https://example.com/article" required>
         </label>
@@ -172,7 +172,7 @@ const MAIN = `
 
       <div class="verify-cta">
         <p><b>Want us to check it automatically every day?</b> <span class="tc">frequency: TO CONFIRM</span></p>
-        <a class="btn" href="/signup/">Monitor this backlink with LinkPulz →</a>
+        <a class="btn" href="/register">Monitor this backlink with LinkPulz →</a>
       </div>
     </div>
   </div>
@@ -250,8 +250,8 @@ const MAIN = `
       </table>
     </div>
     <div class="center" style="margin-top:32px">
-      <a class="btn" href="/signup/">Start monitoring your backlinks</a>
-      <p class="micro" style="margin-top:12px">Links that disappear? See <a href="/lost-backlinks/">lost backlinks</a>. Links that lead to errors? See <a href="/broken-backlinks/">broken backlinks</a>.</p>
+      <a class="btn" href="/register">Start monitoring your backlinks</a>
+      <p class="micro" style="margin-top:12px">Links that disappear? See <a href="/lost-backlinks">lost backlinks</a>. Links that lead to errors? See <a href="/broken-backlinks">broken backlinks</a>.</p>
     </div>
   </div>
 </section>
@@ -276,9 +276,9 @@ const MAIN = `
   <div class="wrap">
     <div class="center"><h2 id="more-h">More backlink tools and guides</h2></div>
     <div class="cards">
-      <div class="card"><h3><a href="/lost-backlinks/">Lost Backlinks</a></h3><p>Find links that have disappeared, understand why, and win them back.</p></div>
-      <div class="card"><h3><a href="/broken-backlinks/">Broken Backlinks</a></h3><p>Find links that lead to errors, or that sit on pages returning errors.</p></div>
-      <div class="card"><h3><a href="/backlink-health-check/">Backlink Health Check</a></h3><p>See the overall state of your backlink portfolio at a glance.</p></div>
+      <div class="card"><h3><a href="/lost-backlinks">Lost Backlinks</a></h3><p>Find links that have disappeared, understand why, and win them back.</p></div>
+      <div class="card"><h3><a href="/broken-backlinks">Broken Backlinks</a></h3><p>Find links that lead to errors, or that sit on pages returning errors.</p></div>
+      <div class="card"><h3><a href="/backlink-health-check">Backlink Health Check</a></h3><p>See the overall state of your backlink portfolio at a glance.</p></div>
     </div>
   </div>
 </section>
@@ -288,7 +288,7 @@ const MAIN = `
   <div class="wrap">
     <h2 id="final-h">Don't just verify a backlink once. Keep it verified.</h2>
     <p class="lead">Links change after you check them. Get alerted the moment one stops working. LinkPulz is a backlink monitoring tool built to do it for you.</p>
-    <div class="cta-row" style="justify-content:center"><a class="btn" href="/signup/">Monitor my backlinks</a></div>
+    <div class="cta-row" style="justify-content:center"><a class="btn" href="/register">Monitor my backlinks</a></div>
   </div>
 </section>
 `;

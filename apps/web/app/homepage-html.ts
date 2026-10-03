@@ -76,7 +76,7 @@ const JSONLD = `{
         "price": "0",
         "priceCurrency": "USD",
         "description": "Free trial. TO CONFIRM: replace with your real starting plan, price and currency.",
-        "url": "https://www.linkpulz.com/pricing/"
+        "url": "https://www.linkpulz.com/#pricing"
       }
     },
     {
@@ -143,7 +143,7 @@ const MAIN = `
         <li>Monitor backlink health</li>
       </ul>
       <div class="cta-row">
-        <a class="btn" href="/signup/">Start free trial</a>
+        <a class="btn" href="/register">Start free trial</a>
         <a class="btn ghost" href="#how-it-works">See how it works</a>
       </div>
       <p class="micro">No credit card required <span class="tc">TO CONFIRM</span> · Set up in under 5 minutes <span class="tc">TO CONFIRM</span></p>
@@ -161,7 +161,7 @@ const MAIN = `
     <h2 id="tool-h">Is your backlink still live?</h2>
     <p class="lead">Paste the page that links to you and your target URL. We'll check HTTP status, link attributes and indexation in seconds.</p>
     <div class="tool">
-      <form action="/free-backlink-checker/" method="get">
+      <form action="/tools/backlink-checker" method="get">
         <input type="url" name="source" placeholder="Source URL (page that links to you)" required aria-label="Source URL">
         <input type="url" name="target" placeholder="Target URL (your page)" required aria-label="Target URL">
         <button class="btn" type="submit">Check my link</button>
@@ -169,7 +169,7 @@ const MAIN = `
       <div class="result-list" aria-label="What the checker reports">
         <span>Link found / not found</span><span>HTTP status</span><span>dofollow · nofollow · sponsored · UGC</span><span>Indexed or not</span><span>Anchor text</span>
       </div>
-      <p class="micro" style="margin:16px 0 0">Want this checked automatically? <a href="/signup/">Monitor this link free</a> <span class="tc">frequency: TO CONFIRM</span></p>
+      <p class="micro" style="margin:16px 0 0">Want this checked automatically? <a href="/register">Monitor this link free</a> <span class="tc">frequency: TO CONFIRM</span></p>
     </div>
   </div>
 </section>
@@ -181,7 +181,7 @@ const MAIN = `
     <p class="lead">Check if a backlink exists, whether it's live, and how it's set up. Paste the page that links to you and your URL. Our backlink verification tool does the rest.</p>
 
     <div class="tool verify">
-      <form action="/verify-backlinks/" method="get">
+      <form action="/verify-backlinks" method="get">
         <label>Source URL
           <input type="url" name="source" placeholder="https://example.com/article" required>
         </label>
@@ -204,11 +204,11 @@ const MAIN = `
 
       <div class="verify-cta">
         <p><b>Want us to check it automatically every day?</b> <span class="tc">frequency: TO CONFIRM</span></p>
-        <a class="btn" href="/signup/">Monitor this backlink with LinkPulz →</a>
+        <a class="btn" href="/register">Monitor this backlink with LinkPulz →</a>
       </div>
     </div>
 
-    <p class="micro">Looking for more? See the full <a href="/verify-backlinks/">backlink verification tool</a>.</p>
+    <p class="micro">Looking for more? See the full <a href="/verify-backlinks">backlink verification tool</a>.</p>
   </div>
 </section>
 
@@ -233,7 +233,7 @@ const MAIN = `
         </ul>
         <h3 style="margin-top:24px">How to find lost backlinks</h3>
         <p>Add your links to LinkPulz. We re-check each linking page on a schedule and flag any link that is no longer there, with the likely cause <span class="tc">TO CONFIRM</span>.</p>
-        <p>Then contact the site owner while the change is recent. <a href="/lost-backlinks/">Read our guide on how to regain lost backlinks</a>.</p>
+        <p>Then contact the site owner while the change is recent. <a href="/lost-backlinks">Read our guide on how to regain lost backlinks</a>.</p>
       </div>
 
       <!-- Example timeline (illustrative, not live data) -->
@@ -257,7 +257,7 @@ const MAIN = `
     </div>
 
     <div class="center" style="margin-top:36px">
-      <a class="btn" href="/signup/">Get Alerted When a Backlink Disappears</a>
+      <a class="btn" href="/register">Get Alerted When a Backlink Disappears</a>
     </div>
   </div>
 </section>
@@ -309,8 +309,8 @@ const MAIN = `
       <div class="alt-box">
         <p><b>LinkPulz monitors the status of your backlinks and their destinations.</b> <span class="tc">TO CONFIRM that both are checked</span></p>
         <p>You get an alert when either side starts returning an error, so you can fix it while it still matters.</p>
-        <a class="btn" href="/signup/">Find Broken Backlinks Automatically</a>
-        <p class="micro" style="margin-top:12px">Learn more: <a href="/broken-backlinks/">how to find and fix broken backlinks</a>.</p>
+        <a class="btn" href="/register">Find Broken Backlinks Automatically</a>
+        <p class="micro" style="margin-top:12px">Learn more: <a href="/broken-backlinks">how to find and fix broken backlinks</a>.</p>
       </div>
     </div>
   </div>
@@ -367,8 +367,8 @@ const MAIN = `
     </div>
 
     <div class="center" style="margin-top:36px">
-      <a class="btn" href="/signup/">Check Your Backlink Health</a>
-      <p class="micro" style="margin-top:12px">Learn more: <a href="/backlink-health-check/">how to run a backlink health check</a>.</p>
+      <a class="btn" href="/register">Check Your Backlink Health</a>
+      <p class="micro" style="margin-top:12px">Learn more: <a href="/backlink-health-check">how to run a backlink health check</a>.</p>
     </div>
   </div>
 </section>
@@ -480,7 +480,7 @@ const MAIN = `
     <div>
       <h2 id="rec-h">Found a lost link? Win it back.</h2>
       <p>When LinkPulz flags a lost or changed link, you see who owns the page, when the link disappeared and what changed, so you can contact the site while the request is still fresh.</p>
-      <p>Track each recovery attempt until the link is back <span class="tc">TO CONFIRM workflow feature</span>. See our guide to <a href="/lost-backlinks/">recovering lost backlinks</a>.</p>
+      <p>Track each recovery attempt until the link is back <span class="tc">TO CONFIRM workflow feature</span>. See our guide to <a href="/lost-backlinks">recovering lost backlinks</a>.</p>
     </div>
   </div>
 </section>
@@ -501,7 +501,7 @@ const MAIN = `
   <div class="wrap">
     <div class="center">
       <h2 id="cmp-h">LinkPulz vs. all-in-one SEO suites</h2>
-      <p class="lead">Only publish facts you can verify today. <a href="/alternatives/">See all alternatives</a>.</p>
+      <p class="lead">Only publish facts you can verify today.</p>
     </div>
     <div class="tablewrap">
       <table>
@@ -525,9 +525,9 @@ const MAIN = `
       <p class="lead"><span class="tc">TO CONFIRM</span> plans, limits and prices. Keep the plans visible on the homepage.</p>
     </div>
     <div class="plans">
-      <div class="plan"><h3>Starter</h3><div class="price"><span class="tc">$X</span><small class="micro">/mo</small></div><ul><li><span class="tc">X</span> links monitored</li><li>Email alerts</li></ul><a class="btn ghost" href="/signup/">Start free trial</a></div>
-      <div class="plan hl"><h3>Pro</h3><div class="price"><span class="tc">$X</span><small class="micro">/mo</small></div><ul><li><span class="tc">X</span> links monitored</li><li>Slack &amp; webhook alerts</li><li>Client reports</li></ul><a class="btn" href="/signup/">Start free trial</a></div>
-      <div class="plan"><h3>Agency</h3><div class="price"><span class="tc">$X</span><small class="micro">/mo</small></div><ul><li><span class="tc">X</span> links monitored</li><li>Team seats</li><li>White-label reports</li></ul><a class="btn ghost" href="/signup/">Start free trial</a></div>
+      <div class="plan"><h3>Starter</h3><div class="price"><span class="tc">$X</span><small class="micro">/mo</small></div><ul><li><span class="tc">X</span> links monitored</li><li>Email alerts</li></ul><a class="btn ghost" href="/register">Start free trial</a></div>
+      <div class="plan hl"><h3>Pro</h3><div class="price"><span class="tc">$X</span><small class="micro">/mo</small></div><ul><li><span class="tc">X</span> links monitored</li><li>Slack &amp; webhook alerts</li><li>Client reports</li></ul><a class="btn" href="/register">Start free trial</a></div>
+      <div class="plan"><h3>Agency</h3><div class="price"><span class="tc">$X</span><small class="micro">/mo</small></div><ul><li><span class="tc">X</span> links monitored</li><li>Team seats</li><li>White-label reports</li></ul><a class="btn ghost" href="/register">Start free trial</a></div>
     </div>
   </div>
 </section>
@@ -567,7 +567,7 @@ const MAIN = `
   <div class="wrap">
     <h2 id="final-h">Don't let your best links disappear unnoticed</h2>
     <p class="lead">Every lost backlink is lost authority and lost traffic. Start monitoring your links today and get alerted the moment something changes.</p>
-    <div class="cta-row" style="justify-content:center"><a class="btn" href="/signup/">Start free trial</a></div>
+    <div class="cta-row" style="justify-content:center"><a class="btn" href="/register">Start free trial</a></div>
   </div>
 </section>
 `;

@@ -41,21 +41,21 @@ const JSONLD = `{
     },
     {
       "@type": "WebPage",
-      "@id": "https://www.linkpulz.com/lost-backlinks/#webpage",
-      "url": "https://www.linkpulz.com/lost-backlinks/",
+      "@id": "https://www.linkpulz.com/lost-backlinks#webpage",
+      "url": "https://www.linkpulz.com/lost-backlinks",
       "name": "Lost Backlinks: Find & Recover Lost Links | LinkPulz",
       "description": "A lost backlink checker that tells you which links disappeared, when and why. Find lost backlinks, recover them, and get alerted the next time one drops.",
       "isPartOf": { "@id": "https://www.linkpulz.com/#website" },
       "about": { "@id": "https://www.linkpulz.com/#software" },
-      "breadcrumb": { "@id": "https://www.linkpulz.com/lost-backlinks/#breadcrumb" },
+      "breadcrumb": { "@id": "https://www.linkpulz.com/lost-backlinks#breadcrumb" },
       "inLanguage": "en"
     },
     {
       "@type": "BreadcrumbList",
-      "@id": "https://www.linkpulz.com/lost-backlinks/#breadcrumb",
+      "@id": "https://www.linkpulz.com/lost-backlinks#breadcrumb",
       "itemListElement": [
         { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.linkpulz.com/" },
-        { "@type": "ListItem", "position": 2, "name": "Lost Backlinks", "item": "https://www.linkpulz.com/lost-backlinks/" }
+        { "@type": "ListItem", "position": 2, "name": "Lost Backlinks", "item": "https://www.linkpulz.com/lost-backlinks" }
       ]
     },
     {
@@ -68,11 +68,11 @@ const JSONLD = `{
       "description": "Backlink monitoring software that checks your earned and paid backlinks on a schedule and alerts you when a link is lost, redirected, nofollowed, noindexed or broken.",
       "url": "https://www.linkpulz.com/",
       "publisher": { "@id": "https://www.linkpulz.com/#organization" },
-      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD", "description": "Free trial. TO CONFIRM.", "url": "https://www.linkpulz.com/pricing/" }
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD", "description": "Free trial. TO CONFIRM.", "url": "https://www.linkpulz.com/#pricing" }
     },
     {
       "@type": "FAQPage",
-      "@id": "https://www.linkpulz.com/lost-backlinks/#faq",
+      "@id": "https://www.linkpulz.com/lost-backlinks#faq",
       "mainEntity": [
         { "@type": "Question", "name": "What is a lost backlink?", "acceptedAnswer": { "@type": "Answer", "text": "A lost backlink is a link that used to point to your site and is no longer there. The linking page may have removed the link, been deleted, been rewritten, or the link may have been replaced or redirected elsewhere." } },
         { "@type": "Question", "name": "How do I find lost backlinks?", "acceptedAnswer": { "@type": "Answer", "text": "Compare a past list of your backlinks with the live state of each linking page. A lost backlink checker re-fetches each page and flags any link that is no longer present, so you do not have to check them by hand." } },
@@ -98,7 +98,7 @@ const MAIN = `
       <h1 id="h1">Lost Backlinks: Find the Links That Disappeared</h1>
       <p class="lead">A lost backlink is a link you earned or paid for that is no longer on the page. Find out which links disappeared, when, and why, so you can win them back before they cost you rankings and referral traffic.</p>
       <div class="cta-row">
-        <a class="btn" href="/signup/">Get Alerted When a Backlink Disappears</a>
+        <a class="btn" href="/register">Get Alerted When a Backlink Disappears</a>
         <a class="btn ghost" href="#how-to-find">How to find them</a>
       </div>
       <p class="micro">No credit card required <span class="tc">TO CONFIRM</span></p>
@@ -175,10 +175,10 @@ const MAIN = `
       <p>Not every problem link is a lost one, and the fix is different for each:</p>
       <ul class="check">
         <li><b>Lost</b> — the link is gone from the page. Covered here.</li>
-        <li><b>Broken</b> — the link still exists but points to an error, or sits on a page that errors. See <a href="/broken-backlinks/">broken backlinks</a>.</li>
-        <li><b>Changed</b> — the link is there but the anchor, target or rel attribute changed. See the <a href="/backlink-health-check/">backlink health check</a>.</li>
+        <li><b>Broken</b> — the link still exists but points to an error, or sits on a page that errors. See <a href="/broken-backlinks">broken backlinks</a>.</li>
+        <li><b>Changed</b> — the link is there but the anchor, target or rel attribute changed. See the <a href="/backlink-health-check">backlink health check</a>.</li>
       </ul>
-      <p>You can also <a href="/verify-backlinks/">verify a single backlink</a> on demand.</p>
+      <p>You can also <a href="/verify-backlinks">verify a single backlink</a> on demand.</p>
     </div>
   </div>
 </section>
@@ -203,9 +203,9 @@ const MAIN = `
   <div class="wrap">
     <div class="center"><h2 id="more-h">More backlink tools and guides</h2></div>
     <div class="cards">
-      <div class="card"><h3><a href="/verify-backlinks/">Verify a Backlink</a></h3><p>Check whether a single backlink exists, is live and is set up correctly.</p></div>
-      <div class="card"><h3><a href="/broken-backlinks/">Broken Backlinks</a></h3><p>Find links that lead to errors, or that sit on pages returning errors.</p></div>
-      <div class="card"><h3><a href="/backlink-health-check/">Backlink Health Check</a></h3><p>See the overall state of your backlink portfolio at a glance.</p></div>
+      <div class="card"><h3><a href="/verify-backlinks">Verify a Backlink</a></h3><p>Check whether a single backlink exists, is live and is set up correctly.</p></div>
+      <div class="card"><h3><a href="/broken-backlinks">Broken Backlinks</a></h3><p>Find links that lead to errors, or that sit on pages returning errors.</p></div>
+      <div class="card"><h3><a href="/backlink-health-check">Backlink Health Check</a></h3><p>See the overall state of your backlink portfolio at a glance.</p></div>
     </div>
   </div>
 </section>
@@ -215,7 +215,7 @@ const MAIN = `
   <div class="wrap">
     <h2 id="final-h">Stop losing links in silence.</h2>
     <p class="lead">Every lost backlink is lost authority and lost traffic you already paid for. Monitor your links with LinkPulz and get alerted the moment one disappears.</p>
-    <div class="cta-row" style="justify-content:center"><a class="btn" href="/signup/">Monitor my backlinks</a></div>
+    <div class="cta-row" style="justify-content:center"><a class="btn" href="/register">Monitor my backlinks</a></div>
   </div>
 </section>
 `;

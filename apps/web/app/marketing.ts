@@ -243,7 +243,7 @@ export const MARKETING_HEADER = `
       <a href="/#how-it-works">How it works</a>
       <a href="/#pricing">Pricing</a>
       <a href="/#faq">FAQ</a>
-      <a class="btn sm" href="/signup/">Start free trial</a>
+      <a class="btn sm" href="/register">Start free trial</a>
     </nav>
   </div>
 </header>`;
@@ -252,9 +252,9 @@ export const MARKETING_FOOTER = `
 <footer class="site">
   <div class="wrap cols">
     <div><a class="logo" href="/">Link<span>Pulz</span></a><p class="micro" style="margin-top:8px">Backlink monitoring software.</p></div>
-    <div><b>Product</b><br><a href="/backlink-alerts/">Backlink alerts</a><a href="/lost-backlinks/">Lost backlinks</a><a href="/free-backlink-checker/">Free backlink checker</a><a href="/pricing/">Pricing</a></div>
-    <div><b>Use cases</b><br><a href="/backlink-reporting-for-agencies/">For agencies</a><a href="/guest-post-link-monitoring/">Guest post monitoring</a><a href="/alternatives/">Alternatives</a></div>
-    <div><b>Resources</b><br><a href="/blog/nofollow-vs-dofollow/">Nofollow vs dofollow</a><a href="/blog/backlink-audit/">Backlink audit</a><a href="/blog/">Blog</a></div>
+    <div><b>Product</b><br><a href="/lost-backlinks">Lost backlinks</a><a href="/broken-backlinks">Broken backlinks</a><a href="/verify-backlinks">Verify a backlink</a><a href="/backlink-health-check">Backlink health check</a></div>
+    <div><b>Tools</b><br><a href="/tools/backlink-checker">Free backlink checker</a><a href="/docs">Documentation</a><a href="/#pricing">Pricing</a></div>
+    <div><b>Company</b><br><a href="/register">Start free trial</a><a href="/login">Log in</a><a href="/legal/privacy">Privacy</a><a href="/legal/terms">Terms</a></div>
   </div>
   <div class="wrap micro" style="margin-top:24px">© <span id="y">2026</span> LinkPulz. All rights reserved.</div>
 </footer>`;

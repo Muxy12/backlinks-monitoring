@@ -41,21 +41,21 @@ const JSONLD = `{
     },
     {
       "@type": "WebPage",
-      "@id": "https://www.linkpulz.com/backlink-health-check/#webpage",
-      "url": "https://www.linkpulz.com/backlink-health-check/",
+      "@id": "https://www.linkpulz.com/backlink-health-check#webpage",
+      "url": "https://www.linkpulz.com/backlink-health-check",
       "name": "Backlink Health Check: Audit Your Link Profile | LinkPulz",
       "description": "Run a backlink health check: one score for your whole link profile, every problem grouped, tracked over time. See what to fix first and keep your links healthy.",
       "isPartOf": { "@id": "https://www.linkpulz.com/#website" },
       "about": { "@id": "https://www.linkpulz.com/#software" },
-      "breadcrumb": { "@id": "https://www.linkpulz.com/backlink-health-check/#breadcrumb" },
+      "breadcrumb": { "@id": "https://www.linkpulz.com/backlink-health-check#breadcrumb" },
       "inLanguage": "en"
     },
     {
       "@type": "BreadcrumbList",
-      "@id": "https://www.linkpulz.com/backlink-health-check/#breadcrumb",
+      "@id": "https://www.linkpulz.com/backlink-health-check#breadcrumb",
       "itemListElement": [
         { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.linkpulz.com/" },
-        { "@type": "ListItem", "position": 2, "name": "Backlink Health Check", "item": "https://www.linkpulz.com/backlink-health-check/" }
+        { "@type": "ListItem", "position": 2, "name": "Backlink Health Check", "item": "https://www.linkpulz.com/backlink-health-check" }
       ]
     },
     {
@@ -68,11 +68,11 @@ const JSONLD = `{
       "description": "Backlink monitoring software that checks your earned and paid backlinks on a schedule and alerts you when a link is lost, redirected, nofollowed, noindexed or broken.",
       "url": "https://www.linkpulz.com/",
       "publisher": { "@id": "https://www.linkpulz.com/#organization" },
-      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD", "description": "Free trial. TO CONFIRM.", "url": "https://www.linkpulz.com/pricing/" }
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD", "description": "Free trial. TO CONFIRM.", "url": "https://www.linkpulz.com/#pricing" }
     },
     {
       "@type": "FAQPage",
-      "@id": "https://www.linkpulz.com/backlink-health-check/#faq",
+      "@id": "https://www.linkpulz.com/backlink-health-check#faq",
       "mainEntity": [
         { "@type": "Question", "name": "What is a backlink health check?", "acceptedAnswer": { "@type": "Answer", "text": "A backlink health check reviews the current state of every link pointing to your site — which are live, lost, broken, redirected, nofollow or changed — and summarises it so you can see what needs attention first." } },
         { "@type": "Question", "name": "How is a backlink health score calculated?", "acceptedAnswer": { "@type": "Answer", "text": "A health score summarises the share of your monitored links that are healthy versus those with a problem. [TO CONFIRM: exact LinkPulz calculation]" } },
@@ -128,7 +128,7 @@ const MAIN = `
         </div>
       </div>
     </div>
-    <p class="micro" style="margin-top:20px">Figures above are illustrative. <a href="/signup/">Run a health check on your own links</a>.</p>
+    <p class="micro" style="margin-top:20px">Figures above are illustrative. <a href="/register">Run a health check on your own links</a>.</p>
   </div>
 </section>
 
@@ -141,8 +141,8 @@ const MAIN = `
     </div>
     <div class="cards">
       <div class="card"><div class="ic">✓</div><h3>Healthy</h3><p>Live, followed, pointing at the right page with the agreed anchor.</p></div>
-      <div class="card"><div class="ic">✕</div><h3>Lost</h3><p>Removed from the page. See <a href="/lost-backlinks/">lost backlinks</a>.</p></div>
-      <div class="card"><div class="ic">404</div><h3>Broken</h3><p>Points to an error, or sits on a page that errors. See <a href="/broken-backlinks/">broken backlinks</a>.</p></div>
+      <div class="card"><div class="ic">✕</div><h3>Lost</h3><p>Removed from the page. See <a href="/lost-backlinks">lost backlinks</a>.</p></div>
+      <div class="card"><div class="ic">404</div><h3>Broken</h3><p>Points to an error, or sits on a page that errors. See <a href="/broken-backlinks">broken backlinks</a>.</p></div>
       <div class="card"><div class="ic">↪</div><h3>Redirected</h3><p>The link now sends visitors somewhere other than your target.</p></div>
       <div class="card"><div class="ic">rel</div><h3>Nofollow / changed</h3><p>Dofollow switched to nofollow, sponsored or UGC, or the anchor changed.</p></div>
       <div class="card"><div class="ic">NI</div><h3>Noindex</h3><p>The linking page is set to noindex and passes little value <span class="tc">TO CONFIRM</span>.</p></div>
@@ -175,8 +175,8 @@ const MAIN = `
       <h2 id="improve-h">How to improve your backlink health</h2>
       <p>A health score only matters if it points you at action. The fixes follow the categories:</p>
       <ul class="check">
-        <li><b>Recover lost links.</b> Contact the owner while the change is fresh — see <a href="/lost-backlinks/">lost backlinks</a>.</li>
-        <li><b>Fix broken destinations.</b> Add a 301 redirect, or ask the site to update the link — see <a href="/broken-backlinks/">broken backlinks</a>.</li>
+        <li><b>Recover lost links.</b> Contact the owner while the change is fresh — see <a href="/lost-backlinks">lost backlinks</a>.</li>
+        <li><b>Fix broken destinations.</b> Add a 301 redirect, or ask the site to update the link — see <a href="/broken-backlinks">broken backlinks</a>.</li>
         <li><b>Undo unexpected changes.</b> Ask publishers to restore a dofollow link or the agreed anchor.</li>
         <li><b>Catch new problems early.</b> Monitoring means the next drop reaches you in minutes, not months.</li>
       </ul>
@@ -204,9 +204,9 @@ const MAIN = `
   <div class="wrap">
     <div class="center"><h2 id="more-h">More backlink tools and guides</h2></div>
     <div class="cards">
-      <div class="card"><h3><a href="/verify-backlinks/">Verify a Backlink</a></h3><p>Check whether a single backlink exists, is live and is set up correctly.</p></div>
-      <div class="card"><h3><a href="/lost-backlinks/">Lost Backlinks</a></h3><p>Find links that have disappeared, understand why, and win them back.</p></div>
-      <div class="card"><h3><a href="/broken-backlinks/">Broken Backlinks</a></h3><p>Find links that lead to errors, or that sit on pages returning errors.</p></div>
+      <div class="card"><h3><a href="/verify-backlinks">Verify a Backlink</a></h3><p>Check whether a single backlink exists, is live and is set up correctly.</p></div>
+      <div class="card"><h3><a href="/lost-backlinks">Lost Backlinks</a></h3><p>Find links that have disappeared, understand why, and win them back.</p></div>
+      <div class="card"><h3><a href="/broken-backlinks">Broken Backlinks</a></h3><p>Find links that lead to errors, or that sit on pages returning errors.</p></div>
     </div>
   </div>
 </section>
@@ -216,7 +216,7 @@ const MAIN = `
   <div class="wrap">
     <h2 id="final-h">Know your backlink health, before it drops.</h2>
     <p class="lead">A profile you don't monitor is a profile you don't know. Track every link with LinkPulz and watch your backlink health in one place.</p>
-    <div class="cta-row" style="justify-content:center"><a class="btn" href="/signup/">Check Your Backlink Health</a></div>
+    <div class="cta-row" style="justify-content:center"><a class="btn" href="/register">Check Your Backlink Health</a></div>
   </div>
 </section>
 `;
