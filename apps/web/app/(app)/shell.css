@@ -29,13 +29,13 @@
   color: var(--text);
   padding: 6px 10px 14px;
 }
-.brand-mark {
+.side-logo {
   width: 26px;
   height: 26px;
   flex: none;
   border-radius: 8px;
-  background: var(--grad);
-  box-shadow: 0 2px 8px color-mix(in srgb, var(--primary) 40%, transparent);
+  object-fit: cover;
+  box-shadow: 0 1px 5px color-mix(in srgb, var(--primary) 28%, transparent);
 }
 .side-brand-text { display: flex; flex-direction: column; line-height: 1.12; min-width: 0; }
 .side-workspace {
