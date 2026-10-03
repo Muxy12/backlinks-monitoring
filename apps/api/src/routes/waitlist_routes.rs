@@ -73,3 +73,15 @@ pub async fn join(
         }),
     ))
 }
+
+#[derive(Debug, Serialize)]
+pub struct CountResponse {
+    pub count: i64,
+}
+
+/// GET /v1/waitlist/count — public total number of waitlist signups, for the
+/// social-proof counter on the pre-launch page. Aggregate only, no emails.
+pub async fn count(State(state): State<AppState>) -> Result<Json<CountResponse>, ApiError> {
+    let count = db::repositories::waitlist::count(&state.pool).await?;
+    Ok(Json(CountResponse { count }))
+}
