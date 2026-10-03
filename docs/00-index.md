@@ -29,6 +29,7 @@ document — *then* build.
 | [16](16-local-toolchain.md) | Local Rust toolchain setup on this Windows box | — |
 | [17](17-deployment.md) | Deploying the API + worker to Fly.io (Docker, secrets, migrations) | ADR-0002, ADR-0005 |
 | [18](18-seo-page-pipeline.md) | SEO page pipeline: built + queued programmatic-SEO pages | 13, 14 |
+| [19](19-admin-operations-instrumentation.md) | Admin ops: telemetry status + instrumentation spec (16 founder questions) | 05, 07, 10, 12 |
 
 ## Decisions
 
