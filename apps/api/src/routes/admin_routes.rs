@@ -8,7 +8,7 @@ use crate::error::ApiError;
 use crate::session::{check_csrf, current};
 use crate::state::AppState;
 use axum::Json;
-use axum::extract::{Path, State};
+use axum::extract::{Path, Query, State};
 use axum::http::HeaderMap;
 use axum_extra::extract::cookie::CookieJar;
 use db::entities::User;
@@ -299,4 +299,181 @@ pub async fn set_admin(
         created_at: u.created_at.to_rfc3339(),
         organizations: 0,
     }))
+}
+
+// ─── Founder-ops read endpoints (docs/19) ────────────────────────────────────
+// Real data only, from tables that already exist. The docs/19 items are grouped
+// into three endpoints (ops / billing / usage) to keep the console to a few
+// round-trips.
+
+#[derive(Serialize)]
+pub struct QueueView {
+    pub pending: i64,
+    pub processing: i64,
+    pub failed: i64,
+    pub dead: i64,
+    pub oldest_pending_at: Option<String>,
+    pub last_completed_at: Option<String>,
+    pub created_last_hour: i64,
+}
+
+#[derive(Serialize)]
+pub struct MonitoringView {
+    pub checks: i64,
+    pub failed: i64,
+    pub avg_duration_ms: Option<i64>,
+    pub lost_detected: i64,
+}
+
+#[derive(Serialize)]
+pub struct EmailView {
+    pub sent: i64,
+    pub failed: i64,
+}
+
+#[derive(Serialize)]
+pub struct OpsView {
+    pub window_secs: i64,
+    pub queue: QueueView,
+    pub monitoring: MonitoringView,
+    pub email: EmailView,
+}
+
+#[derive(Deserialize)]
+pub struct OpsQuery {
+    pub window_hours: Option<i64>,
+}
+
+/// GET /v1/admin/ops — queue, monitoring (over `?window_hours`, default 24) and
+/// alert-email health. All derived from existing tables (docs/19 §quick-wins).
+pub async fn ops(
+    State(state): State<AppState>,
+    jar: CookieJar,
+    Query(q): Query<OpsQuery>,
+) -> Result<Json<OpsView>, ApiError> {
+    require_admin(&state, &jar).await?;
+    let hours = q.window_hours.unwrap_or(24).clamp(1, 24 * 30);
+    let secs = hours * 3600;
+    let h = admin::ops_health(&state.pool, secs as f64).await?;
+    Ok(Json(OpsView {
+        window_secs: secs,
+        queue: QueueView {
+            pending: h.q_pending,
+            processing: h.q_processing,
+            failed: h.q_failed,
+            dead: h.q_dead,
+            oldest_pending_at: h.q_oldest_pending_at.map(|t| t.to_rfc3339()),
+            last_completed_at: h.q_last_completed_at.map(|t| t.to_rfc3339()),
+            created_last_hour: h.q_created_1h,
+        },
+        monitoring: MonitoringView {
+            checks: h.checks,
+            failed: h.checks_failed,
+            avg_duration_ms: h.avg_duration_ms.map(|v| v.round() as i64),
+            lost_detected: h.lost_detected,
+        },
+        email: EmailView {
+            sent: h.email_sent,
+            failed: h.email_failed,
+        },
+    }))
+}
+
+#[derive(Serialize)]
+pub struct PlanAmount {
+    pub plan: String,
+    pub subscribers: i64,
+    pub mrr_cents: i64,
+}
+
+#[derive(Serialize)]
+pub struct BillingView {
+    pub mrr_cents: i64,
+    pub paying: i64,
+    pub trialing: i64,
+    pub past_due: i64,
+    pub canceled: i64,
+    pub comped: i64,
+    pub by_plan: Vec<PlanAmount>,
+}
+
+/// GET /v1/admin/billing — MRR, paying/trialing/past-due/canceled, and a by-plan
+/// breakdown. Admin-comped subscriptions are excluded from money. Prices come
+/// from the plan catalog (docs/19).
+pub async fn billing(
+    State(state): State<AppState>,
+    jar: CookieJar,
+) -> Result<Json<BillingView>, ApiError> {
+    require_admin(&state, &jar).await?;
+    let counts = admin::billing_counts(&state.pool).await?;
+    let per_plan = admin::paying_by_plan(&state.pool).await?;
+    let mut by_plan = Vec::new();
+    let mut mrr_cents = 0i64;
+    let mut paying = 0i64;
+    for pc in per_plan {
+        let price = billing::Plan::from_slug(&pc.plan)
+            .map(|p| p.spec().price_cents as i64)
+            .unwrap_or(0);
+        let line = price * pc.n;
+        mrr_cents += line;
+        paying += pc.n;
+        by_plan.push(PlanAmount {
+            plan: pc.plan,
+            subscribers: pc.n,
+            mrr_cents: line,
+        });
+    }
+    Ok(Json(BillingView {
+        mrr_cents,
+        paying,
+        trialing: counts.trialing,
+        past_due: counts.past_due,
+        canceled: counts.canceled,
+        comped: counts.comped,
+        by_plan,
+    }))
+}
+
+#[derive(Serialize)]
+pub struct UsageView {
+    pub id: Uuid,
+    pub name: String,
+    pub plan: String,
+    pub backlinks: i64,
+    pub limit: Option<i64>,
+    pub pct: Option<i64>,
+}
+
+/// GET /v1/admin/usage/limits — workspaces by monitored-backlink usage vs their
+/// plan cap, busiest first (docs/19). Limits come from the plan catalog.
+pub async fn usage_limits(
+    State(state): State<AppState>,
+    jar: CookieJar,
+) -> Result<Json<Vec<UsageView>>, ApiError> {
+    require_admin(&state, &jar).await?;
+    let rows = admin::usage_vs_limit(&state.pool).await?;
+    let out = rows
+        .into_iter()
+        .map(|r| {
+            let limit = billing::Plan::from_slug(&r.plan)
+                .and_then(|p| p.spec().backlink_limit)
+                .map(|l| l as i64);
+            let pct = limit.map(|l| {
+                if l > 0 {
+                    (r.backlinks * 100 / l).min(999)
+                } else {
+                    0
+                }
+            });
+            UsageView {
+                id: r.id,
+                name: r.name,
+                plan: r.plan,
+                backlinks: r.backlinks,
+                limit,
+                pct,
+            }
+        })
+        .collect();
+    Ok(Json(out))
 }
