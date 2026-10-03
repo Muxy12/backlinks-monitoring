@@ -2389,10 +2389,21 @@ pub mod scheduler {
             .execute(&mut *tx)
             .await?;
 
+        // Only monitor workspaces that are actually entitled: not suspended, and
+        // with an active/past_due subscription or an un-expired trial (docs/20).
+        // Expired trials, canceled subscriptions and suspended orgs are skipped —
+        // the cost-protection gate (their data is kept, just not crawled).
         let due: Vec<(Uuid, String, String)> = sqlx::query_as(
-            "SELECT id, source_url, source_url_normalized FROM backlinks \
-             WHERE archived_at IS NULL AND next_check_at IS NOT NULL AND next_check_at <= now() \
-             ORDER BY next_check_at LIMIT $1 FOR UPDATE SKIP LOCKED",
+            "SELECT b.id, b.source_url, b.source_url_normalized FROM backlinks b \
+             WHERE b.archived_at IS NULL AND b.next_check_at IS NOT NULL AND b.next_check_at <= now() \
+               AND EXISTS ( \
+                   SELECT 1 FROM organizations o \
+                   JOIN subscriptions s ON s.organization_id = o.id \
+                   WHERE o.id = b.organization_id \
+                     AND o.suspended_at IS NULL \
+                     AND ( s.status IN ('active','past_due') \
+                        OR (s.status = 'trialing' AND s.trial_end > now()) ) ) \
+             ORDER BY b.next_check_at LIMIT $1 FOR UPDATE SKIP LOCKED",
         )
         .bind(batch)
         .fetch_all(&mut *tx)
@@ -2623,6 +2634,46 @@ pub mod billing {
         Ok(row
             .and_then(|(p,)| Plan::from_slug(&p))
             .unwrap_or(Plan::Starter))
+    }
+
+    /// Open a 10-day, no-card free trial for a new workspace (docs/20). The trial
+    /// entitlement is Starter's limits (500 backlinks / 3 projects / 1 seat).
+    /// No Stripe customer yet, so a placeholder id satisfies the NOT NULL column.
+    /// Idempotent: a workspace that already has a subscription is left untouched.
+    pub async fn start_trial(pool: &PgPool, organization_id: Uuid) -> Result<(), DbError> {
+        sqlx::query(
+            "INSERT INTO subscriptions \
+                (id, organization_id, stripe_customer_id, plan, status, \
+                 current_period_start, current_period_end, trial_end) \
+             VALUES ($1, $2, $3, 'starter'::subscription_plan, 'trialing', \
+                 now(), now() + interval '10 days', now() + interval '10 days') \
+             ON CONFLICT (organization_id) DO NOTHING",
+        )
+        .bind(Uuid::now_v7())
+        .bind(organization_id)
+        .bind(format!("trial:{organization_id}"))
+        .execute(pool)
+        .await
+        .map_err(DbError::from_insert)?;
+        Ok(())
+    }
+
+    /// Whether the org may use paid functionality right now: an `active`/`past_due`
+    /// subscription, or a `trialing` one whose `trial_end` is still in the future.
+    /// An expired trial or canceled subscription returns false — new adds and
+    /// monitoring are blocked, but existing data is never touched (docs/20).
+    pub async fn is_access_active(pool: &PgPool, organization_id: Uuid) -> Result<bool, DbError> {
+        let (ok,): (bool,) = sqlx::query_as(
+            "SELECT EXISTS ( \
+                SELECT 1 FROM subscriptions \
+                WHERE organization_id = $1 \
+                  AND ( status IN ('active','past_due') \
+                     OR (status = 'trialing' AND trial_end > now()) ) )",
+        )
+        .bind(organization_id)
+        .fetch_one(pool)
+        .await?;
+        Ok(ok)
     }
 
     /// Record a Stripe event id, idempotently (§39, S5). Returns true if this is

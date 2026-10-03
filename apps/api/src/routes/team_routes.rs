@@ -91,6 +91,13 @@ pub async fn create_invitation(
         ));
     }
 
+    // Trial expired or subscription inactive → block new invites (data kept).
+    if !db::repositories::billing::is_access_active(&state.pool, org_id).await? {
+        return Err(ApiError::PlanLimit(
+            "your trial has ended or your subscription is inactive — choose a plan to continue"
+                .into(),
+        ));
+    }
     // Plan seat limit (docs/20): committed seats = current members + pending invites.
     let plan = db::repositories::billing::plan_for_org(&state.pool, org_id).await?;
     let seats_used = (members::count_for_org(&state.pool, org_id).await?

@@ -45,12 +45,19 @@ period/cancel/trial webhook columns are P4 (not yet built).
 - **P2 — central config / source of truth: DONE.** `plans.rs` re-spec (4 plans +
   annual + 48h + most-popular), enum migration 0027 (`agency_plus → business`
   re-spec, pre-launch remap by price), `GET /v1/plans`, UI mirrors updated.
-- **P3 — server-side enforcement:** project & seat limits + Tier-2 cap + bulk-import
-  "import what fits". *Today only the backlink cap is enforced.*
+- **P3 — server-side enforcement: DONE.** `can_add_project` wired into
+  create_project; `can_add_seat` into invite + accept (owner counts as a seat).
+  Tier-2 is intentionally out of the backlink cap (`count_active` is tier-1 only).
+  Bulk-import "import what fits" partial behavior is still a follow-up.
+- **P5 — trial + cost-gating: core DONE.** A 10-day no-card `trialing` subscription
+  is opened on org creation (`billing::start_trial`, Starter entitlement). The
+  scheduler (`enqueue_due`) now only monitors orgs that are not suspended and have
+  an active/past_due subscription or an un-expired trial. New backlink/project/seat
+  adds are blocked once the trial expires or the subscription is inactive
+  (`billing::is_access_active`), without touching existing data. *Trial UX banner +
+  trial emails (started / T-3 / T-1 / expired) are P6/follow-up.*
 - **P4 — billing:** annual prices/interval, write period/cancel/trial columns,
   handle `invoice.*` + past-due grace, safe upgrade/downgrade.
-- **P5 — trial** (above) + scheduler cost-gating (skip suspended / expired-trial /
-  canceled orgs — the scheduler currently monitors everyone).
 - **P6 — customer UI:** real `/pricing` page (monthly/annual toggle, FAQ), billing
   usage, upgrade prompts, trial banner.
 - **P7 — admin:** subscriptions table, trial funnel, per-customer economics
