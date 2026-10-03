@@ -84,6 +84,12 @@ export interface UsageView {
 export const api = {
   // Public plan catalog for the pricing + billing pages (no auth).
   plans: () => request<PlanView[]>("/v1/plans"),
+  // Pre-launch waitlist email capture (public, no session).
+  joinWaitlist: (email: string, turnstileToken?: string, attribution?: Attribution) =>
+    request<{ ok: boolean; already: boolean }>("/v1/waitlist", {
+      method: "POST",
+      body: JSON.stringify({ email, turnstile_token: turnstileToken, attribution }),
+    }),
   register: (
     email: string,
     password: string,
@@ -861,8 +867,14 @@ export interface AdminAnalytics {
   by_source: { source: string; signups: number }[];
 }
 
+export interface AdminWaitlist {
+  total: number;
+  recent: { email: string; created_at: string; source: string | null }[];
+}
+
 export const adminApi = {
   stats: () => request<AdminStats>("/v1/admin/stats"),
+  waitlist: () => request<AdminWaitlist>("/v1/admin/waitlist"),
   organizations: () => request<AdminOrg[]>("/v1/admin/organizations"),
   users: () => request<AdminUser[]>("/v1/admin/users"),
   audit: () => request<AdminAudit[]>("/v1/admin/audit"),

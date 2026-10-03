@@ -3218,6 +3218,68 @@ pub mod trial_emails {
     }
 }
 
+// ─── Pre-launch waitlist (public email capture, migration 0030) ──────────────
+pub mod waitlist {
+    use super::*;
+
+    pub struct NewSignup<'a> {
+        pub email: &'a str,
+        pub utm_source: Option<&'a str>,
+        pub utm_medium: Option<&'a str>,
+        pub utm_campaign: Option<&'a str>,
+        pub referrer: Option<&'a str>,
+        pub landing_path: Option<&'a str>,
+    }
+
+    /// Add a waitlist email (caller normalizes it). Returns true if newly added,
+    /// false if the email was already on the list (UNIQUE + ON CONFLICT).
+    pub async fn add(pool: &PgPool, s: NewSignup<'_>) -> Result<bool, DbError> {
+        let row: Option<(Uuid,)> = sqlx::query_as(
+            "INSERT INTO waitlist_signups \
+               (id, email, utm_source, utm_medium, utm_campaign, referrer, landing_path) \
+             VALUES ($1, $2, $3, $4, $5, $6, $7) \
+             ON CONFLICT (email) DO NOTHING RETURNING id",
+        )
+        .bind(Uuid::now_v7())
+        .bind(s.email)
+        .bind(s.utm_source)
+        .bind(s.utm_medium)
+        .bind(s.utm_campaign)
+        .bind(s.referrer)
+        .bind(s.landing_path)
+        .fetch_optional(pool)
+        .await
+        .map_err(DbError::from_insert)?;
+        Ok(row.is_some())
+    }
+
+    pub async fn count(pool: &PgPool) -> Result<i64, DbError> {
+        let (n,): (i64,) = sqlx::query_as("SELECT count(*)::bigint FROM waitlist_signups")
+            .fetch_one(pool)
+            .await
+            .map_err(DbError::from_fetch)?;
+        Ok(n)
+    }
+
+    #[derive(Debug, Clone, sqlx::FromRow)]
+    pub struct Signup {
+        pub email: String,
+        pub created_at: DateTime<Utc>,
+        pub utm_source: Option<String>,
+    }
+
+    /// Most recent signups, for the admin view.
+    pub async fn recent(pool: &PgPool, limit: i64) -> Result<Vec<Signup>, DbError> {
+        Ok(sqlx::query_as::<_, Signup>(
+            "SELECT email, created_at, utm_source FROM waitlist_signups \
+             ORDER BY created_at DESC LIMIT $1",
+        )
+        .bind(limit)
+        .fetch_all(pool)
+        .await?)
+    }
+}
+
 // ─── Campaigns (§22) — tenant-scoped, with read-time rollups ──────────────────
 pub mod campaigns {
     use super::*;

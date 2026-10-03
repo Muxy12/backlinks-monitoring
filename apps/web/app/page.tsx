@@ -1,30 +1,56 @@
 import type { Metadata } from "next";
-import { HOMEPAGE_HTML } from "./homepage-html";
+import { WaitlistLanding } from "./WaitlistLanding";
 
-// Marketing homepage (§48). Content from the approved SEO redesign, kept verbatim;
-// the visual charte is remapped to the LinkPulz dark/purple palette inside
-// homepage-html.ts. Head SEO (title/description/OG) lives here because <meta>/
-// <title> inside the injected body are ignored — the JSON-LD graph itself stays
-// inline in the body markup. Rendered by a Server Component (zero client JS).
+// Pre-launch "coming soon" homepage with waitlist email capture. The full
+// marketing homepage lives at /home during this period. Server component for
+// head SEO + brand JSON-LD; the interactive landing is a client island.
 export const metadata: Metadata = {
-  title: { absolute: "Backlink Monitoring Tool: Lost Link Alerts | LinkPulz" },
+  title: { absolute: "LinkPulz — Backlink Monitoring, Launching Soon" },
   description:
-    "Monitor every backlink you earn or buy. Get instant alerts when a link is lost, nofollowed or deindexed. Start your free trial.",
-  // Canonical/OG URLs resolve against metadataBase (SITE_URL) so they stay correct
-  // per environment — not hardcoded to a domain that isn't live yet.
+    "LinkPulz monitors every backlink you earn or buy — automatic checks every 48 hours and instant alerts when a link is lost, nofollowed, redirected or broken. Join the waitlist for early access.",
   alternates: { canonical: "/" },
   robots: { index: true, follow: true, "max-image-preview": "large" },
   openGraph: {
     type: "website",
-    title: "Backlink Monitoring Tool: Lost Link Alerts | LinkPulz",
+    title: "LinkPulz — Backlink Monitoring, Launching Soon",
     description:
-      "Monitor every backlink you earn or buy. Get instant alerts when a link is lost, nofollowed or deindexed.",
+      "Automatic backlink monitoring with instant change alerts. Join the waitlist for early access.",
     url: "/",
     images: ["https://ye8jhaekbbcviws9.public.blob.vercel-storage.com/banniere-dashboard-linkpulz.webp"],
   },
   twitter: { card: "summary_large_image" },
 };
 
+const JSONLD = `{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://www.linkpulz.com/#organization",
+      "name": "LinkPulz",
+      "url": "https://www.linkpulz.com/",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://ye8jhaekbbcviws9.public.blob.vercel-storage.com/logo-linkpulz.webp"
+      },
+      "sameAs": ["https://www.linkedin.com/company/linkpulz", "https://x.com/linkpulz"]
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://www.linkpulz.com/#website",
+      "url": "https://www.linkpulz.com/",
+      "name": "LinkPulz",
+      "inLanguage": "en",
+      "publisher": { "@id": "https://www.linkpulz.com/#organization" }
+    }
+  ]
+}`;
+
 export default function HomePage() {
-  return <div dangerouslySetInnerHTML={{ __html: HOMEPAGE_HTML }} />;
+  return (
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSONLD }} />
+      <WaitlistLanding />
+    </>
+  );
 }
