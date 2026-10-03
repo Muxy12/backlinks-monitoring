@@ -176,6 +176,15 @@ export const MARKETING_STYLE = `
 #lp-home thead th{background:var(--brand);color:#fff}
 #lp-home tbody th{font-weight:600}
 
+/* comparison table: mute competitors, highlight the LinkPulz column */
+#lp-home table.compare{min-width:760px}
+#lp-home table.compare thead th{background:var(--bg-alt);color:var(--ink);font-weight:600;vertical-align:bottom}
+#lp-home table.compare thead th.us{background:var(--brand);color:#fff}
+#lp-home table.compare td{color:var(--muted);font-size:.93rem}
+#lp-home table.compare td.us{color:var(--ink);background:color-mix(in srgb,var(--brand) 10%,transparent);font-weight:500}
+#lp-home table.compare th.us,#lp-home table.compare td.us{border-left:1px solid color-mix(in srgb,var(--brand) 35%,var(--line));border-right:1px solid color-mix(in srgb,var(--brand) 35%,var(--line))}
+#lp-home table.compare tbody tr:last-child td.us{border-bottom:1px solid color-mix(in srgb,var(--brand) 35%,var(--line))}
+
 /* pricing */
 #lp-home .plans{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:36px}
 @media(max-width:860px){#lp-home .plans{grid-template-columns:1fr}}
