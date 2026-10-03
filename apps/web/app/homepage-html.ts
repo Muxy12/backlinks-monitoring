@@ -72,11 +72,13 @@ const JSONLD = `{
         "Client-ready backlink reports"
       ],
       "offers": {
-        "@type": "Offer",
-        "price": "0",
+        "@type": "AggregateOffer",
         "priceCurrency": "USD",
-        "description": "Free trial. TO CONFIRM: replace with your real starting plan, price and currency.",
-        "url": "https://www.linkpulz.com/#pricing"
+        "lowPrice": "29",
+        "highPrice": "199",
+        "offerCount": "4",
+        "description": "Plans from $29/mo with a 10-day free trial, no credit card.",
+        "url": "https://www.linkpulz.com/pricing"
       }
     },
     {
@@ -96,7 +98,7 @@ const JSONLD = `{
         {
           "@type": "Question",
           "name": "How often does LinkPulz check my backlinks?",
-          "acceptedAnswer": { "@type": "Answer", "text": "[TO CONFIRM: e.g. every 24 hours on all plans]. Every check is logged in the link's history." }
+          "acceptedAnswer": { "@type": "Answer", "text": "Every 48 hours, on all plans. Every check is logged in the link's history." }
         },
         {
           "@type": "Question",
@@ -561,13 +563,15 @@ const MAIN = `
   <div class="wrap">
     <div class="center">
       <h2 id="price-h">Simple pricing, based on links monitored</h2>
-      <p class="lead"><span class="tc">TO CONFIRM</span> plans, limits and prices. Keep the plans visible on the homepage.</p>
+      <p class="lead">Every plan includes a 10-day free trial — no credit card — and checks every backlink every 48 hours.</p>
     </div>
     <div class="plans">
-      <div class="plan"><h3>Starter</h3><div class="price"><span class="tc">$X</span><small class="micro">/mo</small></div><ul><li><span class="tc">X</span> links monitored</li><li>Email alerts</li></ul><a class="btn ghost" href="/register">Start free trial</a></div>
-      <div class="plan hl"><h3>Pro</h3><div class="price"><span class="tc">$X</span><small class="micro">/mo</small></div><ul><li><span class="tc">X</span> links monitored</li><li>Slack &amp; webhook alerts</li><li>Client reports</li></ul><a class="btn" href="/register">Start free trial</a></div>
-      <div class="plan"><h3>Agency</h3><div class="price"><span class="tc">$X</span><small class="micro">/mo</small></div><ul><li><span class="tc">X</span> links monitored</li><li>Team seats</li><li>White-label reports</li></ul><a class="btn ghost" href="/register">Start free trial</a></div>
+      <div class="plan"><h3>Starter</h3><div class="price-block price-monthly"><div class="price">$29<small>/mo</small></div><div class="per">billed monthly</div></div><div class="limits"><span><b>500</b> backlinks</span><span><b>3</b> projects</span><span><b>1</b> user</span></div><a class="btn ghost" href="/register">Start free trial</a></div>
+      <div class="plan hl"><span class="pop">Most popular</span><h3>Pro</h3><div class="price-block price-monthly"><div class="price">$59<small>/mo</small></div><div class="per">billed monthly</div></div><div class="limits"><span><b>2,500</b> backlinks</span><span><b>10</b> projects</span><span><b>3</b> users</span></div><a class="btn" href="/register">Start free trial</a></div>
+      <div class="plan"><h3>Business</h3><div class="price-block price-monthly"><div class="price">$99<small>/mo</small></div><div class="per">billed monthly</div></div><div class="limits"><span><b>5,000</b> backlinks</span><span><b>25</b> projects</span><span><b>5</b> users</span></div><a class="btn ghost" href="/register">Start free trial</a></div>
+      <div class="plan"><h3>Agency</h3><div class="price-block price-monthly"><div class="price">$199<small>/mo</small></div><div class="per">billed monthly</div></div><div class="limits"><span><b>15,000</b> backlinks</span><span><b>75</b> projects</span><span><b>15</b> users</span></div><a class="btn ghost" href="/register">Start free trial</a></div>
     </div>
+    <div class="center" style="margin-top:28px"><a class="btn ghost" href="/pricing">See full pricing &amp; annual plans →</a></div>
   </div>
 </section>
 
@@ -591,8 +595,8 @@ const MAIN = `
     <div class="faq">
       <details><summary>What is backlink monitoring and why do I need it?</summary><p>Backlink monitoring is the automatic, recurring check of the links pointing to your site. Links get removed, redirected, set to nofollow or deindexed all the time, and without monitoring you usually find out long after the damage. Monitoring tells you quickly so you can act.</p></details>
       <details><summary>How do I know if a backlink has been removed or changed?</summary><p>Add the link to LinkPulz. We re-check the linking page on a schedule and alert you if the link is gone, the page errors or redirects, or the attributes and anchor text change.</p></details>
-      <details><summary>How often does LinkPulz check my backlinks?</summary><p>[TO CONFIRM: e.g. every 24 hours on all plans]. Every check is logged in the link's history.</p></details>
-      <details><summary>Can LinkPulz detect when a link changes from dofollow to nofollow?</summary><p>Yes. We track rel attributes (nofollow, sponsored, UGC) on every check and alert you when they change. [TO CONFIRM]</p></details>
+      <details><summary>How often does LinkPulz check my backlinks?</summary><p>Every 48 hours, on all plans. Every check is logged in the link's history.</p></details>
+      <details><summary>Can LinkPulz detect when a link changes from dofollow to nofollow?</summary><p>Yes. We track rel attributes (nofollow, sponsored, UGC) on every check and alert you when they change.</p></details>
       <details><summary>Can I monitor paid or guest-post links?</summary><p>Yes. Tag links as guest post, sponsored or PR, then verify that each one stays live and keeps the attributes you agreed on.</p></details>
       <details><summary>What's the difference between a backlink checker and a backlink monitoring tool?</summary><p>A checker gives you a one-time snapshot. A monitoring tool checks the same links again and again, keeps the history and alerts you when something changes.</p></details>
       <details><summary>Do backlinks affect visibility in AI search results?</summary><p>Research has found correlations between strong link profiles and visibility in AI-generated answers, but there is no proven causal link. Backlinks remain valuable for classic search rankings and referral traffic.</p></details>
