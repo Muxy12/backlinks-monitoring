@@ -242,6 +242,19 @@ export default function AdminPage() {
     tab === "users" ? "Search users by name or email…" :
     "Search audit by actor, action, workspace…";
 
+  // Derived operational metrics — computed from the lists the admin already loads
+  // (real data, no fabrication). At scale these should become backend aggregates;
+  // the coverage note is shown when the loaded lists are not complete.
+  const WEEK = 7 * 86400000;
+  const inLastWeek = (iso: string) => Date.now() - new Date(iso).getTime() < WEEK;
+  const newUsers7 = users.filter((u) => inLastWeek(u.created_at)).length;
+  const newOrgs7 = orgs.filter((o) => inLastWeek(o.created_at)).length;
+  const activatedOrgs = orgs.filter((o) => o.backlinks > 0).length;
+  const activatedPct = orgs.length ? Math.round((activatedOrgs / orgs.length) * 100) : 0;
+  const suspendedCount = orgs.filter((o) => o.suspended).length;
+  const planMix = ADMIN_PLANS.map((p) => ({ plan: p, n: orgs.filter((o) => o.plan === p).length }));
+  const orgsComplete = !stats || orgs.length >= stats.organizations;
+
   return (
     <div className="dash">
       <div className="page-head">
@@ -251,14 +264,58 @@ export default function AdminPage() {
 
       {stats && (
         <div className="admin-stats">
-          <div className="admin-stat"><div className="k">Workspaces</div><div className="v">{stats.organizations.toLocaleString()}</div></div>
-          <div className="admin-stat"><div className="k">Users</div><div className="v">{stats.users.toLocaleString()}</div></div>
-          <div className="admin-stat"><div className="k">Projects</div><div className="v">{stats.projects.toLocaleString()}</div></div>
-          <div className="admin-stat"><div className="k">Backlinks</div><div className="v">{stats.backlinks.toLocaleString()}</div></div>
-          <div className="admin-stat"><div className="k">Live</div><div className="v">{stats.backlinks_live.toLocaleString()}</div>{livePct != null && <div className="sub ok">{livePct}% of tracked</div>}</div>
-          <div className="admin-stat"><div className="k">Lost</div><div className="v">{stats.backlinks_lost.toLocaleString()}</div>{lostPct != null && <div className="sub bad">{lostPct}% of tracked</div>}</div>
+          <div className="admin-stat"><div className="k">Workspaces</div><div className="v">{stats.organizations.toLocaleString()}</div><div className={`delta${newOrgs7 ? " up" : ""}`}>{newOrgs7 ? `+${newOrgs7} new · 7d` : "none new · 7d"}</div></div>
+          <div className="admin-stat"><div className="k">Users</div><div className="v">{stats.users.toLocaleString()}</div><div className={`delta${newUsers7 ? " up" : ""}`}>{newUsers7 ? `+${newUsers7} new · 7d` : "none new · 7d"}</div></div>
+          <div className="admin-stat"><div className="k">Activated</div><div className="v">{activatedPct}%</div><div className="sub">{activatedOrgs} of {orgs.length} have backlinks</div></div>
+          <div className="admin-stat"><div className="k">Suspended</div><div className="v">{suspendedCount.toLocaleString()}</div><div className={`sub${suspendedCount ? " bad" : ""}`}>{suspendedCount ? "needs review" : "none"}</div></div>
+          <div className="admin-stat"><div className="k">Backlinks</div><div className="v">{stats.backlinks.toLocaleString()}</div><div className="sub">monitored platform-wide</div></div>
+          <div className="admin-stat"><div className="k">Live</div><div className="v">{livePct != null ? `${livePct}%` : "—"}</div>{lostPct != null && <div className="sub bad">{stats.backlinks_lost.toLocaleString()} lost · {lostPct}%</div>}</div>
         </div>
       )}
+
+      {stats && orgs.length > 0 && (
+        <>
+          <div className="ops-section-h">
+            <h2>Plan distribution</h2>
+            <span className="note">Plan tier from active subscription (paying or admin-comped){orgsComplete ? "" : ` · ${orgs.length} of ${stats.organizations} loaded`}</span>
+          </div>
+          <div className="plan-mix">
+            {planMix.map((pm) => (
+              <span key={pm.plan} className={`plan-chip${pm.n === 0 ? " muted" : ""}`}>
+                <span className="pn">{PLAN_LABEL[pm.plan] ?? pm.plan}</span><span className="pc">{pm.n}</span>
+              </span>
+            ))}
+            {suspendedCount > 0 && (
+              <span className="plan-chip danger"><span className="pn">Suspended</span><span className="pc">{suspendedCount}</span></span>
+            )}
+          </div>
+        </>
+      )}
+
+      <div className="ops-section-h">
+        <h2>Operational health</h2>
+        <span className="note">What this console can&rsquo;t yet answer — and what each needs.</span>
+      </div>
+      <div className="ops-gap">
+        {[
+          { t: "Monitoring — checks running & failing", ready: true, d: "Every check is recorded (backlink_checks: found, error_kind, duration_ms). Add an aggregate endpoint for checks today / failed / avg duration." },
+          { t: "Queue health — pending · failed · dead · stuck", ready: true, d: "The jobs table and its purpose-built stuck/dead indexes already hold this. Add a read query + endpoint." },
+          { t: "Revenue — MRR · paying · canceled", ready: true, d: "subscriptions.status + the plan price catalog give paying/canceled and MRR (exclude admin-comped subs). Add a cross-tenant billing endpoint." },
+          { t: "Plan-limit usage — who's near their cap", ready: true, d: "Plan limits (backlink/project/seat) are defined and live counts exist. Add an endpoint joining usage vs limit." },
+          { t: "Email — alert sends & failures", ready: true, d: "alert_deliveries logs every alert email send/fail. Add an endpoint. (True delivered/bounced needs a Resend webhook.)" },
+          { t: "Scheduler / last tick", ready: true, d: "/internal/tick returns per-tick counts. Surface last-tick time + processed/failed as a health endpoint." },
+          { t: "Churn & renewal timing", ready: false, d: "subscriptions has period_end / canceled_at / trial_end columns, but the Stripe webhook never writes them. Needs webhook instrumentation." },
+          { t: "Provider & API usage / cost", ready: false, d: "No external data provider is integrated; usage_records exists but is never populated (RecomputeUsage job has no handler). Needs metering." },
+        ].map((o) => (
+          <div className="ops-row" key={o.t}>
+            <div className="ops-b">
+              <div className="ops-t">{o.t}<span className={`ops-pill${o.ready ? " partial" : ""}`}>{o.ready ? "data ready" : "needs instrumentation"}</span></div>
+              <div className="ops-d">{o.d}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="ops-gap-foot">&ldquo;Data ready&rdquo; = already in the database, only needs a read endpoint. &ldquo;Needs instrumentation&rdquo; = not captured yet. Full build spec: docs/19 — admin operations instrumentation.</p>
 
       {err && <p className="error">{err}</p>}
 
