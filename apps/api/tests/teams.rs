@@ -152,7 +152,9 @@ async fn get(app: &axum::Router, c: &Creds, path: &str) -> (StatusCode, serde_js
 
 #[tokio::test]
 async fn invite_accept_and_membership() {
-    let Some((app, pool)) = app().await else { return };
+    let Some((app, pool)) = app().await else {
+        return;
+    };
 
     // Owner A creates an org.
     let a = signup(&app).await;
