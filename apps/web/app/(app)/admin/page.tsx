@@ -11,6 +11,9 @@ import {
   type AdminOrg,
   type AdminUser,
   type AdminAudit,
+  type AdminOps,
+  type AdminBilling,
+  type AdminUsageLimit,
 } from "@/lib/api";
 import "@/app/auth.css";
 import "../dashboard/dashboard.css";
@@ -77,6 +80,9 @@ export default function AdminPage() {
   const [orgs, setOrgs] = useState<AdminOrg[]>([]);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [audit, setAudit] = useState<AdminAudit[]>([]);
+  const [ops, setOps] = useState<AdminOps | null>(null);
+  const [billing, setBilling] = useState<AdminBilling | null>(null);
+  const [usage, setUsage] = useState<AdminUsageLimit[]>([]);
   const [tab, setTab] = useState<"orgs" | "users" | "audit">("orgs");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -84,16 +90,24 @@ export default function AdminPage() {
   const [detail, setDetail] = useState<AdminOrg | null>(null);
 
   const loadAll = useCallback(async () => {
-    const [s, o, u, a] = await Promise.all([
+    const [s, o, u, a, op, bl, ug] = await Promise.all([
       adminApi.stats(),
       adminApi.organizations(),
       adminApi.users(),
       adminApi.audit(),
+      adminApi.ops(),
+      adminApi.billing(),
+      adminApi.usageLimits(),
     ]);
     if (s.ok) setStats(s.data);
     if (o.ok) setOrgs(o.data);
     if (u.ok) setUsers(u.data);
     if (a.ok) setAudit(a.data);
+    // Ops endpoints (docs/19) may 404 until the backend ships them; the panels
+    // fall back to the "data ready" description when absent.
+    if (op.ok) setOps(op.data);
+    if (bl.ok) setBilling(bl.data);
+    if (ug.ok) setUsage(ug.data);
     if (!s.ok && (s.status === 404 || s.status === 401)) setDenied(true);
   }, []);
 
@@ -255,6 +269,9 @@ export default function AdminPage() {
   const suspendedCount = orgs.filter((o) => o.suspended).length;
   const planMix = ADMIN_PLANS.map((p) => ({ plan: p, n: orgs.filter((o) => o.plan === p).length }));
   const orgsComplete = !stats || orgs.length >= stats.organizations;
+  const nearLimit = usage
+    .filter((u) => u.pct != null && u.pct >= 80)
+    .sort((a, b) => (b.pct ?? 0) - (a.pct ?? 0));
 
   return (
     <div className="dash">
@@ -293,30 +310,85 @@ export default function AdminPage() {
         </>
       )}
 
-      <div className="ops-section-h">
-        <h2>Operational health</h2>
-        <span className="note">What this console can&rsquo;t yet answer — and what each needs.</span>
-      </div>
+      {ops ? (
+        <>
+          <div className="ops-section-h"><h2>System &amp; queue</h2><span className="note">jobs · live</span></div>
+          <div className="admin-stats">
+            <div className="admin-stat"><div className="k">Pending</div><div className="v">{ops.queue.pending.toLocaleString()}</div></div>
+            <div className="admin-stat"><div className="k">Processing</div><div className="v">{ops.queue.processing.toLocaleString()}</div></div>
+            <div className="admin-stat"><div className="k">Failed</div><div className="v">{ops.queue.failed.toLocaleString()}</div><div className={`sub${ops.queue.failed ? " bad" : ""}`}>{ops.queue.failed ? "retrying" : "none"}</div></div>
+            <div className="admin-stat"><div className="k">Dead</div><div className="v">{ops.queue.dead.toLocaleString()}</div><div className={`sub${ops.queue.dead ? " bad" : ""}`}>{ops.queue.dead ? "needs a human" : "none"}</div></div>
+            <div className="admin-stat"><div className="k">Last job</div><div className="v" style={{ fontSize: 15 }}>{ops.queue.last_completed_at ? <Time iso={ops.queue.last_completed_at} /> : "—"}</div><div className="sub">{ops.queue.created_last_hour} queued · 1h</div></div>
+            <div className="admin-stat"><div className="k">Oldest pending</div><div className="v" style={{ fontSize: 15 }}>{ops.queue.oldest_pending_at ? <Time iso={ops.queue.oldest_pending_at} /> : "—"}</div></div>
+          </div>
+          <div className="ops-section-h"><h2>Monitoring &amp; delivery</h2><span className="note">last {Math.round(ops.window_secs / 3600)}h</span></div>
+          <div className="admin-stats">
+            <div className="admin-stat"><div className="k">Checks</div><div className="v">{ops.monitoring.checks.toLocaleString()}</div></div>
+            <div className="admin-stat"><div className="k">Failed</div><div className="v">{ops.monitoring.failed.toLocaleString()}</div><div className={`sub${ops.monitoring.failed ? " bad" : ""}`}>{ops.monitoring.checks ? `${Math.round((ops.monitoring.failed / ops.monitoring.checks) * 100)}%` : "—"}</div></div>
+            <div className="admin-stat"><div className="k">Avg duration</div><div className="v">{ops.monitoring.avg_duration_ms != null ? ops.monitoring.avg_duration_ms.toLocaleString() : "—"}</div><div className="sub">ms</div></div>
+            <div className="admin-stat"><div className="k">Lost detected</div><div className="v">{ops.monitoring.lost_detected.toLocaleString()}</div></div>
+            <div className="admin-stat"><div className="k">Alert emails</div><div className="v">{ops.email.sent.toLocaleString()}</div><div className="sub">sent</div></div>
+            <div className="admin-stat"><div className="k">Email failures</div><div className="v">{ops.email.failed.toLocaleString()}</div><div className={`sub${ops.email.failed ? " bad" : ""}`}>{ops.email.failed ? "check destinations" : "none"}</div></div>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="ops-section-h"><h2>Operational health</h2><span className="note">Live metrics load from the admin ops endpoints (docs/19).</span></div>
+          <div className="ops-gap">
+            {[
+              { t: "Monitoring — checks running & failing", d: "backlink_checks holds found / error_kind / duration_ms. Served by /v1/admin/ops." },
+              { t: "Queue health — pending · failed · dead", d: "The jobs table + stuck/dead indexes. Served by /v1/admin/ops." },
+              { t: "Revenue — MRR · paying · canceled", d: "subscriptions + the plan price catalog. Served by /v1/admin/billing." },
+              { t: "Plan-limit usage", d: "Plan caps vs live backlink counts. Served by /v1/admin/usage/limits." },
+              { t: "Email — alert sends & failures", d: "alert_deliveries. Served by /v1/admin/ops." },
+              { t: "Scheduler liveness", d: "Last completed job + jobs queued per hour. Served by /v1/admin/ops." },
+            ].map((o) => (
+              <div className="ops-row" key={o.t}>
+                <div className="ops-b"><div className="ops-t">{o.t}<span className="ops-pill partial">data ready</span></div><div className="ops-d">{o.d}</div></div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {billing && (
+        <>
+          <div className="ops-section-h"><h2>Revenue</h2><span className="note">USD · excludes admin-comped subscriptions</span></div>
+          <div className="admin-stats">
+            <div className="admin-stat"><div className="k">MRR</div><div className="v">${Math.round(billing.mrr_cents / 100).toLocaleString()}</div><div className="sub">/ month</div></div>
+            <div className="admin-stat"><div className="k">Paying</div><div className="v">{billing.paying.toLocaleString()}</div></div>
+            <div className="admin-stat"><div className="k">Trialing</div><div className="v">{billing.trialing.toLocaleString()}</div></div>
+            <div className="admin-stat"><div className="k">Past due</div><div className="v">{billing.past_due.toLocaleString()}</div><div className={`sub${billing.past_due ? " bad" : ""}`}>{billing.past_due ? "dunning" : "none"}</div></div>
+            <div className="admin-stat"><div className="k">Canceled</div><div className="v">{billing.canceled.toLocaleString()}</div></div>
+            <div className="admin-stat"><div className="k">Comped</div><div className="v">{billing.comped.toLocaleString()}</div><div className="sub">admin-set</div></div>
+          </div>
+        </>
+      )}
+
+      {nearLimit.length > 0 && (
+        <>
+          <div className="ops-section-h"><h2>Near plan limit</h2><span className="note">monitored backlinks vs plan cap — click to open</span></div>
+          <div className="plan-mix">
+            {nearLimit.slice(0, 8).map((u) => (
+              <button key={u.id} className="plan-chip" onClick={() => { const o = orgs.find((x) => x.id === u.id); if (o) setDetail(o); }}>
+                <span className="pn">{u.name}</span><span className="pc" style={u.pct != null && u.pct >= 100 ? { color: "var(--lost)" } : undefined}>{u.pct}%</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
+      <div className="ops-section-h"><h2>Not yet instrumented</h2><span className="note">needs backend work — see docs/19</span></div>
       <div className="ops-gap">
         {[
-          { t: "Monitoring — checks running & failing", ready: true, d: "Every check is recorded (backlink_checks: found, error_kind, duration_ms). Add an aggregate endpoint for checks today / failed / avg duration." },
-          { t: "Queue health — pending · failed · dead · stuck", ready: true, d: "The jobs table and its purpose-built stuck/dead indexes already hold this. Add a read query + endpoint." },
-          { t: "Revenue — MRR · paying · canceled", ready: true, d: "subscriptions.status + the plan price catalog give paying/canceled and MRR (exclude admin-comped subs). Add a cross-tenant billing endpoint." },
-          { t: "Plan-limit usage — who's near their cap", ready: true, d: "Plan limits (backlink/project/seat) are defined and live counts exist. Add an endpoint joining usage vs limit." },
-          { t: "Email — alert sends & failures", ready: true, d: "alert_deliveries logs every alert email send/fail. Add an endpoint. (True delivered/bounced needs a Resend webhook.)" },
-          { t: "Scheduler / last tick", ready: true, d: "/internal/tick returns per-tick counts. Surface last-tick time + processed/failed as a health endpoint." },
-          { t: "Churn & renewal timing", ready: false, d: "subscriptions has period_end / canceled_at / trial_end columns, but the Stripe webhook never writes them. Needs webhook instrumentation." },
-          { t: "Provider & API usage / cost", ready: false, d: "No external data provider is integrated; usage_records exists but is never populated (RecomputeUsage job has no handler). Needs metering." },
+          { t: "Churn & renewal timing", d: "subscriptions has period_end / canceled_at / trial_end columns, but the Stripe webhook never writes them. Needs webhook instrumentation." },
+          { t: "Provider & API usage / cost", d: "No external data provider is integrated; usage_records exists but is never populated (RecomputeUsage job has no handler). Needs metering." },
         ].map((o) => (
           <div className="ops-row" key={o.t}>
-            <div className="ops-b">
-              <div className="ops-t">{o.t}<span className={`ops-pill${o.ready ? " partial" : ""}`}>{o.ready ? "data ready" : "needs instrumentation"}</span></div>
-              <div className="ops-d">{o.d}</div>
-            </div>
+            <div className="ops-b"><div className="ops-t">{o.t}<span className="ops-pill">needs instrumentation</span></div><div className="ops-d">{o.d}</div></div>
           </div>
         ))}
       </div>
-      <p className="ops-gap-foot">&ldquo;Data ready&rdquo; = already in the database, only needs a read endpoint. &ldquo;Needs instrumentation&rdquo; = not captured yet. Full build spec: docs/19 — admin operations instrumentation.</p>
 
       {err && <p className="error">{err}</p>}
 
