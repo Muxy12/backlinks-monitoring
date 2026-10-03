@@ -3,21 +3,24 @@
 export function statusColor(status: string): string {
   switch (status) {
     case "live":
-      return "var(--green)";
+      return "var(--live)";
     case "lost":
+      return "var(--lost)";
     case "source_error":
     case "target_error":
-      return "var(--red)";
+      return "var(--broken)";
     case "suspected_lost":
     case "changed":
+      return "var(--changed)";
     case "nofollow":
+      return "var(--nofollow)";
     case "redirected":
-      return "var(--yellow)";
+      return "var(--redirected)";
     case "blocked":
     case "unknown":
-      return "var(--muted)";
+      return "var(--unknown)";
     default:
-      return "var(--muted-2)"; // pending
+      return "var(--pending)"; // pending
   }
 }
 
