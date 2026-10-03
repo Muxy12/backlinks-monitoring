@@ -57,8 +57,19 @@ webhook persists plan, status, period, `cancel_at_period_end`, `canceled_at` and
   scheduler (`enqueue_due`) now only monitors orgs that are not suspended and have
   an active/past_due subscription or an un-expired trial. New backlink/project/seat
   adds are blocked once the trial expires or the subscription is inactive
-  (`billing::is_access_active`), without touching existing data. *Trial UX banner +
-  trial emails (started / T-3 / T-1 / expired) are P6/follow-up.*
+  (`billing::is_access_active`), without touching existing data. The trial UX
+  banner shipped in P6; **trial lifecycle emails shipped** (see below).
+
+## Trial lifecycle emails (DONE)
+Idempotent `started / t_minus_3 / t_minus_1 / expired` emails via Resend
+(env-gated like all email). The `trial_email_log` ledger (migration 0029,
+PK `(organization_id, kind)`) is claimed with `INSERT … ON CONFLICT DO NOTHING`
+**before** sending, so a reminder is sent at most once across retries, overlapping
+scans or multiple workers. `started` is sent from the create-org handler; the
+reminders come from `worker::trial_emails_tick` (`db::…::trial_emails::due_reminders`
+over disjoint windows — t_minus_3 at 1–3 days left, t_minus_1 at ≤1 day, expired
+past `trial_end`), run hourly in the worker loop and once on the cron scheduler
+path. Copy links to `/settings/billing`; a send failure is logged, not retried.
 - **P4 — billing: DONE.** Checkout takes an `interval` (`monthly`/`annual`);
   annual uses `STRIPE_PRICE_<PLAN>_ANNUAL` (`stripe::price_for_plan_interval`),
   and `plan_from_price` reverse-maps both prices. The billing page has a

@@ -27,5 +27,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or(500);
     let (jobs, n) = schedule_tick(&ctx, batch, 3600).await?;
     tracing::info!(jobs, backlinks = n, "scheduler tick complete");
+    // Also flush any due trial lifecycle emails on the cron path (idempotent, so
+    // running here and in the worker loop never double-sends).
+    match worker::trial_emails_tick(&ctx).await {
+        Ok(sent) => tracing::info!(sent, "trial email tick complete"),
+        Err(e) => tracing::error!(error = %e, "trial email tick failed"),
+    }
     Ok(())
 }
