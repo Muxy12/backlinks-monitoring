@@ -237,7 +237,7 @@ export const MARKETING_STYLE = `
 export const MARKETING_HEADER = `
 <header class="site">
   <div class="wrap">
-    <a class="logo" href="/" aria-label="LinkPulz home">Link<span>Pulz</span></a>
+    <a class="logo" href="/" aria-label="LinkPulz home"><img src="https://ye8jhaekbbcviws9.public.blob.vercel-storage.com/logo-linkpulz.webp" alt="LinkPulz backlink monitoring software" width="1254" height="1254" style="height:26px;width:auto;margin-right:9px;vertical-align:-6px;display:inline-block">Link<span>Pulz</span></a>
     <nav class="main" aria-label="Main">
       <a href="/#features">Features</a>
       <a href="/#how-it-works">How it works</a>
@@ -253,6 +253,7 @@ export const MARKETING_FOOTER = `
   <div class="wrap cols">
     <div><a class="logo" href="/">Link<span>Pulz</span></a><p class="micro" style="margin-top:8px">Backlink monitoring software.</p></div>
     <div><b>Product</b><br><a href="/lost-backlinks">Lost backlinks</a><a href="/broken-backlinks">Broken backlinks</a><a href="/verify-backlinks">Verify a backlink</a><a href="/backlink-health-check">Backlink health check</a></div>
+    <div><b>Guides</b><br><a href="/backlink-management">Backlink management</a><a href="/backlink-audit">Backlink audit</a><a href="/backlink-profile">Backlink profile</a><a href="/backlink-reporting">Backlink reporting</a></div>
     <div><b>Tools</b><br><a href="/tools/backlink-checker">Free backlink checker</a><a href="/docs">Documentation</a><a href="/#pricing">Pricing</a></div>
     <div><b>Company</b><br><a href="/register">Start free trial</a><a href="/login">Log in</a><a href="/legal/privacy">Privacy</a><a href="/legal/terms">Terms</a></div>
   </div>

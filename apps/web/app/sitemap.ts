@@ -16,6 +16,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: "/lost-backlinks", priority: 0.8, changeFrequency: "monthly" },
     { path: "/broken-backlinks", priority: 0.8, changeFrequency: "monthly" },
     { path: "/backlink-health-check", priority: 0.8, changeFrequency: "monthly" },
+    { path: "/backlink-management", priority: 0.8, changeFrequency: "monthly" },
+    { path: "/backlink-audit", priority: 0.8, changeFrequency: "monthly" },
+    { path: "/backlink-profile", priority: 0.8, changeFrequency: "monthly" },
+    { path: "/backlink-reporting", priority: 0.8, changeFrequency: "monthly" },
     { path: "/docs", priority: 0.8, changeFrequency: "weekly" },
     { path: "/tools/backlink-checker", priority: 0.7, changeFrequency: "monthly" },
   ];
