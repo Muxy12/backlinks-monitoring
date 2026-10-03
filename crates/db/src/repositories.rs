@@ -2874,24 +2874,118 @@ pub mod billing {
         Ok(())
     }
 
-    /// Update plan/status by Stripe subscription id (subscription.updated/deleted).
+    /// Update plan/status by Stripe subscription id (subscription.deleted, and
+    /// the invoice fallbacks). COALESCE keeps the existing plan when the event
+    /// carries no price we map. When the new status is `canceled` we stamp
+    /// `canceled_at` and clear the pending cancel flag.
     pub async fn update_subscription_by_stripe_id(
         pool: &PgPool,
         subscription_id: &str,
         plan_slug: Option<&str>,
         status: &str,
     ) -> Result<(), DbError> {
-        // COALESCE keeps the existing plan when the event carries no price we map.
         sqlx::query(
             "UPDATE subscriptions SET \
                 status = $2, \
                 plan = COALESCE($3::subscription_plan, plan), \
+                canceled_at = CASE WHEN $2 = 'canceled' THEN now() ELSE canceled_at END, \
+                cancel_at_period_end = CASE WHEN $2 = 'canceled' THEN false ELSE cancel_at_period_end END, \
                 updated_at = now() \
              WHERE stripe_subscription_id = $1",
         )
         .bind(subscription_id)
         .bind(status)
         .bind(plan_slug)
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    /// Full subscription upsert from a `customer.subscription.*` event (docs/20 —
+    /// P4). Keyed by organization (one row per org), so it is robust to event
+    /// ordering: it creates the row if `checkout.session.completed` has not landed
+    /// yet, otherwise updates it in place. Period/trial fields use COALESCE so a
+    /// later event that omits one keeps the stored value instead of nulling it.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn upsert_subscription_from_stripe(
+        pool: &PgPool,
+        organization_id: Uuid,
+        customer_id: &str,
+        subscription_id: Option<&str>,
+        plan_slug: Option<&str>,
+        status: &str,
+        current_period_start: Option<chrono::DateTime<chrono::Utc>>,
+        current_period_end: Option<chrono::DateTime<chrono::Utc>>,
+        cancel_at_period_end: bool,
+        canceled_at: Option<chrono::DateTime<chrono::Utc>>,
+        trial_end: Option<chrono::DateTime<chrono::Utc>>,
+    ) -> Result<(), DbError> {
+        sqlx::query(
+            "INSERT INTO subscriptions \
+                (id, organization_id, stripe_customer_id, stripe_subscription_id, plan, status, \
+                 current_period_start, current_period_end, cancel_at_period_end, \
+                 canceled_at, trial_end) \
+             VALUES ($1, $2, $3, $4, \
+                     COALESCE($5::subscription_plan, 'starter'::subscription_plan), $6, \
+                     $7, $8, $9, $10, $11) \
+             ON CONFLICT (organization_id) DO UPDATE SET \
+                stripe_customer_id = EXCLUDED.stripe_customer_id, \
+                stripe_subscription_id = \
+                    COALESCE(EXCLUDED.stripe_subscription_id, subscriptions.stripe_subscription_id), \
+                plan = COALESCE($5::subscription_plan, subscriptions.plan), \
+                status = EXCLUDED.status, \
+                current_period_start = \
+                    COALESCE(EXCLUDED.current_period_start, subscriptions.current_period_start), \
+                current_period_end = \
+                    COALESCE(EXCLUDED.current_period_end, subscriptions.current_period_end), \
+                cancel_at_period_end = EXCLUDED.cancel_at_period_end, \
+                canceled_at = EXCLUDED.canceled_at, \
+                trial_end = COALESCE(EXCLUDED.trial_end, subscriptions.trial_end), \
+                updated_at = now()",
+        )
+        .bind(Uuid::now_v7())
+        .bind(organization_id)
+        .bind(customer_id)
+        .bind(subscription_id)
+        .bind(plan_slug)
+        .bind(status)
+        .bind(current_period_start)
+        .bind(current_period_end)
+        .bind(cancel_at_period_end)
+        .bind(canceled_at)
+        .bind(trial_end)
+        .execute(pool)
+        .await
+        .map_err(DbError::from_insert)?;
+        Ok(())
+    }
+
+    /// Dunning: a failed invoice puts a live subscription into `past_due` (the
+    /// grace state — `is_access_active` still grants access). Never resurrects a
+    /// canceled/expired subscription.
+    pub async fn mark_past_due(pool: &PgPool, subscription_id: &str) -> Result<(), DbError> {
+        sqlx::query(
+            "UPDATE subscriptions SET status = 'past_due', updated_at = now() \
+             WHERE stripe_subscription_id = $1 AND status IN ('active', 'trialing', 'past_due')",
+        )
+        .bind(subscription_id)
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    /// Dunning recovery: a succeeded invoice brings a `past_due` subscription back
+    /// to `active`. Only touches `past_due` rows, so it never overrides a trial or
+    /// a cancellation.
+    pub async fn mark_active_if_recoverable(
+        pool: &PgPool,
+        subscription_id: &str,
+    ) -> Result<(), DbError> {
+        sqlx::query(
+            "UPDATE subscriptions SET status = 'active', updated_at = now() \
+             WHERE stripe_subscription_id = $1 AND status = 'past_due'",
+        )
+        .bind(subscription_id)
         .execute(pool)
         .await?;
         Ok(())

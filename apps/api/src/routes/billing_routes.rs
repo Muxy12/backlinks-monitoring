@@ -131,6 +131,9 @@ pub async fn billing_usage(
 #[derive(Deserialize)]
 pub struct CheckoutBody {
     pub plan: String,
+    /// "monthly" (default) or "annual". Anything else is treated as monthly.
+    #[serde(default)]
+    pub interval: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -155,9 +158,14 @@ pub async fn create_checkout(
         .ok_or_else(|| ApiError::Validation(format!("unknown plan '{}'", body.plan)))?;
     let secret = billing::stripe::secret_key()
         .ok_or_else(|| ApiError::Validation("billing is not configured on the server".into()))?;
-    let price = billing::stripe::price_for_plan(plan).ok_or_else(|| {
+    let interval = billing::stripe::Interval::from_opt(body.interval.as_deref());
+    let price = billing::stripe::price_for_plan_interval(plan, interval).ok_or_else(|| {
+        let suffix = match interval {
+            billing::stripe::Interval::Annual => " (annual)",
+            billing::stripe::Interval::Monthly => "",
+        };
         ApiError::Validation(format!(
-            "no Stripe price configured for the {} plan",
+            "no Stripe price configured for the {} plan{suffix}",
             plan.spec().slug
         ))
     })?;
@@ -253,13 +261,30 @@ pub async fn stripe_webhook(
     Ok(StatusCode::OK)
 }
 
-/// Apply a verified Stripe event to our subscription state.
+/// A Unix-seconds field on a Stripe object → UTC timestamp (None if absent/null).
+fn ts(obj: &serde_json::Value, key: &str) -> Option<chrono::DateTime<chrono::Utc>> {
+    obj.get(key)
+        .and_then(|v| v.as_i64())
+        .and_then(|s| chrono::DateTime::from_timestamp(s, 0))
+}
+
+/// The subscription id an invoice belongs to, across Stripe API shapes.
+fn invoice_subscription_id(obj: &serde_json::Value) -> Option<&str> {
+    obj["subscription"]
+        .as_str()
+        .or_else(|| obj["parent"]["subscription_details"]["subscription"].as_str())
+}
+
+/// Apply a verified Stripe event to our subscription state (docs/20 — P4).
 async fn apply_event(
     state: &AppState,
     event_type: &str,
     obj: &serde_json::Value,
 ) -> Result<(), ApiError> {
     match event_type {
+        // The row is first created here; the subscription.* events then enrich it
+        // with period/trial/cancel data. Keep this light so a later-arriving
+        // subscription event is the source of truth for those fields.
         "checkout.session.completed" => {
             let org_id = obj["metadata"]["organization_id"]
                 .as_str()
@@ -280,20 +305,49 @@ async fn apply_event(
                 .await?;
             }
         }
+        // Source of truth for plan, status and period/trial/cancel. Keyed by org
+        // (from subscription metadata) so it is robust to event ordering; falls
+        // back to a status update by subscription id when metadata is absent.
         "customer.subscription.updated" | "customer.subscription.created" => {
-            if let Some(sub_id) = obj["id"].as_str() {
-                let status = obj["status"].as_str().unwrap_or("active");
-                let price_id = obj["items"]["data"][0]["price"]["id"].as_str();
-                let plan = price_id
-                    .and_then(billing::stripe::plan_from_price)
-                    .map(|p| p.spec().slug);
-                db::repositories::billing::update_subscription_by_stripe_id(
-                    &state.pool,
-                    sub_id,
-                    plan,
-                    status,
-                )
-                .await?;
+            let status = obj["status"].as_str().unwrap_or("active");
+            let sub_id = obj["id"].as_str();
+            let plan = obj["items"]["data"][0]["price"]["id"]
+                .as_str()
+                .and_then(billing::stripe::plan_from_price)
+                .map(|p| p.spec().slug);
+            let org_id = obj["metadata"]["organization_id"]
+                .as_str()
+                .and_then(|s| Uuid::parse_str(s).ok());
+            let customer = obj["customer"].as_str();
+
+            match (org_id, customer) {
+                (Some(org), Some(cust)) => {
+                    db::repositories::billing::upsert_subscription_from_stripe(
+                        &state.pool,
+                        org,
+                        cust,
+                        sub_id,
+                        plan,
+                        status,
+                        ts(obj, "current_period_start"),
+                        ts(obj, "current_period_end"),
+                        obj["cancel_at_period_end"].as_bool().unwrap_or(false),
+                        ts(obj, "canceled_at"),
+                        ts(obj, "trial_end"),
+                    )
+                    .await?;
+                }
+                _ => {
+                    if let Some(sid) = sub_id {
+                        db::repositories::billing::update_subscription_by_stripe_id(
+                            &state.pool,
+                            sid,
+                            plan,
+                            status,
+                        )
+                        .await?;
+                    }
+                }
             }
         }
         "customer.subscription.deleted" => {
@@ -305,6 +359,19 @@ async fn apply_event(
                     "canceled",
                 )
                 .await?;
+            }
+        }
+        // Dunning (past-due grace). A failed payment moves a live subscription to
+        // past_due — which still grants access — until Stripe recovers it or
+        // eventually cancels it. A succeeded payment brings past_due back to active.
+        "invoice.payment_failed" => {
+            if let Some(sub_id) = invoice_subscription_id(obj) {
+                db::repositories::billing::mark_past_due(&state.pool, sub_id).await?;
+            }
+        }
+        "invoice.payment_succeeded" | "invoice.paid" => {
+            if let Some(sub_id) = invoice_subscription_id(obj) {
+                db::repositories::billing::mark_active_if_recoverable(&state.pool, sub_id).await?;
             }
         }
         _ => {}

@@ -9,20 +9,23 @@ import "../../dashboard/dashboard.css";
 import "./billing.css";
 
 // Mirrors crates/billing/src/plans.rs (§39). Display-only; the server is the
-// source of truth for entitlements.
+// source of truth for entitlements and prices. `priceAnnual` is the per-month
+// equivalent of the annual plan (yearly total ÷ 12); annual = 10× monthly.
 const PLANS: {
   slug: string;
   name: string;
   price: string;
+  priceAnnual: string;
+  annualTotal: string;
   backlinks: string;
   projects: string;
   seats: string;
   featured?: boolean;
 }[] = [
-  { slug: "starter", name: "Starter", price: "$29", backlinks: "500", projects: "3", seats: "1" },
-  { slug: "pro", name: "Pro", price: "$59", backlinks: "2,500", projects: "10", seats: "3", featured: true },
-  { slug: "business", name: "Business", price: "$99", backlinks: "5,000", projects: "25", seats: "5" },
-  { slug: "agency", name: "Agency", price: "$199", backlinks: "15,000", projects: "75", seats: "15" },
+  { slug: "starter", name: "Starter", price: "$29", priceAnnual: "$24", annualTotal: "$290", backlinks: "500", projects: "3", seats: "1" },
+  { slug: "pro", name: "Pro", price: "$59", priceAnnual: "$49", annualTotal: "$590", backlinks: "2,500", projects: "10", seats: "3", featured: true },
+  { slug: "business", name: "Business", price: "$99", priceAnnual: "$82", annualTotal: "$990", backlinks: "5,000", projects: "25", seats: "5" },
+  { slug: "agency", name: "Agency", price: "$199", priceAnnual: "$166", annualTotal: "$1,990", backlinks: "15,000", projects: "75", seats: "15" },
 ];
 
 export default function BillingPage() {
@@ -35,6 +38,7 @@ export default function BillingPage() {
   const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null);
   const [accessActive, setAccessActive] = useState(true);
   const [usage, setUsage] = useState<UsageView | null>(null);
+  const [annual, setAnnual] = useState(false);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -80,7 +84,7 @@ export default function BillingPage() {
     if (!orgId) return;
     setBusy(slug);
     setMsg(null);
-    const res = await orgApi.startCheckout(orgId, slug);
+    const res = await orgApi.startCheckout(orgId, slug, annual ? "annual" : "monthly");
     setBusy(null);
     if (!res.ok) {
       setMsg(res.detail);
@@ -162,6 +166,25 @@ export default function BillingPage() {
       )}
       {msg && <p className="muted" style={{ marginBottom: 12 }}>{msg}</p>}
 
+      <div className="bill-interval" role="group" aria-label="Billing period">
+        <button
+          type="button"
+          className={`bi-seg${!annual ? " on" : ""}`}
+          aria-pressed={!annual}
+          onClick={() => setAnnual(false)}
+        >
+          Monthly
+        </button>
+        <button
+          type="button"
+          className={`bi-seg${annual ? " on" : ""}`}
+          aria-pressed={annual}
+          onClick={() => setAnnual(true)}
+        >
+          Annual <span className="bi-save">2 months free</span>
+        </button>
+      </div>
+
       <div className="tiles" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
         {PLANS.map((p) => {
           const current = p.slug === plan;
@@ -183,8 +206,13 @@ export default function BillingPage() {
                 {!current && p.featured && <span style={{ color: "var(--accent-2)" }}>popular</span>}
               </div>
               <div className="tile-value">
-                {p.price}
+                {annual ? p.priceAnnual : p.price}
                 <span style={{ fontSize: 13, fontWeight: 400, color: "var(--muted)" }}> /mo</span>
+                {annual && (
+                  <div style={{ fontSize: 12, fontWeight: 400, color: "var(--muted)", marginTop: 2 }}>
+                    {p.annualTotal} billed yearly
+                  </div>
+                )}
               </div>
               <ul className="muted" style={{ fontSize: 13, listStyle: "none", padding: 0, margin: "10px 0" }}>
                 <li>✓ {p.backlinks} backlinks</li>

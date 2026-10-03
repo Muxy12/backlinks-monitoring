@@ -691,11 +691,11 @@ export const orgApi = {
     }>(`/v1/organizations/${org}/billing`),
   billingUsage: (org: string) =>
     request<UsageView>(`/v1/organizations/${org}/billing/usage`),
-  startCheckout: (org: string, plan: string) =>
+  startCheckout: (org: string, plan: string, interval: "monthly" | "annual" = "monthly") =>
     request<{ url: string }>(`/v1/organizations/${org}/billing/checkout`, {
       method: "POST",
       headers: csrfHeader(),
-      body: JSON.stringify({ plan }),
+      body: JSON.stringify({ plan, interval }),
     }),
   openBillingPortal: (org: string) =>
     request<{ url: string }>(`/v1/organizations/${org}/billing/portal`, {

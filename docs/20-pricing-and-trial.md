@@ -36,10 +36,13 @@ data, show "choose a plan". Idempotent trial emails (started / T-3 / T-1 /
 expired).
 
 ## Billing (Stripe)
-Checkout + Customer Portal + a signature-verified, idempotent webhook already
-exist (`billing_routes.rs`). Price ids per plan via env `STRIPE_PRICE_<PLAN>`
-(`STRIPE_PRICE_STARTER/PRO/BUSINESS/AGENCY`). **Annual** interval and the
-period/cancel/trial webhook columns are P4 (not yet built).
+Checkout + Customer Portal + a signature-verified, idempotent webhook
+(`billing_routes.rs`). Monthly price ids per plan via env `STRIPE_PRICE_<PLAN>`
+(`STRIPE_PRICE_STARTER/PRO/BUSINESS/AGENCY`); **annual** via
+`STRIPE_PRICE_<PLAN>_ANNUAL`. Checkout takes `interval` (`monthly`/`annual`). The
+webhook persists plan, status, period, `cancel_at_period_end`, `canceled_at` and
+`trial_end`, and handles `invoice.*` dunning with a `past_due` grace window
+(see P4 below).
 
 ## Implementation status
 - **P2 — central config / source of truth: DONE.** `plans.rs` re-spec (4 plans +
@@ -56,8 +59,20 @@ period/cancel/trial webhook columns are P4 (not yet built).
   adds are blocked once the trial expires or the subscription is inactive
   (`billing::is_access_active`), without touching existing data. *Trial UX banner +
   trial emails (started / T-3 / T-1 / expired) are P6/follow-up.*
-- **P4 — billing:** annual prices/interval, write period/cancel/trial columns,
-  handle `invoice.*` + past-due grace, safe upgrade/downgrade.
+- **P4 — billing: DONE.** Checkout takes an `interval` (`monthly`/`annual`);
+  annual uses `STRIPE_PRICE_<PLAN>_ANNUAL` (`stripe::price_for_plan_interval`),
+  and `plan_from_price` reverse-maps both prices. The billing page has a
+  monthly/annual toggle. `customer.subscription.created/updated` now upserts the
+  full row **keyed by org** (robust to event ordering): plan, status,
+  `current_period_start/end`, `cancel_at_period_end`, `canceled_at`, `trial_end`
+  (COALESCE keeps stored values a later event omits). Dunning: `invoice.payment_
+  failed` → `past_due` (the grace state — `is_access_active` still grants access);
+  `invoice.payment_succeeded`/`paid` → back to `active` (only from `past_due`, so
+  it never overrides a trial or cancellation). `customer.subscription.deleted`
+  stamps `canceled_at`. Upgrade/downgrade is safe by construction: plan comes
+  from the Stripe price via the webhook and limits derive from the plan spec, so
+  a downgrade only blocks new adds (existing data untouched). No schema change —
+  migration 0010 already had the columns.
 - **P6 — customer UI: DONE.** Public `/pricing` page on the marketing shell (4
   plans mirroring `plans.rs`, pure-CSS monthly/annual toggle, Pro "Most popular",
   value strip, FAQ, AggregateOffer + FAQPage JSON-LD, in sitemap); homepage
@@ -73,8 +88,13 @@ period/cancel/trial webhook columns are P4 (not yet built).
 - **P8 — analytics:** signup attribution + funnel events (needs a sink).
 
 ## Manual production steps (when the relevant phase ships)
-- Stripe: create Products/Prices for the four plans (monthly; annual in P4) and
-  set `STRIPE_PRICE_STARTER/PRO/BUSINESS/AGENCY` (+ `_ANNUAL` in P4),
-  `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `APP_URL`.
+- Stripe: create Products with a **monthly and an annual** Price for each of the
+  four plans and set `STRIPE_PRICE_STARTER/PRO/BUSINESS/AGENCY` (monthly) plus
+  `STRIPE_PRICE_STARTER_ANNUAL/PRO_ANNUAL/BUSINESS_ANNUAL/AGENCY_ANNUAL`, then
+  `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `APP_URL`. Enable the webhook
+  events `checkout.session.completed`, `customer.subscription.created/updated/
+  deleted`, and `invoice.payment_failed`/`invoice.payment_succeeded`. A missing
+  annual price makes only the annual checkout fail with a clear message; monthly
+  is unaffected.
 - DataForSEO is **not integrated**; its "cost protection / allowances" can only be
   generic provider-usage scaffolding until a provider exists (see docs/19).
