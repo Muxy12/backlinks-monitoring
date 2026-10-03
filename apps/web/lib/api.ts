@@ -760,11 +760,48 @@ export interface AdminUser {
   organizations: number;
 }
 
+// Founder-ops read models (docs/19) — real data from existing tables.
+export interface AdminOps {
+  window_secs: number;
+  queue: {
+    pending: number;
+    processing: number;
+    failed: number;
+    dead: number;
+    oldest_pending_at: string | null;
+    last_completed_at: string | null;
+    created_last_hour: number;
+  };
+  monitoring: { checks: number; failed: number; avg_duration_ms: number | null; lost_detected: number };
+  email: { sent: number; failed: number };
+}
+export interface AdminBilling {
+  mrr_cents: number;
+  paying: number;
+  trialing: number;
+  past_due: number;
+  canceled: number;
+  comped: number;
+  by_plan: { plan: string; subscribers: number; mrr_cents: number }[];
+}
+export interface AdminUsageLimit {
+  id: string;
+  name: string;
+  plan: string;
+  backlinks: number;
+  limit: number | null;
+  pct: number | null;
+}
+
 export const adminApi = {
   stats: () => request<AdminStats>("/v1/admin/stats"),
   organizations: () => request<AdminOrg[]>("/v1/admin/organizations"),
   users: () => request<AdminUser[]>("/v1/admin/users"),
   audit: () => request<AdminAudit[]>("/v1/admin/audit"),
+  ops: (windowHours?: number) =>
+    request<AdminOps>(`/v1/admin/ops${windowHours ? `?window_hours=${windowHours}` : ""}`),
+  billing: () => request<AdminBilling>("/v1/admin/billing"),
+  usageLimits: () => request<AdminUsageLimit[]>("/v1/admin/usage/limits"),
   setAdmin: (userId: string, isAdmin: boolean) =>
     request<AdminUser>(`/v1/admin/users/${userId}/admin`, {
       method: "POST",

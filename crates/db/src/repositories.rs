@@ -321,6 +321,124 @@ pub mod admin {
         .fetch_all(pool)
         .await?)
     }
+
+    // ─── Founder-ops read models (docs/19) ───────────────────────────────────
+    // All derived from tables that already exist — no new instrumentation. The
+    // windowed counts take seconds so the caller controls the look-back.
+
+    #[derive(Debug, Clone, sqlx::FromRow)]
+    pub struct OpsHealth {
+        pub q_pending: i64,
+        pub q_processing: i64,
+        pub q_failed: i64,
+        pub q_dead: i64,
+        pub q_oldest_pending_at: Option<DateTime<Utc>>,
+        pub q_last_completed_at: Option<DateTime<Utc>>,
+        pub q_created_1h: i64,
+        pub checks: i64,
+        pub checks_failed: i64,
+        pub avg_duration_ms: Option<f64>,
+        pub lost_detected: i64,
+        pub email_sent: i64,
+        pub email_failed: i64,
+    }
+
+    /// Queue (jobs), monitoring (backlink_checks over `window_secs`) and
+    /// alert-email (alert_deliveries) health in one snapshot.
+    pub async fn ops_health(pool: &PgPool, window_secs: f64) -> Result<OpsHealth, DbError> {
+        sqlx::query_as::<_, OpsHealth>(
+            "SELECT \
+               (SELECT count(*) FROM jobs WHERE status = 'pending')::bigint AS q_pending, \
+               (SELECT count(*) FROM jobs WHERE status = 'processing')::bigint AS q_processing, \
+               (SELECT count(*) FROM jobs WHERE status = 'failed')::bigint AS q_failed, \
+               (SELECT count(*) FROM jobs WHERE status = 'dead')::bigint AS q_dead, \
+               (SELECT min(scheduled_at) FROM jobs WHERE status = 'pending') AS q_oldest_pending_at, \
+               (SELECT max(completed_at) FROM jobs WHERE status = 'completed') AS q_last_completed_at, \
+               (SELECT count(*) FROM jobs WHERE created_at > now() - interval '1 hour')::bigint AS q_created_1h, \
+               (SELECT count(*) FROM backlink_checks WHERE checked_at > now() - interval '1 second' * $1::double precision)::bigint AS checks, \
+               (SELECT count(*) FROM backlink_checks WHERE checked_at > now() - interval '1 second' * $1::double precision AND (found = false OR error_kind IS NOT NULL))::bigint AS checks_failed, \
+               (SELECT AVG(duration_ms)::double precision FROM backlink_checks WHERE checked_at > now() - interval '1 second' * $1::double precision) AS avg_duration_ms, \
+               (SELECT count(*) FROM backlink_checks WHERE checked_at > now() - interval '1 second' * $1::double precision AND status_after = 'lost')::bigint AS lost_detected, \
+               (SELECT count(*) FROM alert_deliveries d JOIN alert_destinations a ON a.id = d.destination_id WHERE a.kind = 'email' AND d.created_at > now() - interval '1 second' * $1::double precision)::bigint AS email_sent, \
+               (SELECT count(*) FROM alert_deliveries d JOIN alert_destinations a ON a.id = d.destination_id WHERE a.kind = 'email' AND d.status = 'error' AND d.created_at > now() - interval '1 second' * $1::double precision)::bigint AS email_failed",
+        )
+        .bind(window_secs)
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_fetch)
+    }
+
+    #[derive(Debug, Clone, sqlx::FromRow)]
+    pub struct BillingCounts {
+        pub active: i64,
+        pub trialing: i64,
+        pub past_due: i64,
+        pub canceled: i64,
+        pub comped: i64,
+    }
+
+    /// Subscription status counts. `comped` = active/past_due rows with the
+    /// admin placeholder customer id, so the handler can keep them out of MRR.
+    pub async fn billing_counts(pool: &PgPool) -> Result<BillingCounts, DbError> {
+        sqlx::query_as::<_, BillingCounts>(
+            "SELECT \
+               (SELECT count(*) FROM subscriptions WHERE status = 'active')::bigint AS active, \
+               (SELECT count(*) FROM subscriptions WHERE status = 'trialing')::bigint AS trialing, \
+               (SELECT count(*) FROM subscriptions WHERE status = 'past_due')::bigint AS past_due, \
+               (SELECT count(*) FROM subscriptions WHERE status = 'canceled')::bigint AS canceled, \
+               (SELECT count(*) FROM subscriptions WHERE status IN ('active','past_due') \
+                  AND stripe_customer_id LIKE 'admin:%')::bigint AS comped",
+        )
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_fetch)
+    }
+
+    #[derive(Debug, Clone, sqlx::FromRow)]
+    pub struct PlanCount {
+        pub plan: String,
+        pub n: i64,
+    }
+
+    /// Real paying subscriptions per plan (excludes admin-comped rows), so the
+    /// handler can price them against the plan catalog for MRR.
+    pub async fn paying_by_plan(pool: &PgPool) -> Result<Vec<PlanCount>, DbError> {
+        Ok(sqlx::query_as::<_, PlanCount>(
+            "SELECT plan::text AS plan, count(*)::bigint AS n \
+             FROM subscriptions \
+             WHERE status IN ('active','past_due') AND stripe_customer_id NOT LIKE 'admin:%' \
+             GROUP BY plan",
+        )
+        .fetch_all(pool)
+        .await?)
+    }
+
+    #[derive(Debug, Clone, sqlx::FromRow)]
+    pub struct UsageRow {
+        pub id: Uuid,
+        pub name: String,
+        pub plan: String,
+        pub backlinks: i64,
+    }
+
+    /// Active workspaces with their plan + monitored-backlink count, busiest
+    /// first. The handler joins this to the plan-limit catalog to find who is
+    /// near their cap.
+    pub async fn usage_vs_limit(pool: &PgPool) -> Result<Vec<UsageRow>, DbError> {
+        Ok(sqlx::query_as::<_, UsageRow>(
+            "SELECT o.id, o.name, \
+               COALESCE((SELECT s.plan::text FROM subscriptions s \
+                  WHERE s.organization_id = o.id \
+                    AND s.status IN ('trialing','active','past_due') LIMIT 1), 'starter') AS plan, \
+               (SELECT count(*) FROM backlinks b WHERE b.organization_id = o.id)::bigint AS backlinks \
+             FROM organizations o \
+             WHERE o.suspended_at IS NULL \
+             ORDER BY backlinks DESC \
+             LIMIT 50",
+        )
+        .fetch_all(pool)
+        .await?)
+    }
 }
 
 // ─── Audit log (docs/03 §3.8, §45) — append-only trail of privileged actions ───

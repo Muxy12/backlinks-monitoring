@@ -114,6 +114,9 @@
 .plan-chip .pc { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--primary); }
 .plan-chip.muted .pc { color: var(--muted-2); }
 .plan-chip.danger .pc { color: var(--lost); }
+button.plan-chip { font: inherit; cursor: pointer; transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease); }
+button.plan-chip:hover { border-color: var(--primary); box-shadow: var(--shadow-sm); }
+button.plan-chip:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
 
 /* Operational health — telemetry not yet instrumented. Honest, not fake. */
 .ops-gap { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0; border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; background: var(--surface); box-shadow: var(--shadow-xs); margin-bottom: 20px; }
@@ -128,3 +131,16 @@
 .ops-row .ops-d { font-size: 12px; color: var(--muted); margin-top: 3px; line-height: 1.4; }
 .ops-gap-foot { font-size: 12px; color: var(--muted-2); margin: -8px 0 20px; }
 .ops-gap-foot a { color: var(--primary); }
+
+/* Workspace name as a drill-down trigger (opens Customer 360). */
+.admin-name.link { color: var(--text); background: none; border: none; font: inherit; font-weight: 600; cursor: pointer; padding: 0; text-align: left; }
+.admin-name.link:hover { color: var(--primary); text-decoration: underline; text-underline-offset: 2px; }
+.admin-name.link:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 4px; }
+
+/* Customer 360 drawer. */
+.c360-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 4px 0 4px; }
+.c360-head h2 { font-size: 19px; font-weight: 700; letter-spacing: -0.01em; }
+.c360-sub { font-family: var(--font-mono); font-size: 12px; color: var(--muted); margin-bottom: 18px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.c360-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 18px; align-items: center; }
+.c360-note { margin-top: 18px; padding: 12px 14px; font-size: 12.5px; line-height: 1.5; color: var(--muted); background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-md); }
+.c360-note b { color: var(--text); }
