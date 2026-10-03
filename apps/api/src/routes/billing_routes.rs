@@ -33,9 +33,18 @@ pub struct BillingStatus {
     pub status: String,
     /// Whether Stripe is configured on the server (drives the UI's buttons).
     pub configured: bool,
+    /// When the free trial ends (RFC3339), only while the org is `trialing`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub trial_ends_at: Option<String>,
+    /// Whole days left in the trial (>= 0), only while trialing and not expired.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub trial_days_left: Option<i64>,
+    /// Whether the org may add/monitor right now (active/past_due, or a live
+    /// trial). False means the trial expired or the subscription is inactive.
+    pub access_active: bool,
 }
 
-/// GET current plan/status for the org (+ whether Stripe is wired).
+/// GET current plan/status for the org (+ trial state + whether Stripe is wired).
 pub async fn billing_status(
     State(state): State<AppState>,
     Path(org_id): Path<Uuid>,
@@ -44,11 +53,78 @@ pub async fn billing_status(
     let (user, _s) = current(&state, &jar).await?;
     let scope = authorize_org(&state.pool, user.id, org_id).await?;
     scope.require(Role::Viewer)?;
-    let (plan, status) = db::repositories::billing::status_for_org(&state.pool, org_id).await?;
+    let (plan, status, trial_end) =
+        db::repositories::billing::status_for_org(&state.pool, org_id).await?;
+
+    let now = chrono::Utc::now();
+    let trialing_live = status == "trialing" && trial_end.map(|e| e > now).unwrap_or(false);
+    let (trial_ends_at, trial_days_left) = if trialing_live {
+        let end = trial_end.expect("live trial has an end");
+        // Round up: ~1 hour left still reads as "1 day left", not "0".
+        let days = (((end - now).num_seconds().max(0)) as f64 / 86_400.0).ceil() as i64;
+        (Some(end.to_rfc3339()), Some(days))
+    } else {
+        (None, None)
+    };
+    let access_active = matches!(status.as_str(), "active" | "past_due") || trialing_live;
+
     Ok(Json(BillingStatus {
         plan,
         status,
         configured: billing::stripe::is_configured(),
+        trial_ends_at,
+        trial_days_left,
+        access_active,
+    }))
+}
+
+/// One usage dimension: how many are in use against the plan's cap (`None` =
+/// unlimited).
+#[derive(Serialize)]
+pub struct UsageItem {
+    pub used: i64,
+    pub limit: Option<i64>,
+}
+
+/// GET current usage vs. plan limits for the org (billing page meters).
+#[derive(Serialize)]
+pub struct UsageView {
+    pub plan: String,
+    pub backlinks: UsageItem,
+    pub projects: UsageItem,
+    pub seats: UsageItem,
+}
+
+pub async fn billing_usage(
+    State(state): State<AppState>,
+    Path(org_id): Path<Uuid>,
+    jar: CookieJar,
+) -> Result<Json<UsageView>, ApiError> {
+    let (user, _s) = current(&state, &jar).await?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Viewer)?;
+
+    let spec = db::repositories::billing::plan_for_org(&state.pool, org_id)
+        .await?
+        .spec();
+    let backlinks = db::repositories::backlinks::count_active(&state.pool, &scope).await?;
+    let projects = db::repositories::projects::count(&state.pool, &scope).await?;
+    let seats = db::repositories::members::count_for_org(&state.pool, org_id).await?;
+
+    Ok(Json(UsageView {
+        plan: spec.slug.to_string(),
+        backlinks: UsageItem {
+            used: backlinks,
+            limit: spec.backlink_limit.map(|v| v as i64),
+        },
+        projects: UsageItem {
+            used: projects,
+            limit: spec.project_limit.map(|v| v as i64),
+        },
+        seats: UsageItem {
+            used: seats,
+            limit: spec.seat_limit.map(|v| v as i64),
+        },
     }))
 }
 

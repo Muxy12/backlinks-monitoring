@@ -251,6 +251,10 @@ pub fn app(state: AppState) -> Router {
             get(routes::billing_routes::billing_status),
         )
         .route(
+            "/v1/organizations/{org_id}/billing/usage",
+            get(routes::billing_routes::billing_usage),
+        )
+        .route(
             "/v1/organizations/{org_id}/billing/checkout",
             post(routes::billing_routes::create_checkout),
         )

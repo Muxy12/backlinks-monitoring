@@ -1,0 +1,71 @@
+.trial-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 24px;
+  background: color-mix(in srgb, var(--accent) 9%, var(--surface));
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border));
+  font-size: 0.88rem;
+  color: var(--text);
+  line-height: 1.35;
+}
+.trial-banner .tb-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+.trial-banner .tb-text {
+  flex: 1;
+  min-width: 0;
+}
+.trial-banner .tb-sub {
+  color: var(--muted);
+}
+.trial-banner .tb-cta {
+  flex: none;
+  font-weight: 650;
+  font-size: 0.82rem;
+  color: #fff;
+  background: var(--accent);
+  padding: 5px 15px;
+  border-radius: 999px;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: filter 0.15s ease;
+}
+.trial-banner .tb-cta:hover {
+  filter: brightness(1.08);
+}
+
+/* Last three days of the trial, or an ended/inactive subscription. */
+.trial-banner.urgent,
+.trial-banner.ended {
+  background: color-mix(in srgb, var(--danger) 11%, var(--surface));
+  border-bottom-color: color-mix(in srgb, var(--danger) 30%, var(--border));
+}
+.trial-banner.urgent .tb-dot,
+.trial-banner.ended .tb-dot {
+  background: var(--danger);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 22%, transparent);
+}
+.trial-banner.urgent .tb-cta,
+.trial-banner.ended .tb-cta {
+  background: var(--danger);
+}
+
+@media (max-width: 560px) {
+  .trial-banner {
+    padding: 9px 15px;
+    font-size: 0.82rem;
+    gap: 9px;
+  }
+  .trial-banner .tb-sub {
+    display: none;
+  }
+  .trial-banner .tb-cta {
+    padding: 5px 12px;
+  }
+}

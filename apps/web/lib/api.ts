@@ -66,6 +66,19 @@ export interface PlanView {
   most_popular: boolean;
 }
 
+/** One usage dimension against the plan's cap (`limit: null` = unlimited). */
+export interface UsageItem {
+  used: number;
+  limit: number | null;
+}
+
+export interface UsageView {
+  plan: string;
+  backlinks: UsageItem;
+  projects: UsageItem;
+  seats: UsageItem;
+}
+
 export const api = {
   // Public plan catalog for the pricing + billing pages (no auth).
   plans: () => request<PlanView[]>("/v1/plans"),
@@ -668,9 +681,16 @@ export const orgApi = {
       { method: "POST", headers: csrfHeader() },
     ),
   billingStatus: (org: string) =>
-    request<{ plan: string; status: string; configured: boolean }>(
-      `/v1/organizations/${org}/billing`,
-    ),
+    request<{
+      plan: string;
+      status: string;
+      configured: boolean;
+      trial_ends_at?: string;
+      trial_days_left?: number;
+      access_active: boolean;
+    }>(`/v1/organizations/${org}/billing`),
+  billingUsage: (org: string) =>
+    request<UsageView>(`/v1/organizations/${org}/billing/usage`),
   startCheckout: (org: string, plan: string) =>
     request<{ url: string }>(`/v1/organizations/${org}/billing/checkout`, {
       method: "POST",

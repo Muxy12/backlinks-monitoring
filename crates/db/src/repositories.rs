@@ -2708,18 +2708,20 @@ pub mod billing {
         Ok(row.map(|(c,)| c))
     }
 
-    /// Plan + status for display (defaults to starter / none when unsubscribed).
+    /// Plan + status + trial end for display (defaults to starter / none / no
+    /// trial when unsubscribed). `trial_end` is the raw timestamp; the API layer
+    /// derives "days left" from it so we never decode a Postgres interval here.
     pub async fn status_for_org(
         pool: &PgPool,
         organization_id: Uuid,
-    ) -> Result<(String, String), DbError> {
-        let row: Option<(String, String)> = sqlx::query_as(
-            "SELECT plan::text, status FROM subscriptions WHERE organization_id = $1",
+    ) -> Result<(String, String, Option<chrono::DateTime<chrono::Utc>>), DbError> {
+        let row: Option<(String, String, Option<chrono::DateTime<chrono::Utc>>)> = sqlx::query_as(
+            "SELECT plan::text, status, trial_end FROM subscriptions WHERE organization_id = $1",
         )
         .bind(organization_id)
         .fetch_optional(pool)
         .await?;
-        Ok(row.unwrap_or_else(|| ("starter".to_string(), "none".to_string())))
+        Ok(row.unwrap_or_else(|| ("starter".to_string(), "none".to_string(), None)))
     }
 
     /// Upsert the org's subscription from a completed checkout (webhook). One row

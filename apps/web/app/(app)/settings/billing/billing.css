@@ -1,0 +1,64 @@
+/* Trial / access notice on the billing page. */
+.trial-note {
+  border-left: 3px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 7%, var(--surface));
+}
+.trial-note.ended {
+  border-left-color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 8%, var(--surface));
+}
+
+/* Usage meters. */
+.usage-panel .usage-head {
+  font-weight: 650;
+  font-size: 0.95rem;
+  margin-bottom: 14px;
+}
+.usage-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 18px 28px;
+}
+.usage-item {
+  min-width: 0;
+}
+.usage-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 7px;
+}
+.usage-label {
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+.usage-count {
+  font-size: 0.9rem;
+  font-weight: 650;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.usage-count.over {
+  color: var(--danger);
+}
+.usage-bar {
+  height: 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text) 9%, transparent);
+  overflow: hidden;
+}
+.usage-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+.usage-fill.high {
+  background: color-mix(in srgb, var(--danger) 55%, var(--accent));
+}
+.usage-fill.over {
+  background: var(--danger);
+}

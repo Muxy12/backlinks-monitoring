@@ -58,8 +58,16 @@ period/cancel/trial webhook columns are P4 (not yet built).
   trial emails (started / T-3 / T-1 / expired) are P6/follow-up.*
 - **P4 — billing:** annual prices/interval, write period/cancel/trial columns,
   handle `invoice.*` + past-due grace, safe upgrade/downgrade.
-- **P6 — customer UI:** real `/pricing` page (monthly/annual toggle, FAQ), billing
-  usage, upgrade prompts, trial banner.
+- **P6 — customer UI: DONE.** Public `/pricing` page on the marketing shell (4
+  plans mirroring `plans.rs`, pure-CSS monthly/annual toggle, Pro "Most popular",
+  value strip, FAQ, AggregateOffer + FAQPage JSON-LD, in sitemap); homepage
+  `#pricing` shows the 4 real plans + link to `/pricing`; nav/footer point to
+  `/pricing`. Billing page shows a **usage panel** (backlinks/projects/seats vs
+  plan limits, from `GET /v1/orgs/:id/billing/usage`) and a trial/access notice.
+  A global **trial banner** in the app shell reads `GET /v1/orgs/:id/billing`
+  (now returns `trial_ends_at` / `trial_days_left` / `access_active`) and shows
+  "N days left" (firmer ≤ 3 days) or "choose a plan" when access is inactive.
+  *Trial emails (started / T-3 / T-1 / expired) remain a follow-up.*
 - **P7 — admin:** subscriptions table, trial funnel, per-customer economics
   (revenue from the catalog; COGS N/A until provider cost exists).
 - **P8 — analytics:** signup attribution + funnel events (needs a sink).

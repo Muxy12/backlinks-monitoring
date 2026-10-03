@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { api, type MeResponse } from "@/lib/api";
 import { selectedOrg, setSelectedOrg } from "@/lib/workspace";
 import { ToastHost } from "./toast";
+import { TrialBanner } from "./TrialBanner";
 import { Icon } from "./icons";
 import "./dashboard/dashboard.css";
 import "./shell.css";
@@ -163,6 +164,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </button>
           {brand}
         </div>
+        <TrialBanner orgId={current?.id ?? null} />
         {children}
       </div>
       <ToastHost />
