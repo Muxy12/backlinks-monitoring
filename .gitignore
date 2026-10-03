@@ -39,4 +39,5 @@ next-env.d.ts
 .claude/skills/seo-audit/
 .claude/skills/programmatic-seo/
 .claude/skills/grill-with-docs/
+.claude/skills/frontend-design/
 skills-lock.json

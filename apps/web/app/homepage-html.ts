@@ -475,22 +475,83 @@ const MAIN = `
 </section>
 
 <!-- ============ COMPARISON ============ -->
-<section class="alt" aria-labelledby="cmp-h">
+<section class="alt" id="compare" aria-labelledby="cmp-h">
   <div class="wrap">
     <div class="center">
-      <h2 id="cmp-h">LinkPulz vs. all-in-one SEO suites</h2>
-      <p class="lead">Only publish facts you can verify today.</p>
+      <h2 id="cmp-h">LinkPulz vs. other backlink monitoring tools</h2>
+      <p class="lead">Some tools monitor links, some verify them once, and some bundle monitoring inside a full SEO suite. Here is how they compare.</p>
     </div>
+
     <div class="tablewrap">
-      <table>
-        <thead><tr><th></th><th>LinkPulz</th><th>Typical all-in-one SEO suite</th></tr></thead>
+      <table class="compare">
+        <caption class="sr-only">Comparison of LinkPulz with other backlink tools</caption>
+        <thead>
+          <tr>
+            <th scope="col"></th>
+            <th scope="col" class="us">LinkPulz</th>
+            <th scope="col">Linkody</th>
+            <th scope="col">Monitor Backlinks</th>
+            <th scope="col">VerifyBacklinks</th>
+            <th scope="col">All-in-one SEO suites</th>
+          </tr>
+        </thead>
         <tbody>
-          <tr><th>Focus</th><td>Backlink monitoring only</td><td>Hundreds of SEO features</td></tr>
-          <tr><th>Alerts on lost/changed links</th><td><span class="tc">TO CONFIRM</span></td><td><span class="tc">verify per competitor</span></td></tr>
-          <tr><th>Check frequency</th><td><span class="tc">TO CONFIRM</span></td><td><span class="tc">verify per competitor</span></td></tr>
-          <tr><th>Starting price</th><td><span class="tc">TO CONFIRM</span></td><td><span class="tc">verify per competitor</span></td></tr>
+          <tr>
+            <th scope="row">Focus</th>
+            <td class="us">Backlink monitoring <span class="tc">TO CONFIRM</span></td>
+            <td>Backlink monitoring for SEOs and agencies</td>
+            <td>Backlink monitoring, competitor tracking and keyword rank tracking</td>
+            <td>Audit of an uploaded list of backlinks</td>
+            <td>Hundreds of SEO features, with a backlink module</td>
+          </tr>
+          <tr>
+            <th scope="row">How it checks</th>
+            <td class="us">Continuous, on a schedule <span class="tc">frequency: TO CONFIRM</span></td>
+            <td>Continuous, with ongoing monitoring</td>
+            <td>Daily monitoring</td>
+            <td>One-off audit, paid per audit</td>
+            <td>Continuous, inside the backlink module</td>
+          </tr>
+          <tr>
+            <th scope="row">Lost link alerts</th>
+            <td class="us">Yes <span class="tc">channels: TO CONFIRM</span></td>
+            <td>Email alerts for new and lost links</td>
+            <td>Alerts for removed or broken backlinks</td>
+            <td>No alerts, report only</td>
+            <td>Yes, in tools such as SE Ranking and Ahrefs</td>
+          </tr>
+          <tr>
+            <th scope="row">Broken link detection</th>
+            <td class="us">Yes <span class="tc">source and destination: TO CONFIRM</span></td>
+            <td>Not stated on its site</td>
+            <td>Yes, for broken backlinks</td>
+            <td>Yes, flags HTTP errors during the audit</td>
+            <td>Yes, in tools such as Ahrefs</td>
+          </tr>
+          <tr>
+            <th scope="row">Reports for clients</th>
+            <td class="us"><span class="tc">TO CONFIRM</span></td>
+            <td>White-label PDF reports</td>
+            <td>White-label plan available</td>
+            <td>Excel and PDF export</td>
+            <td>Varies by suite</td>
+          </tr>
+          <tr>
+            <th scope="row">Pricing model</th>
+            <td class="us"><span class="tc">TO CONFIRM</span></td>
+            <td>Subscription, from $14.90/mo, with a 30-day free trial</td>
+            <td>Subscription, from $29/mo</td>
+            <td>Pay per audit, from €29 for up to 500 links</td>
+            <td>Subscription, roughly $55 to $165+/mo to start</td>
+          </tr>
         </tbody>
       </table>
+    </div>
+
+    <p class="micro center" style="margin-top:16px">Competitor information comes from their public websites and independent comparison articles, last checked October 2026. Features and prices change, so check each vendor for current details. <span class="tc">Re-check before publishing</span></p>
+
+    <div class="center" style="margin-top:24px">
+      <a class="btn" href="/register">Try LinkPulz free</a>
     </div>
   </div>
 </section>

@@ -1,119 +1,43 @@
 /* Authenticated app shell: vertical sidebar (desktop) / slide-in drawer (mobile).
-   Tokens (.btn, --accent, .brand-mark, …) come from dashboard.css. */
+   Token-driven (tokens.css) so it adapts to light (primary) and dark. Buttons
+   and surface tokens come from dashboard.css + tokens.css. */
 
-.shell { display: flex; min-height: 100vh; align-items: stretch; }
+.shell { display: flex; min-height: 100vh; align-items: stretch; background: var(--bg); }
 
 .sidebar {
-  width: 236px;
+  width: 240px;
   flex: none;
   position: sticky;
   top: 0;
   height: 100vh;
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  padding: 18px 14px;
+  gap: 2px;
+  padding: 16px 12px;
   border-right: 1px solid var(--border);
-  background: color-mix(in srgb, var(--surface) 55%, var(--bg));
-  backdrop-filter: blur(10px);
-}
-
-.side-brand {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  font-size: 18px;
-  font-weight: 750;
-  letter-spacing: -0.3px;
-  color: var(--text);
-  padding: 6px 10px 16px;
-}
-
-.side-nav { display: flex; flex-direction: column; gap: 3px; }
-
-.side-link {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  color: var(--muted);
-  font-size: 14px;
-  font-weight: 550;
-  cursor: pointer;
-  border: none;
-  background: none;
-  text-align: left;
-  width: 100%;
-  transition: background 0.15s ease, color 0.15s ease;
-}
-.side-link:hover { color: var(--text); background: color-mix(in srgb, var(--text) 6%, transparent); }
-.side-link.active {
-  color: #fff;
-  background: color-mix(in srgb, var(--accent) 20%, var(--surface-2));
-  box-shadow: inset 2px 0 0 var(--accent);
-}
-.side-ico { width: 20px; flex: none; display: inline-flex; align-items: center; justify-content: center; color: var(--muted); }
-.side-link.active .side-ico, .side-link:hover .side-ico { color: inherit; }
-.side-spacer { flex: 1 1 auto; }
-.side-logout { color: var(--muted); }
-
-.shell-main { flex: 1 1 auto; min-width: 0; }
-
-/* Mobile: sidebar becomes an off-canvas drawer behind a top bar. */
-.mobile-bar { display: none; }
-.shell-scrim { display: none; }
-
-@media (max-width: 860px) {
-  .sidebar {
-    position: fixed;
-    z-index: 60;
-    left: 0;
-    top: 0;
-    width: 264px;
-    transform: translateX(-100%);
-    transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
-    box-shadow: 0 0 60px rgba(0, 0, 0, 0.55);
-  }
-  .sidebar.open { transform: none; }
-  .shell-scrim {
-    display: block;
-    position: fixed;
-    inset: 0;
-    z-index: 55;
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(2px);
-  }
-  .mobile-bar {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    position: sticky;
-    top: 0;
-    z-index: 40;
-    padding: 10px 16px;
-    border-bottom: 1px solid var(--border);
-    background: rgba(7, 9, 13, 0.82);
-    backdrop-filter: blur(14px);
-  }
-  .mobile-bar .side-brand { padding: 0; font-size: 17px; }
-  .hamburger {
-    font-size: 20px;
-    line-height: 1;
-    background: none;
-    border: none;
-    color: var(--text);
-    cursor: pointer;
-    padding: 4px 6px;
-  }
+  background: var(--surface);
 }
 
 /* ── Brand + workspace ─────────────────────────────────────────────────── */
-.side-brand-text {
+.side-brand {
   display: flex;
-  flex-direction: column;
-  line-height: 1.1;
+  align-items: center;
+  gap: 10px;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  padding: 6px 10px 14px;
 }
+.brand-mark {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  border-radius: 8px;
+  background: var(--grad);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--primary) 40%, transparent);
+}
+.side-brand-text { display: flex; flex-direction: column; line-height: 1.12; min-width: 0; }
 .side-workspace {
   font-size: 11px;
   font-weight: 500;
@@ -125,28 +49,68 @@
   white-space: nowrap;
 }
 
+.side-nav { display: flex; flex-direction: column; gap: 2px; }
+
 /* ── Nav sections ──────────────────────────────────────────────────────── */
-.side-group {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin-bottom: 10px;
-}
+.side-group { display: flex; flex-direction: column; gap: 2px; margin-bottom: 12px; }
 .side-group-title {
-  font-size: 10px;
+  font-size: 10.5px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
   color: var(--muted-2);
-  padding: 4px 12px;
+  padding: 6px 12px 3px;
 }
+
+.side-link {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 8px 12px;
+  border-radius: var(--r-md);
+  color: var(--muted);
+  font-size: 13.5px;
+  font-weight: 550;
+  cursor: pointer;
+  border: none;
+  background: none;
+  text-align: left;
+  width: 100%;
+  position: relative;
+  transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+.side-link:hover { color: var(--text); background: color-mix(in srgb, var(--text) 5%, transparent); }
+.side-link.active {
+  color: var(--primary);
+  background: var(--primary-weak);
+  font-weight: 650;
+}
+.side-ico {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted-2);
+  transition: color var(--t-fast) var(--ease);
+}
+.side-link:hover .side-ico { color: var(--text); }
+.side-link.active .side-ico { color: var(--primary); }
+.side-link:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+.side-spacer { flex: 1 1 auto; min-height: 8px; }
+
+.shell-main { flex: 1 1 auto; min-width: 0; }
 
 /* ── User block (bottom of sidebar) ────────────────────────────────────── */
 .side-user {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px;
+  padding: 10px 8px;
   margin-top: 6px;
   border-top: 1px solid var(--border);
 }
@@ -157,17 +121,12 @@
   border-radius: 50%;
   display: grid;
   place-items: center;
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 700;
   color: #fff;
-  background: linear-gradient(135deg, var(--accent), #5b21b6);
+  background: var(--grad);
 }
-.side-user-meta {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  flex: 1;
-}
+.side-user-meta { display: flex; flex-direction: column; min-width: 0; flex: 1; }
 .side-user-name {
   font-size: 13px;
   font-weight: 600;
@@ -186,19 +145,85 @@
 .side-user-logout {
   flex: none;
   border: 1px solid var(--border);
-  background: none;
+  background: var(--surface);
   color: var(--muted);
   cursor: pointer;
-  border-radius: 8px;
+  border-radius: var(--r-sm);
   width: 28px;
   height: 28px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  transition: color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease);
 }
-.side-user-logout:hover {
+.side-user-logout:hover { color: var(--text); border-color: var(--border-hover); }
+.side-user-logout:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+/* Workspace switcher (multi-org accounts). */
+.side-switcher {
+  width: 100%;
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
   color: var(--text);
-  border-color: var(--border-hover);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.side-switcher:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+
+/* ── Mobile: sidebar becomes an off-canvas drawer behind a top bar ─────── */
+.mobile-bar { display: none; }
+.shell-scrim { display: none; }
+
+@media (max-width: 860px) {
+  .sidebar {
+    position: fixed;
+    z-index: var(--z-sidebar);
+    left: 0;
+    top: 0;
+    width: 272px;
+    transform: translateX(-100%);
+    transition: transform var(--t-slow) var(--ease);
+    box-shadow: var(--shadow-lg);
+  }
+  .sidebar.open { transform: none; }
+  .shell-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-scrim);
+    background: rgba(13, 24, 44, 0.42);
+    backdrop-filter: blur(2px);
+  }
+  .mobile-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: var(--z-sticky);
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    background: color-mix(in srgb, var(--surface) 85%, transparent);
+    backdrop-filter: blur(14px);
+  }
+  .mobile-bar .side-brand { padding: 0; font-size: 16px; }
+  .hamburger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+    color: var(--text);
+    cursor: pointer;
+  }
+  .hamburger:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 }
 
 /* ── Toasts ────────────────────────────────────────────────────────────── */
@@ -206,31 +231,32 @@
   position: fixed;
   top: 16px;
   right: 16px;
-  z-index: 2000;
+  z-index: var(--z-toast);
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-width: min(360px, calc(100vw - 32px));
+  max-width: min(380px, calc(100vw - 32px));
 }
 .toast {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 11px 14px;
-  border-radius: 11px;
+  border-radius: var(--r-lg);
   font-size: 13px;
   line-height: 1.4;
   color: var(--text);
   background: var(--surface);
   border: 1px solid var(--border);
-  box-shadow: 0 10px 30px rgba(2, 6, 23, 0.28);
+  box-shadow: var(--shadow-pop);
   cursor: pointer;
-  animation: toast-in 0.18s ease;
+  animation: toast-in var(--t) var(--ease);
 }
 @keyframes toast-in {
   from { opacity: 0; transform: translateX(12px); }
   to { opacity: 1; transform: none; }
 }
+@media (prefers-reduced-motion: reduce) { .toast { animation: none; } }
 .toast-ico {
   flex: none;
   width: 20px;
@@ -242,21 +268,7 @@
   font-weight: 700;
   color: #fff;
 }
-.toast-success .toast-ico { background: #16a34a; }
-.toast-error .toast-ico { background: #dc2626; }
-.toast-info .toast-ico { background: var(--accent); }
-.toast-error { border-color: color-mix(in srgb, #dc2626 40%, var(--border)); }
-
-/* Workspace switcher (multi-org accounts). */
-.side-switcher {
-  width: 100%;
-  margin: 0 0 10px;
-  padding: 7px 10px;
-  border-radius: 9px;
-  border: 1px solid var(--border);
-  background: var(--surface-2);
-  color: var(--text);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
+.toast-success .toast-ico { background: var(--live); }
+.toast-error .toast-ico { background: var(--broken); }
+.toast-info .toast-ico { background: var(--primary); }
+.toast-error { border-color: color-mix(in srgb, var(--broken) 40%, var(--border)); }

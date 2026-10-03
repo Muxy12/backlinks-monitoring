@@ -1,15 +1,25 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
+import { Inter } from "next/font/google";
 import { SITE_URL } from "@/lib/site";
 import { CookieBanner } from "./cookie-banner";
 import { ThemeToggle } from "./theme-toggle";
+import "./tokens.css";
 import "./globals.css";
 import "./theme-light.css";
 
+// Self-hosted (no external request, no CLS). Exposed as --font-inter, which
+// tokens.css folds into --font-sans ahead of the system fallback stack.
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-inter",
+});
+
 // Applied before first paint (no flash of the wrong theme): use the saved choice,
-// else the OS preference. Only "light" is set as an attribute; dark is the CSS
-// default, so an unset/failed read simply stays dark.
-const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem('backlio_theme');if(!t){t=window.matchMedia&&window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';}document.documentElement.setAttribute('data-theme',t);}catch(e){}})();`;
+// else the OS preference, else light. The attribute is always set explicitly
+// ("light" or "dark"); light is the design default, so a failed read stays light.
+const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem('backlio_theme');if(!t){t=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','light');}})();`;
 
 export const metadata: Metadata = {
   // metadataBase makes every page's `alternates.canonical` (and OG URLs) resolve
@@ -31,7 +41,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // We reuse that nonce for the no-flash theme script so it passes the CSP too.
   const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className={inter.variable} suppressHydrationWarning>
       <head>
         <script nonce={nonce} dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
