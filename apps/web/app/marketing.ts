@@ -12,16 +12,16 @@ export const MARKETING_STYLE = `
 <style>
 #lp-home{
   --bg:#07090d; --bg-alt:#0d1117; --ink:#f7f8fa; --muted:#8b949e; --line:rgba(255,255,255,.08);
-  --brand:#8b5cf6; --brand-dark:#6d28d9; --accent:#36d399; --danger:#fb7185; --warn:#fbbf24;
+  --brand:#4c82ff; --brand-dark:#2f6bff; --violet:#9b7cff; --accent:#36d399; --danger:#fb7185; --warn:#fbbf24;
   --ph:#111720; --ph-line:rgba(255,255,255,.15); --radius:14px; --max:1120px;
-  font:17px/1.6 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  font:17px/1.6 var(--font-sans);
   color:var(--ink);
-  background:radial-gradient(circle at 50% -10%,rgba(139,92,246,.16),transparent 34%),var(--bg);
+  background:radial-gradient(circle at 50% -10%,color-mix(in srgb,var(--brand) 18%,transparent),transparent 36%),var(--bg);
   min-height:100vh;
 }
 :root[data-theme="light"] #lp-home{
   --bg:#ffffff; --bg-alt:#f4f7fb; --ink:#0f1b2d; --muted:#51607a; --line:#dbe3ee;
-  --brand:#7c3aed; --brand-dark:#6d28d9; --accent:#12b886; --danger:#e03131; --warn:#f08c00;
+  --brand:#2f6bff; --brand-dark:#1e54e6; --violet:#7c5cff; --accent:#12b886; --danger:#e03131; --warn:#f08c00;
   --ph:#e8eef7; --ph-line:#b7c4d9;
 }
 #lp-home,#lp-home *{box-sizing:border-box}
@@ -61,9 +61,10 @@ export const MARKETING_STYLE = `
 @media(max-width:760px){#lp-home nav.main a:not(.btn){display:none}}
 
 /* buttons */
-#lp-home .btn{display:inline-block;background:var(--brand);color:#fff!important;padding:13px 24px;border-radius:10px;font-weight:600;text-decoration:none;border:2px solid var(--brand);transition:.15s}
-#lp-home .btn:hover{background:var(--brand-dark);border-color:var(--brand-dark)}
-#lp-home .btn.ghost{background:transparent;color:var(--brand)!important}
+#lp-home .btn{display:inline-block;background:linear-gradient(135deg,var(--brand),var(--violet));color:#fff!important;padding:13px 24px;border-radius:10px;font-weight:600;text-decoration:none;border:2px solid transparent;box-shadow:0 6px 18px color-mix(in srgb,var(--brand) 24%,transparent);transition:filter .15s,transform .15s}
+#lp-home .btn:hover{filter:brightness(1.05) saturate(1.05)}
+#lp-home .btn:active{transform:translateY(1px)}
+#lp-home .btn.ghost{background:transparent;color:var(--brand)!important;border-color:var(--brand);box-shadow:none}
 #lp-home .btn.ghost:hover{background:var(--brand);color:#fff!important}
 #lp-home .btn.sm{padding:8px 16px;font-size:.92rem}
 #lp-home .cta-row{display:flex;gap:12px;flex-wrap:wrap;margin:24px 0 10px}
@@ -212,7 +213,7 @@ export const MARKETING_STYLE = `
 /* final — fixed dark band (readable in both themes) */
 #lp-home .final{background:#111720;color:#fff;text-align:center}
 #lp-home .final .lead{color:#b9c6df;margin:0 auto}
-#lp-home .final .btn{background:#fff;color:#111720!important;border-color:#fff}
+#lp-home .final .btn{background:#fff;color:#111720!important;border-color:#fff;box-shadow:none}
 
 #lp-home footer.site{padding:40px 0;border-top:1px solid var(--line);font-size:.92rem;color:var(--muted)}
 #lp-home footer.site .cols{display:flex;flex-wrap:wrap;gap:32px;justify-content:space-between}
