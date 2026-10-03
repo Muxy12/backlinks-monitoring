@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     description:
       "Monitor every backlink you earn or buy. Get instant alerts when a link is lost, nofollowed or deindexed.",
     url: "/",
-    images: ["/images/og-linkpulz.jpg"],
+    images: ["https://ye8jhaekbbcviws9.public.blob.vercel-storage.com/banniere-dashboard-linkpulz.webp"],
   },
   twitter: { card: "summary_large_image" },
 };

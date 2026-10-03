@@ -15,7 +15,7 @@ const JSONLD = `{
       "url": "https://www.linkpulz.com/",
       "logo": {
         "@type": "ImageObject",
-        "url": "https://www.linkpulz.com/images/logo.png"
+        "url": "https://ye8jhaekbbcviws9.public.blob.vercel-storage.com/logo-linkpulz.webp"
       },
       "sameAs": [
         "https://www.linkedin.com/company/linkpulz",
@@ -38,7 +38,7 @@ const JSONLD = `{
       "description": "Monitor every backlink you earn or buy. Get instant alerts when a link is lost, nofollowed or deindexed.",
       "isPartOf": { "@id": "https://www.linkpulz.com/#website" },
       "about": { "@id": "https://www.linkpulz.com/#software" },
-      "primaryImageOfPage": { "@type": "ImageObject", "url": "https://www.linkpulz.com/images/og-linkpulz.jpg" },
+      "primaryImageOfPage": { "@type": "ImageObject", "url": "https://ye8jhaekbbcviws9.public.blob.vercel-storage.com/banniere-dashboard-linkpulz.webp" },
       "breadcrumb": { "@id": "https://www.linkpulz.com/#breadcrumb" },
       "inLanguage": "en"
     },
@@ -58,7 +58,7 @@ const JSONLD = `{
       "operatingSystem": "Web",
       "description": "Backlink monitoring software that checks your earned and paid backlinks on a schedule and alerts you when a link is lost, redirected, nofollowed, noindexed or deindexed.",
       "url": "https://www.linkpulz.com/",
-      "image": "https://www.linkpulz.com/images/og-linkpulz.jpg",
+      "image": "https://ye8jhaekbbcviws9.public.blob.vercel-storage.com/banniere-dashboard-linkpulz.webp",
       "publisher": { "@id": "https://www.linkpulz.com/#organization" },
       "featureList": [
         "Verify your backlinks",
@@ -148,29 +148,7 @@ const MAIN = `
       </div>
       <p class="micro">No credit card required <span class="tc">TO CONFIRM</span> · Set up in under 5 minutes <span class="tc">TO CONFIRM</span></p>
     </div>
-    <!-- PHOTO PLACEHOLDER: product screenshot -->
-    <div class="ph hero-img" role="img" aria-label="LinkPulz dashboard showing a Link lost alert">
-      <div>IMAGE PLACEHOLDER: dashboard screenshot<small>1200×900 · WebP · show a "Link lost" alert with source URL, target URL and date. Replace with &lt;img src="…" alt="LinkPulz backlink monitoring dashboard with a Link lost alert" width="1200" height="900" fetchpriority="high"&gt;</small></div>
-    </div>
-  </div>
-</section>
-
-<!-- ============ FREE MINI-TOOL ============ -->
-<section class="alt" id="checker" aria-labelledby="tool-h">
-  <div class="wrap center">
-    <h2 id="tool-h">Is your backlink still live?</h2>
-    <p class="lead">Paste the page that links to you and your target URL. We'll check HTTP status, link attributes and indexation in seconds.</p>
-    <div class="tool">
-      <form action="/tools/backlink-checker" method="get">
-        <input type="url" name="source" placeholder="Source URL (page that links to you)" required aria-label="Source URL">
-        <input type="url" name="target" placeholder="Target URL (your page)" required aria-label="Target URL">
-        <button class="btn" type="submit">Check my link</button>
-      </form>
-      <div class="result-list" aria-label="What the checker reports">
-        <span>Link found / not found</span><span>HTTP status</span><span>dofollow · nofollow · sponsored · UGC</span><span>Indexed or not</span><span>Anchor text</span>
-      </div>
-      <p class="micro" style="margin:16px 0 0">Want this checked automatically? <a href="/register">Monitor this link free</a> <span class="tc">frequency: TO CONFIRM</span></p>
-    </div>
+    <img class="hero-img" src="https://ye8jhaekbbcviws9.public.blob.vercel-storage.com/banniere-dashboard-linkpulz.webp" alt="LinkPulz backlink monitoring dashboard showing a lost backlink alert" width="1448" height="1086" fetchpriority="high" style="width:100%;height:auto;border-radius:var(--radius);border:1px solid var(--line)">
   </div>
 </section>
 
@@ -397,8 +375,8 @@ const MAIN = `
 <section class="alt" id="features" aria-labelledby="monitor-h">
   <div class="wrap">
     <div class="center">
-      <h2 id="monitor-h">Every way a backlink can quietly stop working</h2>
-      <p class="lead">A link isn't just "there" or "gone". LinkPulz tracks the changes that cost you rankings and referral traffic.</p>
+      <h2 id="monitor-h">Backlink monitoring: every way a link can quietly stop working</h2>
+      <p class="lead">A link isn't just "there" or "gone". LinkPulz backlink monitoring tracks the changes that cost you rankings and referral traffic.</p>
     </div>
     <div class="cards">
       <div class="card"><div class="ic">✓</div><h3>Verify your backlinks</h3><p>Confirm that each link is still on the page, with the right anchor text and target URL.</p></div>
@@ -417,7 +395,7 @@ const MAIN = `
 <section id="how-it-works" aria-labelledby="how-h">
   <div class="wrap">
     <div class="center">
-      <h2 id="how-h">Start monitoring backlinks in three steps</h2>
+      <h2 id="how-h">Start backlink monitoring in three steps</h2>
     </div>
     <div class="steps">
       <div class="step">
@@ -428,7 +406,7 @@ const MAIN = `
       <div class="step">
         <div class="ph" role="img" aria-label="Automatic checks">IMAGE PLACEHOLDER<small>Step 2 screenshot · 640×400</small></div>
         <h3>We check them automatically</h3>
-        <p>LinkPulz re-crawls each linking page on a schedule and compares it to the last known state.</p>
+        <p>LinkPulz backlink monitoring re-crawls each linking page on a schedule and compares it to the last known state.</p>
       </div>
       <div class="step">
         <div class="ph" role="img" aria-label="Alert notification">IMAGE PLACEHOLDER<small>Step 3 screenshot · 640×400</small></div>
@@ -444,7 +422,7 @@ const MAIN = `
   <div class="wrap split">
     <div>
       <h2 id="alerts-h">Alerts that tell you what changed, not just that something did</h2>
-      <p>Every alert includes the source URL, your target URL, what changed (before and after), and the date it was detected. Route alerts to the right person by client or campaign, or get a weekly digest instead of real-time pings.</p>
+      <p>Backlink monitoring is only useful when the alert is specific. Every alert includes the source URL, your target URL, what changed (before and after), and the date it was detected. Route alerts to the right person by client or campaign, or get a weekly digest instead of real-time pings.</p>
       <ul class="check">
         <li>Email, Slack and webhook alerts <span class="tc">TO CONFIRM</span></li>
         <li>Scheduled PDF or shareable reports for clients <span class="tc">TO CONFIRM</span></li>
@@ -490,7 +468,7 @@ const MAIN = `
   <div class="wrap split">
     <div>
       <h2 id="ins-h">The data you need, nothing you don't</h2>
-      <p>See referring domains, anchor text distribution, link attributes and link age in one view. We show you what's measurable and don't hand you an opaque "toxic score" to guess at.</p>
+      <p>See referring domains, anchor text distribution, link attributes and link age in one view. We show you what's measurable and don't hand you an opaque "toxic score" to guess at — we'd rather point you to <a href="https://developers.google.com/search/docs/essentials/spam-policies" rel="nofollow noopener" target="_blank">Google's own guidance on link spam</a> than make one up.</p>
     </div>
     <div class="ph" role="img" aria-label="Backlink profile view">IMAGE PLACEHOLDER<small>Backlink profile table / chart · 900×700</small></div>
   </div>

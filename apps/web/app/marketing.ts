@@ -237,7 +237,7 @@ export const MARKETING_STYLE = `
 export const MARKETING_HEADER = `
 <header class="site">
   <div class="wrap">
-    <a class="logo" href="/" aria-label="LinkPulz home">Link<span>Pulz</span></a>
+    <a class="logo" href="/" aria-label="LinkPulz home"><img src="https://ye8jhaekbbcviws9.public.blob.vercel-storage.com/logo-linkpulz.webp" alt="LinkPulz backlink monitoring software" width="1254" height="1254" style="height:26px;width:auto;margin-right:9px;vertical-align:-6px;display:inline-block">Link<span>Pulz</span></a>
     <nav class="main" aria-label="Main">
       <a href="/#features">Features</a>
       <a href="/#how-it-works">How it works</a>
