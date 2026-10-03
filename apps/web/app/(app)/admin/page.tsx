@@ -18,8 +18,8 @@ import "../dashboard/dashboard.css";
 const PLAN_LABEL: Record<string, string> = {
   starter: "Starter",
   pro: "Pro",
+  business: "Business",
   agency: "Agency",
-  agency_plus: "Agency+",
 };
 
 export default function AdminPage() {

@@ -52,7 +52,23 @@ export interface BacklinkCheckResult {
   error: string | null;
 }
 
+// The plan catalog, served from the backend's single source of truth (§39).
+// `backlinks`/`projects`/`seats` are null when unlimited.
+export interface PlanView {
+  slug: string;
+  name: string;
+  price_monthly_cents: number;
+  price_annual_cents: number;
+  backlinks: number | null;
+  projects: number | null;
+  seats: number | null;
+  monitoring_interval_hours: number;
+  most_popular: boolean;
+}
+
 export const api = {
+  // Public plan catalog for the pricing + billing pages (no auth).
+  plans: () => request<PlanView[]>("/v1/plans"),
   register: (email: string, password: string, name: string, turnstileToken?: string) =>
     request<UserView>("/v1/auth/register", {
       method: "POST",
@@ -749,7 +765,7 @@ export interface AdminAudit {
   resource_id: string | null;
   after: string | null;
 }
-export const ADMIN_PLANS = ["starter", "pro", "agency", "agency_plus"] as const;
+export const ADMIN_PLANS = ["starter", "pro", "business", "agency"] as const;
 export interface AdminUser {
   id: string;
   email: string;

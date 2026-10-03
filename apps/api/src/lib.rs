@@ -262,6 +262,8 @@ pub fn app(state: AppState) -> Router {
             "/v1/billing/webhook",
             post(routes::billing_routes::stripe_webhook),
         )
+        // Public plan catalog (one source of truth for pricing/billing UIs).
+        .route("/v1/plans", get(routes::billing_routes::list_plans))
         .route(
             "/v1/tools/backlink-check",
             post(routes::tools_routes::backlink_check),

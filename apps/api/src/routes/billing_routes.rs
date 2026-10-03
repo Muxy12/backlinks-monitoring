@@ -235,3 +235,43 @@ async fn apply_event(
     }
     Ok(())
 }
+
+/// A plan as served to the pricing / billing UI — straight from the catalog so
+/// the client never hardcodes prices or limits (§39, one source of truth).
+#[derive(Serialize)]
+pub struct PlanView {
+    pub slug: String,
+    pub name: String,
+    pub price_monthly_cents: u32,
+    pub price_annual_cents: u32,
+    /// `null` = unlimited.
+    pub backlinks: Option<u32>,
+    pub projects: Option<u32>,
+    pub seats: Option<u32>,
+    pub monitoring_interval_hours: u32,
+    pub most_popular: bool,
+}
+
+/// GET /v1/plans — the public plan catalog. No auth: it drives the marketing
+/// pricing page and the in-app billing page from one server-side source.
+pub async fn list_plans() -> Json<Vec<PlanView>> {
+    Json(
+        Plan::ALL
+            .into_iter()
+            .map(|p| {
+                let s = p.spec();
+                PlanView {
+                    slug: s.slug.to_string(),
+                    name: s.display_name.to_string(),
+                    price_monthly_cents: s.price_cents,
+                    price_annual_cents: s.annual_price_cents,
+                    backlinks: s.backlink_limit,
+                    projects: s.project_limit,
+                    seats: s.seat_limit,
+                    monitoring_interval_hours: s.monitoring_interval_hours,
+                    most_popular: s.most_popular,
+                }
+            })
+            .collect(),
+    )
+}

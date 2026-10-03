@@ -24,8 +24,8 @@ pub fn price_for_plan(plan: Plan) -> Option<String> {
     let key = match plan {
         Plan::Starter => "STRIPE_PRICE_STARTER",
         Plan::Pro => "STRIPE_PRICE_PRO",
+        Plan::Business => "STRIPE_PRICE_BUSINESS",
         Plan::Agency => "STRIPE_PRICE_AGENCY",
-        Plan::AgencyPlus => "STRIPE_PRICE_AGENCY_PLUS",
     };
     nonempty(key)
 }

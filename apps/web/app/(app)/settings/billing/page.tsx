@@ -18,10 +18,10 @@ const PLANS: {
   seats: string;
   featured?: boolean;
 }[] = [
-  { slug: "starter", name: "Starter", price: "$19", backlinks: "1,000", projects: "3", seats: "1" },
-  { slug: "pro", name: "Pro", price: "$49", backlinks: "5,000", projects: "20", seats: "3", featured: true },
-  { slug: "agency", name: "Agency", price: "$99", backlinks: "20,000", projects: "100", seats: "10" },
-  { slug: "agency_plus", name: "Agency+", price: "$199", backlinks: "75,000", projects: "Unlimited", seats: "Unlimited" },
+  { slug: "starter", name: "Starter", price: "$29", backlinks: "500", projects: "3", seats: "1" },
+  { slug: "pro", name: "Pro", price: "$59", backlinks: "2,500", projects: "10", seats: "3", featured: true },
+  { slug: "business", name: "Business", price: "$99", backlinks: "5,000", projects: "25", seats: "5" },
+  { slug: "agency", name: "Agency", price: "$199", backlinks: "15,000", projects: "75", seats: "15" },
 ];
 
 export default function BillingPage() {
