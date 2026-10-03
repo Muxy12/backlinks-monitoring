@@ -83,8 +83,15 @@ webhook persists plan, status, period, `cancel_at_period_end`, `canceled_at` and
   (now returns `trial_ends_at` / `trial_days_left` / `access_active`) and shows
   "N days left" (firmer ≤ 3 days) or "choose a plan" when access is inactive.
   *Trial emails (started / T-3 / T-1 / expired) remain a follow-up.*
-- **P7 — admin:** subscriptions table, trial funnel, per-customer economics
-  (revenue from the catalog; COGS N/A until provider cost exists).
+- **P7 — admin: DONE.** `GET /v1/admin/subscriptions` lists every org with a
+  subscription — plan, status, per-customer MRR (catalog-priced), trial end,
+  renewal date, pending cancel and canceled date (the columns P4 now writes) —
+  rendered as a **Subscriptions** tab in `/admin`. `GET /v1/admin/billing` gained
+  a **trial funnel** (trials active vs. expired, converted, conversion %) plus
+  ARR/ARPA, shown in the admin Revenue section. The Customer-360 drawer now shows
+  the workspace's subscription dates. Revenue is from the catalog; COGS stays N/A
+  until a provider cost exists (the admin "not yet instrumented" list now holds
+  only provider/usage cost).
 - **P8 — analytics:** signup attribution + funnel events (needs a sink).
 
 ## Manual production steps (when the relevant phase ships)

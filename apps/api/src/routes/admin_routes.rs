@@ -391,13 +391,19 @@ pub struct BillingView {
     pub mrr_cents: i64,
     pub paying: i64,
     pub trialing: i64,
+    /// Trial funnel: live trials vs. trials that elapsed without converting.
+    pub trialing_active: i64,
+    pub trialing_expired: i64,
+    /// Of resolved trials (converted + expired), the % that converted. `null`
+    /// when no trial has resolved yet.
+    pub conversion_pct: Option<i64>,
     pub past_due: i64,
     pub canceled: i64,
     pub comped: i64,
     pub by_plan: Vec<PlanAmount>,
 }
 
-/// GET /v1/admin/billing — MRR, paying/trialing/past-due/canceled, and a by-plan
+/// GET /v1/admin/billing — MRR, the trial funnel, status counts and a by-plan
 /// breakdown. Admin-comped subscriptions are excluded from money. Prices come
 /// from the plan catalog (docs/19).
 pub async fn billing(
@@ -423,15 +429,76 @@ pub async fn billing(
             mrr_cents: line,
         });
     }
+    // Conversion = converted / (converted + lapsed trials). "Converted" counts
+    // paying subscriptions; comped ones aren't conversions.
+    let resolved = paying + counts.trialing_expired;
+    let conversion_pct = (resolved > 0).then(|| paying * 100 / resolved);
     Ok(Json(BillingView {
         mrr_cents,
         paying,
         trialing: counts.trialing,
+        trialing_active: counts.trialing_active,
+        trialing_expired: counts.trialing_expired,
+        conversion_pct,
         past_due: counts.past_due,
         canceled: counts.canceled,
         comped: counts.comped,
         by_plan,
     }))
+}
+
+#[derive(Serialize)]
+pub struct SubscriptionView {
+    pub id: Uuid,
+    pub name: String,
+    pub owner_email: Option<String>,
+    pub plan: String,
+    pub status: String,
+    /// Per-customer MRR from the catalog (0 for trials, comped or non-paying).
+    pub mrr_cents: i64,
+    pub comped: bool,
+    pub trial_ends_at: Option<String>,
+    pub current_period_end: Option<String>,
+    pub cancel_at_period_end: bool,
+    pub canceled_at: Option<String>,
+}
+
+/// GET /v1/admin/subscriptions — one row per org that has a subscription, with
+/// its billing state and per-customer MRR (docs/20 — P7). Renewal, trial and
+/// cancel dates are the ones the Stripe webhook now writes (P4).
+pub async fn list_subscriptions(
+    State(state): State<AppState>,
+    jar: CookieJar,
+) -> Result<Json<Vec<SubscriptionView>>, ApiError> {
+    require_admin(&state, &jar).await?;
+    let rows = admin::list_subscriptions(&state.pool).await?;
+    let out = rows
+        .into_iter()
+        .map(|s| {
+            let paying = matches!(s.status.as_str(), "active" | "past_due") && !s.comped;
+            let mrr_cents = if paying {
+                billing::Plan::from_slug(&s.plan)
+                    .map(|p| p.spec().price_cents as i64)
+                    .unwrap_or(0)
+            } else {
+                0
+            };
+            SubscriptionView {
+                id: s.id,
+                name: s.name,
+                owner_email: s.owner_email,
+                plan: s.plan,
+                status: s.status,
+                mrr_cents,
+                comped: s.comped,
+                trial_ends_at: s.trial_end.map(|t| t.to_rfc3339()),
+                current_period_end: s.current_period_end.map(|t| t.to_rfc3339()),
+                cancel_at_period_end: s.cancel_at_period_end,
+                canceled_at: s.canceled_at.map(|t| t.to_rfc3339()),
+            }
+        })
+        .collect();
+    Ok(Json(out))
 }
 
 #[derive(Serialize)]

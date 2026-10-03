@@ -302,6 +302,10 @@ pub fn app(state: AppState) -> Router {
         .route("/v1/admin/ops", get(routes::admin_routes::ops))
         .route("/v1/admin/billing", get(routes::admin_routes::billing))
         .route(
+            "/v1/admin/subscriptions",
+            get(routes::admin_routes::list_subscriptions),
+        )
+        .route(
             "/v1/admin/usage/limits",
             get(routes::admin_routes::usage_limits),
         )

@@ -815,10 +815,26 @@ export interface AdminBilling {
   mrr_cents: number;
   paying: number;
   trialing: number;
+  trialing_active: number;
+  trialing_expired: number;
+  conversion_pct: number | null;
   past_due: number;
   canceled: number;
   comped: number;
   by_plan: { plan: string; subscribers: number; mrr_cents: number }[];
+}
+export interface AdminSubscription {
+  id: string;
+  name: string;
+  owner_email: string | null;
+  plan: string;
+  status: string;
+  mrr_cents: number;
+  comped: boolean;
+  trial_ends_at: string | null;
+  current_period_end: string | null;
+  cancel_at_period_end: boolean;
+  canceled_at: string | null;
 }
 export interface AdminUsageLimit {
   id: string;
@@ -837,6 +853,7 @@ export const adminApi = {
   ops: (windowHours?: number) =>
     request<AdminOps>(`/v1/admin/ops${windowHours ? `?window_hours=${windowHours}` : ""}`),
   billing: () => request<AdminBilling>("/v1/admin/billing"),
+  subscriptions: () => request<AdminSubscription[]>("/v1/admin/subscriptions"),
   usageLimits: () => request<AdminUsageLimit[]>("/v1/admin/usage/limits"),
   setAdmin: (userId: string, isAdmin: boolean) =>
     request<AdminUser>(`/v1/admin/users/${userId}/admin`, {

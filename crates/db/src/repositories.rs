@@ -372,18 +372,28 @@ pub mod admin {
     pub struct BillingCounts {
         pub active: i64,
         pub trialing: i64,
+        /// Trials still live (`trial_end` in the future).
+        pub trialing_active: i64,
+        /// Trials whose window has elapsed but never converted (access locked).
+        pub trialing_expired: i64,
         pub past_due: i64,
         pub canceled: i64,
         pub comped: i64,
     }
 
-    /// Subscription status counts. `comped` = active/past_due rows with the
-    /// admin placeholder customer id, so the handler can keep them out of MRR.
+    /// Subscription status counts, including the trial funnel split. `comped` =
+    /// active/past_due rows with the admin placeholder customer id, so the handler
+    /// can keep them out of MRR.
     pub async fn billing_counts(pool: &PgPool) -> Result<BillingCounts, DbError> {
         sqlx::query_as::<_, BillingCounts>(
             "SELECT \
                (SELECT count(*) FROM subscriptions WHERE status = 'active')::bigint AS active, \
                (SELECT count(*) FROM subscriptions WHERE status = 'trialing')::bigint AS trialing, \
+               (SELECT count(*) FROM subscriptions \
+                  WHERE status = 'trialing' AND trial_end > now())::bigint AS trialing_active, \
+               (SELECT count(*) FROM subscriptions \
+                  WHERE status = 'trialing' \
+                    AND (trial_end IS NULL OR trial_end <= now()))::bigint AS trialing_expired, \
                (SELECT count(*) FROM subscriptions WHERE status = 'past_due')::bigint AS past_due, \
                (SELECT count(*) FROM subscriptions WHERE status = 'canceled')::bigint AS canceled, \
                (SELECT count(*) FROM subscriptions WHERE status IN ('active','past_due') \
@@ -392,6 +402,47 @@ pub mod admin {
         .fetch_one(pool)
         .await
         .map_err(DbError::from_fetch)
+    }
+
+    #[derive(Debug, Clone, sqlx::FromRow)]
+    pub struct AdminSubscription {
+        pub id: Uuid,
+        pub name: String,
+        pub owner_email: Option<String>,
+        pub plan: String,
+        pub status: String,
+        pub trial_end: Option<DateTime<Utc>>,
+        pub current_period_end: Option<DateTime<Utc>>,
+        pub cancel_at_period_end: bool,
+        pub canceled_at: Option<DateTime<Utc>>,
+        /// Admin-set (comped) subscription — excluded from revenue.
+        pub comped: bool,
+    }
+
+    /// Every org that has a subscription row, with its billing state (plan,
+    /// status, trial end, renewal date, pending cancel). Problem/active states
+    /// first; the handler prices each against the catalog for per-customer MRR.
+    pub async fn list_subscriptions(pool: &PgPool) -> Result<Vec<AdminSubscription>, DbError> {
+        Ok(sqlx::query_as::<_, AdminSubscription>(
+            "SELECT o.id, o.name, \
+               (SELECT u.email FROM organization_members m \
+                  JOIN users u ON u.id = m.user_id \
+                  WHERE m.organization_id = o.id AND m.role = 'owner' \
+                  ORDER BY u.created_at LIMIT 1) AS owner_email, \
+               s.plan::text AS plan, s.status, s.trial_end, s.current_period_end, \
+               s.cancel_at_period_end, s.canceled_at, \
+               (s.stripe_customer_id LIKE 'admin:%') AS comped \
+             FROM subscriptions s \
+             JOIN organizations o ON o.id = s.organization_id \
+             ORDER BY \
+               CASE s.status \
+                 WHEN 'past_due' THEN 0 WHEN 'active' THEN 1 \
+                 WHEN 'trialing' THEN 2 WHEN 'canceled' THEN 4 ELSE 3 END, \
+               s.current_period_end ASC NULLS LAST, s.trial_end ASC NULLS LAST \
+             LIMIT 500",
+        )
+        .fetch_all(pool)
+        .await?)
     }
 
     #[derive(Debug, Clone, sqlx::FromRow)]

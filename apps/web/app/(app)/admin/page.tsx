@@ -13,6 +13,7 @@ import {
   type AdminAudit,
   type AdminOps,
   type AdminBilling,
+  type AdminSubscription,
   type AdminUsageLimit,
 } from "@/lib/api";
 import "@/app/auth.css";
@@ -82,21 +83,23 @@ export default function AdminPage() {
   const [audit, setAudit] = useState<AdminAudit[]>([]);
   const [ops, setOps] = useState<AdminOps | null>(null);
   const [billing, setBilling] = useState<AdminBilling | null>(null);
+  const [subs, setSubs] = useState<AdminSubscription[]>([]);
   const [usage, setUsage] = useState<AdminUsageLimit[]>([]);
-  const [tab, setTab] = useState<"orgs" | "users" | "audit">("orgs");
+  const [tab, setTab] = useState<"orgs" | "subscriptions" | "users" | "audit">("orgs");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [detail, setDetail] = useState<AdminOrg | null>(null);
 
   const loadAll = useCallback(async () => {
-    const [s, o, u, a, op, bl, ug] = await Promise.all([
+    const [s, o, u, a, op, bl, sb, ug] = await Promise.all([
       adminApi.stats(),
       adminApi.organizations(),
       adminApi.users(),
       adminApi.audit(),
       adminApi.ops(),
       adminApi.billing(),
+      adminApi.subscriptions(),
       adminApi.usageLimits(),
     ]);
     if (s.ok) setStats(s.data);
@@ -107,6 +110,7 @@ export default function AdminPage() {
     // fall back to the "data ready" description when absent.
     if (op.ok) setOps(op.data);
     if (bl.ok) setBilling(bl.data);
+    if (sb.ok) setSubs(sb.data);
     if (ug.ok) setUsage(ug.data);
     if (!s.ok && (s.status === 404 || s.status === 401)) setDenied(true);
   }, []);
@@ -129,14 +133,18 @@ export default function AdminPage() {
   }, [router, loadAll]);
 
   const refreshOrgs = async () => {
-    const [o, s, a] = await Promise.all([
+    const [o, s, a, bl, sb] = await Promise.all([
       adminApi.organizations(),
       adminApi.stats(),
       adminApi.audit(),
+      adminApi.billing(),
+      adminApi.subscriptions(),
     ]);
     if (o.ok) setOrgs(o.data);
     if (s.ok) setStats(s.data);
     if (a.ok) setAudit(a.data);
+    if (bl.ok) setBilling(bl.data);
+    if (sb.ok) setSubs(sb.data);
   };
 
   const toggleAdmin = async (u: AdminUser) => {
@@ -248,12 +256,14 @@ export default function AdminPage() {
   const match = (...vals: (string | null | undefined)[]) =>
     vals.some((v) => !!v && v.toLowerCase().includes(term));
   const fOrgs = term ? orgs.filter((o) => match(o.name, o.slug, o.owner_email)) : orgs;
+  const fSubs = term ? subs.filter((s) => match(s.name, s.owner_email, s.plan, s.status)) : subs;
   const fUsers = term ? users.filter((u) => match(u.name, u.email)) : users;
   const fAudit = term ? audit.filter((a) => match(a.actor_email, a.action, a.org_name, a.resource_type)) : audit;
   const livePct = stats && stats.backlinks ? Math.round((stats.backlinks_live / stats.backlinks) * 100) : null;
   const lostPct = stats && stats.backlinks ? Math.round((stats.backlinks_lost / stats.backlinks) * 100) : null;
   const searchPlaceholder =
     tab === "orgs" ? "Search workspaces, slugs, owners…" :
+    tab === "subscriptions" ? "Search by workspace, owner, plan, status…" :
     tab === "users" ? "Search users by name or email…" :
     "Search audit by actor, action, workspace…";
 
@@ -356,11 +366,18 @@ export default function AdminPage() {
           <div className="ops-section-h"><h2>Revenue</h2><span className="note">USD · excludes admin-comped subscriptions</span></div>
           <div className="admin-stats">
             <div className="admin-stat"><div className="k">MRR</div><div className="v">${Math.round(billing.mrr_cents / 100).toLocaleString()}</div><div className="sub">/ month</div></div>
-            <div className="admin-stat"><div className="k">Paying</div><div className="v">{billing.paying.toLocaleString()}</div></div>
-            <div className="admin-stat"><div className="k">Trialing</div><div className="v">{billing.trialing.toLocaleString()}</div></div>
+            <div className="admin-stat"><div className="k">ARR</div><div className="v">${Math.round((billing.mrr_cents * 12) / 100).toLocaleString()}</div><div className="sub">run-rate</div></div>
+            <div className="admin-stat"><div className="k">Paying</div><div className="v">{billing.paying.toLocaleString()}</div><div className="sub">{billing.paying ? `$${Math.round(billing.mrr_cents / 100 / billing.paying).toLocaleString()} ARPA` : "—"}</div></div>
             <div className="admin-stat"><div className="k">Past due</div><div className="v">{billing.past_due.toLocaleString()}</div><div className={`sub${billing.past_due ? " bad" : ""}`}>{billing.past_due ? "dunning" : "none"}</div></div>
             <div className="admin-stat"><div className="k">Canceled</div><div className="v">{billing.canceled.toLocaleString()}</div></div>
             <div className="admin-stat"><div className="k">Comped</div><div className="v">{billing.comped.toLocaleString()}</div><div className="sub">admin-set</div></div>
+          </div>
+          <div className="ops-section-h"><h2>Trial funnel</h2><span className="note">10-day free trial → paid</span></div>
+          <div className="admin-stats">
+            <div className="admin-stat"><div className="k">Trials active</div><div className="v">{billing.trialing_active.toLocaleString()}</div><div className="sub">in progress</div></div>
+            <div className="admin-stat"><div className="k">Trials expired</div><div className="v">{billing.trialing_expired.toLocaleString()}</div><div className={`sub${billing.trialing_expired ? " bad" : ""}`}>{billing.trialing_expired ? "lapsed, not converted" : "none"}</div></div>
+            <div className="admin-stat"><div className="k">Converted</div><div className="v">{billing.paying.toLocaleString()}</div><div className="sub">now paying</div></div>
+            <div className="admin-stat"><div className="k">Conversion</div><div className="v">{billing.conversion_pct != null ? `${billing.conversion_pct}%` : "—"}</div><div className="sub">of resolved trials</div></div>
           </div>
         </>
       )}
@@ -381,7 +398,6 @@ export default function AdminPage() {
       <div className="ops-section-h"><h2>Not yet instrumented</h2><span className="note">needs backend work — see docs/19</span></div>
       <div className="ops-gap">
         {[
-          { t: "Churn & renewal timing", d: "subscriptions has period_end / canceled_at / trial_end columns, but the Stripe webhook never writes them. Needs webhook instrumentation." },
           { t: "Provider & API usage / cost", d: "No external data provider is integrated; usage_records exists but is never populated (RecomputeUsage job has no handler). Needs metering." },
         ].map((o) => (
           <div className="ops-row" key={o.t}>
@@ -396,6 +412,7 @@ export default function AdminPage() {
         <div className="admin-toolbar">
           <div className="admin-tabs" role="tablist">
             <button role="tab" aria-selected={tab === "orgs"} className={tab === "orgs" ? "on" : ""} onClick={() => setTab("orgs")}>Workspaces <span className="n">{orgs.length}</span></button>
+            <button role="tab" aria-selected={tab === "subscriptions"} className={tab === "subscriptions" ? "on" : ""} onClick={() => setTab("subscriptions")}>Subscriptions <span className="n">{subs.length}</span></button>
             <button role="tab" aria-selected={tab === "users"} className={tab === "users" ? "on" : ""} onClick={() => setTab("users")}>Users <span className="n">{users.length}</span></button>
             <button role="tab" aria-selected={tab === "audit"} className={tab === "audit" ? "on" : ""} onClick={() => setTab("audit")}>Audit <span className="n">{audit.length}</span></button>
           </div>
@@ -460,6 +477,55 @@ export default function AdminPage() {
                   <tr>
                     <td colSpan={8} className="muted">
                       {term ? "No workspaces match your search." : "No organizations yet."}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {tab === "subscriptions" && (
+          <div className="bl-scroll">
+            <table className="bl-table admin-table">
+              <thead>
+                <tr>
+                  <th>Workspace</th>
+                  <th>Owner</th>
+                  <th>Plan</th>
+                  <th>Status</th>
+                  <th style={{ textAlign: "right" }}>MRR</th>
+                  <th>Renews / Trial ends</th>
+                </tr>
+              </thead>
+              <tbody>
+                {fSubs.map((s) => {
+                  const badge =
+                    s.status === "active" ? "ok" :
+                    s.status === "trialing" ? "info" :
+                    s.status === "past_due" ? "bad" : "";
+                  const renewIso = s.status === "trialing" ? s.trial_ends_at : s.current_period_end;
+                  return (
+                    <tr key={s.id}>
+                      <td>
+                        <button className="admin-name link" onClick={() => { const o = orgs.find((x) => x.id === s.id); if (o) setDetail(o); }} title="Open Customer 360">{s.name}</button>
+                      </td>
+                      <td className="admin-email">{s.owner_email ?? "—"}</td>
+                      <td>{PLAN_LABEL[s.plan] ?? s.plan}</td>
+                      <td style={{ whiteSpace: "nowrap" }}>
+                        <span className={`abadge ${badge}`}>{s.status.replace("_", " ")}</span>
+                        {s.comped && <span className="abadge info" style={{ marginLeft: 6 }}>comped</span>}
+                        {s.cancel_at_period_end && <span className="abadge bad" style={{ marginLeft: 6 }}>cancels</span>}
+                      </td>
+                      <td className="mono" style={{ textAlign: "right" }}>{s.mrr_cents > 0 ? `$${Math.round(s.mrr_cents / 100).toLocaleString()}` : "—"}</td>
+                      <td>{renewIso ? <Time iso={renewIso} /> : "—"}</td>
+                    </tr>
+                  );
+                })}
+                {fSubs.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="muted">
+                      {term ? "No subscriptions match your search." : "No subscriptions yet."}
                     </td>
                   </tr>
                 )}
@@ -571,6 +637,28 @@ export default function AdminPage() {
               <div><dt>Projects</dt><dd className="mono">{detail.projects}</dd></div>
               <div><dt>Backlinks monitored</dt><dd className="mono">{detail.backlinks.toLocaleString()}</dd></div>
             </dl>
+            {(() => {
+              const sb = subs.find((s) => s.id === detail.id);
+              if (!sb) return null;
+              return (
+                <>
+                  <div className="c360-subhead">Subscription</div>
+                  <dl className="detail-grid">
+                    <div><dt>Status</dt><dd>{sb.status.replace("_", " ")}{sb.comped ? " · comped" : ""}</dd></div>
+                    <div><dt>MRR</dt><dd className="mono">{sb.mrr_cents > 0 ? `$${Math.round(sb.mrr_cents / 100).toLocaleString()}/mo` : "—"}</dd></div>
+                    {sb.status === "trialing" && sb.trial_ends_at && (
+                      <div><dt>Trial ends</dt><dd><Time iso={sb.trial_ends_at} /></dd></div>
+                    )}
+                    {sb.current_period_end && (
+                      <div><dt>{sb.cancel_at_period_end ? "Cancels" : "Renews"}</dt><dd><Time iso={sb.current_period_end} /></dd></div>
+                    )}
+                    {sb.canceled_at && (
+                      <div><dt>Canceled</dt><dd><Time iso={sb.canceled_at} /></dd></div>
+                    )}
+                  </dl>
+                </>
+              );
+            })()}
             <div className="c360-actions">
               <select
                 value={detail.plan}
@@ -588,7 +676,7 @@ export default function AdminPage() {
               </button>
             </div>
             <div className="c360-note">
-              <b>Deeper telemetry for this workspace</b> — per-workspace checks, failed jobs, usage and billing dates aren&rsquo;t exposed yet. The data largely exists (jobs, backlink_checks, subscriptions); surfacing it per workspace needs the admin read endpoints in docs/19.
+              <b>Deeper telemetry for this workspace</b> — per-workspace check volume and failed jobs aren&rsquo;t exposed yet. The data exists (jobs, backlink_checks); surfacing it per workspace needs the admin read endpoints in docs/19.
             </div>
           </aside>
         </div>
