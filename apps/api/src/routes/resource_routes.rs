@@ -129,7 +129,9 @@ pub async fn delete_client(
     let (user, session) = current(&state, &jar).await?;
     check_csrf(&jar, &headers, &session)?;
     let scope = authorize_org(&state.pool, user.id, org_id).await?;
-    scope.require(Role::Member)?;
+    // Deletes are admin+ only (docs/05 §2 role matrix); members can create/edit
+    // but not delete clients/projects/backlinks.
+    scope.require(Role::Admin)?;
     clients::delete(&state.pool, &scope, client_id).await?;
     Ok(StatusCode::NO_CONTENT)
 }
@@ -305,7 +307,9 @@ pub async fn delete_project(
     let (user, session) = current(&state, &jar).await?;
     check_csrf(&jar, &headers, &session)?;
     let scope = authorize_org(&state.pool, user.id, org_id).await?;
-    scope.require(Role::Member)?;
+    // Deletes are admin+ only (docs/05 §2). Deleting a project cascades to its
+    // backlinks, campaigns, seeds and competitors — a destructive, admin-level op.
+    scope.require(Role::Admin)?;
     projects::delete(&state.pool, &scope, project_id).await?;
     Ok(StatusCode::NO_CONTENT)
 }
@@ -1079,7 +1083,9 @@ pub async fn archive_backlink(
     let (user, session) = current(&state, &jar).await?;
     check_csrf(&jar, &headers, &session)?;
     let scope = authorize_org(&state.pool, user.id, org_id).await?;
-    scope.require(Role::Member)?;
+    // Archiving is the soft-delete for a backlink (there is no hard delete), so
+    // it is "delete backlinks" per docs/05 §2 — admin+ only, not members.
+    scope.require(Role::Admin)?;
     db::repositories::backlinks::archive(&state.pool, &scope, backlink_id).await?;
     Ok(StatusCode::NO_CONTENT)
 }
@@ -1096,7 +1102,9 @@ pub async fn restore_backlink(
     let (user, session) = current(&state, &jar).await?;
     check_csrf(&jar, &headers, &session)?;
     let scope = authorize_org(&state.pool, user.id, org_id).await?;
-    scope.require(Role::Member)?;
+    // Restore reverses an admin's archive, so it stays at the same admin+ level
+    // as archive (a member should not override an admin's delete).
+    scope.require(Role::Admin)?;
     db::repositories::backlinks::restore(&state.pool, &scope, backlink_id).await?;
     Ok(StatusCode::NO_CONTENT)
 }
