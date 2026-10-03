@@ -589,3 +589,37 @@ pub async fn analytics(
             .collect(),
     }))
 }
+
+#[derive(Serialize)]
+pub struct WaitlistRow {
+    pub email: String,
+    pub created_at: String,
+    pub source: Option<String>,
+}
+
+#[derive(Serialize)]
+pub struct WaitlistView {
+    pub total: i64,
+    pub recent: Vec<WaitlistRow>,
+}
+
+/// GET /v1/admin/waitlist — total + most recent pre-launch email signups.
+pub async fn waitlist(
+    State(state): State<AppState>,
+    jar: CookieJar,
+) -> Result<Json<WaitlistView>, ApiError> {
+    require_admin(&state, &jar).await?;
+    let total = db::repositories::waitlist::count(&state.pool).await?;
+    let recent = db::repositories::waitlist::recent(&state.pool, 100).await?;
+    Ok(Json(WaitlistView {
+        total,
+        recent: recent
+            .into_iter()
+            .map(|r| WaitlistRow {
+                email: r.email,
+                created_at: r.created_at.to_rfc3339(),
+                source: r.utm_source,
+            })
+            .collect(),
+    }))
+}

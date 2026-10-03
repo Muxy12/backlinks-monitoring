@@ -272,6 +272,8 @@ pub fn app(state: AppState) -> Router {
             "/v1/tools/backlink-check",
             post(routes::tools_routes::backlink_check),
         )
+        // Pre-launch waitlist email capture (public, no session).
+        .route("/v1/waitlist", post(routes::waitlist_routes::join))
         // Platform admin backoffice (migration 0022) — cross-tenant, gated on
         // users.is_platform_admin inside each handler.
         .route("/v1/admin/stats", get(routes::admin_routes::stats))
@@ -302,6 +304,7 @@ pub fn app(state: AppState) -> Router {
         .route("/v1/admin/ops", get(routes::admin_routes::ops))
         .route("/v1/admin/billing", get(routes::admin_routes::billing))
         .route("/v1/admin/analytics", get(routes::admin_routes::analytics))
+        .route("/v1/admin/waitlist", get(routes::admin_routes::waitlist))
         .route(
             "/v1/admin/subscriptions",
             get(routes::admin_routes::list_subscriptions),

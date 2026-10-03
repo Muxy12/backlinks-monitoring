@@ -17,3 +17,4 @@ pub mod resource_routes;
 pub mod tags_routes;
 pub mod team_routes;
 pub mod tools_routes;
+pub mod waitlist_routes;

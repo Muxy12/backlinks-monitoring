@@ -15,6 +15,7 @@ import {
   type AdminBilling,
   type AdminSubscription,
   type AdminAnalytics,
+  type AdminWaitlist,
   type AdminUsageLimit,
 } from "@/lib/api";
 import "@/app/auth.css";
@@ -91,6 +92,7 @@ export default function AdminPage() {
   const [billing, setBilling] = useState<AdminBilling | null>(null);
   const [subs, setSubs] = useState<AdminSubscription[]>([]);
   const [analytics, setAnalytics] = useState<AdminAnalytics | null>(null);
+  const [waitlist, setWaitlist] = useState<AdminWaitlist | null>(null);
   const [usage, setUsage] = useState<AdminUsageLimit[]>([]);
   const [tab, setTab] = useState<"orgs" | "subscriptions" | "users" | "audit">("orgs");
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -99,7 +101,7 @@ export default function AdminPage() {
   const [detail, setDetail] = useState<AdminOrg | null>(null);
 
   const loadAll = useCallback(async () => {
-    const [s, o, u, a, op, bl, sb, an, ug] = await Promise.all([
+    const [s, o, u, a, op, bl, sb, an, ug, wl] = await Promise.all([
       adminApi.stats(),
       adminApi.organizations(),
       adminApi.users(),
@@ -109,6 +111,7 @@ export default function AdminPage() {
       adminApi.subscriptions(),
       adminApi.analytics(),
       adminApi.usageLimits(),
+      adminApi.waitlist(),
     ]);
     if (s.ok) setStats(s.data);
     if (o.ok) setOrgs(o.data);
@@ -121,6 +124,7 @@ export default function AdminPage() {
     if (sb.ok) setSubs(sb.data);
     if (an.ok) setAnalytics(an.data);
     if (ug.ok) setUsage(ug.data);
+    if (wl.ok) setWaitlist(wl.data);
     if (!s.ok && (s.status === 404 || s.status === 401)) setDenied(true);
   }, []);
 
@@ -410,6 +414,26 @@ export default function AdminPage() {
               </div>
             </>
           )}
+        </>
+      )}
+
+      {waitlist && waitlist.total > 0 && (
+        <>
+          <div className="ops-section-h"><h2>Pre-launch waitlist</h2><span className="note">{waitlist.total.toLocaleString()} email{waitlist.total === 1 ? "" : "s"} captured · showing latest {waitlist.recent.length}</span></div>
+          <div className="bl-scroll" style={{ maxHeight: 260 }}>
+            <table className="bl-table admin-table">
+              <thead><tr><th>Email</th><th>Source</th><th>When</th></tr></thead>
+              <tbody>
+                {waitlist.recent.map((w, i) => (
+                  <tr key={`${w.email}-${i}`}>
+                    <td className="admin-email">{w.email}</td>
+                    <td className="sm">{w.source ?? "direct"}</td>
+                    <td><Time iso={w.created_at} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </>
       )}
 
