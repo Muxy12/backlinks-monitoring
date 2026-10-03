@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "../../lib/api";
+import { readAttribution } from "../../lib/attribution";
 import { Turnstile, TURNSTILE_ENABLED } from "../turnstile";
 import "../auth.css";
 
@@ -23,7 +24,7 @@ export default function RegisterPage() {
     }
     setBusy(true);
     setError(null);
-    const reg = await api.register(email, password, name, token ?? undefined);
+    const reg = await api.register(email, password, name, token ?? undefined, readAttribution());
     if (!reg.ok) {
       setBusy(false);
       setError(reg.detail);

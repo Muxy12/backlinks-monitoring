@@ -14,6 +14,7 @@ import {
   type AdminOps,
   type AdminBilling,
   type AdminSubscription,
+  type AdminAnalytics,
   type AdminUsageLimit,
 } from "@/lib/api";
 import "@/app/auth.css";
@@ -44,6 +45,11 @@ function relTime(iso: string): { rel: string; exact: string } {
 function Time({ iso }: { iso: string }) {
   const { rel, exact } = relTime(iso);
   return <span className="admin-time" title={exact}>{rel}</span>;
+}
+
+// Share of one funnel stage against an earlier one ("—" when the base is 0).
+function pctStr(n: number, d: number): string {
+  return d > 0 ? `${Math.round((n / d) * 100)}%` : "—";
 }
 
 // Copyable internal id — available for support/debugging without dominating the UI.
@@ -84,6 +90,7 @@ export default function AdminPage() {
   const [ops, setOps] = useState<AdminOps | null>(null);
   const [billing, setBilling] = useState<AdminBilling | null>(null);
   const [subs, setSubs] = useState<AdminSubscription[]>([]);
+  const [analytics, setAnalytics] = useState<AdminAnalytics | null>(null);
   const [usage, setUsage] = useState<AdminUsageLimit[]>([]);
   const [tab, setTab] = useState<"orgs" | "subscriptions" | "users" | "audit">("orgs");
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -92,7 +99,7 @@ export default function AdminPage() {
   const [detail, setDetail] = useState<AdminOrg | null>(null);
 
   const loadAll = useCallback(async () => {
-    const [s, o, u, a, op, bl, sb, ug] = await Promise.all([
+    const [s, o, u, a, op, bl, sb, an, ug] = await Promise.all([
       adminApi.stats(),
       adminApi.organizations(),
       adminApi.users(),
@@ -100,6 +107,7 @@ export default function AdminPage() {
       adminApi.ops(),
       adminApi.billing(),
       adminApi.subscriptions(),
+      adminApi.analytics(),
       adminApi.usageLimits(),
     ]);
     if (s.ok) setStats(s.data);
@@ -111,6 +119,7 @@ export default function AdminPage() {
     if (op.ok) setOps(op.data);
     if (bl.ok) setBilling(bl.data);
     if (sb.ok) setSubs(sb.data);
+    if (an.ok) setAnalytics(an.data);
     if (ug.ok) setUsage(ug.data);
     if (!s.ok && (s.status === 404 || s.status === 401)) setDenied(true);
   }, []);
@@ -379,6 +388,28 @@ export default function AdminPage() {
             <div className="admin-stat"><div className="k">Converted</div><div className="v">{billing.paying.toLocaleString()}</div><div className="sub">now paying</div></div>
             <div className="admin-stat"><div className="k">Conversion</div><div className="v">{billing.conversion_pct != null ? `${billing.conversion_pct}%` : "—"}</div><div className="sub">of resolved trials</div></div>
           </div>
+        </>
+      )}
+
+      {analytics && (analytics.signups > 0 || analytics.subscribed > 0) && (
+        <>
+          <div className="ops-section-h"><h2>Acquisition funnel</h2><span className="note">last {Math.round(analytics.window_secs / 86400)} days · from product events</span></div>
+          <div className="admin-stats">
+            <div className="admin-stat"><div className="k">Signups</div><div className="v">{analytics.signups.toLocaleString()}</div></div>
+            <div className="admin-stat"><div className="k">Trials started</div><div className="v">{analytics.trials_started.toLocaleString()}</div><div className="sub">{pctStr(analytics.trials_started, analytics.signups)} of signups</div></div>
+            <div className="admin-stat"><div className="k">Activated</div><div className="v">{analytics.activated.toLocaleString()}</div><div className="sub">{pctStr(analytics.activated, analytics.trials_started)} of trials</div></div>
+            <div className="admin-stat"><div className="k">Subscribed</div><div className="v">{analytics.subscribed.toLocaleString()}</div><div className={`sub${analytics.subscribed ? " up" : ""}`}>{pctStr(analytics.subscribed, analytics.signups)} of signups</div></div>
+          </div>
+          {analytics.by_source.length > 0 && (
+            <>
+              <div className="ops-section-h"><h2>Signups by source</h2><span className="note">first-touch attribution · last {Math.round(analytics.window_secs / 86400)} days</span></div>
+              <div className="plan-mix">
+                {analytics.by_source.map((s) => (
+                  <span key={s.source} className="plan-chip"><span className="pn">{s.source}</span><span className="pc">{s.signups}</span></span>
+                ))}
+              </div>
+            </>
+          )}
         </>
       )}
 

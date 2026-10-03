@@ -730,6 +730,19 @@ pub async fn create_backlink(
             db::DbError::Config(_) => ApiError::Validation("could not parse a URL".into()),
             other => other.into(),
         })?;
+    // Funnel: the first monitored backlink activates the workspace. The count==1
+    // check keeps this exactly-once (best-effort — docs/20 §P8).
+    if let Ok(1) = db::repositories::backlinks::count_active(&state.pool, &scope).await {
+        let _ = db::repositories::analytics::record(
+            &state.pool,
+            "activated",
+            Some(user.id),
+            Some(scope.organization_id()),
+            None,
+            serde_json::json!({ "via": "manual" }),
+        )
+        .await;
+    }
     Ok((StatusCode::CREATED, Json(backlink.into())))
 }
 
@@ -1588,6 +1601,22 @@ pub async fn import_csv(
                 }
             }
         }
+    }
+    // Funnel: if this import added the workspace's first backlinks, it's now
+    // activated (count == imported means it was empty before — docs/20 §P8).
+    if imported > 0
+        && let Ok(n) = db::repositories::backlinks::count_active(&state.pool, &scope).await
+        && n as usize == imported
+    {
+        let _ = db::repositories::analytics::record(
+            &state.pool,
+            "activated",
+            Some(user.id),
+            Some(scope.organization_id()),
+            None,
+            serde_json::json!({ "via": "csv_import" }),
+        )
+        .await;
     }
     Ok(Json(ImportResult {
         total: parsed.total,

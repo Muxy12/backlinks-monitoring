@@ -1,5 +1,7 @@
 // Thin client for the LinkPulz API. Cookies carry the session, so every request
 // uses `credentials: "include"`. Base URL is configured per environment.
+import type { Attribution } from "./attribution";
+
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
 export type ApiResult<T> = { ok: true; data: T } | { ok: false; status: number; detail: string };
@@ -82,10 +84,16 @@ export interface UsageView {
 export const api = {
   // Public plan catalog for the pricing + billing pages (no auth).
   plans: () => request<PlanView[]>("/v1/plans"),
-  register: (email: string, password: string, name: string, turnstileToken?: string) =>
+  register: (
+    email: string,
+    password: string,
+    name: string,
+    turnstileToken?: string,
+    attribution?: Attribution,
+  ) =>
     request<UserView>("/v1/auth/register", {
       method: "POST",
-      body: JSON.stringify({ email, password, name, turnstile_token: turnstileToken }),
+      body: JSON.stringify({ email, password, name, turnstile_token: turnstileToken, attribution }),
     }),
   login: (email: string, password: string) =>
     request<{ user: UserView }>("/v1/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
@@ -844,6 +852,14 @@ export interface AdminUsageLimit {
   limit: number | null;
   pct: number | null;
 }
+export interface AdminAnalytics {
+  window_secs: number;
+  signups: number;
+  trials_started: number;
+  activated: number;
+  subscribed: number;
+  by_source: { source: string; signups: number }[];
+}
 
 export const adminApi = {
   stats: () => request<AdminStats>("/v1/admin/stats"),
@@ -854,6 +870,8 @@ export const adminApi = {
     request<AdminOps>(`/v1/admin/ops${windowHours ? `?window_hours=${windowHours}` : ""}`),
   billing: () => request<AdminBilling>("/v1/admin/billing"),
   subscriptions: () => request<AdminSubscription[]>("/v1/admin/subscriptions"),
+  analytics: (windowHours?: number) =>
+    request<AdminAnalytics>(`/v1/admin/analytics${windowHours ? `?window_hours=${windowHours}` : ""}`),
   usageLimits: () => request<AdminUsageLimit[]>("/v1/admin/usage/limits"),
   setAdmin: (userId: string, isAdmin: boolean) =>
     request<AdminUser>(`/v1/admin/users/${userId}/admin`, {

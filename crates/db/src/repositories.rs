@@ -564,6 +564,111 @@ pub mod audit {
     }
 }
 
+// ─── Product analytics: funnel events + signup attribution (docs/20 §P8) ──────
+pub mod analytics {
+    use super::*;
+    use serde_json::Value;
+
+    /// First-touch marketing attribution captured at signup.
+    #[derive(Debug, Clone, Default)]
+    pub struct Attribution {
+        pub utm_source: Option<String>,
+        pub utm_medium: Option<String>,
+        pub utm_campaign: Option<String>,
+        pub utm_term: Option<String>,
+        pub utm_content: Option<String>,
+        pub referrer: Option<String>,
+        pub landing_path: Option<String>,
+    }
+
+    /// Append one funnel event. Best-effort at the call site (like `audit`): a
+    /// failure to record analytics must never fail the user action, so callers
+    /// typically `let _ = record(...).await`.
+    pub async fn record(
+        pool: &PgPool,
+        event: &str,
+        user_id: Option<Uuid>,
+        organization_id: Option<Uuid>,
+        attribution: Option<&Attribution>,
+        props: Value,
+    ) -> Result<(), DbError> {
+        let a = attribution.cloned().unwrap_or_default();
+        sqlx::query(
+            "INSERT INTO analytics_events \
+               (id, event, user_id, organization_id, \
+                utm_source, utm_medium, utm_campaign, utm_term, utm_content, \
+                referrer, landing_path, props) \
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)",
+        )
+        .bind(Uuid::now_v7())
+        .bind(event)
+        .bind(user_id)
+        .bind(organization_id)
+        .bind(a.utm_source)
+        .bind(a.utm_medium)
+        .bind(a.utm_campaign)
+        .bind(a.utm_term)
+        .bind(a.utm_content)
+        .bind(a.referrer)
+        .bind(a.landing_path)
+        .bind(props)
+        .execute(pool)
+        .await
+        .map_err(DbError::from_insert)?;
+        Ok(())
+    }
+
+    #[derive(Debug, Clone, sqlx::FromRow)]
+    pub struct FunnelCounts {
+        pub signups: i64,
+        pub trials_started: i64,
+        pub activated: i64,
+        pub subscribed: i64,
+    }
+
+    /// Funnel event counts over the last `window_secs`.
+    pub async fn funnel(pool: &PgPool, window_secs: f64) -> Result<FunnelCounts, DbError> {
+        sqlx::query_as::<_, FunnelCounts>(
+            "SELECT \
+               count(*) FILTER (WHERE event = 'signup')::bigint        AS signups, \
+               count(*) FILTER (WHERE event = 'trial_started')::bigint AS trials_started, \
+               count(*) FILTER (WHERE event = 'activated')::bigint     AS activated, \
+               count(*) FILTER (WHERE event = 'subscribed')::bigint    AS subscribed \
+             FROM analytics_events \
+             WHERE created_at > now() - interval '1 second' * $1::double precision",
+        )
+        .bind(window_secs)
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_fetch)
+    }
+
+    #[derive(Debug, Clone, sqlx::FromRow)]
+    pub struct SourceCount {
+        pub source: String,
+        pub signups: i64,
+    }
+
+    /// Signups grouped by first-touch source over the window. A missing source
+    /// is bucketed as 'direct'.
+    pub async fn signups_by_source(
+        pool: &PgPool,
+        window_secs: f64,
+    ) -> Result<Vec<SourceCount>, DbError> {
+        Ok(sqlx::query_as::<_, SourceCount>(
+            "SELECT COALESCE(NULLIF(utm_source, ''), 'direct') AS source, \
+                    count(*)::bigint AS signups \
+             FROM analytics_events \
+             WHERE event = 'signup' \
+               AND created_at > now() - interval '1 second' * $1::double precision \
+             GROUP BY 1 ORDER BY signups DESC LIMIT 20",
+        )
+        .bind(window_secs)
+        .fetch_all(pool)
+        .await?)
+    }
+}
+
 // ─── Organizations + membership ──────────────────────────────────────────────
 pub mod orgs {
     use super::*;
