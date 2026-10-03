@@ -92,7 +92,17 @@ webhook persists plan, status, period, `cancel_at_period_end`, `canceled_at` and
   the workspace's subscription dates. Revenue is from the catalog; COGS stays N/A
   until a provider cost exists (the admin "not yet instrumented" list now holds
   only provider/usage cost).
-- **P8 — analytics:** signup attribution + funnel events (needs a sink).
+- **P8 — analytics: DONE.** A self-hosted event sink (`analytics_events`,
+  migration 0028) records the funnel: **signup** (with first-touch attribution),
+  **trial_started** (org creation), **activated** (first backlink, manual or CSV
+  import), **subscribed** (checkout webhook). Emission is best-effort — analytics
+  never fails a user action. First-touch attribution (utm_*, referrer, landing
+  path) is captured site-wide by a nonce'd inline script in the root layout
+  (first-touch only, stored in localStorage) and sent with the register call.
+  `GET /v1/admin/analytics?window_hours=` serves the funnel counts + a
+  signups-by-source breakdown, rendered as an **Acquisition funnel** + **Signups
+  by source** section in `/admin`. No external provider is required; the schema
+  is ready to also export to PostHog/Segment later if wanted.
 
 ## Manual production steps (when the relevant phase ships)
 - Stripe: create Products with a **monthly and an annual** Price for each of the

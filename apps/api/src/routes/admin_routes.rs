@@ -544,3 +544,48 @@ pub async fn usage_limits(
         .collect();
     Ok(Json(out))
 }
+
+#[derive(Serialize)]
+pub struct SourceRow {
+    pub source: String,
+    pub signups: i64,
+}
+
+#[derive(Serialize)]
+pub struct AnalyticsView {
+    pub window_secs: i64,
+    pub signups: i64,
+    pub trials_started: i64,
+    pub activated: i64,
+    pub subscribed: i64,
+    pub by_source: Vec<SourceRow>,
+}
+
+/// GET /v1/admin/analytics — the signup→trial→activation→paid funnel and a
+/// signup-by-source attribution breakdown over `?window_hours` (default 30 days,
+/// docs/20 §P8). All from the self-hosted analytics_events sink.
+pub async fn analytics(
+    State(state): State<AppState>,
+    jar: CookieJar,
+    Query(q): Query<OpsQuery>,
+) -> Result<Json<AnalyticsView>, ApiError> {
+    require_admin(&state, &jar).await?;
+    let hours = q.window_hours.unwrap_or(24 * 30).clamp(1, 24 * 365);
+    let secs = hours * 3600;
+    let f = db::repositories::analytics::funnel(&state.pool, secs as f64).await?;
+    let src = db::repositories::analytics::signups_by_source(&state.pool, secs as f64).await?;
+    Ok(Json(AnalyticsView {
+        window_secs: secs,
+        signups: f.signups,
+        trials_started: f.trials_started,
+        activated: f.activated,
+        subscribed: f.subscribed,
+        by_source: src
+            .into_iter()
+            .map(|s| SourceRow {
+                source: s.source,
+                signups: s.signups,
+            })
+            .collect(),
+    }))
+}

@@ -63,6 +63,33 @@ pub struct RegisterBody {
     /// `TURNSTILE_SECRET_KEY` is set on the server.
     #[serde(default)]
     pub turnstile_token: Option<String>,
+    /// First-touch marketing attribution captured by the client (docs/20 §P8).
+    #[serde(default)]
+    pub attribution: Option<AttributionBody>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+pub struct AttributionBody {
+    #[serde(default)]
+    pub utm_source: Option<String>,
+    #[serde(default)]
+    pub utm_medium: Option<String>,
+    #[serde(default)]
+    pub utm_campaign: Option<String>,
+    #[serde(default)]
+    pub utm_term: Option<String>,
+    #[serde(default)]
+    pub utm_content: Option<String>,
+    #[serde(default)]
+    pub referrer: Option<String>,
+    #[serde(default)]
+    pub landing_path: Option<String>,
+}
+
+/// Trim, bound and drop-if-empty a client-supplied attribution value.
+fn clip(s: Option<String>) -> Option<String> {
+    s.map(|v| v.trim().chars().take(400).collect::<String>())
+        .filter(|v| !v.is_empty())
 }
 
 #[derive(Debug, Serialize)]
@@ -117,6 +144,31 @@ pub async fn register(
 
     let hash = auth::hash_password(&body.password, &state.cfg.argon)?;
     let user = users::create(&state.pool, Uuid::now_v7(), body.email.trim(), &hash, name).await?;
+
+    // Record the signup funnel event with first-touch attribution (best-effort;
+    // analytics must never fail registration — docs/20 §P8).
+    let attr = body.attribution.unwrap_or_default();
+    let attribution = db::repositories::analytics::Attribution {
+        utm_source: clip(attr.utm_source),
+        utm_medium: clip(attr.utm_medium),
+        utm_campaign: clip(attr.utm_campaign),
+        utm_term: clip(attr.utm_term),
+        utm_content: clip(attr.utm_content),
+        referrer: clip(attr.referrer),
+        landing_path: clip(attr.landing_path),
+    };
+    if let Err(e) = db::repositories::analytics::record(
+        &state.pool,
+        "signup",
+        Some(user.id),
+        None,
+        Some(&attribution),
+        serde_json::json!({}),
+    )
+    .await
+    {
+        tracing::warn!(error = %e, "failed to record signup analytics event");
+    }
 
     // Send a verification link (best-effort; account is usable meanwhile).
     if let Ok(secret) =

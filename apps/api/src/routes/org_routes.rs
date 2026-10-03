@@ -77,6 +77,19 @@ pub async fn create(
     let org = orgs::create_with_owner(&state.pool, Uuid::now_v7(), name, &slug, user.id).await?;
     // Start the 10-day free trial (no card) for the new workspace (docs/20).
     db::repositories::billing::start_trial(&state.pool, org.id).await?;
+    // Funnel: trial started (best-effort — docs/20 §P8).
+    if let Err(e) = db::repositories::analytics::record(
+        &state.pool,
+        "trial_started",
+        Some(user.id),
+        Some(org.id),
+        None,
+        serde_json::json!({}),
+    )
+    .await
+    {
+        tracing::warn!(error = %e, "failed to record trial_started analytics event");
+    }
     Ok((
         StatusCode::CREATED,
         Json(OrgView {

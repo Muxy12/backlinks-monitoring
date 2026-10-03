@@ -303,6 +303,16 @@ async fn apply_event(
                     "active",
                 )
                 .await?;
+                // Funnel: trial/visitor converted to a paid subscription (docs/20 §P8).
+                let _ = db::repositories::analytics::record(
+                    &state.pool,
+                    "subscribed",
+                    None,
+                    Some(org),
+                    None,
+                    serde_json::json!({ "plan": plan }),
+                )
+                .await;
             }
         }
         // Source of truth for plan, status and period/trial/cancel. Keyed by org
