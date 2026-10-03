@@ -3148,6 +3148,76 @@ pub mod billing {
     }
 }
 
+// ─── Trial lifecycle emails: idempotency + the due-reminder scan (docs/20) ────
+pub mod trial_emails {
+    use super::*;
+
+    /// Atomically claim the right to send `kind` to this org. Returns true if the
+    /// claim was taken (the caller should send), false if it was already sent or
+    /// claimed. This INSERT ... ON CONFLICT DO NOTHING is the idempotency guard:
+    /// claim before sending, so a crash or a concurrent worker can't double-send.
+    pub async fn claim(pool: &PgPool, organization_id: Uuid, kind: &str) -> Result<bool, DbError> {
+        let row: Option<(Uuid,)> = sqlx::query_as(
+            "INSERT INTO trial_email_log (organization_id, kind) VALUES ($1, $2) \
+             ON CONFLICT (organization_id, kind) DO NOTHING RETURNING organization_id",
+        )
+        .bind(organization_id)
+        .bind(kind)
+        .fetch_optional(pool)
+        .await
+        .map_err(DbError::from_insert)?;
+        Ok(row.is_some())
+    }
+
+    #[derive(Debug, Clone, sqlx::FromRow)]
+    pub struct Reminder {
+        pub organization_id: Uuid,
+        pub org_name: String,
+        pub owner_email: Option<String>,
+        pub kind: String,
+        pub days_left: i64,
+    }
+
+    /// Trialing workspaces due a lifecycle email they haven't had yet. The three
+    /// windows are disjoint so at most one reminder is due at a time:
+    /// `t_minus_3` at 1–3 days left, `t_minus_1` at ≤1 day left, `expired` once
+    /// `trial_end` has passed. Suspended workspaces are skipped. `days_left` is
+    /// cast to bigint so the Postgres numeric never has to decode as f64.
+    pub async fn due_reminders(pool: &PgPool, limit: i64) -> Result<Vec<Reminder>, DbError> {
+        Ok(sqlx::query_as::<_, Reminder>(
+            "SELECT d.organization_id, o.name AS org_name, \
+               (SELECT u.email FROM organization_members m JOIN users u ON u.id = m.user_id \
+                  WHERE m.organization_id = o.id AND m.role = 'owner' \
+                  ORDER BY u.created_at LIMIT 1) AS owner_email, \
+               d.kind, \
+               GREATEST(0, CEIL(EXTRACT(EPOCH FROM (d.trial_end - now())) / 86400.0))::bigint \
+                 AS days_left \
+             FROM ( \
+               SELECT organization_id, trial_end, 't_minus_3' AS kind FROM subscriptions \
+                 WHERE status = 'trialing' \
+                   AND trial_end > now() + interval '1 day' \
+                   AND trial_end <= now() + interval '3 days' \
+               UNION ALL \
+               SELECT organization_id, trial_end, 't_minus_1' FROM subscriptions \
+                 WHERE status = 'trialing' \
+                   AND trial_end > now() AND trial_end <= now() + interval '1 day' \
+               UNION ALL \
+               SELECT organization_id, trial_end, 'expired' FROM subscriptions \
+                 WHERE status = 'trialing' AND trial_end <= now() \
+             ) d \
+             JOIN organizations o ON o.id = d.organization_id AND o.suspended_at IS NULL \
+             WHERE NOT EXISTS ( \
+               SELECT 1 FROM trial_email_log l \
+               WHERE l.organization_id = d.organization_id AND l.kind = d.kind) \
+             ORDER BY d.trial_end ASC \
+             LIMIT $1",
+        )
+        .bind(limit)
+        .fetch_all(pool)
+        .await?)
+    }
+}
+
 // ─── Campaigns (§22) — tenant-scoped, with read-time rollups ──────────────────
 pub mod campaigns {
     use super::*;

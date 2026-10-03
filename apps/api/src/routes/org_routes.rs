@@ -90,6 +90,10 @@ pub async fn create(
     {
         tracing::warn!(error = %e, "failed to record trial_started analytics event");
     }
+    // Welcome / trial-started email (best-effort + idempotent — docs/20 trial UX).
+    if let Ok(true) = db::repositories::trial_emails::claim(&state.pool, org.id, "started").await {
+        let _ = notifications::trial::send(&user.email, name, "started", 10).await;
+    }
     Ok((
         StatusCode::CREATED,
         Json(OrgView {

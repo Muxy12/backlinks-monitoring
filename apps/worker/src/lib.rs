@@ -120,6 +120,31 @@ pub async fn schedule_tick(
     Ok(db::repositories::scheduler::enqueue_due(&ctx.pool, batch, lease_secs).await?)
 }
 
+/// Send any due trial lifecycle emails — T-3, T-1 and expiry (docs/20 trial UX).
+/// Each is claimed before sending, so a crash mid-send or a concurrent run can't
+/// double-send; a send failure is logged and skipped (the next window still
+/// fires). The "started" email is sent from the create-org handler instead.
+/// Returns how many were sent.
+pub async fn trial_emails_tick(ctx: &WorkerCtx) -> anyhow::Result<usize> {
+    let due = db::repositories::trial_emails::due_reminders(&ctx.pool, 200).await?;
+    let mut sent = 0usize;
+    for r in due {
+        let Some(email) = r.owner_email.as_deref() else {
+            continue;
+        };
+        if db::repositories::trial_emails::claim(&ctx.pool, r.organization_id, &r.kind).await? {
+            match notifications::trial::send(email, &r.org_name, &r.kind, r.days_left).await {
+                Ok(()) => sent += 1,
+                Err(e) => tracing::warn!(
+                    org = %r.organization_id, kind = %r.kind, error = %e,
+                    "trial email send failed"
+                ),
+            }
+        }
+    }
+    Ok(sent)
+}
+
 fn payload_uuid(payload: &serde_json::Value, key: &str) -> anyhow::Result<Uuid> {
     let s = payload
         .get(key)

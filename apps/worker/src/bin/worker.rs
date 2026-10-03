@@ -63,6 +63,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or(500);
     let mut since_reap = std::time::Instant::now();
     let mut since_sched = std::time::Instant::now() - Duration::from_secs(60);
+    // Scan for due trial emails hourly; sends are idempotent (claim-before-send),
+    // so the exact cadence doesn't matter. Fire once shortly after startup.
+    let mut since_trial = std::time::Instant::now() - Duration::from_secs(3600);
     loop {
         // The worker also runs the scheduler on a timer so monitoring keeps
         // going even if the cron path is unavailable (ADR-0002). Both take the
@@ -90,6 +93,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 tracing::error!(error = %e, "reap failed");
             }
             since_reap = std::time::Instant::now();
+        }
+        if since_trial.elapsed() > Duration::from_secs(3600) {
+            match worker::trial_emails_tick(&ctx).await {
+                Ok(n) if n > 0 => tracing::info!(sent = n, "trial emails sent"),
+                Ok(_) => {}
+                Err(e) => tracing::error!(error = %e, "trial email tick failed"),
+            }
+            since_trial = std::time::Instant::now();
         }
         tokio::time::sleep(poll).await;
     }
