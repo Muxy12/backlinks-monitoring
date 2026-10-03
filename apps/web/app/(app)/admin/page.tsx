@@ -81,6 +81,7 @@ export default function AdminPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [q, setQ] = useState("");
+  const [detail, setDetail] = useState<AdminOrg | null>(null);
 
   const loadAll = useCallback(async () => {
     const [s, o, u, a] = await Promise.all([
@@ -348,7 +349,7 @@ export default function AdminPage() {
                 {fOrgs.map((o) => (
                   <tr key={o.id} style={o.suspended ? { opacity: 0.55 } : undefined}>
                     <td>
-                      <div className="admin-name">{o.name}</div>
+                      <button className="admin-name link" onClick={() => setDetail(o)} title="Open Customer 360">{o.name}</button>
                       <div className="admin-sub">/{o.slug}</div>
                     </td>
                     <td className="admin-email">{o.owner_email ?? "—"}</td>
@@ -477,6 +478,49 @@ export default function AdminPage() {
           </div>
         )}
       </div>
+
+      {detail && (
+        <div className="drawer-backdrop" onClick={() => setDetail(null)}>
+          <aside className="drawer" onClick={(e) => e.stopPropagation()}>
+            <div className="panel-head">
+              <h2 style={{ fontSize: 16 }}>Customer 360</h2>
+              <button className="btn" onClick={() => setDetail(null)}>Close</button>
+            </div>
+            <div className="c360-head">
+              <h2>{detail.name}</h2>
+              {detail.suspended ? <span className="abadge bad">suspended</span> : <span className="abadge ok">active</span>}
+            </div>
+            <div className="c360-sub">/{detail.slug} <IdChip id={detail.id} /></div>
+            <dl className="detail-grid">
+              <div><dt>Owner</dt><dd className="mono">{detail.owner_email ?? "—"}</dd></div>
+              <div><dt>Plan</dt><dd>{PLAN_LABEL[detail.plan] ?? detail.plan}</dd></div>
+              <div><dt>Created</dt><dd><Time iso={detail.created_at} /></dd></div>
+              <div><dt>Members</dt><dd className="mono">{detail.members}</dd></div>
+              <div><dt>Projects</dt><dd className="mono">{detail.projects}</dd></div>
+              <div><dt>Backlinks monitored</dt><dd className="mono">{detail.backlinks.toLocaleString()}</dd></div>
+            </dl>
+            <div className="c360-actions">
+              <select
+                value={detail.plan}
+                disabled={busyId === detail.id}
+                onChange={(e) => { const v = e.target.value; void changePlan(detail, v); setDetail((d) => (d ? { ...d, plan: v } : d)); }}
+                aria-label="Change plan"
+              >
+                {ADMIN_PLANS.map((p) => (<option key={p} value={p}>{PLAN_LABEL[p] ?? p}</option>))}
+              </select>
+              <button className="btn" disabled={busyId === detail.id} onClick={() => { void toggleSuspend(detail); setDetail(null); }}>
+                {detail.suspended ? "Unsuspend" : "Suspend"}
+              </button>
+              <button className="btn danger" disabled={busyId === detail.id} onClick={() => { void removeOrg(detail); setDetail(null); }}>
+                Delete workspace
+              </button>
+            </div>
+            <div className="c360-note">
+              <b>Deeper telemetry for this workspace</b> — per-workspace checks, failed jobs, usage and billing dates aren&rsquo;t exposed yet. The data largely exists (jobs, backlink_checks, subscriptions); surfacing it per workspace needs the admin read endpoints in docs/19.
+            </div>
+          </aside>
+        </div>
+      )}
     </div>
   );
 }
