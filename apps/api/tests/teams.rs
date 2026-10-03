@@ -10,7 +10,7 @@ use http_body_util::BodyExt;
 use tower::ServiceExt;
 use uuid::Uuid;
 
-async fn app() -> Option<axum::Router> {
+async fn app() -> Option<(axum::Router, db::sqlx::PgPool)> {
     let url = std::env::var("DATABASE_URL")
         .ok()
         .filter(|s| !s.is_empty())?;
@@ -18,7 +18,8 @@ async fn app() -> Option<axum::Router> {
         .await
         .ok()?;
     db::migrate::run(&db.pool).await.ok()?;
-    Some(api::app(AppState::new(
+    let pool = db.pool.clone();
+    let router = api::app(AppState::new(
         db.pool,
         ApiConfig {
             argon: Argon2Params::insecure_fast(),
@@ -27,7 +28,24 @@ async fn app() -> Option<axum::Router> {
             stripe_webhook_secret: None,
             allow_private_fetch: false,
         },
-    )))
+    ));
+    Some((router, pool))
+}
+
+/// Put an org on a paid plan with ample seats so a test can exercise the invite
+/// flow rather than the Starter seat cap (1 seat = owner only, docs/20). Seat and
+/// access enforcement have their own coverage.
+async fn set_plan_business(pool: &db::sqlx::PgPool, org: &str) {
+    db::repositories::billing::upsert_subscription(
+        pool,
+        Uuid::parse_str(org).unwrap(),
+        "cus_test",
+        None,
+        "business",
+        "active",
+    )
+    .await
+    .unwrap();
 }
 
 fn jbody(v: serde_json::Value) -> Body {
@@ -134,7 +152,7 @@ async fn get(app: &axum::Router, c: &Creds, path: &str) -> (StatusCode, serde_js
 
 #[tokio::test]
 async fn invite_accept_and_membership() {
-    let Some(app) = app().await else { return };
+    let Some((app, pool)) = app().await else { return };
 
     // Owner A creates an org.
     let a = signup(&app).await;
@@ -146,6 +164,8 @@ async fn invite_accept_and_membership() {
     )
     .await;
     let org = v["id"].as_str().unwrap().to_string();
+    // This flow invites several people; give the workspace the seats for it.
+    set_plan_business(&pool, &org).await;
 
     // Invitee B exists (logged in).
     let b = signup(&app).await;
