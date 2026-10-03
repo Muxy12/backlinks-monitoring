@@ -113,6 +113,7 @@
   border: 1px solid var(--border);
   border-radius: var(--r-xl);
   padding: 16px 18px 15px;
+  overflow: hidden;
   box-shadow: var(--shadow-xs);
   transition: box-shadow var(--t) var(--ease), border-color var(--t) var(--ease), transform var(--t) var(--ease);
   animation: fade-up var(--t-slow) var(--ease) both;
@@ -131,7 +132,7 @@
   background: color-mix(in srgb, var(--tile-accent, var(--primary)) 12%, transparent);
   border: 1px solid color-mix(in srgb, var(--tile-accent, var(--primary)) 22%, transparent);
 }
-.tile-value { font-size: 29px; font-weight: 720; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; line-height: 1.05; }
+.tile-value { font-size: 27px; font-weight: 720; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; line-height: 1.1; white-space: nowrap; }
 .tile-hint { font-size: 12px; color: var(--muted-2); margin-top: 5px; }
 
 /* ── Health / distribution module ───────────────────────────────────────── */
@@ -189,6 +190,18 @@
   box-shadow: 0 0 0 3px var(--primary-weak);
 }
 
+/* Filter row: one height for every control + a custom chevron (no native look). */
+.panel-head select, .bl-search { height: 34px; }
+.panel-actions .btn.sm { height: 34px; }
+.panel-head select, .add-form select, .tags-add select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 30px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238a94a6' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+
 /* ── Backlinks table ────────────────────────────────────────────────────── */
 .bl-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .bl-table th {
@@ -197,11 +210,14 @@
   font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase;
   position: sticky; top: 0; background: var(--surface); z-index: 1;
 }
-.bl-table td { padding: 11px 12px; border-bottom: 1px solid var(--border); }
+.bl-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
 .bl-table tr:last-child td { border-bottom: none; }
 .row-click { cursor: pointer; transition: background var(--t-fast) var(--ease); }
 .row-click:hover td { background: color-mix(in srgb, var(--primary) 5%, transparent); }
 .mono { font-variant-numeric: tabular-nums; font-family: var(--font-mono); color: var(--muted); font-size: 12px; }
+/* Domain cells are the row's subject: readable, not muted metadata. */
+.cell-domain { color: var(--text); font-weight: 500; font-size: 13px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cell-domain.target { color: var(--muted); font-weight: 400; }
 
 /* Status pill (filled, tinted by the status color set inline via --st). */
 .badge {

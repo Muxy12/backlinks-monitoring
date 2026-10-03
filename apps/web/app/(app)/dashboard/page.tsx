@@ -727,8 +727,8 @@ export default function DashboardPage() {
                   {visibleBacklinks.map((b) => (
                     <tr key={b.id} className="row-click" onClick={() => void openDetail(b)}>
                       <td><span className="badge" style={{ "--st": statusColor(b.status) } as CSSProperties}><span className="dot" />{statusLabel(b.status)}</span></td>
-                      <td className="mono" title={b.source_url}>{b.source_domain}</td>
-                      <td className="mono" title={b.target_url}>{b.target_domain}</td>
+                      <td className="cell-domain" title={b.source_url}>{b.source_domain}</td>
+                      <td className="cell-domain target" title={b.target_url}>{b.target_domain}</td>
                       <td className="cell-anchor" title={b.detected_anchor_text ?? b.expected_anchor_text ?? ""}>{b.detected_anchor_text ?? b.expected_anchor_text ?? "—"}</td>
                       <td>
                         <span className="bl-tags">
