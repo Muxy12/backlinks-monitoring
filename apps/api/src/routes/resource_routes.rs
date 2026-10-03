@@ -233,6 +233,18 @@ pub async fn create_project(
     if let Some(cid) = body.client_id {
         clients::get(&state.pool, &scope, cid).await?; // 404 if not in org
     }
+    // Plan project limit (docs/20). Over-limit blocks new projects; existing kept.
+    let plan =
+        db::repositories::billing::plan_for_org(&state.pool, scope.organization_id()).await?;
+    let current = projects::count(&state.pool, &scope).await? as u32;
+    if let billing::AddOutcome::OverLimit { limit, .. } =
+        billing::Entitlements::new(plan).can_add_project(current)
+    {
+        return Err(ApiError::PlanLimit(format!(
+            "plan limit of {limit} projects reached — upgrade to add more"
+        )));
+    }
+
     let project = projects::create(
         &state.pool,
         &scope,

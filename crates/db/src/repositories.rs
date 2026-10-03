@@ -724,6 +724,17 @@ pub mod projects {
         .await?)
     }
 
+    /// Active (non-archived) project count for the org — for plan-limit checks.
+    pub async fn count(pool: &PgPool, scope: &OrgScope) -> Result<i64, DbError> {
+        let (n,): (i64,) = sqlx::query_as(
+            "SELECT count(*) FROM projects WHERE organization_id = $1 AND archived_at IS NULL",
+        )
+        .bind(scope.organization_id())
+        .fetch_one(pool)
+        .await?;
+        Ok(n)
+    }
+
     pub async fn get(pool: &PgPool, scope: &OrgScope, id: Uuid) -> Result<Project, DbError> {
         sqlx::query_as::<_, Project>(
             "SELECT id, organization_id, client_id, name, domain, \
@@ -3568,6 +3579,17 @@ pub mod members {
     use super::*;
     use crate::entities::Member;
 
+    /// Seat count (every member; the owner counts as a seat). Takes a raw org id
+    /// because it is also used at invite-accept time, before membership exists.
+    pub async fn count_for_org(pool: &PgPool, organization_id: Uuid) -> Result<i64, DbError> {
+        let (n,): (i64,) =
+            sqlx::query_as("SELECT count(*) FROM organization_members WHERE organization_id = $1")
+                .bind(organization_id)
+                .fetch_one(pool)
+                .await?;
+        Ok(n)
+    }
+
     /// Everyone in the org with their role, owners first then by join time.
     pub async fn list(pool: &PgPool, scope: &OrgScope) -> Result<Vec<Member>, DbError> {
         Ok(sqlx::query_as::<_, Member>(
@@ -3648,6 +3670,21 @@ pub mod invitations {
         .fetch_one(pool)
         .await
         .map_err(DbError::from_insert)
+    }
+
+    /// Count of outstanding (unaccepted) invitations — committed future seats.
+    pub async fn count_pending_for_org(
+        pool: &PgPool,
+        organization_id: Uuid,
+    ) -> Result<i64, DbError> {
+        let (n,): (i64,) = sqlx::query_as(
+            "SELECT count(*) FROM organization_invitations \
+             WHERE organization_id = $1 AND accepted_at IS NULL",
+        )
+        .bind(organization_id)
+        .fetch_one(pool)
+        .await?;
+        Ok(n)
     }
 
     /// Pending (unaccepted) invitations for the org, newest first.
