@@ -50,7 +50,6 @@ export function WaitlistLanding() {
           <img src={LOGO} alt="" width={1254} height={1254} />
           Link<span>Pulz</span>
         </a>
-        <a className="wl-login" href="/login">Log in</a>
       </header>
 
       <main className="wl-main">
