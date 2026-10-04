@@ -3278,6 +3278,41 @@ pub mod waitlist {
         .fetch_all(pool)
         .await?)
     }
+
+    /// Signups whose confirmation email has not been sent yet, oldest first.
+    pub async fn pending_confirmations(pool: &PgPool, limit: i64) -> Result<Vec<String>, DbError> {
+        let rows: Vec<(String,)> = sqlx::query_as(
+            "SELECT email FROM waitlist_signups \
+             WHERE confirmation_sent_at IS NULL ORDER BY created_at ASC LIMIT $1",
+        )
+        .bind(limit)
+        .fetch_all(pool)
+        .await?;
+        Ok(rows.into_iter().map(|(e,)| e).collect())
+    }
+
+    /// Count of signups still awaiting a confirmation email.
+    pub async fn pending_count(pool: &PgPool) -> Result<i64, DbError> {
+        let (n,): (i64,) = sqlx::query_as(
+            "SELECT count(*)::bigint FROM waitlist_signups WHERE confirmation_sent_at IS NULL",
+        )
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_fetch)?;
+        Ok(n)
+    }
+
+    /// Mark a signup's confirmation email as sent (idempotent on the email).
+    pub async fn mark_confirmed(pool: &PgPool, email: &str) -> Result<(), DbError> {
+        sqlx::query(
+            "UPDATE waitlist_signups SET confirmation_sent_at = now() \
+             WHERE email = $1 AND confirmation_sent_at IS NULL",
+        )
+        .bind(email)
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
 }
 
 // ─── Campaigns (§22) — tenant-scoped, with read-time rollups ──────────────────

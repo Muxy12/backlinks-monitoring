@@ -870,12 +870,18 @@ export interface AdminAnalytics {
 
 export interface AdminWaitlist {
   total: number;
+  pending: number;
   recent: { email: string; created_at: string; source: string | null }[];
 }
 
 export const adminApi = {
   stats: () => request<AdminStats>("/v1/admin/stats"),
   waitlist: () => request<AdminWaitlist>("/v1/admin/waitlist"),
+  resendWaitlistConfirmations: () =>
+    request<{ sent: number; failed: number; remaining: number }>("/v1/admin/waitlist/resend", {
+      method: "POST",
+      headers: csrfHeader(),
+    }),
   organizations: () => request<AdminOrg[]>("/v1/admin/organizations"),
   users: () => request<AdminUser[]>("/v1/admin/users"),
   audit: () => request<AdminAudit[]>("/v1/admin/audit"),
