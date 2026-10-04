@@ -496,6 +496,7 @@ const ACQUISITIONS: &[&str] = &[
     "outreach",
     "partnership",
     "self_created",
+    "other",
 ];
 const LINK_ATTRIBUTES: &[&str] = &["follow", "nofollow", "sponsored", "ugc"];
 const PLACEMENTS: &[&str] = &[
