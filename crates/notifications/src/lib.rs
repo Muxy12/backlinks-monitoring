@@ -66,73 +66,70 @@ pub mod trial {
     }
 }
 
-/// Pre-launch waitlist confirmation email — branded HTML (LinkPulz light-first
-/// charte: electric blue + violet, logo) with a plain-text fallback. Via Resend,
-/// best-effort (gated on the same email env; a no-op when unset).
+/// Pre-launch waitlist confirmation email. Deliberately sober and personal
+/// (plain white, left-aligned, one small logo, a text link, no big CTA/badge/
+/// gradient) so it reads as transactional and favours Gmail's Primary inbox over
+/// Promotions. Includes an unsubscribe link. Via Resend, best-effort (gated on
+/// the same email env; a no-op when unset).
 pub mod waitlist {
     use super::resend::send_html_email;
 
     const LOGO: &str = "https://ye8jhaekbbcviws9.public.blob.vercel-storage.com/logo-linkpulz.webp";
     const SITE: &str = "https://linkpulz.com";
 
-    /// Confirm a new waitlist signup. Sent once, when the email is first added.
-    pub async fn send_confirmation(to: &str) -> Result<(), String> {
-        let subject = "You're on the LinkPulz waitlist";
-        // Plain-text fallback (kept close to the HTML copy).
-        let text = "Thanks for joining the LinkPulz waitlist!\n\n\
-            We're putting the finishing touches on LinkPulz — automatic backlink \
-            monitoring that checks every link you earn or buy every 48 hours and \
-            alerts you the moment one is lost, nofollowed, redirected or broken.\n\n\
-            You'll be among the first to get access when we launch. No spam in the \
-            meantime — just one email when it's ready.\n\nVisit us: https://linkpulz.com\n\n\
-            — The LinkPulz team";
-        let html = confirmation_html();
-        send_html_email(to, subject, &html, text).await
+    /// The public unsubscribe URL for a signup's token.
+    pub fn unsubscribe_url(token: &str) -> String {
+        format!("{SITE}/waitlist/unsubscribe?t={token}")
     }
 
-    /// Email-safe HTML (table layout, inline styles only — no external CSS, no
-    /// flexbox/grid, so it renders across mail clients).
-    fn confirmation_html() -> String {
+    /// Confirm a new waitlist signup. Sent once, when the email is first added.
+    pub async fn send_confirmation(to: &str, unsubscribe_token: &str) -> Result<(), String> {
+        let unsub = unsubscribe_url(unsubscribe_token);
+        let subject = "You're on the LinkPulz waitlist";
+        let text = format!(
+            "Hi,\n\nThanks for joining the LinkPulz waitlist — you're all set.\n\n\
+             We're putting the finishing touches on LinkPulz: automatic backlink monitoring that \
+             re-checks every link you earn or buy every 48 hours and tells you the moment one is \
+             lost, nofollowed, redirected or broken.\n\n\
+             You'll be among the first to hear from us when early access opens. We'll only email \
+             you about the launch.\n\nFollow along: {SITE}\n\n— The LinkPulz team\n\n\
+             —\nYou're receiving this because you joined the LinkPulz waitlist. Unsubscribe: {unsub}"
+        );
+        let html = confirmation_html(&unsub);
+        send_html_email(to, subject, &html, &text).await
+    }
+
+    /// Email-safe HTML (table layout, inline styles only). Intentionally plain:
+    /// white background, left-aligned, no button/badge/gradient.
+    fn confirmation_html(unsub: &str) -> String {
         format!(
             "<!DOCTYPE html><html lang=\"en\"><head>\
 <meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\
 <title>LinkPulz</title></head>\
-<body style=\"margin:0;padding:0;background:#f6f8fc;\
-font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0b1220;\">\
-<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#f6f8fc;padding:28px 12px;\">\
-<tr><td align=\"center\">\
-<table role=\"presentation\" width=\"520\" cellpadding=\"0\" cellspacing=\"0\" \
-style=\"max-width:520px;width:100%;background:#ffffff;border:1px solid #e7ecf4;border-radius:16px;overflow:hidden;\">\
-<tr><td style=\"height:4px;line-height:4px;font-size:0;background:#2f6bff;\
-background:linear-gradient(90deg,#2f6bff,#7c5cff);\">&nbsp;</td></tr>\
-<tr><td style=\"padding:28px 32px 0;\">\
-<img src=\"{LOGO}\" width=\"32\" height=\"32\" alt=\"LinkPulz\" \
-style=\"vertical-align:middle;border:0;border-radius:8px;\">\
-<span style=\"font-size:19px;font-weight:800;letter-spacing:-0.02em;vertical-align:middle;margin-left:8px;color:#0b1220;\">\
+<body style=\"margin:0;padding:0;background:#ffffff;\
+font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1a2234;\">\
+<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#ffffff;\">\
+<tr><td align=\"center\" style=\"padding:28px 16px;\">\
+<table role=\"presentation\" width=\"460\" cellpadding=\"0\" cellspacing=\"0\" \
+style=\"max-width:460px;width:100%;text-align:left;\">\
+<tr><td style=\"padding-bottom:20px;\">\
+<img src=\"{LOGO}\" width=\"26\" height=\"26\" alt=\"\" \
+style=\"vertical-align:middle;border:0;border-radius:6px;\">\
+<span style=\"font-size:16px;font-weight:700;vertical-align:middle;margin-left:7px;color:#1a2234;\">\
 Link<span style=\"color:#2f6bff;\">Pulz</span></span></td></tr>\
-<tr><td style=\"padding:22px 32px 0;\">\
-<span style=\"display:inline-block;font-size:12px;font-weight:700;color:#2f6bff;\
-background:#e8f0ff;padding:5px 12px;border-radius:999px;\">Launching soon</span>\
-<h1 style=\"margin:16px 0 0;font-size:24px;line-height:1.25;font-weight:800;letter-spacing:-0.02em;color:#0b1220;\">\
-You're on the waitlist</h1></td></tr>\
-<tr><td style=\"padding:14px 32px 0;font-size:15px;line-height:1.65;color:#475268;\">\
-Thanks for joining the LinkPulz waitlist — we're putting the finishing touches on it now.<br><br>\
-LinkPulz watches every backlink you earn or buy: automatic checks \
-<b style=\"color:#0b1220;\">every 48 hours</b>, with an instant alert the moment a link is lost, \
-nofollowed, redirected or broken.<br><br>\
-You'll be among the first to get access when we launch. No spam in the meantime — just one email when it's ready.</td></tr>\
-<tr><td style=\"padding:26px 32px 4px;\">\
-<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\"><tr>\
-<td style=\"border-radius:10px;background:#2f6bff;background:linear-gradient(135deg,#2f6bff,#7c5cff);\">\
-<a href=\"{SITE}\" style=\"display:inline-block;padding:12px 24px;font-size:15px;font-weight:700;\
-color:#ffffff;text-decoration:none;border-radius:10px;\">Visit LinkPulz &rarr;</a>\
-</td></tr></table></td></tr>\
-<tr><td style=\"padding:28px 32px 30px;\">\
-<div style=\"border-top:1px solid #eef1f6;margin:0 0 16px;font-size:0;line-height:0;\">&nbsp;</div>\
-<p style=\"margin:0;font-size:12px;line-height:1.5;color:#8a94a6;\">\
-You're receiving this because you joined the LinkPulz waitlist at linkpulz.com. \
-We'll only email you about the launch.</p>\
-<p style=\"margin:10px 0 0;font-size:12px;color:#8a94a6;\">&copy; LinkPulz &middot; Backlink monitoring software</p>\
+<tr><td style=\"font-size:15px;line-height:1.65;color:#334155;\">\
+Hi,<br><br>\
+Thanks for joining the LinkPulz waitlist — you're all set.<br><br>\
+We're putting the finishing touches on LinkPulz: automatic backlink monitoring that re-checks \
+every link you earn or buy every 48 hours and tells you the moment one is lost, nofollowed, \
+redirected or broken.<br><br>\
+You'll be among the first to hear from us when early access opens. We'll only email you about \
+the launch &mdash; nothing else.<br><br>\
+You can follow along at <a href=\"{SITE}\" style=\"color:#2f6bff;\">linkpulz.com</a>.<br><br>\
+&mdash; The LinkPulz team</td></tr>\
+<tr><td style=\"padding-top:28px;font-size:12px;line-height:1.5;color:#94a3b8;\">\
+You're receiving this because you joined the LinkPulz waitlist. If you'd rather not hear about \
+the launch, <a href=\"{unsub}\" style=\"color:#94a3b8;text-decoration:underline;\">unsubscribe here</a>.\
 </td></tr></table></td></tr></table></body></html>"
         )
     }

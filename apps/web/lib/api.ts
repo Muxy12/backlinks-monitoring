@@ -91,6 +91,11 @@ export const api = {
       body: JSON.stringify({ email, turnstile_token: turnstileToken, attribution }),
     }),
   waitlistCount: () => request<{ count: number }>("/v1/waitlist/count"),
+  unsubscribeWaitlist: (token: string) =>
+    request<{ ok: boolean; removed: boolean }>("/v1/waitlist/unsubscribe", {
+      method: "POST",
+      body: JSON.stringify({ token }),
+    }),
   register: (
     email: string,
     password: string,

@@ -275,6 +275,10 @@ pub fn app(state: AppState) -> Router {
         // Pre-launch waitlist email capture (public, no session).
         .route("/v1/waitlist", post(routes::waitlist_routes::join))
         .route("/v1/waitlist/count", get(routes::waitlist_routes::count))
+        .route(
+            "/v1/waitlist/unsubscribe",
+            post(routes::waitlist_routes::unsubscribe),
+        )
         // Platform admin backoffice (migration 0022) — cross-tenant, gated on
         // users.is_platform_admin inside each handler.
         .route("/v1/admin/stats", get(routes::admin_routes::stats))
