@@ -97,7 +97,7 @@ const MAIN = `
     <div>
       <span class="badge">Backlink management</span>
       <h1 id="h1">Backlink Management: Keep Every Link You've Earned Working</h1>
-      <p class="lead">Every backlink you earned or paid for is an asset — and assets decay in silence. Backlink management is keeping them all in one place, watching them on a schedule, and acting the moment one changes, so you never lose authority you already paid for.</p>
+      <p class="lead">Every backlink you earned or paid for is an asset, and assets decay in silence. Backlink management is keeping them all in one place, watching them on a schedule, and acting the moment one changes, so you never lose authority you already paid for.</p>
       <div class="cta-row">
         <a class="btn" href="/register">Start managing my backlinks</a>
         <a class="btn ghost" href="#what-to-track">What to track</a>
@@ -119,7 +119,7 @@ const MAIN = `
   <div class="wrap">
     <div class="prose">
       <h2 id="what-h">What is backlink management?</h2>
-      <p>Backlink management is the ongoing practice of keeping track of the links that point to your site — knowing which ones you have, whether each is still live and set up the way you expect, and doing something about it when one changes.</p>
+      <p>Backlink management is the ongoing practice of keeping track of the links that point to your site, knowing which ones you have, whether each is still live and set up the way you expect, and doing something about it when one changes.</p>
       <p>It is easy to confuse with a one-off <a href="/backlink-audit">backlink audit</a>, but they are different jobs. An audit is a snapshot that finds problems today. Management is the maintenance that keeps the <a href="/backlink-profile">backlink profile</a> healthy between audits, so problems surface the day they happen instead of at your next review.</p>
     </div>
   </div>
@@ -130,11 +130,11 @@ const MAIN = `
   <div class="wrap">
     <div class="prose">
       <h2 id="why-h">Why it matters</h2>
-      <p>A backlink is not a one-time win. Once it is live, anything can happen to it — and none of it reaches your inbox automatically:</p>
+      <p>A backlink is not a one-time win. Once it is live, anything can happen to it, and none of it reaches your inbox automatically:</p>
       <ul class="check">
         <li><b>Links disappear.</b> An editor removes them, the page is deleted, or an article is rewritten. See <a href="/lost-backlinks">lost backlinks</a>.</li>
         <li><b>Links break.</b> Your target starts returning a 404, or the linking page itself errors. See <a href="/broken-backlinks">broken backlinks</a>.</li>
-        <li><b>Links quietly change.</b> Dofollow becomes nofollow, the anchor is edited, or the page goes noindex — the link is there but stops passing value.</li>
+        <li><b>Links quietly change.</b> Dofollow becomes nofollow, the anchor is edited, or the page goes noindex, the link is there but stops passing value.</li>
         <li><b>You lose the context.</b> Six months later, nobody remembers which links were paid for, which were earned, or who to contact when one drops.</li>
       </ul>
       <p>Unmanaged, a backlink profile leaks value one link at a time. Managed, every change is caught while it is still fresh and still recoverable.</p>
@@ -153,11 +153,11 @@ const MAIN = `
       <table>
         <thead><tr><th>Field</th><th>Why it matters</th></tr></thead>
         <tbody>
-          <tr><th>Linking page URL</th><td>The page the link lives on — the thing you re-check.</td></tr>
+          <tr><th>Linking page URL</th><td>The page the link lives on, the thing you re-check.</td></tr>
           <tr><th>Your target URL</th><td>Where the link points. Reveals redirects and wrong targets.</td></tr>
           <tr><th>Anchor text</th><td>Changes to the anchor change the signal the link sends.</td></tr>
           <tr><th>Dofollow / nofollow</th><td>Tells you whether the link still passes authority.</td></tr>
-          <tr><th>Status</th><td>Live, lost, redirected or broken — the heart of the matter.</td></tr>
+          <tr><th>Status</th><td>Live, lost, redirected or broken, the heart of the matter.</td></tr>
           <tr><th>First seen &amp; last checked</th><td>Dates make it clear exactly when something changed.</td></tr>
         </tbody>
       </table>
@@ -174,7 +174,7 @@ const MAIN = `
       <ol>
         <li><b>List every link</b> you know about in a spreadsheet.</li>
         <li><b>Open each linking page</b> on a regular cadence and look for your link.</li>
-        <li><b>Note what changed</b> — gone, nofollowed, redirected, or broken.</li>
+        <li><b>Note what changed</b>, gone, nofollowed, redirected, or broken.</li>
         <li><b>Repeat forever.</b> A spreadsheet only shows the state on the day you last checked, and the checking never ends.</li>
       </ol>
       <h3>With monitoring</h3>
@@ -214,7 +214,7 @@ const MAIN = `
 <section class="final" aria-labelledby="final-h">
   <div class="wrap">
     <h2 id="final-h">Stop managing backlinks from memory.</h2>
-    <p class="lead">Keep every link you've earned in one place and let LinkPulz watch them for you — so the day a link changes, you're the first to know.</p>
+    <p class="lead">Keep every link you've earned in one place and let LinkPulz watch them for you, so the day a link changes, you're the first to know.</p>
     <div class="cta-row" style="justify-content:center"><a class="btn" href="/register">Start managing my backlinks</a></div>
   </div>
 </section>

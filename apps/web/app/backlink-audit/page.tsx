@@ -88,12 +88,12 @@ const JSONLD = `{
       "@type": "FAQPage",
       "@id": "https://www.linkpulz.com/backlink-audit#faq",
       "mainEntity": [
-        { "@type": "Question", "name": "What is a backlink audit?", "acceptedAnswer": { "@type": "Answer", "text": "A backlink audit is a point-in-time review of the links pointing to your site. You gather every backlink, check the live state of each one, and flag the problems — lost, broken, nofollowed, noindexed, redirected or risky links — so you can act on them." } },
+        { "@type": "Question", "name": "What is a backlink audit?", "acceptedAnswer": { "@type": "Answer", "text": "A backlink audit is a point-in-time review of the links pointing to your site. You gather every backlink, check the live state of each one, and flag the problems, lost, broken, nofollowed, noindexed, redirected or risky links, so you can act on them." } },
         { "@type": "Question", "name": "How often should I audit my backlinks?", "acceptedAnswer": { "@type": "Answer", "text": "A full audit once or twice a year is a sensible baseline, plus one after any big change such as a site migration. Between audits, ongoing monitoring catches new problems as they happen so they do not pile up." } },
         { "@type": "Question", "name": "What problems does a backlink audit find?", "acceptedAnswer": { "@type": "Answer", "text": "Lost links that were removed, broken links that point to errors, links switched from dofollow to nofollow, links on pages that went noindex, redirected links, and links on low-quality or spammy sites." } },
         { "@type": "Question", "name": "What are toxic or spammy backlinks?", "acceptedAnswer": { "@type": "Answer", "text": "They are links from low-quality, irrelevant or manipulative sites. Most sites can safely ignore them, as search engines discount low-quality links on their own. Assessing and, in rare cases, disavowing them is a separate judgement call from the lost, broken and changed links monitoring handles." } },
         { "@type": "Question", "name": "Do I need a tool to audit backlinks?", "acceptedAnswer": { "@type": "Answer", "text": "You can audit a small set by hand, but checking the live state of dozens or hundreds of links one by one does not scale, and the result is out of date the moment you finish. A tool checks them for you and keeps the result current." } },
-        { "@type": "Question", "name": "How does LinkPulz help with a backlink audit?", "acceptedAnswer": { "@type": "Answer", "text": "LinkPulz checks the live state of each link you add — present or lost, dofollow or nofollow, live or broken — and then keeps checking on a schedule, so your audit stays true instead of going stale. [TO CONFIRM: import, check frequency and alert channels]" } }
+        { "@type": "Question", "name": "How does LinkPulz help with a backlink audit?", "acceptedAnswer": { "@type": "Answer", "text": "LinkPulz checks the live state of each link you add, present or lost, dofollow or nofollow, live or broken, and then keeps checking on a schedule, so your audit stays true instead of going stale. [TO CONFIRM: import, check frequency and alert channels]" } }
       ]
     }
   ]
@@ -110,7 +110,7 @@ const MAIN = `
     <div>
       <span class="badge">Backlink audit</span>
       <h1 id="h1">Backlink Audit: Find the Problems in Your Link Profile</h1>
-      <p class="lead">A backlink audit is a point-in-time review of every link pointing to your site. Gather them, check each one, and flag the problems — lost, broken, nofollowed and risky links — so you can fix what matters and stop the rest slipping through.</p>
+      <p class="lead">A backlink audit is a point-in-time review of every link pointing to your site. Gather them, check each one, and flag the problems, lost, broken, nofollowed and risky links, so you can fix what matters and stop the rest slipping through.</p>
       <div class="cta-row">
         <a class="btn" href="/register">Audit my backlinks</a>
         <a class="btn ghost" href="#steps">The 5 steps</a>
@@ -178,11 +178,11 @@ const MAIN = `
       <h2 id="flag-h">What to flag in the audit</h2>
       <p>Not every flagged link is the same problem, and each needs a different response:</p>
       <ul class="check">
-        <li><b>Lost</b> — the link has been removed from the page. See <a href="/lost-backlinks">lost backlinks</a>.</li>
-        <li><b>Broken</b> — the link points to an error, or sits on a page that errors. See <a href="/broken-backlinks">broken backlinks</a>.</li>
-        <li><b>Nofollowed or noindexed</b> — the link is present but has stopped passing value.</li>
-        <li><b>Redirected</b> — the link still resolves, but no longer lands where you intended.</li>
-        <li><b>Risky</b> — the link sits on a low-quality, irrelevant or spammy site.</li>
+        <li><b>Lost</b>, the link has been removed from the page. See <a href="/lost-backlinks">lost backlinks</a>.</li>
+        <li><b>Broken</b>, the link points to an error, or sits on a page that errors. See <a href="/broken-backlinks">broken backlinks</a>.</li>
+        <li><b>Nofollowed or noindexed</b>, the link is present but has stopped passing value.</li>
+        <li><b>Redirected</b>, the link still resolves, but no longer lands where you intended.</li>
+        <li><b>Risky</b>, the link sits on a low-quality, irrelevant or spammy site.</li>
       </ul>
       <p class="micro" style="margin-top:12px">A note on risky links: most sites can safely ignore low-quality links, as search engines discount them on their own. Assessing and, in rare cases, disavowing them is a separate judgement call from the lost, broken and changed links monitoring handles for you.</p>
     </div>
@@ -194,7 +194,7 @@ const MAIN = `
   <div class="wrap">
     <div class="prose">
       <h2 id="vs-h">Audit once, or monitor always?</h2>
-      <p>An audit and ongoing monitoring solve the same problem on different timescales — you want both.</p>
+      <p>An audit and ongoing monitoring solve the same problem on different timescales, you want both.</p>
     </div>
     <div class="tablewrap">
       <table>
@@ -218,12 +218,12 @@ const MAIN = `
   <div class="wrap">
     <div class="center"><h2 id="faq-h">Backlink audit: frequently asked questions</h2></div>
     <div class="faq">
-      <details><summary>What is a backlink audit?</summary><p>A backlink audit is a point-in-time review of the links pointing to your site. You gather every backlink, check the live state of each one, and flag the problems — lost, broken, nofollowed, noindexed, redirected or risky links — so you can act on them.</p></details>
+      <details><summary>What is a backlink audit?</summary><p>A backlink audit is a point-in-time review of the links pointing to your site. You gather every backlink, check the live state of each one, and flag the problems, lost, broken, nofollowed, noindexed, redirected or risky links, so you can act on them.</p></details>
       <details><summary>How often should I audit my backlinks?</summary><p>A full audit once or twice a year is a sensible baseline, plus one after any big change such as a site migration. Between audits, ongoing monitoring catches new problems as they happen so they do not pile up.</p></details>
       <details><summary>What problems does a backlink audit find?</summary><p>Lost links that were removed, broken links that point to errors, links switched from dofollow to nofollow, links on pages that went noindex, redirected links, and links on low-quality or spammy sites.</p></details>
       <details><summary>What are toxic or spammy backlinks?</summary><p>They are links from low-quality, irrelevant or manipulative sites. Most sites can safely ignore them, as search engines discount low-quality links on their own. Assessing and, in rare cases, disavowing them is a separate judgement call from the lost, broken and changed links monitoring handles.</p></details>
       <details><summary>Do I need a tool to audit backlinks?</summary><p>You can audit a small set by hand, but checking the live state of dozens or hundreds of links one by one does not scale, and the result is out of date the moment you finish. A tool checks them for you and keeps the result current.</p></details>
-      <details><summary>How does LinkPulz help with a backlink audit?</summary><p>LinkPulz checks the live state of each link you add — present or lost, dofollow or nofollow, live or broken — and then keeps checking on a schedule, so your audit stays true instead of going stale. <span class="tc">TO CONFIRM: import, check frequency and alert channels</span></p></details>
+      <details><summary>How does LinkPulz help with a backlink audit?</summary><p>LinkPulz checks the live state of each link you add, present or lost, dofollow or nofollow, live or broken, and then keeps checking on a schedule, so your audit stays true instead of going stale. <span class="tc">TO CONFIRM: import, check frequency and alert channels</span></p></details>
     </div>
   </div>
 </section>
@@ -244,7 +244,7 @@ const MAIN = `
 <section class="final" aria-labelledby="final-h">
   <div class="wrap">
     <h2 id="final-h">Audit once. Then never let it go stale.</h2>
-    <p class="lead">Run the audit, fix what matters, and put the survivors under monitoring with LinkPulz — so your next review starts from a profile that's already clean.</p>
+    <p class="lead">Run the audit, fix what matters, and put the survivors under monitoring with LinkPulz, so your next review starts from a profile that's already clean.</p>
     <div class="cta-row" style="justify-content:center"><a class="btn" href="/register">Audit my backlinks</a></div>
   </div>
 </section>

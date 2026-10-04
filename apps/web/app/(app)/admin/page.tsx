@@ -32,7 +32,7 @@ const PLAN_LABEL: Record<string, string> = {
 // Relative time ("3 min ago") with the exact timestamp available on hover.
 function relTime(iso: string): { rel: string; exact: string } {
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return { rel: "—", exact: "" };
+  if (Number.isNaN(d.getTime())) return { rel: "-", exact: "" };
   const exact = d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "medium" });
   const s = Math.round((Date.now() - d.getTime()) / 1000);
   const rel =
@@ -50,7 +50,7 @@ function Time({ iso }: { iso: string }) {
 
 // Share of one funnel stage against an earlier one ("—" when the base is 0).
 function pctStr(n: number, d: number): string {
-  return d > 0 ? `${Math.round((n / d) * 100)}%` : "—";
+  return d > 0 ? `${Math.round((n / d) * 100)}%` : "-";
 }
 
 // Copyable internal id — available for support/debugging without dominating the UI.
@@ -61,7 +61,7 @@ function IdChip({ id }: { id: string }) {
     <button
       type="button"
       className={`idchip${copied ? " copied" : ""}`}
-      title={`${id} — click to copy`}
+      title={`${id}, click to copy`}
       onClick={async (e) => {
         e.stopPropagation();
         try {
@@ -220,7 +220,7 @@ export default function AdminPage() {
     );
     if (typed === null) return;
     if (typed.trim() !== o.slug) {
-      setErr("Slug did not match — deletion cancelled.");
+      setErr("Slug did not match, deletion cancelled.");
       return;
     }
     setBusyId(o.id);
@@ -318,7 +318,7 @@ export default function AdminPage() {
     <div className="dash">
       <div className="page-head">
         <h1>Admin <span className="admin-tag">Operator</span></h1>
-        <span className="muted">Platform backoffice — every workspace and account on this instance.</span>
+        <span className="muted">Platform backoffice, every workspace and account on this instance.</span>
       </div>
 
       {stats && (
@@ -328,7 +328,7 @@ export default function AdminPage() {
           <div className="admin-stat"><div className="k">Activated</div><div className="v">{activatedPct}%</div><div className="sub">{activatedOrgs} of {orgs.length} have backlinks</div></div>
           <div className="admin-stat"><div className="k">Suspended</div><div className="v">{suspendedCount.toLocaleString()}</div><div className={`sub${suspendedCount ? " bad" : ""}`}>{suspendedCount ? "needs review" : "none"}</div></div>
           <div className="admin-stat"><div className="k">Backlinks</div><div className="v">{stats.backlinks.toLocaleString()}</div><div className="sub">monitored platform-wide</div></div>
-          <div className="admin-stat"><div className="k">Live</div><div className="v">{livePct != null ? `${livePct}%` : "—"}</div>{lostPct != null && <div className="sub bad">{stats.backlinks_lost.toLocaleString()} lost · {lostPct}%</div>}</div>
+          <div className="admin-stat"><div className="k">Live</div><div className="v">{livePct != null ? `${livePct}%` : "-"}</div>{lostPct != null && <div className="sub bad">{stats.backlinks_lost.toLocaleString()} lost · {lostPct}%</div>}</div>
         </div>
       )}
 
@@ -359,14 +359,14 @@ export default function AdminPage() {
             <div className="admin-stat"><div className="k">Processing</div><div className="v">{ops.queue.processing.toLocaleString()}</div></div>
             <div className="admin-stat"><div className="k">Failed</div><div className="v">{ops.queue.failed.toLocaleString()}</div><div className={`sub${ops.queue.failed ? " bad" : ""}`}>{ops.queue.failed ? "retrying" : "none"}</div></div>
             <div className="admin-stat"><div className="k">Dead</div><div className="v">{ops.queue.dead.toLocaleString()}</div><div className={`sub${ops.queue.dead ? " bad" : ""}`}>{ops.queue.dead ? "needs a human" : "none"}</div></div>
-            <div className="admin-stat"><div className="k">Last job</div><div className="v" style={{ fontSize: 15 }}>{ops.queue.last_completed_at ? <Time iso={ops.queue.last_completed_at} /> : "—"}</div><div className="sub">{ops.queue.created_last_hour} queued · 1h</div></div>
-            <div className="admin-stat"><div className="k">Oldest pending</div><div className="v" style={{ fontSize: 15 }}>{ops.queue.oldest_pending_at ? <Time iso={ops.queue.oldest_pending_at} /> : "—"}</div></div>
+            <div className="admin-stat"><div className="k">Last job</div><div className="v" style={{ fontSize: 15 }}>{ops.queue.last_completed_at ? <Time iso={ops.queue.last_completed_at} /> : "-"}</div><div className="sub">{ops.queue.created_last_hour} queued · 1h</div></div>
+            <div className="admin-stat"><div className="k">Oldest pending</div><div className="v" style={{ fontSize: 15 }}>{ops.queue.oldest_pending_at ? <Time iso={ops.queue.oldest_pending_at} /> : "-"}</div></div>
           </div>
           <div className="ops-section-h"><h2>Monitoring &amp; delivery</h2><span className="note">last {Math.round(ops.window_secs / 3600)}h</span></div>
           <div className="admin-stats">
             <div className="admin-stat"><div className="k">Checks</div><div className="v">{ops.monitoring.checks.toLocaleString()}</div></div>
-            <div className="admin-stat"><div className="k">Failed</div><div className="v">{ops.monitoring.failed.toLocaleString()}</div><div className={`sub${ops.monitoring.failed ? " bad" : ""}`}>{ops.monitoring.checks ? `${Math.round((ops.monitoring.failed / ops.monitoring.checks) * 100)}%` : "—"}</div></div>
-            <div className="admin-stat"><div className="k">Avg duration</div><div className="v">{ops.monitoring.avg_duration_ms != null ? ops.monitoring.avg_duration_ms.toLocaleString() : "—"}</div><div className="sub">ms</div></div>
+            <div className="admin-stat"><div className="k">Failed</div><div className="v">{ops.monitoring.failed.toLocaleString()}</div><div className={`sub${ops.monitoring.failed ? " bad" : ""}`}>{ops.monitoring.checks ? `${Math.round((ops.monitoring.failed / ops.monitoring.checks) * 100)}%` : "-"}</div></div>
+            <div className="admin-stat"><div className="k">Avg duration</div><div className="v">{ops.monitoring.avg_duration_ms != null ? ops.monitoring.avg_duration_ms.toLocaleString() : "-"}</div><div className="sub">ms</div></div>
             <div className="admin-stat"><div className="k">Lost detected</div><div className="v">{ops.monitoring.lost_detected.toLocaleString()}</div></div>
             <div className="admin-stat"><div className="k">Alert emails</div><div className="v">{ops.email.sent.toLocaleString()}</div><div className="sub">sent</div></div>
             <div className="admin-stat"><div className="k">Email failures</div><div className="v">{ops.email.failed.toLocaleString()}</div><div className={`sub${ops.email.failed ? " bad" : ""}`}>{ops.email.failed ? "check destinations" : "none"}</div></div>
@@ -377,11 +377,11 @@ export default function AdminPage() {
           <div className="ops-section-h"><h2>Operational health</h2><span className="note">Live metrics load from the admin ops endpoints (docs/19).</span></div>
           <div className="ops-gap">
             {[
-              { t: "Monitoring — checks running & failing", d: "backlink_checks holds found / error_kind / duration_ms. Served by /v1/admin/ops." },
-              { t: "Queue health — pending · failed · dead", d: "The jobs table + stuck/dead indexes. Served by /v1/admin/ops." },
-              { t: "Revenue — MRR · paying · canceled", d: "subscriptions + the plan price catalog. Served by /v1/admin/billing." },
+              { t: "Monitoring, checks running & failing", d: "backlink_checks holds found / error_kind / duration_ms. Served by /v1/admin/ops." },
+              { t: "Queue health, pending · failed · dead", d: "The jobs table + stuck/dead indexes. Served by /v1/admin/ops." },
+              { t: "Revenue, MRR · paying · canceled", d: "subscriptions + the plan price catalog. Served by /v1/admin/billing." },
               { t: "Plan-limit usage", d: "Plan caps vs live backlink counts. Served by /v1/admin/usage/limits." },
-              { t: "Email — alert sends & failures", d: "alert_deliveries. Served by /v1/admin/ops." },
+              { t: "Email, alert sends & failures", d: "alert_deliveries. Served by /v1/admin/ops." },
               { t: "Scheduler liveness", d: "Last completed job + jobs queued per hour. Served by /v1/admin/ops." },
             ].map((o) => (
               <div className="ops-row" key={o.t}>
@@ -398,7 +398,7 @@ export default function AdminPage() {
           <div className="admin-stats">
             <div className="admin-stat"><div className="k">MRR</div><div className="v">${Math.round(billing.mrr_cents / 100).toLocaleString()}</div><div className="sub">/ month</div></div>
             <div className="admin-stat"><div className="k">ARR</div><div className="v">${Math.round((billing.mrr_cents * 12) / 100).toLocaleString()}</div><div className="sub">run-rate</div></div>
-            <div className="admin-stat"><div className="k">Paying</div><div className="v">{billing.paying.toLocaleString()}</div><div className="sub">{billing.paying ? `$${Math.round(billing.mrr_cents / 100 / billing.paying).toLocaleString()} ARPA` : "—"}</div></div>
+            <div className="admin-stat"><div className="k">Paying</div><div className="v">{billing.paying.toLocaleString()}</div><div className="sub">{billing.paying ? `$${Math.round(billing.mrr_cents / 100 / billing.paying).toLocaleString()} ARPA` : "-"}</div></div>
             <div className="admin-stat"><div className="k">Past due</div><div className="v">{billing.past_due.toLocaleString()}</div><div className={`sub${billing.past_due ? " bad" : ""}`}>{billing.past_due ? "dunning" : "none"}</div></div>
             <div className="admin-stat"><div className="k">Canceled</div><div className="v">{billing.canceled.toLocaleString()}</div></div>
             <div className="admin-stat"><div className="k">Comped</div><div className="v">{billing.comped.toLocaleString()}</div><div className="sub">admin-set</div></div>
@@ -408,7 +408,7 @@ export default function AdminPage() {
             <div className="admin-stat"><div className="k">Trials active</div><div className="v">{billing.trialing_active.toLocaleString()}</div><div className="sub">in progress</div></div>
             <div className="admin-stat"><div className="k">Trials expired</div><div className="v">{billing.trialing_expired.toLocaleString()}</div><div className={`sub${billing.trialing_expired ? " bad" : ""}`}>{billing.trialing_expired ? "lapsed, not converted" : "none"}</div></div>
             <div className="admin-stat"><div className="k">Converted</div><div className="v">{billing.paying.toLocaleString()}</div><div className="sub">now paying</div></div>
-            <div className="admin-stat"><div className="k">Conversion</div><div className="v">{billing.conversion_pct != null ? `${billing.conversion_pct}%` : "—"}</div><div className="sub">of resolved trials</div></div>
+            <div className="admin-stat"><div className="k">Conversion</div><div className="v">{billing.conversion_pct != null ? `${billing.conversion_pct}%` : "-"}</div><div className="sub">of resolved trials</div></div>
           </div>
         </>
       )}
@@ -470,7 +470,7 @@ export default function AdminPage() {
 
       {nearLimit.length > 0 && (
         <>
-          <div className="ops-section-h"><h2>Near plan limit</h2><span className="note">monitored backlinks vs plan cap — click to open</span></div>
+          <div className="ops-section-h"><h2>Near plan limit</h2><span className="note">monitored backlinks vs plan cap, click to open</span></div>
           <div className="plan-mix">
             {nearLimit.slice(0, 8).map((u) => (
               <button key={u.id} className="plan-chip" onClick={() => { const o = orgs.find((x) => x.id === u.id); if (o) setDetail(o); }}>
@@ -481,7 +481,7 @@ export default function AdminPage() {
         </>
       )}
 
-      <div className="ops-section-h"><h2>Not yet instrumented</h2><span className="note">needs backend work — see docs/19</span></div>
+      <div className="ops-section-h"><h2>Not yet instrumented</h2><span className="note">needs backend work, see docs/19</span></div>
       <div className="ops-gap">
         {[
           { t: "Provider & API usage / cost", d: "No external data provider is integrated; usage_records exists but is never populated (RecomputeUsage job has no handler). Needs metering." },
@@ -527,7 +527,7 @@ export default function AdminPage() {
                       <button className="admin-name link" onClick={() => setDetail(o)} title="Open Customer 360">{o.name}</button>
                       <div className="admin-sub">/{o.slug}</div>
                     </td>
-                    <td className="admin-email">{o.owner_email ?? "—"}</td>
+                    <td className="admin-email">{o.owner_email ?? "-"}</td>
                     <td>
                       <select
                         value={o.plan}
@@ -596,15 +596,15 @@ export default function AdminPage() {
                       <td>
                         <button className="admin-name link" onClick={() => { const o = orgs.find((x) => x.id === s.id); if (o) setDetail(o); }} title="Open Customer 360">{s.name}</button>
                       </td>
-                      <td className="admin-email">{s.owner_email ?? "—"}</td>
+                      <td className="admin-email">{s.owner_email ?? "-"}</td>
                       <td>{PLAN_LABEL[s.plan] ?? s.plan}</td>
                       <td style={{ whiteSpace: "nowrap" }}>
                         <span className={`abadge ${badge}`}>{s.status.replace("_", " ")}</span>
                         {s.comped && <span className="abadge info" style={{ marginLeft: 6 }}>comped</span>}
                         {s.cancel_at_period_end && <span className="abadge bad" style={{ marginLeft: 6 }}>cancels</span>}
                       </td>
-                      <td className="mono" style={{ textAlign: "right" }}>{s.mrr_cents > 0 ? `$${Math.round(s.mrr_cents / 100).toLocaleString()}` : "—"}</td>
-                      <td>{renewIso ? <Time iso={renewIso} /> : "—"}</td>
+                      <td className="mono" style={{ textAlign: "right" }}>{s.mrr_cents > 0 ? `$${Math.round(s.mrr_cents / 100).toLocaleString()}` : "-"}</td>
+                      <td>{renewIso ? <Time iso={renewIso} /> : "-"}</td>
                     </tr>
                   );
                 })}
@@ -645,8 +645,8 @@ export default function AdminPage() {
                     </td>
                     <td className="admin-email">{u.email}</td>
                     <td className="mono">{u.organizations}</td>
-                    <td>{u.email_verified ? <span className="abadge ok">verified</span> : <span className="muted">—</span>}</td>
-                    <td>{u.is_platform_admin ? <span className="abadge info">admin</span> : <span className="muted">—</span>}</td>
+                    <td>{u.email_verified ? <span className="abadge ok">verified</span> : <span className="muted">-</span>}</td>
+                    <td>{u.is_platform_admin ? <span className="abadge info">admin</span> : <span className="muted">-</span>}</td>
                     <td><Time iso={u.created_at} /></td>
                     <td style={{ whiteSpace: "nowrap", textAlign: "right" }}>
                       <IdChip id={u.id} />{" "}
@@ -684,10 +684,10 @@ export default function AdminPage() {
                 {fAudit.map((a) => (
                   <tr key={a.id}>
                     <td><Time iso={a.created_at} /></td>
-                    <td className="admin-email">{a.actor_email ?? "—"}</td>
+                    <td className="admin-email">{a.actor_email ?? "-"}</td>
                     <td><span className="atag">{a.action}</span></td>
-                    <td className="sm">{a.org_name ?? a.resource_type ?? "—"}</td>
-                    <td className="mono muted" style={{ maxWidth: 280, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={a.after ?? undefined}>{a.after ?? "—"}</td>
+                    <td className="sm">{a.org_name ?? a.resource_type ?? "-"}</td>
+                    <td className="mono muted" style={{ maxWidth: 280, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={a.after ?? undefined}>{a.after ?? "-"}</td>
                   </tr>
                 ))}
                 {fAudit.length === 0 && (
@@ -716,7 +716,7 @@ export default function AdminPage() {
             </div>
             <div className="c360-sub">/{detail.slug} <IdChip id={detail.id} /></div>
             <dl className="detail-grid">
-              <div><dt>Owner</dt><dd className="mono">{detail.owner_email ?? "—"}</dd></div>
+              <div><dt>Owner</dt><dd className="mono">{detail.owner_email ?? "-"}</dd></div>
               <div><dt>Plan</dt><dd>{PLAN_LABEL[detail.plan] ?? detail.plan}</dd></div>
               <div><dt>Created</dt><dd><Time iso={detail.created_at} /></dd></div>
               <div><dt>Members</dt><dd className="mono">{detail.members}</dd></div>
@@ -731,7 +731,7 @@ export default function AdminPage() {
                   <div className="c360-subhead">Subscription</div>
                   <dl className="detail-grid">
                     <div><dt>Status</dt><dd>{sb.status.replace("_", " ")}{sb.comped ? " · comped" : ""}</dd></div>
-                    <div><dt>MRR</dt><dd className="mono">{sb.mrr_cents > 0 ? `$${Math.round(sb.mrr_cents / 100).toLocaleString()}/mo` : "—"}</dd></div>
+                    <div><dt>MRR</dt><dd className="mono">{sb.mrr_cents > 0 ? `$${Math.round(sb.mrr_cents / 100).toLocaleString()}/mo` : "-"}</dd></div>
                     {sb.status === "trialing" && sb.trial_ends_at && (
                       <div><dt>Trial ends</dt><dd><Time iso={sb.trial_ends_at} /></dd></div>
                     )}
@@ -762,7 +762,7 @@ export default function AdminPage() {
               </button>
             </div>
             <div className="c360-note">
-              <b>Deeper telemetry for this workspace</b> — per-workspace check volume and failed jobs aren&rsquo;t exposed yet. The data exists (jobs, backlink_checks); surfacing it per workspace needs the admin read endpoints in docs/19.
+              <b>Deeper telemetry for this workspace</b>, per-workspace check volume and failed jobs aren&rsquo;t exposed yet. The data exists (jobs, backlink_checks); surfacing it per workspace needs the admin read endpoints in docs/19.
             </div>
           </aside>
         </div>

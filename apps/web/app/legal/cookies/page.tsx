@@ -17,11 +17,11 @@ export default function CookiesPage() {
       <h2>Cookies we set</h2>
       <ul>
         <li>
-          <code>session</code> — a strictly necessary, HttpOnly cookie that keeps you signed in. It
+          <code>session</code>, a strictly necessary, HttpOnly cookie that keeps you signed in. It
           holds an opaque token, not your identity.
         </li>
         <li>
-          <code>csrf</code> — a strictly necessary cookie used to protect state-changing requests
+          <code>csrf</code>, a strictly necessary cookie used to protect state-changing requests
           against cross-site request forgery.
         </li>
       </ul>

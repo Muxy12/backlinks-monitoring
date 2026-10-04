@@ -32,12 +32,13 @@ export const metadata: Metadata = {
   // to an absolute URL on the canonical origin.
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "LinkPulz — Backlink Monitoring for SEO Teams",
-    template: "%s — LinkPulz",
+    default: "LinkPulz, Backlink Monitoring for SEO Teams",
+    template: "%s | LinkPulz",
   },
   description:
     "Monitor every backlink you build. Track lost links, nofollow changes, anchors, campaigns, costs and warranties from one dashboard.",
-  alternates: { canonical: "/" },
+  // No default canonical here: each page declares its own `alternates.canonical`.
+  // A blanket "/" would wrongly canonicalize every page that doesn't override it.
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

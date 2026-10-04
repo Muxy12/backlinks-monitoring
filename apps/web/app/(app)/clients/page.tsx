@@ -145,8 +145,8 @@ export default function ClientsPage() {
                     return (
                     <tr key={c.id} style={editId === c.id ? { background: "color-mix(in srgb, var(--accent) 10%, transparent)" } : undefined}>
                       <td>{c.name}</td>
-                      <td>{c.company_name ?? "—"}</td>
-                      <td className="mono">{c.contact_email ?? c.contact_name ?? "—"}</td>
+                      <td>{c.company_name ?? "-"}</td>
+                      <td className="mono">{c.contact_email ?? c.contact_name ?? "-"}</td>
                       <td>
                         <div className="tags-row" style={{ marginBottom: attached.length ? 6 : 0 }}>
                           {attached.map((p) => (
@@ -162,7 +162,7 @@ export default function ClientsPage() {
                               </button>
                             </span>
                           ))}
-                          {attached.length === 0 && <span className="muted sm">— none —</span>}
+                          {attached.length === 0 && <span className="muted sm">- none -</span>}
                         </div>
                         {unattached.length > 0 && (
                           <select

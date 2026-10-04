@@ -5,7 +5,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Free Backlink Checker",
   description:
-    "Check whether a page links to a target URL — see rel/dofollow, anchor text and HTTP status. Free, no signup.",
+    "Check whether a page links to a target URL, see rel/dofollow, anchor text and HTTP status. Free, no signup.",
   alternates: { canonical: "/tools/backlink-checker" },
 };
 

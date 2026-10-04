@@ -133,7 +133,7 @@ export default function TeamPage() {
 
               {lastLink && (
                 <div className="invite-link">
-                  <p className="muted">Invite link (share it — email delivery is coming):</p>
+                  <p className="muted">Invite link (share it, email delivery is coming):</p>
                   <code>{lastLink}</code>
                 </div>
               )}

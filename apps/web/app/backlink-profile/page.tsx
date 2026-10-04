@@ -9,14 +9,14 @@ import { marketingPage } from "../marketing";
 export const metadata: Metadata = {
   title: { absolute: "Backlink Profile: What It Is & How to Analyze It | LinkPulz" },
   description:
-    "What a backlink profile is and how to analyze yours: referring domains, dofollow ratio, anchor text and relevance — plus how to keep the profile healthy over time.",
+    "What a backlink profile is and how to analyze yours: referring domains, dofollow ratio, anchor text and relevance, plus how to keep the profile healthy over time.",
   alternates: { canonical: "/backlink-profile" },
   robots: { index: true, follow: true, "max-image-preview": "large" },
   openGraph: {
     type: "website",
     title: "Backlink Profile: What It Is & How to Analyze It | LinkPulz",
     description:
-      "Understand your backlink profile: referring domains, dofollow ratio, anchor text and relevance — and how to keep it healthy.",
+      "Understand your backlink profile: referring domains, dofollow ratio, anchor text and relevance, and how to keep it healthy.",
     url: "/backlink-profile",
   },
 };
@@ -45,7 +45,7 @@ const JSONLD = `{
       "@id": "https://www.linkpulz.com/backlink-profile#webpage",
       "url": "https://www.linkpulz.com/backlink-profile",
       "name": "Backlink Profile: What It Is & How to Analyze It | LinkPulz",
-      "description": "What a backlink profile is and how to analyze yours: referring domains, dofollow ratio, anchor text and relevance — plus how to keep the profile healthy over time.",
+      "description": "What a backlink profile is and how to analyze yours: referring domains, dofollow ratio, anchor text and relevance, plus how to keep the profile healthy over time.",
       "isPartOf": { "@id": "https://www.linkpulz.com/#website" },
       "about": { "@id": "https://www.linkpulz.com/#software" },
       "breadcrumb": { "@id": "https://www.linkpulz.com/backlink-profile#breadcrumb" },
@@ -77,9 +77,9 @@ const JSONLD = `{
       "mainEntity": [
         { "@type": "Question", "name": "What is a backlink profile?", "acceptedAnswer": { "@type": "Answer", "text": "A backlink profile is the complete set of links pointing to your site, taken together with their characteristics: which domains they come from, whether they are dofollow or nofollow, their anchor text, and how relevant and authoritative the linking sites are." } },
         { "@type": "Question", "name": "What does a healthy backlink profile look like?", "acceptedAnswer": { "@type": "Answer", "text": "A healthy profile tends to have links from a range of relevant, trustworthy domains, a natural mix of dofollow and nofollow, varied anchor text rather than the same exact phrase repeated, and steady growth rather than sudden unexplained spikes." } },
-        { "@type": "Question", "name": "How do I analyze my backlink profile?", "acceptedAnswer": { "@type": "Answer", "text": "Look at the number of referring domains, the dofollow to nofollow ratio, the distribution of anchor text, the relevance and quality of the linking sites, and how the profile is changing over time — including links you have lost." } },
+        { "@type": "Question", "name": "How do I analyze my backlink profile?", "acceptedAnswer": { "@type": "Answer", "text": "Look at the number of referring domains, the dofollow to nofollow ratio, the distribution of anchor text, the relevance and quality of the linking sites, and how the profile is changing over time, including links you have lost." } },
         { "@type": "Question", "name": "What is the dofollow to nofollow ratio?", "acceptedAnswer": { "@type": "Answer", "text": "It is the share of your links that pass authority (dofollow) versus those that do not (nofollow). A natural profile contains both. There is no single correct number, but a sudden swing toward nofollow can mean links you valued have quietly changed." } },
-        { "@type": "Question", "name": "Why does anchor text distribution matter?", "acceptedAnswer": { "@type": "Answer", "text": "Anchor text tells search engines what a link is about. A natural profile has varied anchors — brand, URL, and descriptive phrases. An unnatural concentration of the same exact-match keyword can look manipulative." } },
+        { "@type": "Question", "name": "Why does anchor text distribution matter?", "acceptedAnswer": { "@type": "Answer", "text": "Anchor text tells search engines what a link is about. A natural profile has varied anchors, brand, URL, and descriptive phrases. An unnatural concentration of the same exact-match keyword can look manipulative." } },
         { "@type": "Question", "name": "How does LinkPulz help with my backlink profile?", "acceptedAnswer": { "@type": "Answer", "text": "LinkPulz focuses on keeping the profile accurate over time: it re-checks each link you add and alerts you when one is lost, redirected, nofollowed, noindexed or broken, so your view of the profile reflects reality rather than the day you last looked. [TO CONFIRM: profile metrics and check frequency]" } }
       ]
     }
@@ -97,7 +97,7 @@ const MAIN = `
     <div>
       <span class="badge">Backlink profile</span>
       <h1 id="h1">Backlink Profile: The Full Picture of Your Links</h1>
-      <p class="lead">Your backlink profile is every link pointing to your site, seen together — the domains they come from, the dofollow mix, the anchor text, the quality. Learn what a healthy profile looks like, how to analyze yours, and how to keep it accurate over time.</p>
+      <p class="lead">Your backlink profile is every link pointing to your site, seen together, the domains they come from, the dofollow mix, the anchor text, the quality. Learn what a healthy profile looks like, how to analyze yours, and how to keep it accurate over time.</p>
       <div class="cta-row">
         <a class="btn" href="/register">Monitor my backlink profile</a>
         <a class="btn ghost" href="#analyze">How to analyze it</a>
@@ -127,7 +127,7 @@ const MAIN = `
   <div class="wrap">
     <div class="prose">
       <h2 id="what-h">What is a backlink profile?</h2>
-      <p>A backlink profile is the complete set of links pointing to your site, considered together with their characteristics — not just how many links you have, but where they come from and what kind of links they are.</p>
+      <p>A backlink profile is the complete set of links pointing to your site, considered together with their characteristics, not just how many links you have, but where they come from and what kind of links they are.</p>
       <p>Where a single <a href="/verify-backlinks">backlink check</a> tells you about one link, the profile is the aggregate view: the shape of all your links at once. It is the thing a <a href="/backlink-audit">backlink audit</a> examines and that <a href="/backlink-management">backlink management</a> keeps healthy.</p>
     </div>
   </div>
@@ -143,7 +143,7 @@ const MAIN = `
         <li><b>A range of referring domains.</b> Links from many relevant sites beat many links from one site.</li>
         <li><b>Relevance and quality.</b> Links from trustworthy sites in your field count for more than volume alone.</li>
         <li><b>A natural dofollow / nofollow mix.</b> Real profiles contain both; an all-dofollow profile looks engineered.</li>
-        <li><b>Varied anchor text.</b> Brand, bare URL and descriptive anchors — not the same exact phrase over and over.</li>
+        <li><b>Varied anchor text.</b> Brand, bare URL and descriptive anchors, not the same exact phrase over and over.</li>
         <li><b>Steady change over time.</b> Gradual growth reads as organic; sudden unexplained spikes do not.</li>
         <li><b>Few lost or broken links.</b> A profile leaking links is one nobody is maintaining.</li>
       </ul>
@@ -158,7 +158,7 @@ const MAIN = `
       <h2 id="analyze-h">How to analyze your backlink profile</h2>
       <ol>
         <li><b>Count your referring domains.</b> Unique linking domains matter more than raw link count.</li>
-        <li><b>Check the dofollow / nofollow ratio.</b> Note any sharp swing toward nofollow — it can mean valued links quietly changed.</li>
+        <li><b>Check the dofollow / nofollow ratio.</b> Note any sharp swing toward nofollow, it can mean valued links quietly changed.</li>
         <li><b>Map the anchor text.</b> Look for healthy variety, and for any over-concentration of exact-match keywords.</li>
         <li><b>Judge relevance and quality.</b> Are the linking sites in your field and worth being associated with?</li>
         <li><b>Track change over time.</b> New links, and especially <a href="/lost-backlinks">lost links</a>, tell you where the profile is heading.</li>
@@ -172,7 +172,7 @@ const MAIN = `
   <div class="wrap">
     <div class="prose">
       <h2 id="keep-h">A profile is only as good as its data</h2>
-      <p>The hard part is not analyzing the profile once — it is keeping that analysis true. A profile you checked last quarter already describes a site that no longer exists: links have been removed, nofollowed or broken since.</p>
+      <p>The hard part is not analyzing the profile once, it is keeping that analysis true. A profile you checked last quarter already describes a site that no longer exists: links have been removed, nofollowed or broken since.</p>
       <p>LinkPulz focuses on exactly that gap. It re-checks each link you add and alerts you when one is lost, redirected, nofollowed, noindexed or broken, so your view of the profile reflects reality rather than the last time you looked. <span class="tc">TO CONFIRM: profile metrics and check frequency</span></p>
       <p>For a single-screen summary of where the profile stands, see the <a href="/backlink-health-check">backlink health check</a>.</p>
     </div>
@@ -186,9 +186,9 @@ const MAIN = `
     <div class="faq">
       <details><summary>What is a backlink profile?</summary><p>A backlink profile is the complete set of links pointing to your site, taken together with their characteristics: which domains they come from, whether they are dofollow or nofollow, their anchor text, and how relevant and authoritative the linking sites are.</p></details>
       <details><summary>What does a healthy backlink profile look like?</summary><p>A healthy profile tends to have links from a range of relevant, trustworthy domains, a natural mix of dofollow and nofollow, varied anchor text rather than the same exact phrase repeated, and steady growth rather than sudden unexplained spikes.</p></details>
-      <details><summary>How do I analyze my backlink profile?</summary><p>Look at the number of referring domains, the dofollow to nofollow ratio, the distribution of anchor text, the relevance and quality of the linking sites, and how the profile is changing over time — including links you have lost.</p></details>
+      <details><summary>How do I analyze my backlink profile?</summary><p>Look at the number of referring domains, the dofollow to nofollow ratio, the distribution of anchor text, the relevance and quality of the linking sites, and how the profile is changing over time, including links you have lost.</p></details>
       <details><summary>What is the dofollow to nofollow ratio?</summary><p>It is the share of your links that pass authority (dofollow) versus those that do not (nofollow). A natural profile contains both. There is no single correct number, but a sudden swing toward nofollow can mean links you valued have quietly changed.</p></details>
-      <details><summary>Why does anchor text distribution matter?</summary><p>Anchor text tells search engines what a link is about. A natural profile has varied anchors — brand, URL, and descriptive phrases. An unnatural concentration of the same exact-match keyword can look manipulative.</p></details>
+      <details><summary>Why does anchor text distribution matter?</summary><p>Anchor text tells search engines what a link is about. A natural profile has varied anchors, brand, URL, and descriptive phrases. An unnatural concentration of the same exact-match keyword can look manipulative.</p></details>
       <details><summary>How does LinkPulz help with my backlink profile?</summary><p>LinkPulz focuses on keeping the profile accurate over time: it re-checks each link you add and alerts you when one is lost, redirected, nofollowed, noindexed or broken, so your view of the profile reflects reality rather than the day you last looked. <span class="tc">TO CONFIRM: profile metrics and check frequency</span></p></details>
     </div>
   </div>
@@ -209,7 +209,7 @@ const MAIN = `
 <!-- FINAL CTA -->
 <section class="final" aria-labelledby="final-h">
   <div class="wrap">
-    <h2 id="final-h">Know your profile — not last quarter's.</h2>
+    <h2 id="final-h">Know your profile, not last quarter's.</h2>
     <p class="lead">Put your links under monitoring with LinkPulz so your backlink profile always reflects what's live today, and you're alerted the moment the picture changes.</p>
     <div class="cta-row" style="justify-content:center"><a class="btn" href="/register">Monitor my backlink profile</a></div>
   </div>

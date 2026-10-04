@@ -141,7 +141,7 @@ export default function ImportPage() {
     <main className="dash">
       <header className="page-head">
         <h1>Import backlinks</h1>
-        <p className="muted">CSV — generic, Ahrefs, or Semrush headers. Duplicates are skipped.</p>
+        <p className="muted">CSV, generic, Ahrefs, or Semrush headers. Duplicates are skipped.</p>
       </header>
 
       {!orgId ? (
@@ -159,7 +159,7 @@ export default function ImportPage() {
                 <span>Project</span>
                 <select value={projectId} onChange={(e) => setProjectId(e.target.value)} required>
                   {projects.map((p) => (
-                    <option key={p.id} value={p.id}>{p.name} — {p.domain}</option>
+                    <option key={p.id} value={p.id}>{p.name}, {p.domain}</option>
                   ))}
                 </select>
               </label>
@@ -222,13 +222,13 @@ export default function ImportPage() {
             <h2>Discover from referring domains</h2>
           </div>
 
-          {/* Link the discovery to a project first — everything found is attached
+          {/* Link the discovery to a project first, everything found is attached
               to this project's site. */}
           <label className="auth-field">
-            <span>Target project — discovered backlinks are linked to this site</span>
+            <span>Target project, discovered backlinks are linked to this site</span>
             <select value={projectId} onChange={(e) => setProjectId(e.target.value)}>
               {projects.map((p) => (
-                <option key={p.id} value={p.id}>{p.name} — {p.domain}</option>
+                <option key={p.id} value={p.id}>{p.name}, {p.domain}</option>
               ))}
             </select>
           </label>
@@ -254,7 +254,7 @@ export default function ImportPage() {
 
           <h3 className="disc-h" style={{ marginTop: 18 }}>Seed &amp; crawl known domains</h3>
           <p className="muted" style={{ marginBottom: 8 }}>
-            Paste referring <b>domains</b> (one per line) — or a Google Search Console
+            Paste referring <b>domains</b> (one per line), or a Google Search Console
             “Top linking sites” export (first column). LinkPulz crawls each (SSRF-safe, bounded)
             to find the actual pages that link to <b className="mono">{targetDomain || "your site"}</b>.
           </p>

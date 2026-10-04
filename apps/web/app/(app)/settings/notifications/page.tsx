@@ -227,7 +227,7 @@ export default function NotificationSettingsPage() {
               <tbody>
                 {dests.map((d) => (
                   <tr key={d.id} style={d.enabled ? undefined : { opacity: 0.5 }}>
-                    <td>{d.name || <span className="muted">—</span>}</td>
+                    <td>{d.name || <span className="muted">-</span>}</td>
                     <td>{d.kind}</td>
                     <td className="mono sm" style={{ maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={d.target}>{d.target}</td>
                     <td>
@@ -247,7 +247,7 @@ export default function NotificationSettingsPage() {
                       ) : d.last_status === "error" ? (
                         <span className="badge" style={{ background: "#fee2e2", color: "#991b1b" }} title={d.last_error ?? ""}>error</span>
                       ) : (
-                        <span className="muted">—</span>
+                        <span className="muted">-</span>
                       )}
                     </td>
                     <td style={{ whiteSpace: "nowrap", textAlign: "right" }}>

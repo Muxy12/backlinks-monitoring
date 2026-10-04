@@ -28,15 +28,15 @@ pub mod trial {
         let billing = format!("{}/settings/billing", app_url());
         let (subject, body) = match kind {
             "started" => (
-                format!("Your LinkPulz trial has started — {org_name}"),
+                format!("Your LinkPulz trial has started for {org_name}"),
                 format!(
-                    "Welcome to LinkPulz!\n\nYour 10-day free trial for \"{org_name}\" is active \
-                     — no credit card needed. Add your backlinks and we'll check them every 48 \
+                    "Welcome to LinkPulz!\n\nYour 10-day free trial for \"{org_name}\" is active, \
+                     with no credit card needed. Add your backlinks and we'll check them every 48 \
                      hours and alert you the moment one changes.\n\nChoose a plan any time:\n{billing}"
                 ),
             ),
             "t_minus_3" => (
-                format!("{days_left} days left in your LinkPulz trial — {org_name}"),
+                format!("{days_left} days left in your LinkPulz trial for {org_name}"),
                 format!(
                     "Your free trial for \"{org_name}\" ends in {days_left} days.\n\nTo keep \
                      monitoring your backlinks without interruption, choose a plan:\n{billing}\n\n\
@@ -46,7 +46,7 @@ pub mod trial {
             "t_minus_1" => {
                 let d = days_left.max(1);
                 (
-                    format!("Your LinkPulz trial ends tomorrow — {org_name}"),
+                    format!("Your LinkPulz trial ends tomorrow for {org_name}"),
                     format!(
                         "Heads-up: your free trial for \"{org_name}\" ends in {d} day{}.\n\nChoose \
                          a plan to keep monitoring without a gap:\n{billing}",
@@ -55,7 +55,7 @@ pub mod trial {
                 )
             }
             _ => (
-                format!("Your LinkPulz trial has ended — {org_name}"),
+                format!("Your LinkPulz trial has ended for {org_name}"),
                 format!(
                     "Your free trial for \"{org_name}\" has ended, so monitoring is paused.\n\n\
                      Your backlinks and history are safe. Choose a plan to resume:\n{billing}"
@@ -87,13 +87,13 @@ pub mod waitlist {
         let unsub = unsubscribe_url(unsubscribe_token);
         let subject = "You're on the LinkPulz waitlist";
         let text = format!(
-            "Hi,\n\nThanks for joining the LinkPulz waitlist — you're all set.\n\n\
+            "Hi,\n\nThanks for joining the LinkPulz waitlist, you're all set.\n\n\
              We're putting the finishing touches on LinkPulz: automatic backlink monitoring that \
              re-checks every link you earn or buy every 48 hours and tells you the moment one is \
              lost, nofollowed, redirected or broken.\n\n\
              You'll be among the first to hear from us when early access opens. We'll only email \
-             you about the launch.\n\nFollow along: {SITE}\n\n— The LinkPulz team\n\n\
-             —\nYou're receiving this because you joined the LinkPulz waitlist. Unsubscribe: {unsub}"
+             you about the launch.\n\nFollow along: {SITE}\n\nThe LinkPulz team\n\n\
+             You're receiving this because you joined the LinkPulz waitlist. Unsubscribe: {unsub}"
         );
         let html = confirmation_html(&unsub);
         send_html_email(to, subject, &html, &text).await
@@ -119,14 +119,14 @@ style=\"vertical-align:middle;border:0;border-radius:6px;\">\
 Link<span style=\"color:#2f6bff;\">Pulz</span></span></td></tr>\
 <tr><td style=\"font-size:15px;line-height:1.65;color:#334155;\">\
 Hi,<br><br>\
-Thanks for joining the LinkPulz waitlist — you're all set.<br><br>\
+Thanks for joining the LinkPulz waitlist, you're all set.<br><br>\
 We're putting the finishing touches on LinkPulz: automatic backlink monitoring that re-checks \
 every link you earn or buy every 48 hours and tells you the moment one is lost, nofollowed, \
 redirected or broken.<br><br>\
 You'll be among the first to hear from us when early access opens. We'll only email you about \
-the launch &mdash; nothing else.<br><br>\
+the launch, nothing else.<br><br>\
 You can follow along at <a href=\"{SITE}\" style=\"color:#2f6bff;\">linkpulz.com</a>.<br><br>\
-&mdash; The LinkPulz team</td></tr>\
+The LinkPulz team</td></tr>\
 <tr><td style=\"padding-top:28px;font-size:12px;line-height:1.5;color:#94a3b8;\">\
 You're receiving this because you joined the LinkPulz waitlist. If you'd rather not hear about \
 the launch, <a href=\"{unsub}\" style=\"color:#94a3b8;text-decoration:underline;\">unsubscribe here</a>.\
