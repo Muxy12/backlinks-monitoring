@@ -35,6 +35,9 @@ pub fn app(state: AppState) -> Router {
         )
         .route("/v1/auth/reset", post(routes::auth_routes::reset_password))
         .route("/v1/me", get(routes::me_routes::me))
+        // User feedback: feature requests + bug reports (migration 0033).
+        .route("/v1/feedback", post(routes::feedback_routes::submit))
+        .route("/v1/feedback/mine", get(routes::feedback_routes::list_mine))
         .route(
             "/v1/organizations",
             get(routes::org_routes::list).post(routes::org_routes::create),
@@ -317,6 +320,11 @@ pub fn app(state: AppState) -> Router {
         .route(
             "/v1/admin/waitlist/sync-audience",
             post(routes::admin_routes::sync_waitlist_audience),
+        )
+        .route("/v1/admin/feedback", get(routes::admin_routes::feedback))
+        .route(
+            "/v1/admin/feedback/{id}/status",
+            post(routes::admin_routes::set_feedback_status),
         )
         .route(
             "/v1/admin/subscriptions",

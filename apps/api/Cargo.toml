@@ -40,4 +40,5 @@ worker = { path = "../worker" }
 http-body-util = "0.1"
 hmac = { workspace = true }
 sha2 = { workspace = true }
+sqlx = { workspace = true }
 wiremock = "0.6"

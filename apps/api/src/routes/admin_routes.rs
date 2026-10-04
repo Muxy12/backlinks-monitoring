@@ -731,3 +731,91 @@ pub async fn sync_waitlist_audience(
         total,
     }))
 }
+
+#[derive(Serialize)]
+pub struct FeedbackRow {
+    pub id: Uuid,
+    pub kind: String,
+    pub title: String,
+    pub body: String,
+    pub page_url: Option<String>,
+    pub status: String,
+    pub created_at: String,
+    pub user_email: String,
+}
+
+#[derive(Serialize)]
+pub struct FeedbackView {
+    /// Count still in the 'open' (untriaged) state.
+    pub open: i64,
+    pub items: Vec<FeedbackRow>,
+}
+
+/// GET /v1/admin/feedback — every user feature request / bug report, newest
+/// first, plus the count still untriaged.
+pub async fn feedback(
+    State(state): State<AppState>,
+    jar: CookieJar,
+) -> Result<Json<FeedbackView>, ApiError> {
+    require_admin(&state, &jar).await?;
+    let open = db::repositories::feedback::open_count(&state.pool).await?;
+    let items = db::repositories::feedback::list_all(&state.pool, 300).await?;
+    Ok(Json(FeedbackView {
+        open,
+        items: items
+            .into_iter()
+            .map(|f| FeedbackRow {
+                id: f.id,
+                kind: f.kind,
+                title: f.title,
+                body: f.body,
+                page_url: f.page_url,
+                status: f.status,
+                created_at: f.created_at.to_rfc3339(),
+                user_email: f.user_email,
+            })
+            .collect(),
+    }))
+}
+
+const FEEDBACK_STATUSES: &[&str] = &["open", "planned", "in_progress", "done", "declined"];
+
+#[derive(Deserialize)]
+pub struct SetFeedbackStatusBody {
+    pub status: String,
+}
+
+/// POST /v1/admin/feedback/{id}/status — update a submission's triage state.
+pub async fn set_feedback_status(
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+    jar: CookieJar,
+    headers: HeaderMap,
+    Json(body): Json<SetFeedbackStatusBody>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let admin_user = require_admin(&state, &jar).await?;
+    let (_, session) = current(&state, &jar).await?;
+    check_csrf(&jar, &headers, &session)?;
+
+    let status = body.status.trim();
+    if !FEEDBACK_STATUSES.contains(&status) {
+        return Err(ApiError::Validation("unknown status".into()));
+    }
+    let updated = db::repositories::feedback::set_status(&state.pool, id, status).await?;
+    if !updated {
+        return Err(ApiError::NotFound);
+    }
+    let _ = audit::log(
+        &state.pool,
+        None,
+        Some(admin_user.id),
+        Some(admin_user.email.as_str()),
+        "admin.feedback.set_status",
+        Some("feedback"),
+        Some(id),
+        None,
+        Some(json!({ "status": status })),
+    )
+    .await;
+    Ok(Json(json!({ "ok": true, "status": status })))
+}
