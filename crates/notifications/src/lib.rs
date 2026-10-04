@@ -66,6 +66,24 @@ pub mod trial {
     }
 }
 
+/// Pre-launch waitlist confirmation email. Plain-text, via Resend, best-effort
+/// (gated on the same email env; a no-op when unset).
+pub mod waitlist {
+    use super::resend::send_email;
+
+    /// Confirm a new waitlist signup. Sent once, when the email is first added.
+    pub async fn send_confirmation(to: &str) -> Result<(), String> {
+        let subject = "You're on the LinkPulz waitlist";
+        let body = "Thanks for joining the LinkPulz waitlist!\n\n\
+            We're putting the finishing touches on LinkPulz — automatic backlink \
+            monitoring that checks every link you earn or buy every 48 hours and \
+            alerts you the moment one is lost, nofollowed, redirected or broken.\n\n\
+            You'll be among the first to get access when we launch. No spam in the \
+            meantime — just one email when it's ready.\n\n— The LinkPulz team";
+        send_email(to, subject, body).await
+    }
+}
+
 pub mod resend {
     /// Send a plain-text email via Resend. Returns Ok(()) on a 2xx, or a
     /// human-readable error (including "email not configured" when the env is
