@@ -303,6 +303,14 @@ export interface BacklinkView {
   target_final_url?: string | null;
   tier?: number;
   parent_backlink_id?: string | null;
+  // Manual classification (slugs; null = unclassified).
+  acquisition?: string | null;
+  placement?: string | null;
+  link_format?: string | null;
+  /// Manual attribute override (null = use link_attribute_auto).
+  link_attribute?: string | null;
+  /// Crawler-derived attribute; null if never observed.
+  link_attribute_auto?: string | null;
 }
 
 export interface NotificationItem {
@@ -495,6 +503,10 @@ export const orgApi = {
       limit?: number;
       offset?: number;
       days?: number;
+      acquisition?: string;
+      attribute?: string;
+      placement?: string;
+      format?: string;
     },
   ) => {
     const p = new URLSearchParams();
@@ -506,6 +518,10 @@ export const orgApi = {
     if (opts.limit != null) p.set("limit", String(opts.limit));
     if (opts.offset != null) p.set("offset", String(opts.offset));
     if (opts.days) p.set("days", String(opts.days));
+    if (opts.acquisition) p.set("acquisition", opts.acquisition);
+    if (opts.attribute) p.set("attribute", opts.attribute);
+    if (opts.placement) p.set("placement", opts.placement);
+    if (opts.format) p.set("format", opts.format);
     const qs = p.toString();
     return request<BacklinkView[]>(
       `/v1/organizations/${org}/backlinks${qs ? `?${qs}` : ""}`,
@@ -650,6 +666,27 @@ export const orgApi = {
   ) =>
     request<BacklinkView>(`/v1/organizations/${org}/backlinks`, {
       method: "POST",
+      headers: csrfHeader(),
+      body: JSON.stringify(body),
+    }),
+  // Edit a backlink's mutable fields (PATCH). Pass only the fields to change; a
+  // classification field set to null clears it (back to unclassified / auto).
+  updateBacklink: (
+    org: string,
+    id: string,
+    body: {
+      acquisition?: string | null;
+      link_attribute?: string | null;
+      placement?: string | null;
+      link_format?: string | null;
+      expected_rel_type?: string;
+      expected_anchor_text?: string | null;
+      cost?: number | null;
+      currency?: string | null;
+    },
+  ) =>
+    request<BacklinkView>(`/v1/organizations/${org}/backlinks/${id}`, {
+      method: "PATCH",
       headers: csrfHeader(),
       body: JSON.stringify(body),
     }),
