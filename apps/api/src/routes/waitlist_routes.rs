@@ -66,9 +66,16 @@ pub async fn join(
     .await?;
 
     // Confirmation email, only on a genuinely new signup (best-effort; a missing
-    // email provider just no-ops, and a failure never fails the signup).
-    if created && let Err(e) = notifications::waitlist::send_confirmation(&email).await {
-        tracing::warn!(error = %e, "waitlist confirmation email not sent");
+    // email provider just no-ops, and a failure never fails the signup). On a
+    // successful send we stamp confirmation_sent_at so the admin "resend pending"
+    // action skips it; a failed send stays pending for a later retry.
+    if created {
+        match notifications::waitlist::send_confirmation(&email).await {
+            Ok(()) => {
+                let _ = db::repositories::waitlist::mark_confirmed(&state.pool, &email).await;
+            }
+            Err(e) => tracing::warn!(error = %e, "waitlist confirmation email not sent"),
+        }
     }
 
     Ok((

@@ -307,6 +307,10 @@ pub fn app(state: AppState) -> Router {
         .route("/v1/admin/analytics", get(routes::admin_routes::analytics))
         .route("/v1/admin/waitlist", get(routes::admin_routes::waitlist))
         .route(
+            "/v1/admin/waitlist/resend",
+            post(routes::admin_routes::resend_waitlist_confirmations),
+        )
+        .route(
             "/v1/admin/subscriptions",
             get(routes::admin_routes::list_subscriptions),
         )

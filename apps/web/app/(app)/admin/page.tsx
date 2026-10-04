@@ -234,6 +234,24 @@ export default function AdminPage() {
     await refreshOrgs();
   };
 
+  const resendConfirmations = async () => {
+    if (!waitlist || waitlist.pending === 0) return;
+    if (!confirm(`Send the confirmation email to ${waitlist.pending} waitlist signup(s) who haven't received one yet?`)) {
+      return;
+    }
+    setBusyId("waitlist-resend");
+    setErr(null);
+    const res = await adminApi.resendWaitlistConfirmations();
+    setBusyId(null);
+    if (!res.ok) {
+      setErr(res.detail);
+      return;
+    }
+    const wl = await adminApi.waitlist();
+    if (wl.ok) setWaitlist(wl.data);
+    alert(`Sent ${res.data.sent}${res.data.failed ? ` · ${res.data.failed} failed` : ""}. ${res.data.remaining} still pending.`);
+  };
+
   if (loading) {
     return (
       <div className="dash">
@@ -419,7 +437,20 @@ export default function AdminPage() {
 
       {waitlist && waitlist.total > 0 && (
         <>
-          <div className="ops-section-h"><h2>Pre-launch waitlist</h2><span className="note">{waitlist.total.toLocaleString()} email{waitlist.total === 1 ? "" : "s"} captured · showing latest {waitlist.recent.length}</span></div>
+          <div className="ops-section-h">
+            <h2>Pre-launch waitlist</h2>
+            <span className="note">
+              {waitlist.total.toLocaleString()} email{waitlist.total === 1 ? "" : "s"} captured
+              {waitlist.pending > 0 ? ` · ${waitlist.pending} pending confirmation` : " · all confirmed"}
+            </span>
+          </div>
+          {waitlist.pending > 0 && (
+            <div style={{ margin: "0 0 12px" }}>
+              <button className="btn sm" disabled={busyId === "waitlist-resend"} onClick={resendConfirmations}>
+                {busyId === "waitlist-resend" ? "Sending…" : `Resend confirmation to ${waitlist.pending} pending`}
+              </button>
+            </div>
+          )}
           <div className="bl-scroll" style={{ maxHeight: 260 }}>
             <table className="bl-table admin-table">
               <thead><tr><th>Email</th><th>Source</th><th>When</th></tr></thead>

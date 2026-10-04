@@ -600,19 +600,23 @@ pub struct WaitlistRow {
 #[derive(Serialize)]
 pub struct WaitlistView {
     pub total: i64,
+    /// Signups that have not received a confirmation email yet.
+    pub pending: i64,
     pub recent: Vec<WaitlistRow>,
 }
 
-/// GET /v1/admin/waitlist — total + most recent pre-launch email signups.
+/// GET /v1/admin/waitlist — total, pending-confirmation count + recent signups.
 pub async fn waitlist(
     State(state): State<AppState>,
     jar: CookieJar,
 ) -> Result<Json<WaitlistView>, ApiError> {
     require_admin(&state, &jar).await?;
     let total = db::repositories::waitlist::count(&state.pool).await?;
+    let pending = db::repositories::waitlist::pending_count(&state.pool).await?;
     let recent = db::repositories::waitlist::recent(&state.pool, 100).await?;
     Ok(Json(WaitlistView {
         total,
+        pending,
         recent: recent
             .into_iter()
             .map(|r| WaitlistRow {
@@ -621,5 +625,58 @@ pub async fn waitlist(
                 source: r.utm_source,
             })
             .collect(),
+    }))
+}
+
+#[derive(Serialize)]
+pub struct ResendResult {
+    pub sent: i64,
+    pub failed: i64,
+    pub remaining: i64,
+}
+
+/// POST /v1/admin/waitlist/resend — send the confirmation email to every signup
+/// that hasn't received one yet (idempotent: a successful send is stamped, a
+/// failure stays pending for a later retry). Admin only, CSRF-checked.
+pub async fn resend_waitlist_confirmations(
+    State(state): State<AppState>,
+    jar: CookieJar,
+    headers: HeaderMap,
+) -> Result<Json<ResendResult>, ApiError> {
+    let admin_user = require_admin(&state, &jar).await?;
+    let (_, session) = current(&state, &jar).await?;
+    check_csrf(&jar, &headers, &session)?;
+
+    let pending = db::repositories::waitlist::pending_confirmations(&state.pool, 500).await?;
+    let (mut sent, mut failed) = (0i64, 0i64);
+    for email in &pending {
+        match notifications::waitlist::send_confirmation(email).await {
+            Ok(()) => {
+                let _ = db::repositories::waitlist::mark_confirmed(&state.pool, email).await;
+                sent += 1;
+            }
+            Err(e) => {
+                failed += 1;
+                tracing::warn!(error = %e, "waitlist confirmation resend failed");
+            }
+        }
+    }
+    let _ = audit::log(
+        &state.pool,
+        None,
+        Some(admin_user.id),
+        Some(admin_user.email.as_str()),
+        "admin.waitlist.resend_confirmations",
+        Some("waitlist"),
+        None,
+        None,
+        Some(json!({ "sent": sent, "failed": failed })),
+    )
+    .await;
+    let remaining = db::repositories::waitlist::pending_count(&state.pool).await?;
+    Ok(Json(ResendResult {
+        sent,
+        failed,
+        remaining,
     }))
 }
