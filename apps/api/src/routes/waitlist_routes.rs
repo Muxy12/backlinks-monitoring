@@ -52,10 +52,13 @@ pub async fn join(
         clip(a.referrer),
         clip(a.landing_path),
     );
+    // Opaque per-signup token for the unsubscribe link.
+    let token = auth::token::Token::generate().secret;
     let created = db::repositories::waitlist::add(
         &state.pool,
         db::repositories::waitlist::NewSignup {
             email: &email,
+            unsubscribe_token: &token,
             utm_source: src.as_deref(),
             utm_medium: med.as_deref(),
             utm_campaign: camp.as_deref(),
@@ -70,7 +73,7 @@ pub async fn join(
     // successful send we stamp confirmation_sent_at so the admin "resend pending"
     // action skips it; a failed send stays pending for a later retry.
     if created {
-        match notifications::waitlist::send_confirmation(&email).await {
+        match notifications::waitlist::send_confirmation(&email, &token).await {
             Ok(()) => {
                 let _ = db::repositories::waitlist::mark_confirmed(&state.pool, &email).await;
             }
@@ -97,4 +100,31 @@ pub struct CountResponse {
 pub async fn count(State(state): State<AppState>) -> Result<Json<CountResponse>, ApiError> {
     let count = db::repositories::waitlist::count(&state.pool).await?;
     Ok(Json(CountResponse { count }))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UnsubscribeBody {
+    pub token: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct UnsubscribeResponse {
+    pub ok: bool,
+    /// Whether a matching signup was found and removed.
+    pub removed: bool,
+}
+
+/// POST /v1/waitlist/unsubscribe — remove a signup by its unsubscribe token
+/// (from the email link). Public: the opaque token is the authorization.
+/// Idempotent — an unknown token returns ok with removed=false.
+pub async fn unsubscribe(
+    State(state): State<AppState>,
+    Json(body): Json<UnsubscribeBody>,
+) -> Result<Json<UnsubscribeResponse>, ApiError> {
+    let token = body.token.trim();
+    if token.is_empty() || token.len() > 200 {
+        return Err(ApiError::Validation("invalid token".into()));
+    }
+    let removed = db::repositories::waitlist::unsubscribe(&state.pool, token).await?;
+    Ok(Json(UnsubscribeResponse { ok: true, removed }))
 }

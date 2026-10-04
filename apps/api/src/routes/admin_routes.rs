@@ -649,8 +649,8 @@ pub async fn resend_waitlist_confirmations(
 
     let pending = db::repositories::waitlist::pending_confirmations(&state.pool, 500).await?;
     let (mut sent, mut failed) = (0i64, 0i64);
-    for email in &pending {
-        match notifications::waitlist::send_confirmation(email).await {
+    for (email, token) in &pending {
+        match notifications::waitlist::send_confirmation(email, token).await {
             Ok(()) => {
                 let _ = db::repositories::waitlist::mark_confirmed(&state.pool, email).await;
                 sent += 1;

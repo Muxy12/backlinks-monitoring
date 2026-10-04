@@ -3224,6 +3224,8 @@ pub mod waitlist {
 
     pub struct NewSignup<'a> {
         pub email: &'a str,
+        /// Opaque per-signup token for the unsubscribe link (caller-generated).
+        pub unsubscribe_token: &'a str,
         pub utm_source: Option<&'a str>,
         pub utm_medium: Option<&'a str>,
         pub utm_campaign: Option<&'a str>,
@@ -3236,12 +3238,14 @@ pub mod waitlist {
     pub async fn add(pool: &PgPool, s: NewSignup<'_>) -> Result<bool, DbError> {
         let row: Option<(Uuid,)> = sqlx::query_as(
             "INSERT INTO waitlist_signups \
-               (id, email, utm_source, utm_medium, utm_campaign, referrer, landing_path) \
-             VALUES ($1, $2, $3, $4, $5, $6, $7) \
+               (id, email, unsubscribe_token, utm_source, utm_medium, utm_campaign, \
+                referrer, landing_path) \
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8) \
              ON CONFLICT (email) DO NOTHING RETURNING id",
         )
         .bind(Uuid::now_v7())
         .bind(s.email)
+        .bind(s.unsubscribe_token)
         .bind(s.utm_source)
         .bind(s.utm_medium)
         .bind(s.utm_campaign)
@@ -3250,6 +3254,17 @@ pub mod waitlist {
         .fetch_optional(pool)
         .await
         .map_err(DbError::from_insert)?;
+        Ok(row.is_some())
+    }
+
+    /// Remove a signup by its unsubscribe token. Returns true if one was removed.
+    pub async fn unsubscribe(pool: &PgPool, token: &str) -> Result<bool, DbError> {
+        let row: Option<(Uuid,)> = sqlx::query_as(
+            "DELETE FROM waitlist_signups WHERE unsubscribe_token = $1 RETURNING id",
+        )
+        .bind(token)
+        .fetch_optional(pool)
+        .await?;
         Ok(row.is_some())
     }
 
@@ -3279,16 +3294,19 @@ pub mod waitlist {
         .await?)
     }
 
-    /// Signups whose confirmation email has not been sent yet, oldest first.
-    pub async fn pending_confirmations(pool: &PgPool, limit: i64) -> Result<Vec<String>, DbError> {
-        let rows: Vec<(String,)> = sqlx::query_as(
-            "SELECT email FROM waitlist_signups \
+    /// Signups awaiting a confirmation email, as (email, unsubscribe_token),
+    /// oldest first.
+    pub async fn pending_confirmations(
+        pool: &PgPool,
+        limit: i64,
+    ) -> Result<Vec<(String, String)>, DbError> {
+        Ok(sqlx::query_as(
+            "SELECT email, unsubscribe_token FROM waitlist_signups \
              WHERE confirmation_sent_at IS NULL ORDER BY created_at ASC LIMIT $1",
         )
         .bind(limit)
         .fetch_all(pool)
-        .await?;
-        Ok(rows.into_iter().map(|(e,)| e).collect())
+        .await?)
     }
 
     /// Count of signups still awaiting a confirmation email.
