@@ -698,18 +698,22 @@ export default function DashboardPage() {
                 )}
                 <select value={acqFilter} onChange={(e) => setAcqFilter(e.target.value)} title="Filter by acquisition">
                   <option value="">All acquisition</option>
+                  <option value="none">(Unclassified)</option>
                   {ACQUISITION.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                 </select>
                 <select value={attrFilter} onChange={(e) => setAttrFilter(e.target.value)} title="Filter by link attribute">
                   <option value="">All attributes</option>
+                  <option value="none">(Unclassified)</option>
                   {ATTRIBUTE.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                 </select>
                 <select value={placeFilter} onChange={(e) => setPlaceFilter(e.target.value)} title="Filter by placement">
                   <option value="">All placements</option>
+                  <option value="none">(Unclassified)</option>
                   {PLACEMENT.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                 </select>
                 <select value={fmtFilter} onChange={(e) => setFmtFilter(e.target.value)} title="Filter by format">
                   <option value="">All formats</option>
+                  <option value="none">(Unclassified)</option>
                   {FORMAT.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                 </select>
                 {projects.length > 0 && (

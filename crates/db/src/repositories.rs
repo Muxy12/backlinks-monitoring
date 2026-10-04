@@ -1283,6 +1283,12 @@ pub mod backlinks {
         pub link_attribute: Option<&'a str>,
         pub placement: Option<&'a str>,
         pub link_format: Option<&'a str>,
+        // "Unclassified" filters: match rows where that dimension has no value
+        // (for the attribute, no override AND nothing the crawler could derive).
+        pub acquisition_unset: bool,
+        pub link_attribute_unset: bool,
+        pub placement_unset: bool,
+        pub link_format_unset: bool,
     }
 
     /// Filtered backlink list (§35). Built with sqlx's `QueryBuilder`, so every
@@ -1364,6 +1370,21 @@ pub mod backlinks {
                    ELSE NULL END) = ",
             );
             qb.push_bind(attr.to_string());
+        }
+        if filter.acquisition_unset {
+            qb.push(" AND acquisition IS NULL");
+        }
+        if filter.placement_unset {
+            qb.push(" AND placement IS NULL");
+        }
+        if filter.link_format_unset {
+            qb.push(" AND link_format IS NULL");
+        }
+        if filter.link_attribute_unset {
+            // Effective attribute is null: no manual override AND the link was
+            // never successfully observed (detected_is_dofollow drives the
+            // derivation and is set together with detected_rel_attributes).
+            qb.push(" AND link_attribute IS NULL AND detected_is_dofollow IS NULL");
         }
         qb.push(" ORDER BY created_at DESC LIMIT ");
         qb.push_bind(limit.clamp(1, 200));

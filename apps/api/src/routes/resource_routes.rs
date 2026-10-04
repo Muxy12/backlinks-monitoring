@@ -520,6 +520,22 @@ const LINK_FORMATS: &[&str] = &[
     "forum",
 ];
 
+/// Interpret a classification filter query param. The sentinel `"none"` means
+/// "unclassified" (match rows with no value); any other value is validated
+/// against `allowed`; absent means no filter. Returns (value, unclassified).
+fn classify_filter<'a>(
+    v: Option<&'a str>,
+    allowed: &[&str],
+    name: &str,
+) -> Result<(Option<&'a str>, bool), ApiError> {
+    match v {
+        None => Ok((None, false)),
+        Some("none") => Ok((None, true)),
+        Some(val) if allowed.contains(&val) => Ok((Some(val), false)),
+        Some(_) => Err(ApiError::Validation(format!("unknown {name} filter"))),
+    }
+}
+
 /// The crawler-derived attribute slug (follow/nofollow/sponsored/ugc), or None
 /// if the link has never been successfully observed. Mirrors the SQL fallback in
 /// `backlinks::search` so manual filters and the displayed value agree.
@@ -1184,19 +1200,12 @@ pub async fn list_backlinks(
     {
         return Err(ApiError::Validation("unknown status filter".into()));
     }
-    // Validate each classification filter against its vocabulary.
-    for (val, allowed, name) in [
-        (q.acquisition.as_deref(), ACQUISITIONS, "acquisition"),
-        (q.attribute.as_deref(), LINK_ATTRIBUTES, "attribute"),
-        (q.placement.as_deref(), PLACEMENTS, "placement"),
-        (q.format.as_deref(), LINK_FORMATS, "format"),
-    ] {
-        if let Some(v) = val
-            && !allowed.contains(&v)
-        {
-            return Err(ApiError::Validation(format!("unknown {name} filter")));
-        }
-    }
+    // Each classification filter: a real value, the "none" sentinel
+    // (unclassified), or absent.
+    let (acq, acq_unset) = classify_filter(q.acquisition.as_deref(), ACQUISITIONS, "acquisition")?;
+    let (attr, attr_unset) = classify_filter(q.attribute.as_deref(), LINK_ATTRIBUTES, "attribute")?;
+    let (place, place_unset) = classify_filter(q.placement.as_deref(), PLACEMENTS, "placement")?;
+    let (fmt, fmt_unset) = classify_filter(q.format.as_deref(), LINK_FORMATS, "format")?;
     let since = q
         .days
         .filter(|d| *d > 0)
@@ -1209,10 +1218,14 @@ pub async fn list_backlinks(
         q: q.q.as_deref(),
         offset: q.offset.unwrap_or(0).max(0),
         since,
-        acquisition: q.acquisition.as_deref(),
-        link_attribute: q.attribute.as_deref(),
-        placement: q.placement.as_deref(),
-        link_format: q.format.as_deref(),
+        acquisition: acq,
+        link_attribute: attr,
+        placement: place,
+        link_format: fmt,
+        acquisition_unset: acq_unset,
+        link_attribute_unset: attr_unset,
+        placement_unset: place_unset,
+        link_format_unset: fmt_unset,
     };
     let rows =
         db::repositories::backlinks::search(&state.pool, &scope, &filter, q.limit.unwrap_or(50))
