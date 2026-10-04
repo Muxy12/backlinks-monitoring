@@ -273,4 +273,35 @@ async fn classify_backlink_and_filter() {
     // Other dimensions were kept (absent in the patch).
     assert_eq!(v["placement"], "footer");
     assert_eq!(v["link_format"], "guest_post");
+
+    // The "(Unclassified)" filter (sentinel "none") matches rows with no value.
+    let (st, v) = s
+        .send("GET", format!("{list}&acquisition=none"), None, false)
+        .await;
+    assert_eq!(st, StatusCode::OK);
+    assert!(
+        has_id(&v, &id),
+        "acquisition=none matches the now-unclassified link"
+    );
+    // Never crawled + override cleared -> attribute is unclassified too.
+    let (_, v) = s
+        .send("GET", format!("{list}&attribute=none"), None, false)
+        .await;
+    assert!(
+        has_id(&v, &id),
+        "attribute=none matches (no override, never observed)"
+    );
+    // A real value no longer matches it.
+    let (_, v) = s
+        .send("GET", format!("{list}&acquisition=paid"), None, false)
+        .await;
+    assert!(!has_id(&v, &id), "acquisition=paid no longer matches");
+    // placement is still set, so placement=none must NOT match it.
+    let (_, v) = s
+        .send("GET", format!("{list}&placement=none"), None, false)
+        .await;
+    assert!(
+        !has_id(&v, &id),
+        "placement=none excludes a link with a placement"
+    );
 }
