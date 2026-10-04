@@ -9,6 +9,7 @@ export const ACQUISITION: [string, string][] = [
   ["outreach", "Outreach"],
   ["partnership", "Partnership"],
   ["self_created", "Self-created"],
+  ["other", "Other"],
 ];
 
 export const ATTRIBUTE: [string, string][] = [
