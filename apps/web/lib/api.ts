@@ -887,6 +887,11 @@ export const adminApi = {
       method: "POST",
       headers: csrfHeader(),
     }),
+  syncWaitlistAudience: () =>
+    request<{ synced: number; failed: number; total: number }>("/v1/admin/waitlist/sync-audience", {
+      method: "POST",
+      headers: csrfHeader(),
+    }),
   organizations: () => request<AdminOrg[]>("/v1/admin/organizations"),
   users: () => request<AdminUser[]>("/v1/admin/users"),
   audit: () => request<AdminAudit[]>("/v1/admin/audit"),

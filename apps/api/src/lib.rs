@@ -315,6 +315,10 @@ pub fn app(state: AppState) -> Router {
             post(routes::admin_routes::resend_waitlist_confirmations),
         )
         .route(
+            "/v1/admin/waitlist/sync-audience",
+            post(routes::admin_routes::sync_waitlist_audience),
+        )
+        .route(
             "/v1/admin/subscriptions",
             get(routes::admin_routes::list_subscriptions),
         )
