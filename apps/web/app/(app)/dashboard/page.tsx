@@ -45,7 +45,6 @@ export default function DashboardPage() {
   const [placeFilter, setPlaceFilter] = useState("");
   const [fmtFilter, setFmtFilter] = useState("");
   const [periodDays, setPeriodDays] = useState(0); // 0 = all time
-  const [pageTags, setPageTags] = useState<Record<string, TagView[]>>({});
   const [page, setPage] = useState(0);
   const [hasNext, setHasNext] = useState(false);
   const [autoTagBusy, setAutoTagBusy] = useState(false);
@@ -145,17 +144,10 @@ export default function DashboardPage() {
           limit: pageSize,
           offset: page * pageSize,
         })
-        .then(async (res) => {
+        .then((res) => {
           if (res.ok) {
             setBacklinks(res.data);
             setHasNext(res.data.length === pageSize);
-            const ids = res.data.map((b) => b.id);
-            if (ids.length > 0) {
-              const tagsRes = await orgApi.backlinkTagsBulk(orgId, ids);
-              setPageTags(tagsRes.ok ? tagsRes.data : {});
-            } else {
-              setPageTags({});
-            }
           }
         });
     }, 200); // debounce the search box
@@ -784,7 +776,6 @@ export default function DashboardPage() {
                     <th>Source</th>
                     <th>Target</th>
                     <th>Anchor</th>
-                    <th>Tags</th>
                     <th>Acquisition</th>
                     <th>Attribute</th>
                     <th>Placement</th>
@@ -797,7 +788,7 @@ export default function DashboardPage() {
                 <tbody>
                   {visibleBacklinks.length === 0 && (
                     <tr>
-                      <td colSpan={12} className="muted" style={{ padding: 16 }}>
+                      <td colSpan={11} className="muted" style={{ padding: 16 }}>
                         No backlinks from <b className="mono">{domainFilter}</b> in this view.
                       </td>
                     </tr>
@@ -808,24 +799,6 @@ export default function DashboardPage() {
                       <td className="cell-domain" title={b.source_url}>{b.source_domain}</td>
                       <td className="cell-domain target" title={b.target_url}>{b.target_domain}</td>
                       <td className="cell-anchor" title={b.detected_anchor_text ?? b.expected_anchor_text ?? ""}>{b.detected_anchor_text ?? b.expected_anchor_text ?? "-"}</td>
-                      <td>
-                        <span className="bl-tags">
-                          {(pageTags[b.id] ?? []).map((t) => (
-                            <span
-                              key={t.id}
-                              className="bl-tag"
-                              style={
-                                t.color
-                                  ? ({ background: `${t.color}22`, color: t.color, borderColor: `${t.color}55` } as CSSProperties)
-                                  : undefined
-                              }
-                            >
-                              {t.name}
-                            </span>
-                          ))}
-                          {(pageTags[b.id] ?? []).length === 0 && <span className="muted">-</span>}
-                        </span>
-                      </td>
                       <td>{classChip(b.acquisition)}</td>
                       <td>{attrCell(b)}</td>
                       <td>{classChip(b.placement)}</td>
