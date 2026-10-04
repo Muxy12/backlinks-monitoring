@@ -67,10 +67,8 @@ pub async fn join(
 
     // Confirmation email, only on a genuinely new signup (best-effort; a missing
     // email provider just no-ops, and a failure never fails the signup).
-    if created {
-        if let Err(e) = notifications::waitlist::send_confirmation(&email).await {
-            tracing::warn!(error = %e, "waitlist confirmation email not sent");
-        }
+    if created && let Err(e) = notifications::waitlist::send_confirmation(&email).await {
+        tracing::warn!(error = %e, "waitlist confirmation email not sent");
     }
 
     Ok((
