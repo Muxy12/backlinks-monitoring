@@ -150,6 +150,17 @@ pub struct Backlink {
     pub tier: i16,
     /// For Tier 2+, the Tier-1 backlink this one reinforces.
     pub parent_backlink_id: Option<Uuid>,
+    // ─── Manual classification (migration 0034), nullable = unclassified ──────
+    /// How the link was obtained (paid/exchange/earned/outreach/partnership/
+    /// self_created). Validated in the API against a controlled vocabulary.
+    pub acquisition: Option<String>,
+    /// Manual override of the detected Follow/Nofollow/Sponsored/UGC attribute.
+    /// NULL = use what the crawler observed.
+    pub link_attribute: Option<String>,
+    /// Where on the page the link sits (in_content/author_bio/footer/…).
+    pub placement: Option<String>,
+    /// The content format the link came in (guest_post/niche_edit/editorial/…).
+    pub link_format: Option<String>,
 }
 
 /// A referring domain queued for expansion-crawl discovery (spec §21).

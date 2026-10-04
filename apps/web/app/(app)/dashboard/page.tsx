@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { api, orgApi, backlinksExportUrl, type BacklinkView, type ClientView, type DashboardResponse, type EventsSummary, type EventView, type MeResponse, type NotificationsResponse, type OccurrenceView, type ProjectView, type TagView } from "@/lib/api";
 import { selectedOrg, selectedOrgId } from "@/lib/workspace";
 import { statusColor, statusLabel } from "@/lib/status";
+import { ACQUISITION, ATTRIBUTE, PLACEMENT, FORMAT, classLabel } from "@/lib/classification";
 import { toast } from "../toast";
 import { Icon } from "../icons";
 import "@/app/auth.css";
@@ -32,11 +33,17 @@ export default function DashboardPage() {
   const [orgTags, setOrgTags] = useState<TagView[]>([]);
   const [blTags, setBlTags] = useState<TagView[]>([]);
   const [newTag, setNewTag] = useState("");
+  const [classBusy, setClassBusy] = useState(false);
   const [statusFilter, setStatusFilter] = useState("");
   const [clientFilter, setClientFilter] = useState("");
   const [searchQ, setSearchQ] = useState("");
   const [domainFilter, setDomainFilter] = useState("");
   const [tagFilter, setTagFilter] = useState("");
+  // Classification filters (migration 0034); "" = all.
+  const [acqFilter, setAcqFilter] = useState("");
+  const [attrFilter, setAttrFilter] = useState("");
+  const [placeFilter, setPlaceFilter] = useState("");
+  const [fmtFilter, setFmtFilter] = useState("");
   const [periodDays, setPeriodDays] = useState(0); // 0 = all time
   const [pageTags, setPageTags] = useState<Record<string, TagView[]>>({});
   const [page, setPage] = useState(0);
@@ -131,6 +138,10 @@ export default function DashboardPage() {
           q: searchQ.trim() || undefined,
           tagId: tagFilter || undefined,
           days: periodDays || undefined,
+          acquisition: acqFilter || undefined,
+          attribute: attrFilter || undefined,
+          placement: placeFilter || undefined,
+          format: fmtFilter || undefined,
           limit: pageSize,
           offset: page * pageSize,
         })
@@ -149,13 +160,13 @@ export default function DashboardPage() {
         });
     }, 200); // debounce the search box
     return () => clearTimeout(t);
-  }, [orgId, projectId, clientFilter, statusFilter, searchQ, tagFilter, periodDays, page, pageSize]);
+  }, [orgId, projectId, clientFilter, statusFilter, searchQ, tagFilter, periodDays, acqFilter, attrFilter, placeFilter, fmtFilter, page, pageSize]);
 
   // Any filter (or page-size) change resets to the first page. (The load effect's
   // debounce cleanup cancels the stale-page fetch, so this doesn't double-request.)
   useEffect(() => {
     setPage(0);
-  }, [orgId, projectId, clientFilter, statusFilter, searchQ, tagFilter, periodDays, pageSize]);
+  }, [orgId, projectId, clientFilter, statusFilter, searchQ, tagFilter, periodDays, acqFilter, attrFilter, placeFilter, fmtFilter, pageSize]);
 
   // Drop a referring-domain filter that no longer matches the reloaded list.
   useEffect(() => {
@@ -199,6 +210,46 @@ export default function DashboardPage() {
     const [tags, dash] = await Promise.all([orgApi.tags(orgId), orgApi.dashboard(orgId, periodDays || undefined)]);
     if (tags.ok) setOrgTags(tags.data);
     if (dash.ok) setSummary(dash.data);
+  }
+
+  // Set one classification dimension on the open backlink. Empty value clears it
+  // (back to unclassified / auto for the attribute). Updates the drawer + the row.
+  async function setClass(
+    field: "acquisition" | "link_attribute" | "placement" | "link_format",
+    value: string,
+  ) {
+    if (!orgId || !selected) return;
+    const body: {
+      acquisition?: string | null;
+      link_attribute?: string | null;
+      placement?: string | null;
+      link_format?: string | null;
+    } = {};
+    body[field] = value || null;
+    setClassBusy(true);
+    const res = await orgApi.updateBacklink(orgId, selected.id, body);
+    setClassBusy(false);
+    if (!res.ok) {
+      toast(`Update failed: ${res.detail}`, "error");
+      return;
+    }
+    setSelected(res.data);
+    setBacklinks((bs) => bs.map((x) => (x.id === res.data.id ? res.data : x)));
+  }
+
+  // Compact chips for the list "Class" column: the set dimensions + the effective
+  // attribute (manual override, else crawler-detected).
+  function classCell(b: BacklinkView) {
+    const attr = b.link_attribute ?? b.link_attribute_auto ?? null;
+    const vals = [b.acquisition, attr, b.placement, b.link_format].filter(Boolean) as string[];
+    if (vals.length === 0) return <span className="muted">-</span>;
+    return (
+      <span className="bl-tags">
+        {vals.map((v, i) => (
+          <span key={i} className="bl-tag">{classLabel(v)}</span>
+        ))}
+      </span>
+    );
   }
 
   async function openDetail(b: BacklinkView) {
@@ -646,6 +697,22 @@ export default function DashboardPage() {
                     ))}
                   </select>
                 )}
+                <select value={acqFilter} onChange={(e) => setAcqFilter(e.target.value)} title="Filter by acquisition">
+                  <option value="">All acquisition</option>
+                  {ACQUISITION.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+                <select value={attrFilter} onChange={(e) => setAttrFilter(e.target.value)} title="Filter by link attribute">
+                  <option value="">All attributes</option>
+                  {ATTRIBUTE.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+                <select value={placeFilter} onChange={(e) => setPlaceFilter(e.target.value)} title="Filter by placement">
+                  <option value="">All placements</option>
+                  {PLACEMENT.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+                <select value={fmtFilter} onChange={(e) => setFmtFilter(e.target.value)} title="Filter by format">
+                  <option value="">All formats</option>
+                  {FORMAT.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
                 {projects.length > 0 && (
                   <button className="btn sm primary" onClick={openAdd}>+ Add backlink</button>
                 )}
@@ -711,6 +778,7 @@ export default function DashboardPage() {
                     <th>Target</th>
                     <th>Anchor</th>
                     <th>Tags</th>
+                    <th>Class</th>
                     <th>Rel</th>
                     <th>HTTP</th>
                     <th>Checked</th>
@@ -719,7 +787,7 @@ export default function DashboardPage() {
                 <tbody>
                   {visibleBacklinks.length === 0 && (
                     <tr>
-                      <td colSpan={8} className="muted" style={{ padding: 16 }}>
+                      <td colSpan={9} className="muted" style={{ padding: 16 }}>
                         No backlinks from <b className="mono">{domainFilter}</b> in this view.
                       </td>
                     </tr>
@@ -748,6 +816,7 @@ export default function DashboardPage() {
                           {(pageTags[b.id] ?? []).length === 0 && <span className="muted">-</span>}
                         </span>
                       </td>
+                      <td>{classCell(b)}</td>
                       <td><RelChips b={b} /></td>
                       <td className="mono">{httpPair(b)}</td>
                       <td className="mono">{fmtShort(b.last_checked_at)}</td>
@@ -935,6 +1004,32 @@ export default function DashboardPage() {
               <div><dt>Lost at</dt><dd>{fmtLong(selected.lost_at)}</dd></div>
               <div><dt>Cost</dt><dd>{selected.cost ? `${selected.cost} ${selected.currency ?? ""}` : "-"}</dd></div>
             </dl>
+            <h3 className="drawer-sub">Classification</h3>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
+              {([
+                ["Acquisition", "acquisition", ACQUISITION, "— Unclassified"],
+                ["Attribute", "link_attribute", ATTRIBUTE, "Auto (detected)"],
+                ["Placement", "placement", PLACEMENT, "— Unclassified"],
+                ["Format", "link_format", FORMAT, "— Unclassified"],
+              ] as const).map(([label, field, opts, blank]) => (
+                <label key={field} style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                  <span className="muted">
+                    {label}
+                    {field === "link_attribute" && selected.link_attribute == null && selected.link_attribute_auto
+                      ? ` · auto: ${classLabel(selected.link_attribute_auto)}`
+                      : ""}
+                  </span>
+                  <select
+                    value={(selected[field] as string | null | undefined) ?? ""}
+                    disabled={classBusy}
+                    onChange={(e) => void setClass(field, e.target.value)}
+                  >
+                    <option value="">{blank}</option>
+                    {opts.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                  </select>
+                </label>
+              ))}
+            </div>
             {occurrences.length > 0 && (
               <>
                 <h3 className="drawer-sub">Occurrences ({occurrences.length})</h3>

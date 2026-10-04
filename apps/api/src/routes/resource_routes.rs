@@ -414,6 +414,19 @@ pub struct BacklinkView {
     pub target_final_url: Option<String>,
     pub tier: i16,
     pub parent_backlink_id: Option<Uuid>,
+    // ─── Manual classification (§ link classification, migration 0034) ────────
+    /// How the link was obtained (slug, null = unclassified).
+    pub acquisition: Option<String>,
+    /// Where on the page the link sits (slug, null = unclassified).
+    pub placement: Option<String>,
+    /// The content format (slug, null = unclassified).
+    pub link_format: Option<String>,
+    /// Manual attribute override (follow/nofollow/sponsored/ugc); null = use the
+    /// crawler-detected one below.
+    pub link_attribute: Option<String>,
+    /// Crawler-derived attribute (follow/nofollow/sponsored/ugc); null if the
+    /// link has never been successfully observed.
+    pub link_attribute_auto: Option<String>,
 }
 
 impl From<db::entities::Backlink> for BacklinkView {
@@ -428,6 +441,7 @@ impl From<db::entities::Backlink> for BacklinkView {
         let is_nofollow = rel.as_ref().map(|a| a.iter().any(|r| r == "nofollow"));
         let is_sponsored = rel.as_ref().map(|a| a.iter().any(|r| r == "sponsored"));
         let is_ugc = rel.as_ref().map(|a| a.iter().any(|r| r == "ugc"));
+        let link_attribute_auto = derived_attribute(rel.as_deref(), b.detected_is_dofollow);
         BacklinkView {
             id: b.id,
             source_url: b.source_url,
@@ -463,7 +477,88 @@ impl From<db::entities::Backlink> for BacklinkView {
             target_final_url: b.target_final_url,
             tier: b.tier,
             parent_backlink_id: b.parent_backlink_id,
+            acquisition: b.acquisition,
+            placement: b.placement,
+            link_format: b.link_format,
+            link_attribute: b.link_attribute,
+            link_attribute_auto,
         }
+    }
+}
+
+// ─── Link classification vocabularies (migration 0034) ────────────────────────
+// Stored as slugs; the web maps them to display labels. Kept in code so the
+// vocabulary can evolve without a migration (the columns are plain text).
+const ACQUISITIONS: &[&str] = &[
+    "paid",
+    "exchange",
+    "earned",
+    "outreach",
+    "partnership",
+    "self_created",
+];
+const LINK_ATTRIBUTES: &[&str] = &["follow", "nofollow", "sponsored", "ugc"];
+const PLACEMENTS: &[&str] = &[
+    "in_content",
+    "author_bio",
+    "homepage",
+    "sidebar",
+    "footer",
+    "navigation",
+    "resource_list",
+    "image",
+    "widget",
+    "sitewide",
+];
+const LINK_FORMATS: &[&str] = &[
+    "guest_post",
+    "niche_edit",
+    "editorial",
+    "pr",
+    "directory",
+    "forum",
+];
+
+/// The crawler-derived attribute slug (follow/nofollow/sponsored/ugc), or None
+/// if the link has never been successfully observed. Mirrors the SQL fallback in
+/// `backlinks::search` so manual filters and the displayed value agree.
+fn derived_attribute(rel: Option<&[String]>, is_dofollow: Option<bool>) -> Option<String> {
+    let has = |t: &str| rel.map(|a| a.iter().any(|r| r == t)).unwrap_or(false);
+    if has("sponsored") {
+        Some("sponsored".into())
+    } else if has("ugc") {
+        Some("ugc".into())
+    } else if has("nofollow") || is_dofollow == Some(false) {
+        Some("nofollow".into())
+    } else if is_dofollow == Some(true) {
+        Some("follow".into())
+    } else {
+        None
+    }
+}
+
+/// Merge one classification dimension for a PATCH: present-in-body (trimmed,
+/// empty → clear) validated against `allowed`, else keep `current`.
+fn merge_classification(
+    field: &Option<Option<String>>,
+    current: Option<String>,
+    allowed: &[&str],
+    name: &str,
+) -> Result<Option<String>, ApiError> {
+    match field {
+        Some(v) => {
+            let val = v
+                .as_ref()
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty());
+            if let Some(ref s) = val
+                && !allowed.contains(&s.as_str())
+            {
+                return Err(ApiError::Validation(format!("unknown {name} value")));
+            }
+            Ok(val)
+        }
+        None => Ok(current),
     }
 }
 
@@ -771,6 +866,15 @@ pub struct UpdateBacklinkBody {
     pub campaign_id: Option<Option<Uuid>>,
     #[serde(default, deserialize_with = "de_double_opt")]
     pub publisher_id: Option<Option<Uuid>>,
+    // Classification (migration 0034); each keep/clear via de_double_opt.
+    #[serde(default, deserialize_with = "de_double_opt")]
+    pub acquisition: Option<Option<String>>,
+    #[serde(default, deserialize_with = "de_double_opt")]
+    pub link_attribute: Option<Option<String>>,
+    #[serde(default, deserialize_with = "de_double_opt")]
+    pub placement: Option<Option<String>>,
+    #[serde(default, deserialize_with = "de_double_opt")]
+    pub link_format: Option<Option<String>>,
 }
 
 /// PATCH …/backlinks/{id} — edit mutable fields (§36). Source/target URLs are
@@ -843,6 +947,28 @@ pub async fn update_backlink(
         db::repositories::publishers::get(&state.pool, &scope, pid).await?;
     }
 
+    // Classification dimensions (validated against their vocabularies).
+    let acquisition = merge_classification(
+        &body.acquisition,
+        current.acquisition,
+        ACQUISITIONS,
+        "acquisition",
+    )?;
+    let link_attribute = merge_classification(
+        &body.link_attribute,
+        current.link_attribute,
+        LINK_ATTRIBUTES,
+        "link attribute",
+    )?;
+    let placement =
+        merge_classification(&body.placement, current.placement, PLACEMENTS, "placement")?;
+    let link_format = merge_classification(
+        &body.link_format,
+        current.link_format,
+        LINK_FORMATS,
+        "format",
+    )?;
+
     let upd = db::repositories::backlinks::BacklinkUpdate {
         expected_anchor_text: anchor.as_deref(),
         expected_rel_type: &rel,
@@ -850,6 +976,10 @@ pub async fn update_backlink(
         currency: new_currency.as_deref(),
         campaign_id,
         publisher_id,
+        acquisition: acquisition.as_deref(),
+        link_attribute: link_attribute.as_deref(),
+        placement: placement.as_deref(),
+        link_format: link_format.as_deref(),
     };
     let backlink =
         db::repositories::backlinks::update(&state.pool, &scope, backlink_id, upd).await?;
@@ -1017,6 +1147,12 @@ pub struct ListBacklinksQuery {
     pub offset: Option<i64>,
     /// Acquisition window in days (first-seen); omit/0 = all time.
     pub days: Option<i64>,
+    // Classification filters (migration 0034); each a single slug.
+    pub acquisition: Option<String>,
+    /// Matches the EFFECTIVE attribute (manual override, else crawler-derived).
+    pub attribute: Option<String>,
+    pub placement: Option<String>,
+    pub format: Option<String>,
 }
 
 const BACKLINK_STATUSES: &[&str] = &[
@@ -1047,6 +1183,19 @@ pub async fn list_backlinks(
     {
         return Err(ApiError::Validation("unknown status filter".into()));
     }
+    // Validate each classification filter against its vocabulary.
+    for (val, allowed, name) in [
+        (q.acquisition.as_deref(), ACQUISITIONS, "acquisition"),
+        (q.attribute.as_deref(), LINK_ATTRIBUTES, "attribute"),
+        (q.placement.as_deref(), PLACEMENTS, "placement"),
+        (q.format.as_deref(), LINK_FORMATS, "format"),
+    ] {
+        if let Some(v) = val
+            && !allowed.contains(&v)
+        {
+            return Err(ApiError::Validation(format!("unknown {name} filter")));
+        }
+    }
     let since = q
         .days
         .filter(|d| *d > 0)
@@ -1059,6 +1208,10 @@ pub async fn list_backlinks(
         q: q.q.as_deref(),
         offset: q.offset.unwrap_or(0).max(0),
         since,
+        acquisition: q.acquisition.as_deref(),
+        link_attribute: q.attribute.as_deref(),
+        placement: q.placement.as_deref(),
+        link_format: q.format.as_deref(),
     };
     let rows =
         db::repositories::backlinks::search(&state.pool, &scope, &filter, q.limit.unwrap_or(50))

@@ -1105,7 +1105,8 @@ pub mod backlinks {
              detected_anchor_text, detected_target_url, detected_rel_attributes, \
              detected_is_dofollow, source_http_status, target_http_status, \
              first_checked_at, last_seen_at, link_type, image_alt, lost_at, target_final_url, \
-             subject, competitor_id, tier, parent_backlink_id"
+             subject, competitor_id, tier, parent_backlink_id, \
+             acquisition, link_attribute, placement, link_format"
         };
     }
 
@@ -1191,6 +1192,11 @@ pub mod backlinks {
         pub currency: Option<&'a str>,
         pub campaign_id: Option<Uuid>,
         pub publisher_id: Option<Uuid>,
+        // Manual classification (migration 0034); None clears the column.
+        pub acquisition: Option<&'a str>,
+        pub link_attribute: Option<&'a str>,
+        pub placement: Option<&'a str>,
+        pub link_format: Option<&'a str>,
     }
 
     /// Replace a backlink's mutable fields (§36). Tenant-scoped; `NotFound` if it
@@ -1209,7 +1215,11 @@ pub mod backlinks {
                 cost = $5::numeric, \
                 currency = $6, \
                 campaign_id = $7, \
-                publisher_id = $8 \
+                publisher_id = $8, \
+                acquisition = $9, \
+                link_attribute = $10, \
+                placement = $11, \
+                link_format = $12 \
              WHERE id = $1 AND organization_id = $2 RETURNING ",
             cols!()
         ))
@@ -1221,6 +1231,10 @@ pub mod backlinks {
         .bind(upd.currency)
         .bind(upd.campaign_id)
         .bind(upd.publisher_id)
+        .bind(upd.acquisition)
+        .bind(upd.link_attribute)
+        .bind(upd.placement)
+        .bind(upd.link_format)
         .fetch_one(pool)
         .await
         .map_err(DbError::from_fetch)
@@ -1262,6 +1276,13 @@ pub mod backlinks {
         pub offset: i64,
         /// Acquisition-period cutoff on first-seen; None = all time.
         pub since: Option<DateTime<Utc>>,
+        // Classification dimensions (migration 0034); the caller validates each
+        // value against its controlled vocabulary.
+        pub acquisition: Option<&'a str>,
+        /// Matches the EFFECTIVE attribute (manual override, else crawler-derived).
+        pub link_attribute: Option<&'a str>,
+        pub placement: Option<&'a str>,
+        pub link_format: Option<&'a str>,
     }
 
     /// Filtered backlink list (§35). Built with sqlx's `QueryBuilder`, so every
@@ -1318,6 +1339,31 @@ pub mod backlinks {
         if let Some(s) = filter.since {
             qb.push(" AND COALESCE(first_checked_at, created_at) >= ");
             qb.push_bind(s);
+        }
+        if let Some(a) = filter.acquisition {
+            qb.push(" AND acquisition = ");
+            qb.push_bind(a.to_string());
+        }
+        if let Some(p) = filter.placement {
+            qb.push(" AND placement = ");
+            qb.push_bind(p.to_string());
+        }
+        if let Some(f) = filter.link_format {
+            qb.push(" AND link_format = ");
+            qb.push_bind(f.to_string());
+        }
+        if let Some(attr) = filter.link_attribute {
+            // Effective attribute = manual override, else derived from the crawler's
+            // detected rel tokens / dofollow flag (same precedence as the DTO).
+            qb.push(
+                " AND COALESCE(link_attribute, CASE \
+                   WHEN detected_rel_attributes @> ARRAY['sponsored'] THEN 'sponsored' \
+                   WHEN detected_rel_attributes @> ARRAY['ugc'] THEN 'ugc' \
+                   WHEN detected_rel_attributes @> ARRAY['nofollow'] OR detected_is_dofollow = false THEN 'nofollow' \
+                   WHEN detected_is_dofollow = true THEN 'follow' \
+                   ELSE NULL END) = ",
+            );
+            qb.push_bind(attr.to_string());
         }
         qb.push(" ORDER BY created_at DESC LIMIT ");
         qb.push_bind(limit.clamp(1, 200));
