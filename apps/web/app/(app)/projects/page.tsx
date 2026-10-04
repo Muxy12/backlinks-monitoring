@@ -49,7 +49,7 @@ export default function ProjectsPage() {
   }, [orgId, load]);
 
   const clientName = (id: string | null) =>
-    id ? (clients.find((c) => c.id === id)?.name ?? "—") : "—";
+    id ? (clients.find((c) => c.id === id)?.name ?? "-") : "-";
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
@@ -184,7 +184,7 @@ export default function ProjectsPage() {
                             onChange={(e) => void reassign(p.id, e.target.value)}
                             title={clientName(p.client_id)}
                           >
-                            <option value="">— none —</option>
+                            <option value="">- none -</option>
                             {clients.map((c) => (
                               <option key={c.id} value={c.id}>{c.name}</option>
                             ))}
@@ -208,7 +208,7 @@ export default function ProjectsPage() {
                             onChange={(e) => void reassign(p.id, e.target.value)}
                             title={clientName(p.client_id)}
                           >
-                            <option value="">— none —</option>
+                            <option value="">- none -</option>
                             {clients.map((c) => (
                               <option key={c.id} value={c.id}>{c.name}</option>
                             ))}
@@ -248,7 +248,7 @@ export default function ProjectsPage() {
               <label className="auth-field">
                 <span>Client (optional)</span>
                 <select value={clientId} onChange={(e) => setClientId(e.target.value)}>
-                  <option value="">— none —</option>
+                  <option value="">- none -</option>
                   {clients.map((c) => (
                     <option key={c.id} value={c.id}>{c.name}</option>
                   ))}

@@ -123,7 +123,7 @@ const JSONLD = `{
         {
           "@type": "Question",
           "name": "What happens if I reach my plan limit?",
-          "acceptedAnswer": { "@type": "Answer", "text": "You can keep monitoring everything you already track — going over a limit never stops monitoring or deletes data. You simply can't add new backlinks, projects or team members until you upgrade." }
+          "acceptedAnswer": { "@type": "Answer", "text": "You can keep monitoring everything you already track, going over a limit never stops monitoring or deletes data. You simply can't add new backlinks, projects or team members until you upgrade." }
         },
         {
           "@type": "Question",
@@ -155,7 +155,7 @@ const MAIN = `
   <div class="wrap center">
     <span class="badge">Pricing</span>
     <h1 id="h1">Simple pricing for backlink monitoring</h1>
-    <p class="lead">Every plan includes a <b>10-day free trial — no credit card</b>. Automatic checks every 48 hours, with an alert the moment a link changes.</p>
+    <p class="lead">Every plan includes a <b>10-day free trial, no credit card</b>. Automatic checks every 48 hours, with an alert the moment a link changes.</p>
 
     <input type="radio" name="billing" id="bill-m" class="bill-radio" checked>
     <input type="radio" name="billing" id="bill-a" class="bill-radio">
@@ -268,7 +268,7 @@ const MAIN = `
       </div>
 
     </div>
-    <p class="price-note">All plans check every backlink every 48 hours. Prices in USD. Going over a limit never stops monitoring or deletes data — you just can't add new links until you upgrade.</p>
+    <p class="price-note">All plans check every backlink every 48 hours. Prices in USD. Going over a limit never stops monitoring or deletes data, you just can't add new links until you upgrade.</p>
   </div>
 </section>
 
@@ -277,10 +277,10 @@ const MAIN = `
   <div class="wrap">
     <div class="center">
       <h2 id="value-h">What every plan includes</h2>
-      <p class="lead">No tiered-away essentials. Monitoring and alerting work the same on every plan — the plans differ by how much you track and how big your team is.</p>
+      <p class="lead">No tiered-away essentials. Monitoring and alerting work the same on every plan, the plans differ by how much you track and how big your team is.</p>
     </div>
     <div class="cards">
-      <div class="card"><div class="ic">48h</div><h3>Checks every 48 hours</h3><p>Every backlink is re-checked on a fixed schedule, on every plan — not just the expensive ones.</p></div>
+      <div class="card"><div class="ic">48h</div><h3>Checks every 48 hours</h3><p>Every backlink is re-checked on a fixed schedule, on every plan, not just the expensive ones.</p></div>
       <div class="card"><div class="ic">🔔</div><h3>Change alerts</h3><p>Get alerted when a link is lost, redirected, broken, nofollowed or noindexed.</p></div>
       <div class="card"><div class="ic">10</div><h3>10-day free trial</h3><p>Start monitoring with no credit card. Decide once you've seen it work.</p></div>
       <div class="card"><div class="ic">↑↓</div><h3>Change plans anytime</h3><p>Upgrade or downgrade whenever you need to. Over-limit never deletes your data.</p></div>
@@ -297,7 +297,7 @@ const MAIN = `
       <details><summary>Do I need a credit card to start?</summary><p>No. You can start the 10-day trial with just an email. We ask for payment details only if you decide to continue on a paid plan.</p></details>
       <details><summary>What happens when my trial ends?</summary><p>Nothing is deleted. Monitoring pauses and you choose a plan to continue. All your backlinks, projects and history are preserved and resume as soon as you subscribe.</p></details>
       <details><summary>How often do you check my backlinks?</summary><p>Every 48 hours, on every plan. LinkPulz re-checks each backlink on that schedule and alerts you when a link is lost, redirected, broken, nofollowed or noindexed.</p></details>
-      <details><summary>What happens if I reach my plan limit?</summary><p>You can keep monitoring everything you already track — going over a limit never stops monitoring or deletes data. You simply can't add new backlinks, projects or team members until you upgrade.</p></details>
+      <details><summary>What happens if I reach my plan limit?</summary><p>You can keep monitoring everything you already track, going over a limit never stops monitoring or deletes data. You simply can't add new backlinks, projects or team members until you upgrade.</p></details>
       <details><summary>Can I change plans later?</summary><p>Yes. You can upgrade or downgrade at any time from your billing settings. Upgrades take effect immediately so you can add more backlinks and projects straight away.</p></details>
       <details><summary>How does annual billing save money?</summary><p>Annual plans are billed once a year at the price of ten months, so you get two months free compared with paying monthly.</p></details>
       <details><summary>Can I cancel anytime?</summary><p>Yes. You can cancel whenever you like. Your plan stays active until the end of the billing period you've already paid for.</p></details>
@@ -309,7 +309,7 @@ const MAIN = `
 <section class="final" aria-labelledby="final-h">
   <div class="wrap">
     <h2 id="final-h">Start monitoring your backlinks in minutes</h2>
-    <p class="lead">10-day free trial, no credit card. Add your links and LinkPulz watches them for you — every 48 hours.</p>
+    <p class="lead">10-day free trial, no credit card. Add your links and LinkPulz watches them for you, every 48 hours.</p>
     <div class="cta-row" style="justify-content:center"><a class="btn" href="/register">Start your free trial</a></div>
   </div>
 </section>

@@ -5,14 +5,14 @@ import { WaitlistLanding } from "./WaitlistLanding";
 // marketing homepage lives at /home during this period. Server component for
 // head SEO + brand JSON-LD; the interactive landing is a client island.
 export const metadata: Metadata = {
-  title: { absolute: "LinkPulz — Backlink Monitoring, Launching Soon" },
+  title: { absolute: "LinkPulz: Backlink Monitoring, Launching Soon" },
   description:
-    "LinkPulz monitors every backlink you earn or buy — automatic checks every 48 hours and instant alerts when a link is lost, nofollowed, redirected or broken. Join the waitlist for early access.",
+    "LinkPulz monitors every backlink you earn or buy, automatic checks every 48 hours and instant alerts when a link is lost, nofollowed, redirected or broken. Join the waitlist for early access.",
   alternates: { canonical: "/" },
   robots: { index: true, follow: true, "max-image-preview": "large" },
   openGraph: {
     type: "website",
-    title: "LinkPulz — Backlink Monitoring, Launching Soon",
+    title: "LinkPulz: Backlink Monitoring, Launching Soon",
     description:
       "Automatic backlink monitoring with instant change alerts. Join the waitlist for early access.",
     url: "/",

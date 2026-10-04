@@ -307,7 +307,7 @@ export default function GraphPage() {
           <div className="graph-toolbar">
             <select value={projectId ?? ""} onChange={(e) => setProjectId(e.target.value)}>
               {projects.map((p) => (
-                <option key={p.id} value={p.id}>{p.name} — {p.domain}</option>
+                <option key={p.id} value={p.id}>{p.name}, {p.domain}</option>
               ))}
             </select>
             <select value={view} onChange={(e) => setView(e.target.value as "domain" | "url")}>

@@ -160,7 +160,7 @@ const MAIN = `
         <li><b>Confirm it is really gone.</b> Rule out a temporary error or a page that was just slow to load.</li>
         <li><b>Find out why.</b> Removed on purpose, lost in an edit, or broken by a migration each need a different ask.</li>
         <li><b>Identify who owns the page.</b> The author, the editor or the webmaster, depending on the site.</li>
-        <li><b>Reach out with the specifics.</b> Link, date, and what changed — and a reason it is worth restoring.</li>
+        <li><b>Reach out with the specifics.</b> Link, date, and what changed, and a reason it is worth restoring.</li>
         <li><b>Track the outcome.</b> Keep each attempt until the link is back. <span class="tc">TO CONFIRM: recovery workflow feature</span></li>
       </ol>
     </div>
@@ -174,9 +174,9 @@ const MAIN = `
       <h2 id="vs-h">Lost, broken or changed?</h2>
       <p>Not every problem link is a lost one, and the fix is different for each:</p>
       <ul class="check">
-        <li><b>Lost</b> — the link is gone from the page. Covered here.</li>
-        <li><b>Broken</b> — the link still exists but points to an error, or sits on a page that errors. See <a href="/broken-backlinks">broken backlinks</a>.</li>
-        <li><b>Changed</b> — the link is there but the anchor, target or rel attribute changed. See the <a href="/backlink-health-check">backlink health check</a>.</li>
+        <li><b>Lost</b>, the link is gone from the page. Covered here.</li>
+        <li><b>Broken</b>, the link still exists but points to an error, or sits on a page that errors. See <a href="/broken-backlinks">broken backlinks</a>.</li>
+        <li><b>Changed</b>, the link is there but the anchor, target or rel attribute changed. See the <a href="/backlink-health-check">backlink health check</a>.</li>
       </ul>
       <p>You can also <a href="/verify-backlinks">verify a single backlink</a> on demand.</p>
     </div>

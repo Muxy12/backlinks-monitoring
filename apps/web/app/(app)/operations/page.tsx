@@ -96,13 +96,13 @@ export default function OperationsPage() {
 }
 
 function money(spend: { currency: string; amount: string }[]) {
-  return spend.length === 0 ? "—" : spend.map((s) => `${s.amount} ${s.currency}`).join(" · ");
+  return spend.length === 0 ? "-" : spend.map((s) => `${s.amount} ${s.currency}`).join(" · ");
 }
 function pct(x: number | null) {
-  return x === null ? "—" : `${Math.round(x * 100)}%`;
+  return x === null ? "-" : `${Math.round(x * 100)}%`;
 }
 function lifespan(x: number | null) {
-  return x === null ? "—" : `${x.toFixed(1)} days`;
+  return x === null ? "-" : `${x.toFixed(1)} days`;
 }
 
 function CampaignsTab({
@@ -301,7 +301,7 @@ function CampaignsTab({
             <select value={projectId} onChange={(e) => setProjectId(e.target.value)} required>
               <option value="">Select…</option>
               {projects.map((p) => (
-                <option key={p.id} value={p.id}>{p.name} — {p.domain}</option>
+                <option key={p.id} value={p.id}>{p.name}, {p.domain}</option>
               ))}
             </select>
           </label>

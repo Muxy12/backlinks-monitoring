@@ -470,7 +470,7 @@ const MAIN = `
   <div class="wrap split">
     <div>
       <h2 id="ins-h">The data you need, nothing you don't</h2>
-      <p>See referring domains, anchor text distribution, link attributes and link age in one view. We show you what's measurable and don't hand you an opaque "toxic score" to guess at — we'd rather point you to <a href="https://developers.google.com/search/docs/essentials/spam-policies" rel="nofollow noopener" target="_blank">Google's own guidance on link spam</a> than make one up.</p>
+      <p>See referring domains, anchor text distribution, link attributes and link age in one view. We show you what's measurable and don't hand you an opaque "toxic score" to guess at, we'd rather point you to <a href="https://developers.google.com/search/docs/essentials/spam-policies" rel="nofollow noopener" target="_blank">Google's own guidance on link spam</a> than make one up.</p>
     </div>
     <div class="ph" role="img" aria-label="Backlink profile view">IMAGE PLACEHOLDER<small>Backlink profile table / chart · 900×700</small></div>
   </div>
@@ -563,7 +563,7 @@ const MAIN = `
   <div class="wrap">
     <div class="center">
       <h2 id="price-h">Simple pricing, based on links monitored</h2>
-      <p class="lead">Every plan includes a 10-day free trial — no credit card — and checks every backlink every 48 hours.</p>
+      <p class="lead">Every plan includes a 10-day free trial, no credit card, and checks every backlink every 48 hours.</p>
     </div>
     <div class="plans">
       <div class="plan"><h3>Starter</h3><div class="price-block price-monthly"><div class="price">$29<small>/mo</small></div><div class="per">billed monthly</div></div><div class="limits"><span><b>500</b> backlinks</span><span><b>3</b> projects</span><span><b>1</b> user</span></div><a class="btn ghost" href="/register">Start free trial</a></div>

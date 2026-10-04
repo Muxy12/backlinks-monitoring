@@ -10,7 +10,7 @@ const LOGO = "https://ye8jhaekbbcviws9.public.blob.vercel-storage.com/logo-linkp
 const PREVIEW = "https://ye8jhaekbbcviws9.public.blob.vercel-storage.com/banniere-dashboard-linkpulz.webp";
 
 const FEATURES: { icon: string; title: string; body: string }[] = [
-  { icon: "48h", title: "Checks every 48 hours", body: "Every backlink you track is re-checked on a fixed schedule — automatically." },
+  { icon: "48h", title: "Checks every 48 hours", body: "Every backlink you track is re-checked on a fixed schedule, automatically." },
   { icon: "🔔", title: "Instant change alerts", body: "Know the moment a link is lost, redirected, nofollowed, noindexed or broken." },
   { icon: "🔗", title: "Lost & broken detection", body: "Catch links that quietly disappear or start pointing to error pages." },
   { icon: "📊", title: "Campaigns, costs & reports", body: "Tie links to campaigns and budgets, and prove what you earned or paid for." },
@@ -66,7 +66,7 @@ export function WaitlistLanding() {
           <span className="wl-badge"><span className="wl-dot" />Launching soon</span>
           <h1>Never lose a backlink in silence again.</h1>
           <p className="wl-lead">
-            LinkPulz watches every backlink you earn or buy — automatic checks every 48 hours and an
+            LinkPulz watches every backlink you earn or buy, automatic checks every 48 hours and an
             alert the moment a link is lost, nofollowed, redirected or broken. We're putting the
             finishing touches on it now.
           </p>
@@ -75,7 +75,7 @@ export function WaitlistLanding() {
             <div className="wl-done" role="status">
               <div className="wl-check" aria-hidden="true">✓</div>
               <h2>{already ? "You're already on the list" : "You're on the list!"}</h2>
-              <p>We'll email you the moment early access opens. No spam in the meantime — promise.</p>
+              <p>We'll email you the moment early access opens. No spam in the meantime, promise.</p>
             </div>
           ) : (
             <>

@@ -166,7 +166,7 @@ export default function CompetitorsPage() {
               {projects.length > 0 && (
                 <select value={projectId ?? ""} onChange={(e) => setProjectId(e.target.value)}>
                   {projects.map((p) => (
-                    <option key={p.id} value={p.id}>{p.name} — {p.domain}</option>
+                    <option key={p.id} value={p.id}>{p.name}, {p.domain}</option>
                   ))}
                 </select>
               )}
@@ -216,7 +216,7 @@ export default function CompetitorsPage() {
                 </div>
                 <div style={{ marginBottom: 16 }}>
                   <p className="muted" style={{ marginBottom: 6 }}>
-                    Import discovered backlinks — one per line: <code>source_url,target_url,anchor,rel</code>
+                    Import discovered backlinks, one per line: <code>source_url,target_url,anchor,rel</code>
                   </p>
                   <textarea
                     className="bl-search"
@@ -241,7 +241,7 @@ export default function CompetitorsPage() {
                         <tr key={b.id}>
                           <td><span className="badge" style={{ "--st": statusColor(b.status) } as CSSProperties}><span className="dot" />{statusLabel(b.status)}</span></td>
                           <td className="mono" title={b.source_url}>{b.source_domain}</td>
-                          <td>{b.detected_anchor_text ?? b.expected_anchor_text ?? "—"}</td>
+                          <td>{b.detected_anchor_text ?? b.expected_anchor_text ?? "-"}</td>
                           <td>{b.expected_rel_type}</td>
                         </tr>
                       ))}
@@ -262,7 +262,7 @@ export default function CompetitorsPage() {
               <option value={3}>Links ≥ 3 competitors</option>
             </select>
           </div>
-          <p className="muted">Domains that link to your competitors but not to you — outreach opportunities.</p>
+          <p className="muted">Domains that link to your competitors but not to you, outreach opportunities.</p>
           {gap.length === 0 ? (
             <p className="muted">No gap domains yet (import competitor backlinks to populate this).</p>
           ) : (

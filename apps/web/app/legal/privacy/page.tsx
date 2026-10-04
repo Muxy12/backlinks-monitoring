@@ -19,18 +19,18 @@ export default function PrivacyPage() {
       <h2>Information we collect</h2>
       <ul>
         <li>
-          <strong>Account data</strong> — your name, email address and a securely hashed password.
+          <strong>Account data</strong>, your name, email address and a securely hashed password.
         </li>
         <li>
-          <strong>Workspace content</strong> — the projects, backlinks, competitors, campaigns,
+          <strong>Workspace content</strong>, the projects, backlinks, competitors, campaigns,
           clients and notes you create, and the URLs you ask us to monitor.
         </li>
         <li>
-          <strong>Monitoring results</strong> — HTTP status, anchor text, rel attributes, redirects
+          <strong>Monitoring results</strong>, HTTP status, anchor text, rel attributes, redirects
           and timestamps we fetch from the public web for the URLs you track.
         </li>
         <li>
-          <strong>Technical data</strong> — a session cookie and standard server logs (IP, user
+          <strong>Technical data</strong>, a session cookie and standard server logs (IP, user
           agent, timestamps) used to operate and secure the Service.
         </li>
       </ul>
@@ -53,7 +53,7 @@ export default function PrivacyPage() {
 
       <h2>Sub-processors</h2>
       <p>
-        We rely on a small number of infrastructure providers to run the Service — application
+        We rely on a small number of infrastructure providers to run the Service, application
         hosting, database hosting, and (for paid plans) payment processing. These providers process
         data only on our instructions and under appropriate data-protection terms.
       </p>

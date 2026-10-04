@@ -110,7 +110,7 @@ function ResultCard({ result }: { result: BacklinkCheckResult }) {
       <dl className="checker-detail">
         <div>
           <dt>Anchor text</dt>
-          <dd>{result.anchor_text ?? "—"}</dd>
+          <dd>{result.anchor_text ?? "-"}</dd>
         </div>
         <div>
           <dt>Link type</dt>
@@ -118,7 +118,7 @@ function ResultCard({ result }: { result: BacklinkCheckResult }) {
         </div>
         <div>
           <dt>rel</dt>
-          <dd>{result.rel && result.rel.length ? result.rel.join(", ") : "—"}</dd>
+          <dd>{result.rel && result.rel.length ? result.rel.join(", ") : "-"}</dd>
         </div>
         <div>
           <dt>Source indexable</dt>

@@ -51,7 +51,7 @@ export default function InvitePage() {
         <h1>Join workspace</h1>
         {phase === "loading" && <p className="sub">Checking your invite…</p>}
         {phase === "accepting" && <p className="sub">Accepting…</p>}
-        {phase === "done" && <p className="sub">You&apos;re in — taking you to the dashboard.</p>}
+        {phase === "done" && <p className="sub">You&apos;re in, taking you to the dashboard.</p>}
         {phase === "need-login" && (
           <>
             <p className="sub">Log in (or create an account) with the email your invite was sent to, then reopen this link.</p>

@@ -14,7 +14,7 @@ export const metadata: Metadata = {
     type: "website",
     title: "Broken Backlinks: Find & Fix Broken Links | LinkPulz",
     description:
-      "Find broken backlinks — links pointing to errors and links on pages that error — fix them, and monitor them automatically.",
+      "Find broken backlinks, links pointing to errors and links on pages that error, fix them, and monitor them automatically.",
     url: "/broken-backlinks",
   },
 };
@@ -141,8 +141,8 @@ const MAIN = `
       <h2 id="find-h">How to find broken backlinks</h2>
       <p>For each backlink, there are two statuses that matter, not one:</p>
       <ul class="check">
-        <li>The HTTP status of the <b>page that links to you</b> — does it load, redirect, or error?</li>
-        <li>The HTTP status of the <b>URL it points to</b> — does your target page still exist?</li>
+        <li>The HTTP status of the <b>page that links to you</b>, does it load, redirect, or error?</li>
+        <li>The HTTP status of the <b>URL it points to</b>, does your target page still exist?</li>
         <li>Any <b>redirect</b> on either side that sends visitors somewhere unexpected.</li>
       </ul>
       <p>Checking both by hand is tedious; checking both across a whole portfolio is where a <a href="/verify-backlinks">verification tool</a> or ongoing monitoring earns its keep.</p>
@@ -178,9 +178,9 @@ const MAIN = `
       <h2 id="vs-h">Broken, lost or changed?</h2>
       <p>Problem links come in a few shapes, and each has its own fix:</p>
       <ul class="check">
-        <li><b>Broken</b> — the link errors, or sits on a page that errors. Covered here.</li>
-        <li><b>Lost</b> — the link has been removed from the page. See <a href="/lost-backlinks">lost backlinks</a>.</li>
-        <li><b>Changed</b> — the anchor, target or rel attribute changed. See the <a href="/backlink-health-check">backlink health check</a>.</li>
+        <li><b>Broken</b>, the link errors, or sits on a page that errors. Covered here.</li>
+        <li><b>Lost</b>, the link has been removed from the page. See <a href="/lost-backlinks">lost backlinks</a>.</li>
+        <li><b>Changed</b>, the anchor, target or rel attribute changed. See the <a href="/backlink-health-check">backlink health check</a>.</li>
       </ul>
     </div>
   </div>

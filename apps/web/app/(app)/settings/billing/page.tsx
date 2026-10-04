@@ -125,9 +125,9 @@ export default function BillingPage() {
           {!accessActive ? (
             <p style={{ margin: 0 }}>
               {status === "none" ? (
-                <><b>Choose a plan to start monitoring.</b> Your workspace is ready — pick a plan below to begin.</>
+                <><b>Choose a plan to start monitoring.</b> Your workspace is ready, pick a plan below to begin.</>
               ) : (
-                <><b>Your free trial has ended.</b> Choose a plan below to resume monitoring — your backlinks and history are preserved.</>
+                <><b>Your free trial has ended.</b> Choose a plan below to resume monitoring, your backlinks and history are preserved.</>
               )}
             </p>
           ) : (
@@ -152,7 +152,7 @@ export default function BillingPage() {
             <UsageMeter label="Team seats" item={usage.seats} />
           </div>
           <p className="muted" style={{ fontSize: 12, margin: "4px 0 0" }}>
-            Reaching a limit never stops monitoring or deletes data — you just can’t add new ones until you upgrade.
+            Reaching a limit never stops monitoring or deletes data, you just can’t add new ones until you upgrade.
           </p>
         </div>
       )}

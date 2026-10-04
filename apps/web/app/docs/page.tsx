@@ -44,7 +44,7 @@ export default function DocsPage() {
       <p>
         A <strong>project</strong> represents one target site (a domain you want links pointing to).
         Agencies can group projects under <strong>clients</strong> to keep work organized and report
-        per client. Every project, backlink and report is scoped to your workspace — data is never
+        per client. Every project, backlink and report is scoped to your workspace, data is never
         shared across organizations.
       </p>
 
@@ -52,7 +52,7 @@ export default function DocsPage() {
       <p>A backlink is a link from a source page to your target URL. For each one LinkPulz tracks:</p>
       <ul>
         <li>Source URL &amp; domain, target URL &amp; domain, and anchor text.</li>
-        <li><code>rel</code> attributes — <code>nofollow</code>, <code>sponsored</code>, <code>ugc</code> — and whether the link is dofollow.</li>
+        <li><code>rel</code> attributes, <code>nofollow</code>, <code>sponsored</code>, <code>ugc</code>, and whether the link is dofollow.</li>
         <li>Link type (text or image, with alt text), HTTP status of source and target, and the final URL after redirects.</li>
         <li>First seen, last seen, last checked and (if lost) lost-at timestamps.</li>
         <li>Optional campaign, publisher, cost and warranty metadata.</li>
@@ -64,11 +64,11 @@ export default function DocsPage() {
         moves through clear states:
       </p>
       <ul>
-        <li><strong>live</strong> — present and dofollow as expected.</li>
-        <li><strong>nofollow / changed</strong> — still present but an attribute or anchor changed.</li>
-        <li><strong>suspected_lost</strong> — missing on a single check; not yet confirmed lost.</li>
-        <li><strong>lost</strong> — confirmed absent after repeated checks.</li>
-        <li><strong>source_error / target_error / redirected</strong> — transient or structural issues.</li>
+        <li><strong>live</strong>, present and dofollow as expected.</li>
+        <li><strong>nofollow / changed</strong>, still present but an attribute or anchor changed.</li>
+        <li><strong>suspected_lost</strong>, missing on a single check; not yet confirmed lost.</li>
+        <li><strong>lost</strong>, confirmed absent after repeated checks.</li>
+        <li><strong>source_error / target_error / redirected</strong>, transient or structural issues.</li>
       </ul>
       <div className="prose-note">
         A single failed request never immediately marks a link as lost. Confirmation is asymmetric:
@@ -79,7 +79,7 @@ export default function DocsPage() {
       <h2 id="competitors">Competitors</h2>
       <p>
         Add competitor domains to a project to track their referring domains alongside yours. The
-        <strong> backlink gap</strong> shows domains that link to competitors but not to you —
+        <strong> backlink gap</strong> shows domains that link to competitors but not to you -
         prioritized outreach targets.
       </p>
 
@@ -97,12 +97,12 @@ export default function DocsPage() {
       </p>
       <ul>
         <li>
-          <strong>Seed &amp; expand</strong> — import known referring domains (e.g. from a Google
+          <strong>Seed &amp; expand</strong>, import known referring domains (e.g. from a Google
           Search Console &quot;top linking sites&quot; export); our crawler visits each to turn
           domain-level hints into real source→target backlinks.
         </li>
         <li>
-          <strong>External providers</strong> — connect a reverse-index provider (e.g. DataForSEO, or
+          <strong>External providers</strong>, connect a reverse-index provider (e.g. DataForSEO, or
           Bing Webmaster for your own verified site) to pull in backlinks you don&apos;t know about
           yet. Providers are optional and only run once their API keys are configured.
         </li>
@@ -111,7 +111,7 @@ export default function DocsPage() {
       <h2 id="graph">The link graph</h2>
       <p>
         The <a href="/graph">graph view</a> renders your backlinks as an interactive 2D or 3D network
-        — target, referring domains and pages, competitors and tier&nbsp;2 support — so you can see
+       , target, referring domains and pages, competitors and tier&nbsp;2 support, so you can see
         clusters and concentration at a glance.
       </p>
 

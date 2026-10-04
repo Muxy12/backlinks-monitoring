@@ -178,7 +178,7 @@ export default function DashboardPage() {
       !confirm(
         "Auto-tag this project's backlinks by footprint?\n\n" +
           "Adds a category tag to each link: comment (ninja linking), pbn, forum-profile, self-built, or earned. " +
-          "Reversible — you can retag or remove tags afterward.",
+          "Reversible, you can retag or remove tags afterward.",
       )
     )
       return;
@@ -194,7 +194,7 @@ export default function DashboardPage() {
       .sort((a, b) => (c[b] ?? 0) - (c[a] ?? 0))
       .map((k) => `${k} ${c[k]}`)
       .join(" · ");
-    toast(`Tagged ${res.data.total} backlinks — ${summary}`, "success");
+    toast(`Tagged ${res.data.total} backlinks, ${summary}`, "success");
     // Refresh the org tag list + the illustrations so the new tags show up.
     const [tags, dash] = await Promise.all([orgApi.tags(orgId), orgApi.dashboard(orgId, periodDays || undefined)]);
     if (tags.ok) setOrgTags(tags.data);
@@ -311,7 +311,7 @@ export default function DashboardPage() {
   if (!me) return null;
 
   const money = (rows: { currency: string; amount: string }[]) =>
-    rows.length === 0 ? "—" : rows.map((r) => `${r.amount} ${r.currency}`).join(" · ");
+    rows.length === 0 ? "-" : rows.map((r) => `${r.amount} ${r.currency}`).join(" · ");
 
   // The client these backlinks belong to: the explicit client filter, else the
   // selected project's client.
@@ -598,7 +598,7 @@ export default function DashboardPage() {
                     title={clientFilter ? "Clear the client filter to pick a project" : "Project"}
                   >
                     {projects.map((p) => (
-                      <option key={p.id} value={p.id}>{p.name} — {p.domain}</option>
+                      <option key={p.id} value={p.id}>{p.name}, {p.domain}</option>
                     ))}
                   </select>
                 )}
@@ -729,7 +729,7 @@ export default function DashboardPage() {
                       <td><span className="badge" style={{ "--st": statusColor(b.status) } as CSSProperties}><span className="dot" />{statusLabel(b.status)}</span></td>
                       <td className="cell-domain" title={b.source_url}>{b.source_domain}</td>
                       <td className="cell-domain target" title={b.target_url}>{b.target_domain}</td>
-                      <td className="cell-anchor" title={b.detected_anchor_text ?? b.expected_anchor_text ?? ""}>{b.detected_anchor_text ?? b.expected_anchor_text ?? "—"}</td>
+                      <td className="cell-anchor" title={b.detected_anchor_text ?? b.expected_anchor_text ?? ""}>{b.detected_anchor_text ?? b.expected_anchor_text ?? "-"}</td>
                       <td>
                         <span className="bl-tags">
                           {(pageTags[b.id] ?? []).map((t) => (
@@ -745,7 +745,7 @@ export default function DashboardPage() {
                               {t.name}
                             </span>
                           ))}
-                          {(pageTags[b.id] ?? []).length === 0 && <span className="muted">—</span>}
+                          {(pageTags[b.id] ?? []).length === 0 && <span className="muted">-</span>}
                         </span>
                       </td>
                       <td><RelChips b={b} /></td>
@@ -803,7 +803,7 @@ export default function DashboardPage() {
                   onChange={(e) => setAddForm((f) => ({ ...f, project_id: e.target.value }))}
                 >
                   {projects.map((p) => (
-                    <option key={p.id} value={p.id}>{p.name} — {p.domain}</option>
+                    <option key={p.id} value={p.id}>{p.name}, {p.domain}</option>
                   ))}
                 </select>
               </label>
@@ -919,21 +919,21 @@ export default function DashboardPage() {
             <dl className="detail-grid">
               <div><dt>Source</dt><dd className="mono br">{selected.source_url}</dd></div>
               <div><dt>Target</dt><dd className="mono br">{selected.target_url}</dd></div>
-              <div><dt>Target final URL</dt><dd className="mono br">{selected.target_final_url ?? "—"}</dd></div>
-              <div><dt>Link URL (found)</dt><dd className="mono br">{selected.detected_target_url ?? "—"}</dd></div>
-              <div><dt>Anchor (found)</dt><dd>{selected.detected_anchor_text ?? "—"}</dd></div>
-              <div><dt>Anchor (expected)</dt><dd>{selected.expected_anchor_text ?? "—"}</dd></div>
-              <div><dt>Rel (found)</dt><dd className="mono">{selected.detected_rel?.join(" ") || "—"}</dd></div>
+              <div><dt>Target final URL</dt><dd className="mono br">{selected.target_final_url ?? "-"}</dd></div>
+              <div><dt>Link URL (found)</dt><dd className="mono br">{selected.detected_target_url ?? "-"}</dd></div>
+              <div><dt>Anchor (found)</dt><dd>{selected.detected_anchor_text ?? "-"}</dd></div>
+              <div><dt>Anchor (expected)</dt><dd>{selected.expected_anchor_text ?? "-"}</dd></div>
+              <div><dt>Rel (found)</dt><dd className="mono">{selected.detected_rel?.join(" ") || "-"}</dd></div>
               <div><dt>dofollow / nofollow</dt><dd>{yn(selected.is_dofollow)} / {yn(selected.is_nofollow)}</dd></div>
               <div><dt>sponsored / ugc</dt><dd>{yn(selected.is_sponsored)} / {yn(selected.is_ugc)}</dd></div>
-              <div><dt>Link type</dt><dd>{selected.link_type ?? "—"}</dd></div>
-              <div><dt>Image alt</dt><dd>{selected.link_type === "image" ? (selected.image_alt || "(empty)") : "—"}</dd></div>
+              <div><dt>Link type</dt><dd>{selected.link_type ?? "-"}</dd></div>
+              <div><dt>Image alt</dt><dd>{selected.link_type === "image" ? (selected.image_alt || "(empty)") : "-"}</dd></div>
               <div><dt>HTTP source / target</dt><dd className="mono">{httpPair(selected)}</dd></div>
               <div><dt>First seen</dt><dd>{fmtLong(selected.first_checked_at)}</dd></div>
               <div><dt>Last seen</dt><dd>{fmtLong(selected.last_seen_at)}</dd></div>
               <div><dt>Last checked</dt><dd>{fmtLong(selected.last_checked_at)}</dd></div>
               <div><dt>Lost at</dt><dd>{fmtLong(selected.lost_at)}</dd></div>
-              <div><dt>Cost</dt><dd>{selected.cost ? `${selected.cost} ${selected.currency ?? ""}` : "—"}</dd></div>
+              <div><dt>Cost</dt><dd>{selected.cost ? `${selected.cost} ${selected.currency ?? ""}` : "-"}</dd></div>
             </dl>
             {occurrences.length > 0 && (
               <>
@@ -946,7 +946,7 @@ export default function DashboardPage() {
                           {o.anchor_text ||
                             (o.link_type === "image"
                               ? `[image${o.image_alt ? ": " + o.image_alt : ""}]`
-                              : "—")}
+                              : "-")}
                         </span>
                         <span className="occ-place">{o.placement}</span>
                       </div>
@@ -966,7 +966,7 @@ export default function DashboardPage() {
                 </ul>
               </>
             )}
-            <h3 className="drawer-sub">Tier 2 — reinforcing links ({tier2.length})</h3>
+            <h3 className="drawer-sub">Tier 2, reinforcing links ({tier2.length})</h3>
             {tier2.length === 0 ? (
               <p className="muted">No Tier-2 links yet.</p>
             ) : (
@@ -1045,23 +1045,23 @@ export default function DashboardPage() {
 }
 
 function fmtShort(s?: string | null): string {
-  if (!s) return "—";
+  if (!s) return "-";
   const d = new Date(s);
-  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return Number.isNaN(d.getTime()) ? "-" : d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 function fmtLong(s?: string | null): string {
-  if (!s) return "—";
+  if (!s) return "-";
   const d = new Date(s);
-  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleString();
+  return Number.isNaN(d.getTime()) ? "-" : d.toLocaleString();
 }
 function httpPair(b: BacklinkView): string {
   const s = b.source_http_status ?? null;
   const t = b.target_http_status ?? null;
-  if (s == null && t == null) return "—";
-  return `${s ?? "—"} / ${t ?? "—"}`;
+  if (s == null && t == null) return "-";
+  return `${s ?? "-"} / ${t ?? "-"}`;
 }
 function yn(v?: boolean | null): string {
-  return v == null ? "—" : v ? "yes" : "no";
+  return v == null ? "-" : v ? "yes" : "no";
 }
 function RelChips({ b }: { b: BacklinkView }) {
   const rel = b.detected_rel;

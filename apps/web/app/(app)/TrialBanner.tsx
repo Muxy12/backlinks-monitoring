@@ -55,7 +55,7 @@ export function TrialBanner({ orgId }: { orgId: string | null }) {
           {neverStarted ? (
             <><b>Choose a plan to start monitoring.</b> Your workspace is ready.</>
           ) : (
-            <><b>Your free trial has ended.</b> Choose a plan to resume monitoring — your backlinks and history are safe.</>
+            <><b>Your free trial has ended.</b> Choose a plan to resume monitoring, your backlinks and history are safe.</>
           )}
         </span>
         <a className="tb-cta" href="/settings/billing">Choose a plan</a>

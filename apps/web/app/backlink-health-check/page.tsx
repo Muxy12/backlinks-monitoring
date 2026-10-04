@@ -74,9 +74,9 @@ const JSONLD = `{
       "@type": "FAQPage",
       "@id": "https://www.linkpulz.com/backlink-health-check#faq",
       "mainEntity": [
-        { "@type": "Question", "name": "What is a backlink health check?", "acceptedAnswer": { "@type": "Answer", "text": "A backlink health check reviews the current state of every link pointing to your site — which are live, lost, broken, redirected, nofollow or changed — and summarises it so you can see what needs attention first." } },
+        { "@type": "Question", "name": "What is a backlink health check?", "acceptedAnswer": { "@type": "Answer", "text": "A backlink health check reviews the current state of every link pointing to your site, which are live, lost, broken, redirected, nofollow or changed, and summarises it so you can see what needs attention first." } },
         { "@type": "Question", "name": "How is a backlink health score calculated?", "acceptedAnswer": { "@type": "Answer", "text": "A health score summarises the share of your monitored links that are healthy versus those with a problem. [TO CONFIRM: exact LinkPulz calculation]" } },
-        { "@type": "Question", "name": "How do I run a backlink health check?", "acceptedAnswer": { "@type": "Answer", "text": "Add the links you want to track to LinkPulz. It checks each linking page on a schedule, groups the results by status, and shows what changed — so a health check becomes something that runs continuously rather than once. [TO CONFIRM: check frequency]" } },
+        { "@type": "Question", "name": "How do I run a backlink health check?", "acceptedAnswer": { "@type": "Answer", "text": "Add the links you want to track to LinkPulz. It checks each linking page on a schedule, groups the results by status, and shows what changed, so a health check becomes something that runs continuously rather than once. [TO CONFIRM: check frequency]" } },
         { "@type": "Question", "name": "What does a healthy backlink profile look like?", "acceptedAnswer": { "@type": "Answer", "text": "Most links live, few lost or broken, attributes stable over time, and no silent drift to nofollow or noindex. A health check surfaces the exceptions so you can act on them." } },
         { "@type": "Question", "name": "How do I improve my backlink health?", "acceptedAnswer": { "@type": "Answer", "text": "Recover lost links while the change is fresh, fix broken destinations with redirects, ask publishers to undo unexpected nofollow or anchor changes, and keep monitoring so new problems reach you early." } },
         { "@type": "Question", "name": "How often should I check my backlink health?", "acceptedAnswer": { "@type": "Answer", "text": "Links can change at any time, so a one-off audit goes stale quickly. Continuous monitoring keeps the picture current and alerts you to changes as they happen. [TO CONFIRM: check frequency and alert channels]" } }
@@ -137,7 +137,7 @@ const MAIN = `
   <div class="wrap">
     <div class="center">
       <h2 id="measures-h">What a backlink health check measures</h2>
-      <p class="lead">A single link is either there or not. A profile is a distribution — and the distribution is what tells you where to spend your time.</p>
+      <p class="lead">A single link is either there or not. A profile is a distribution, and the distribution is what tells you where to spend your time.</p>
     </div>
     <div class="cards">
       <div class="card"><div class="ic">✓</div><h3>Healthy</h3><p>Live, followed, pointing at the right page with the agreed anchor.</p></div>
@@ -175,8 +175,8 @@ const MAIN = `
       <h2 id="improve-h">How to improve your backlink health</h2>
       <p>A health score only matters if it points you at action. The fixes follow the categories:</p>
       <ul class="check">
-        <li><b>Recover lost links.</b> Contact the owner while the change is fresh — see <a href="/lost-backlinks">lost backlinks</a>.</li>
-        <li><b>Fix broken destinations.</b> Add a 301 redirect, or ask the site to update the link — see <a href="/broken-backlinks">broken backlinks</a>.</li>
+        <li><b>Recover lost links.</b> Contact the owner while the change is fresh, see <a href="/lost-backlinks">lost backlinks</a>.</li>
+        <li><b>Fix broken destinations.</b> Add a 301 redirect, or ask the site to update the link, see <a href="/broken-backlinks">broken backlinks</a>.</li>
         <li><b>Undo unexpected changes.</b> Ask publishers to restore a dofollow link or the agreed anchor.</li>
         <li><b>Catch new problems early.</b> Monitoring means the next drop reaches you in minutes, not months.</li>
       </ul>
@@ -189,9 +189,9 @@ const MAIN = `
   <div class="wrap">
     <div class="center"><h2 id="faq-h">Backlink health check: frequently asked questions</h2></div>
     <div class="faq">
-      <details><summary>What is a backlink health check?</summary><p>A backlink health check reviews the current state of every link pointing to your site — which are live, lost, broken, redirected, nofollow or changed — and summarises it so you can see what needs attention first.</p></details>
+      <details><summary>What is a backlink health check?</summary><p>A backlink health check reviews the current state of every link pointing to your site, which are live, lost, broken, redirected, nofollow or changed, and summarises it so you can see what needs attention first.</p></details>
       <details><summary>How is a backlink health score calculated?</summary><p>A health score summarises the share of your monitored links that are healthy versus those with a problem. <span class="tc">TO CONFIRM: exact LinkPulz calculation</span></p></details>
-      <details><summary>How do I run a backlink health check?</summary><p>Add the links you want to track to LinkPulz. It checks each linking page on a schedule, groups the results by status, and shows what changed — so a health check becomes something that runs continuously rather than once. <span class="tc">TO CONFIRM: check frequency</span></p></details>
+      <details><summary>How do I run a backlink health check?</summary><p>Add the links you want to track to LinkPulz. It checks each linking page on a schedule, groups the results by status, and shows what changed, so a health check becomes something that runs continuously rather than once. <span class="tc">TO CONFIRM: check frequency</span></p></details>
       <details><summary>What does a healthy backlink profile look like?</summary><p>Most links live, few lost or broken, attributes stable over time, and no silent drift to nofollow or noindex. A health check surfaces the exceptions so you can act on them.</p></details>
       <details><summary>How do I improve my backlink health?</summary><p>Recover lost links while the change is fresh, fix broken destinations with redirects, ask publishers to undo unexpected nofollow or anchor changes, and keep monitoring so new problems reach you early.</p></details>
       <details><summary>How often should I check my backlink health?</summary><p>Links can change at any time, so a one-off audit goes stale quickly. Continuous monitoring keeps the picture current and alerts you to changes as they happen. <span class="tc">TO CONFIRM: check frequency and alert channels</span></p></details>
