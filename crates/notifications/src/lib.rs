@@ -231,6 +231,26 @@ pub mod resend {
             Ok((k, _)) => k,
             Err(_) => return Ok(()),
         };
+        add_contact(&api_key, email).await
+    }
+
+    /// Like [`add_to_audience`] but surfaces "not configured" as an error instead
+    /// of a silent no-op. Used by the admin backfill so its result reflects what
+    /// actually happened (a no-op must not be reported as a successful sync).
+    pub async fn add_to_audience_strict(email: &str) -> Result<(), String> {
+        let (api_key, _) = config()?;
+        add_contact(&api_key, email).await
+    }
+
+    /// The audience id contacts are written to, so the admin UI can show which
+    /// audience a sync targeted (and reveal a misconfigured `RESEND_AUDIENCE_ID`).
+    pub fn audience_target() -> String {
+        audience_id()
+    }
+
+    /// POST one contact to the configured audience. Ok on 2xx or an already
+    /// existing contact; Err with the Resend detail otherwise.
+    async fn add_contact(api_key: &str, email: &str) -> Result<(), String> {
         let url = format!(
             "https://api.resend.com/audiences/{}/contacts",
             audience_id()
@@ -238,7 +258,7 @@ pub mod resend {
         let body = serde_json::json!({ "email": email, "unsubscribed": false });
         let resp = http()?
             .post(&url)
-            .bearer_auth(&api_key)
+            .bearer_auth(api_key)
             .json(&body)
             .send()
             .await

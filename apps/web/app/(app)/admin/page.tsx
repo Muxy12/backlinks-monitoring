@@ -269,7 +269,10 @@ export default function AdminPage() {
       setErr(res.detail);
       return;
     }
-    alert(`Synced ${res.data.synced} of ${res.data.total} to Resend${res.data.failed ? ` · ${res.data.failed} failed` : ""}.`);
+    const d = res.data;
+    let text = `Synced ${d.synced} of ${d.total} to Resend${d.failed ? ` · ${d.failed} failed` : ""}.\nAudience: ${d.audience}`;
+    if (d.error) text += `\n\nFirst error: ${d.error}`;
+    alert(text);
   };
 
   const changeFeedbackStatus = async (id: string, status: string) => {

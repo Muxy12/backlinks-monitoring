@@ -686,6 +686,12 @@ pub struct AudienceSyncResult {
     pub synced: i64,
     pub failed: i64,
     pub total: i64,
+    /// The Resend audience id contacts were written to (RESEND_AUDIENCE_ID or the
+    /// built-in default), so a wrong target is visible in the result.
+    pub audience: String,
+    /// First real error encountered (e.g. "email not configured" or the Resend
+    /// HTTP response); null when every add succeeded.
+    pub error: Option<String>,
 }
 
 /// POST /v1/admin/waitlist/sync-audience — push every stored signup into the
@@ -704,15 +710,22 @@ pub async fn sync_waitlist_audience(
     let emails = db::repositories::waitlist::all_emails(&state.pool).await?;
     let total = emails.len() as i64;
     let (mut synced, mut failed) = (0i64, 0i64);
+    let mut error: Option<String> = None;
     for email in &emails {
-        match notifications::resend::add_to_audience(email).await {
+        // Strict: a missing email config surfaces as an error here (never a
+        // silent no-op counted as "synced"), and real Resend errors are kept.
+        match notifications::resend::add_to_audience_strict(email).await {
             Ok(()) => synced += 1,
             Err(e) => {
                 failed += 1;
+                if error.is_none() {
+                    error = Some(e.clone());
+                }
                 tracing::warn!(error = %e, "waitlist audience sync failed");
             }
         }
     }
+    let audience = notifications::resend::audience_target();
     let _ = audit::log(
         &state.pool,
         None,
@@ -722,13 +735,15 @@ pub async fn sync_waitlist_audience(
         Some("waitlist"),
         None,
         None,
-        Some(json!({ "synced": synced, "failed": failed, "total": total })),
+        Some(json!({ "synced": synced, "failed": failed, "total": total, "audience": audience.clone() })),
     )
     .await;
     Ok(Json(AudienceSyncResult {
         synced,
         failed,
         total,
+        audience,
+        error,
     }))
 }
 
