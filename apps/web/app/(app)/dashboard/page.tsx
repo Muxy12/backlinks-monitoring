@@ -237,19 +237,26 @@ export default function DashboardPage() {
     setBacklinks((bs) => bs.map((x) => (x.id === res.data.id ? res.data : x)));
   }
 
-  // Compact chips for the list "Class" column: the set dimensions + the effective
-  // attribute (manual override, else crawler-detected).
-  function classCell(b: BacklinkView) {
-    const attr = b.link_attribute ?? b.link_attribute_auto ?? null;
-    const vals = [b.acquisition, attr, b.placement, b.link_format].filter(Boolean) as string[];
-    if (vals.length === 0) return <span className="muted">-</span>;
-    return (
-      <span className="bl-tags">
-        {vals.map((v, i) => (
-          <span key={i} className="bl-tag">{classLabel(v)}</span>
-        ))}
-      </span>
-    );
+  // One classification value as a chip (or "-" when unset).
+  function classChip(slug?: string | null) {
+    return slug ? <span className="bl-tag">{classLabel(slug)}</span> : <span className="muted">-</span>;
+  }
+
+  // Attribute cell: the manual override if set, else the crawler-detected value
+  // (shown muted + italic to mark it as auto). "-" when never observed.
+  function attrCell(b: BacklinkView) {
+    if (b.link_attribute) return <span className="bl-tag">{classLabel(b.link_attribute)}</span>;
+    if (b.link_attribute_auto)
+      return (
+        <span
+          className="bl-tag"
+          style={{ opacity: 0.65, fontStyle: "italic" }}
+          title="Auto-detected from the crawler (no manual override)"
+        >
+          {classLabel(b.link_attribute_auto)}
+        </span>
+      );
+    return <span className="muted">-</span>;
   }
 
   async function openDetail(b: BacklinkView) {
@@ -778,7 +785,10 @@ export default function DashboardPage() {
                     <th>Target</th>
                     <th>Anchor</th>
                     <th>Tags</th>
-                    <th>Class</th>
+                    <th>Acquisition</th>
+                    <th>Attribute</th>
+                    <th>Placement</th>
+                    <th>Format</th>
                     <th>Rel</th>
                     <th>HTTP</th>
                     <th>Checked</th>
@@ -787,7 +797,7 @@ export default function DashboardPage() {
                 <tbody>
                   {visibleBacklinks.length === 0 && (
                     <tr>
-                      <td colSpan={9} className="muted" style={{ padding: 16 }}>
+                      <td colSpan={12} className="muted" style={{ padding: 16 }}>
                         No backlinks from <b className="mono">{domainFilter}</b> in this view.
                       </td>
                     </tr>
@@ -816,7 +826,10 @@ export default function DashboardPage() {
                           {(pageTags[b.id] ?? []).length === 0 && <span className="muted">-</span>}
                         </span>
                       </td>
-                      <td>{classCell(b)}</td>
+                      <td>{classChip(b.acquisition)}</td>
+                      <td>{attrCell(b)}</td>
+                      <td>{classChip(b.placement)}</td>
+                      <td>{classChip(b.link_format)}</td>
                       <td><RelChips b={b} /></td>
                       <td className="mono">{httpPair(b)}</td>
                       <td className="mono">{fmtShort(b.last_checked_at)}</td>
