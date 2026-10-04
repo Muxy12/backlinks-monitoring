@@ -680,3 +680,54 @@ pub async fn resend_waitlist_confirmations(
         remaining,
     }))
 }
+
+#[derive(Serialize)]
+pub struct AudienceSyncResult {
+    pub synced: i64,
+    pub failed: i64,
+    pub total: i64,
+}
+
+/// POST /v1/admin/waitlist/sync-audience — push every stored signup into the
+/// Resend audience (mailing list). Idempotent (existing contacts are skipped),
+/// so it safely backfills emails captured before audience sync was wired, and
+/// re-running it is harmless. Admin only, CSRF-checked.
+pub async fn sync_waitlist_audience(
+    State(state): State<AppState>,
+    jar: CookieJar,
+    headers: HeaderMap,
+) -> Result<Json<AudienceSyncResult>, ApiError> {
+    let admin_user = require_admin(&state, &jar).await?;
+    let (_, session) = current(&state, &jar).await?;
+    check_csrf(&jar, &headers, &session)?;
+
+    let emails = db::repositories::waitlist::all_emails(&state.pool).await?;
+    let total = emails.len() as i64;
+    let (mut synced, mut failed) = (0i64, 0i64);
+    for email in &emails {
+        match notifications::resend::add_to_audience(email).await {
+            Ok(()) => synced += 1,
+            Err(e) => {
+                failed += 1;
+                tracing::warn!(error = %e, "waitlist audience sync failed");
+            }
+        }
+    }
+    let _ = audit::log(
+        &state.pool,
+        None,
+        Some(admin_user.id),
+        Some(admin_user.email.as_str()),
+        "admin.waitlist.sync_audience",
+        Some("waitlist"),
+        None,
+        None,
+        Some(json!({ "synced": synced, "failed": failed, "total": total })),
+    )
+    .await;
+    Ok(Json(AudienceSyncResult {
+        synced,
+        failed,
+        total,
+    }))
+}

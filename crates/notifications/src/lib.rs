@@ -203,4 +203,88 @@ pub mod resend {
         });
         post(&api_key, &body).await
     }
+
+    /// The Resend audience (mailing list) waitlist signups are stored in.
+    /// Overridable with `RESEND_AUDIENCE_ID`; defaults to the LinkPulz waitlist
+    /// audience so it works without extra config once the email key is set.
+    fn audience_id() -> String {
+        std::env::var("RESEND_AUDIENCE_ID")
+            .ok()
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| "f6725601-5a0f-4add-be5a-208944b518ac".to_string())
+    }
+
+    /// A short reqwest client shared by the audience calls.
+    fn http() -> Result<reqwest::Client, String> {
+        reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(20))
+            .build()
+            .map_err(|e| format!("http client: {e}"))
+    }
+
+    /// Add (upsert) a contact to the configured Resend audience. Best-effort and
+    /// idempotent: a no-op when email isn't configured, and an "already exists"
+    /// response counts as success so backfills and retries are safe. Marked
+    /// `unsubscribed:false` since the contact just opted into the waitlist.
+    pub async fn add_to_audience(email: &str) -> Result<(), String> {
+        let api_key = match config() {
+            Ok((k, _)) => k,
+            Err(_) => return Ok(()),
+        };
+        let url = format!(
+            "https://api.resend.com/audiences/{}/contacts",
+            audience_id()
+        );
+        let body = serde_json::json!({ "email": email, "unsubscribed": false });
+        let resp = http()?
+            .post(&url)
+            .bearer_auth(&api_key)
+            .json(&body)
+            .send()
+            .await
+            .map_err(|e| format!("resend audience request failed: {e}"))?;
+        let status = resp.status();
+        if status.is_success() {
+            return Ok(());
+        }
+        let detail = resp.text().await.unwrap_or_default();
+        if status == reqwest::StatusCode::CONFLICT || detail.contains("already exists") {
+            return Ok(());
+        }
+        Err(format!(
+            "resend audience HTTP {status}: {}",
+            detail.chars().take(200).collect::<String>()
+        ))
+    }
+
+    /// Remove a contact from the configured Resend audience by email. Best-effort;
+    /// a contact that is already gone (404) counts as success.
+    pub async fn remove_from_audience(email: &str) -> Result<(), String> {
+        let api_key = match config() {
+            Ok((k, _)) => k,
+            Err(_) => return Ok(()),
+        };
+        // The email is already normalized at capture and its characters (@ . + - _)
+        // are all valid in a URL path segment, so no extra encoding is needed.
+        let url = format!(
+            "https://api.resend.com/audiences/{}/contacts/{}",
+            audience_id(),
+            email
+        );
+        let resp = http()?
+            .delete(&url)
+            .bearer_auth(&api_key)
+            .send()
+            .await
+            .map_err(|e| format!("resend audience delete failed: {e}"))?;
+        let status = resp.status();
+        if status.is_success() || status == reqwest::StatusCode::NOT_FOUND {
+            return Ok(());
+        }
+        let detail = resp.text().await.unwrap_or_default();
+        Err(format!(
+            "resend audience HTTP {status}: {}",
+            detail.chars().take(200).collect::<String>()
+        ))
+    }
 }

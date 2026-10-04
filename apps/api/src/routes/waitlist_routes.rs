@@ -73,6 +73,12 @@ pub async fn join(
     // successful send we stamp confirmation_sent_at so the admin "resend pending"
     // action skips it; a failed send stays pending for a later retry.
     if created {
+        // Store the contact in the Resend audience (mailing list) so the list can
+        // be used for the launch broadcast. Best-effort: a failure or missing
+        // email config never fails the signup.
+        if let Err(e) = notifications::resend::add_to_audience(&email).await {
+            tracing::warn!(error = %e, "waitlist contact not added to resend audience");
+        }
         match notifications::waitlist::send_confirmation(&email, &token).await {
             Ok(()) => {
                 let _ = db::repositories::waitlist::mark_confirmed(&state.pool, &email).await;
@@ -125,6 +131,16 @@ pub async fn unsubscribe(
     if token.is_empty() || token.len() > 200 {
         return Err(ApiError::Validation("invalid token".into()));
     }
-    let removed = db::repositories::waitlist::unsubscribe(&state.pool, token).await?;
-    Ok(Json(UnsubscribeResponse { ok: true, removed }))
+    let removed_email = db::repositories::waitlist::unsubscribe(&state.pool, token).await?;
+    if let Some(email) = &removed_email {
+        // Keep the Resend audience in sync. Best-effort; a failure here still
+        // leaves the signup removed from our own list.
+        if let Err(e) = notifications::resend::remove_from_audience(email).await {
+            tracing::warn!(error = %e, "waitlist contact not removed from resend audience");
+        }
+    }
+    Ok(Json(UnsubscribeResponse {
+        ok: true,
+        removed: removed_email.is_some(),
+    }))
 }

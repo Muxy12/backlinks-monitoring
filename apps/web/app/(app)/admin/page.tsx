@@ -252,6 +252,22 @@ export default function AdminPage() {
     alert(`Sent ${res.data.sent}${res.data.failed ? ` · ${res.data.failed} failed` : ""}. ${res.data.remaining} still pending.`);
   };
 
+  const syncAudience = async () => {
+    if (!waitlist || waitlist.total === 0) return;
+    if (!confirm(`Push all ${waitlist.total} waitlist email(s) into the Resend audience? Existing contacts are skipped.`)) {
+      return;
+    }
+    setBusyId("waitlist-sync");
+    setErr(null);
+    const res = await adminApi.syncWaitlistAudience();
+    setBusyId(null);
+    if (!res.ok) {
+      setErr(res.detail);
+      return;
+    }
+    alert(`Synced ${res.data.synced} of ${res.data.total} to Resend${res.data.failed ? ` · ${res.data.failed} failed` : ""}.`);
+  };
+
   if (loading) {
     return (
       <div className="dash">
@@ -444,13 +460,16 @@ export default function AdminPage() {
               {waitlist.pending > 0 ? ` · ${waitlist.pending} pending confirmation` : " · all confirmed"}
             </span>
           </div>
-          {waitlist.pending > 0 && (
-            <div style={{ margin: "0 0 12px" }}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "0 0 12px" }}>
+            {waitlist.pending > 0 && (
               <button className="btn sm" disabled={busyId === "waitlist-resend"} onClick={resendConfirmations}>
                 {busyId === "waitlist-resend" ? "Sending…" : `Resend confirmation to ${waitlist.pending} pending`}
               </button>
-            </div>
-          )}
+            )}
+            <button className="btn sm" disabled={busyId === "waitlist-sync"} onClick={syncAudience}>
+              {busyId === "waitlist-sync" ? "Syncing…" : "Sync to Resend audience"}
+            </button>
+          </div>
           <div className="bl-scroll" style={{ maxHeight: 260 }}>
             <table className="bl-table admin-table">
               <thead><tr><th>Email</th><th>Source</th><th>When</th></tr></thead>

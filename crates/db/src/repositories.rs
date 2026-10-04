@@ -3257,15 +3257,25 @@ pub mod waitlist {
         Ok(row.is_some())
     }
 
-    /// Remove a signup by its unsubscribe token. Returns true if one was removed.
-    pub async fn unsubscribe(pool: &PgPool, token: &str) -> Result<bool, DbError> {
-        let row: Option<(Uuid,)> = sqlx::query_as(
-            "DELETE FROM waitlist_signups WHERE unsubscribe_token = $1 RETURNING id",
+    /// Remove a signup by its unsubscribe token. Returns the removed email (so the
+    /// caller can also drop it from the Resend audience), or None if no match.
+    pub async fn unsubscribe(pool: &PgPool, token: &str) -> Result<Option<String>, DbError> {
+        let row: Option<(String,)> = sqlx::query_as(
+            "DELETE FROM waitlist_signups WHERE unsubscribe_token = $1 RETURNING email",
         )
         .bind(token)
         .fetch_optional(pool)
         .await?;
-        Ok(row.is_some())
+        Ok(row.map(|r| r.0))
+    }
+
+    /// Every signup email, oldest first, for backfilling the Resend audience.
+    pub async fn all_emails(pool: &PgPool) -> Result<Vec<String>, DbError> {
+        let rows: Vec<(String,)> =
+            sqlx::query_as("SELECT email FROM waitlist_signups ORDER BY created_at ASC")
+                .fetch_all(pool)
+                .await?;
+        Ok(rows.into_iter().map(|r| r.0).collect())
     }
 
     pub async fn count(pool: &PgPool) -> Result<i64, DbError> {
