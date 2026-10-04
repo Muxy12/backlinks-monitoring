@@ -15,7 +15,8 @@ fn db_url() -> Option<String> {
 }
 
 async fn state() -> Option<AppState> {
-    let db = db::build_pool(&db::DbConfig::worker(&db_url()?, 4, None))
+    let url = db_url()?;
+    let db = db::build_pool(&db::DbConfig::worker(&url, 4, None))
         .await
         .ok()?;
     db::migrate::run(&db.pool).await.ok()?;
@@ -156,7 +157,8 @@ impl Session {
 /// Promote a user to platform admin directly (the backoffice is otherwise
 /// invisible). Uses a short-lived pool on the same test database.
 async fn make_admin(email: &str) {
-    let db = db::build_pool(&db::DbConfig::worker(&db_url().unwrap(), 2, None))
+    let url = db_url().unwrap();
+    let db = db::build_pool(&db::DbConfig::worker(&url, 2, None))
         .await
         .unwrap();
     sqlx::query("UPDATE users SET is_platform_admin = true WHERE email = $1")
