@@ -81,6 +81,18 @@ export interface UsageView {
   seats: UsageItem;
 }
 
+// A user feedback submission (feature request or bug report).
+export interface FeedbackItem {
+  id: string;
+  kind: string; // "feature" | "bug"
+  title: string;
+  body: string;
+  page_url: string | null;
+  status: string; // open | planned | in_progress | done | declined
+  created_at: string;
+  user_email: string;
+}
+
 export const api = {
   // Public plan catalog for the pricing + billing pages (no auth).
   plans: () => request<PlanView[]>("/v1/plans"),
@@ -128,6 +140,21 @@ export const api = {
       body: JSON.stringify({ token, password }),
     }),
   me: () => request<MeResponse>("/v1/me"),
+  // Submit a feature request or bug report (authenticated).
+  submitFeedback: (f: {
+    kind: string;
+    title: string;
+    body: string;
+    page_url?: string | null;
+    organization_id?: string | null;
+  }) =>
+    request<FeedbackItem>("/v1/feedback", {
+      method: "POST",
+      headers: csrfHeader(),
+      body: JSON.stringify(f),
+    }),
+  // The caller's own submissions, newest first.
+  myFeedback: () => request<FeedbackItem[]>("/v1/feedback/mine"),
   // Create a workspace (organization). Slug is derived from the name server-side
   // when omitted. The caller is made the owner.
   createOrganization: (name: string, slug?: string) =>
@@ -879,8 +906,20 @@ export interface AdminWaitlist {
   recent: { email: string; created_at: string; source: string | null }[];
 }
 
+export interface AdminFeedback {
+  open: number;
+  items: FeedbackItem[];
+}
+
 export const adminApi = {
   stats: () => request<AdminStats>("/v1/admin/stats"),
+  feedback: () => request<AdminFeedback>("/v1/admin/feedback"),
+  setFeedbackStatus: (id: string, status: string) =>
+    request<{ ok: boolean; status: string }>(`/v1/admin/feedback/${id}/status`, {
+      method: "POST",
+      headers: csrfHeader(),
+      body: JSON.stringify({ status }),
+    }),
   waitlist: () => request<AdminWaitlist>("/v1/admin/waitlist"),
   resendWaitlistConfirmations: () =>
     request<{ sent: number; failed: number; remaining: number }>("/v1/admin/waitlist/resend", {

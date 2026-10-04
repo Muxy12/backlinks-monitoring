@@ -17,6 +17,7 @@ import {
   type AdminAnalytics,
   type AdminWaitlist,
   type AdminUsageLimit,
+  type AdminFeedback,
 } from "@/lib/api";
 import "@/app/auth.css";
 import "../dashboard/dashboard.css";
@@ -93,6 +94,7 @@ export default function AdminPage() {
   const [subs, setSubs] = useState<AdminSubscription[]>([]);
   const [analytics, setAnalytics] = useState<AdminAnalytics | null>(null);
   const [waitlist, setWaitlist] = useState<AdminWaitlist | null>(null);
+  const [feedback, setFeedback] = useState<AdminFeedback | null>(null);
   const [usage, setUsage] = useState<AdminUsageLimit[]>([]);
   const [tab, setTab] = useState<"orgs" | "subscriptions" | "users" | "audit">("orgs");
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -101,7 +103,7 @@ export default function AdminPage() {
   const [detail, setDetail] = useState<AdminOrg | null>(null);
 
   const loadAll = useCallback(async () => {
-    const [s, o, u, a, op, bl, sb, an, ug, wl] = await Promise.all([
+    const [s, o, u, a, op, bl, sb, an, ug, wl, fb] = await Promise.all([
       adminApi.stats(),
       adminApi.organizations(),
       adminApi.users(),
@@ -112,6 +114,7 @@ export default function AdminPage() {
       adminApi.analytics(),
       adminApi.usageLimits(),
       adminApi.waitlist(),
+      adminApi.feedback(),
     ]);
     if (s.ok) setStats(s.data);
     if (o.ok) setOrgs(o.data);
@@ -125,6 +128,7 @@ export default function AdminPage() {
     if (an.ok) setAnalytics(an.data);
     if (ug.ok) setUsage(ug.data);
     if (wl.ok) setWaitlist(wl.data);
+    if (fb.ok) setFeedback(fb.data);
     if (!s.ok && (s.status === 404 || s.status === 401)) setDenied(true);
   }, []);
 
@@ -266,6 +270,27 @@ export default function AdminPage() {
       return;
     }
     alert(`Synced ${res.data.synced} of ${res.data.total} to Resend${res.data.failed ? ` · ${res.data.failed} failed` : ""}.`);
+  };
+
+  const changeFeedbackStatus = async (id: string, status: string) => {
+    setBusyId(`fb-${id}`);
+    setErr(null);
+    const res = await adminApi.setFeedbackStatus(id, status);
+    setBusyId(null);
+    if (!res.ok) {
+      setErr(res.detail);
+      return;
+    }
+    // Reflect the new status locally without a full reload.
+    setFeedback((cur) =>
+      cur
+        ? {
+            ...cur,
+            open: cur.items.filter((i) => (i.id === id ? status : i.status) === "open").length,
+            items: cur.items.map((i) => (i.id === id ? { ...i, status } : i)),
+          }
+        : cur,
+    );
   };
 
   if (loading) {
@@ -484,6 +509,71 @@ export default function AdminPage() {
               </tbody>
             </table>
           </div>
+        </>
+      )}
+
+      {feedback && (
+        <>
+          <div className="ops-section-h">
+            <h2>User feedback</h2>
+            <span className="note">
+              {feedback.items.length} total
+              {feedback.open > 0 ? ` · ${feedback.open} new` : " · all triaged"}
+            </span>
+          </div>
+          {feedback.items.length === 0 ? (
+            <p className="muted" style={{ margin: "0 0 12px" }}>
+              No feature requests or bug reports yet.
+            </p>
+          ) : (
+            <div className="bl-scroll" style={{ maxHeight: 360 }}>
+              <table className="bl-table admin-table">
+                <thead>
+                  <tr>
+                    <th>Type</th>
+                    <th>Title & details</th>
+                    <th>From</th>
+                    <th>Status</th>
+                    <th>When</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {feedback.items.map((f) => (
+                    <tr key={f.id}>
+                      <td className="sm">{f.kind === "bug" ? "Bug" : "Feature"}</td>
+                      <td style={{ maxWidth: 420 }}>
+                        <div style={{ fontWeight: 600 }}>{f.title}</div>
+                        <div className="sm muted" style={{ whiteSpace: "pre-wrap", marginTop: 2 }}>
+                          {f.body}
+                        </div>
+                        {f.page_url && (
+                          <div className="sm mono" style={{ marginTop: 4, opacity: 0.7, wordBreak: "break-all" }}>
+                            {f.page_url}
+                          </div>
+                        )}
+                      </td>
+                      <td className="admin-email sm">{f.user_email}</td>
+                      <td>
+                        <select
+                          value={f.status}
+                          disabled={busyId === `fb-${f.id}`}
+                          onChange={(e) => void changeFeedbackStatus(f.id, e.target.value)}
+                          aria-label="Feedback status"
+                        >
+                          <option value="open">New</option>
+                          <option value="planned">Planned</option>
+                          <option value="in_progress">In progress</option>
+                          <option value="done">Shipped</option>
+                          <option value="declined">Not planned</option>
+                        </select>
+                      </td>
+                      <td className="sm"><Time iso={f.created_at} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </>
       )}
 

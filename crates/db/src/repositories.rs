@@ -4436,3 +4436,103 @@ pub mod notification_prefs {
         Ok(())
     }
 }
+
+// ─── User feedback (feature requests + bug reports, migration 0033) ───────────
+pub mod feedback {
+    use super::*;
+
+    #[derive(Debug, Clone, sqlx::FromRow)]
+    pub struct Feedback {
+        pub id: Uuid,
+        pub created_at: DateTime<Utc>,
+        pub kind: String,
+        pub title: String,
+        pub body: String,
+        pub page_url: Option<String>,
+        pub status: String,
+        pub user_id: Option<Uuid>,
+        pub user_email: String,
+    }
+
+    pub struct NewFeedback<'a> {
+        pub kind: &'a str,
+        pub title: &'a str,
+        pub body: &'a str,
+        pub page_url: Option<&'a str>,
+        pub user_id: Uuid,
+        /// Snapshot of the submitter's email, so the admin list survives deletion.
+        pub user_email: &'a str,
+        pub organization_id: Option<Uuid>,
+    }
+
+    /// Store one submission (caller validates kind/title/body). Returns the row.
+    pub async fn create(pool: &PgPool, f: NewFeedback<'_>) -> Result<Feedback, DbError> {
+        sqlx::query_as::<_, Feedback>(
+            "INSERT INTO feedback \
+               (id, kind, title, body, page_url, user_id, user_email, organization_id) \
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8) \
+             RETURNING id, created_at, kind, title, body, page_url, status, user_id, user_email",
+        )
+        .bind(Uuid::now_v7())
+        .bind(f.kind)
+        .bind(f.title)
+        .bind(f.body)
+        .bind(f.page_url)
+        .bind(f.user_id)
+        .bind(f.user_email)
+        .bind(f.organization_id)
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_insert)
+    }
+
+    /// A user's own submissions, newest first.
+    pub async fn list_for_user(
+        pool: &PgPool,
+        user_id: Uuid,
+        limit: i64,
+    ) -> Result<Vec<Feedback>, DbError> {
+        Ok(sqlx::query_as::<_, Feedback>(
+            "SELECT id, created_at, kind, title, body, page_url, status, user_id, user_email \
+             FROM feedback WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2",
+        )
+        .bind(user_id)
+        .bind(limit)
+        .fetch_all(pool)
+        .await?)
+    }
+
+    /// Every submission, newest first, for the admin backoffice.
+    pub async fn list_all(pool: &PgPool, limit: i64) -> Result<Vec<Feedback>, DbError> {
+        Ok(sqlx::query_as::<_, Feedback>(
+            "SELECT id, created_at, kind, title, body, page_url, status, user_id, user_email \
+             FROM feedback ORDER BY created_at DESC LIMIT $1",
+        )
+        .bind(limit)
+        .fetch_all(pool)
+        .await?)
+    }
+
+    /// Count of submissions still in the 'open' (untriaged) state.
+    pub async fn open_count(pool: &PgPool) -> Result<i64, DbError> {
+        let (n,): (i64,) =
+            sqlx::query_as("SELECT count(*)::bigint FROM feedback WHERE status = 'open'")
+                .fetch_one(pool)
+                .await
+                .map_err(DbError::from_fetch)?;
+        Ok(n)
+    }
+
+    /// Update a submission's triage status (caller validates `status`). Returns
+    /// false if no row matched the id.
+    pub async fn set_status(pool: &PgPool, id: Uuid, status: &str) -> Result<bool, DbError> {
+        let row: Option<(Uuid,)> = sqlx::query_as(
+            "UPDATE feedback SET status = $2, updated_at = now() WHERE id = $1 RETURNING id",
+        )
+        .bind(id)
+        .bind(status)
+        .fetch_optional(pool)
+        .await?;
+        Ok(row.is_some())
+    }
+}

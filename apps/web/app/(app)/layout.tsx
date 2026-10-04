@@ -133,6 +133,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </nav>
         <div className="side-spacer" />
         <div className="side-group">
+          {navLink({ href: "/feedback", label: "Feedback", icon: "feedback" })}
           {navLink({ href: "/settings/billing", label: "Billing", icon: "billing" })}
           {navLink({ href: "/settings/notifications", label: "Settings", icon: "settings" })}
         </div>

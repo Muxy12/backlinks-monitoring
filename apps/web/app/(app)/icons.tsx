@@ -152,6 +152,10 @@ const PATHS: Record<string, ReactNode> = {
       <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" />
     </>
   ),
+  // Feedback — message bubble (Lucide message-square).
+  feedback: (
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+  ),
 };
 
 export function Icon({ name, size = 18 }: { name: string; size?: number }) {
