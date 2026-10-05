@@ -373,7 +373,7 @@ pub async fn overview(
     }
 
     // Sort descending by (priority, value, recency); keep the top 5.
-    ranked.sort_by(|a, b| b.key.cmp(&a.key));
+    ranked.sort_by_key(|r| std::cmp::Reverse(r.key));
     let attention: Vec<AttentionItemView> = ranked.into_iter().map(|r| r.item).take(5).collect();
     let next_best_action = attention.first().cloned();
 
