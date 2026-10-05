@@ -349,4 +349,138 @@ async fn overview_kpis_attention_and_campaigns() {
         ov["summary"]["protected_value"].as_array().unwrap().len(),
         0
     );
+    assert!(ov["post_link"].is_null(), "no tracked links for org B");
+}
+
+// The Overview's Post-Link signal (§40): a positive tracked link surfaces, the
+// read makes zero external calls (§69), and it's invisible cross-tenant.
+#[tokio::test]
+async fn overview_post_link_signal() {
+    let Some(s) = bootstrap(false).await else {
+        return;
+    };
+    let org = s.org;
+    let project = s
+        .post(
+            format!("/v1/organizations/{org}/projects"),
+            serde_json::json!({"name":"Site","domain":"example.com"}),
+        )
+        .await["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let project_uuid = Uuid::parse_str(&project).unwrap();
+
+    db::sqlx::query(
+        "INSERT INTO gsc_connections (id, organization_id, project_id, refresh_token_enc, site_url) \
+         VALUES ($1, $2, $3, $4, $5)",
+    )
+    .bind(Uuid::now_v7())
+    .bind(org)
+    .bind(project_uuid)
+    .bind(vec![1u8, 2, 3])
+    .bind("https://example.com/")
+    .execute(&s.pool)
+    .await
+    .unwrap();
+
+    let paid_id = Uuid::parse_str(
+        s.post(
+            format!("/v1/organizations/{org}/backlinks"),
+            serde_json::json!({
+                "project_id":project,"source_url":"https://authority.com/post",
+                "target_url":"https://example.com/guide","cost":200.0,"currency":"USD"
+            }),
+        )
+        .await["id"]
+            .as_str()
+            .unwrap(),
+    )
+    .unwrap();
+    let t0 = chrono::Utc::now().date_naive() - chrono::Duration::days(60);
+    db::sqlx::query("UPDATE backlinks SET purchase_date = $2 WHERE id = $1")
+        .bind(paid_id)
+        .bind(t0)
+        .execute(&s.pool)
+        .await
+        .unwrap();
+
+    let (page,): (String,) =
+        db::sqlx::query_as("SELECT target_url_normalized FROM backlinks WHERE id = $1")
+            .bind(paid_id)
+            .fetch_one(&s.pool)
+            .await
+            .unwrap();
+
+    let mut pages = Vec::new();
+    let mut days = Vec::new();
+    let mut imps = Vec::new();
+    let mut clicks = Vec::new();
+    let mut ctrs = Vec::new();
+    let mut poss = Vec::new();
+    for i in 1..=7 {
+        pages.push(page.clone());
+        days.push(t0 - chrono::Duration::days(i));
+        imps.push(10);
+        clicks.push(1);
+        ctrs.push(0.1);
+        poss.push(8.0);
+    }
+    for i in 0..7 {
+        pages.push(page.clone());
+        days.push(t0 + chrono::Duration::days(i));
+        imps.push(30);
+        clicks.push(4);
+        ctrs.push(0.13);
+        poss.push(4.0);
+    }
+    db::repositories::gsc_daily::upsert_many(
+        &s.pool,
+        org,
+        project_uuid,
+        &pages,
+        &days,
+        &imps,
+        &clicks,
+        &ctrs,
+        &poss,
+    )
+    .await
+    .unwrap();
+
+    // Lazily create the backlink_impact row (as opening the drawer would).
+    let _ = s
+        .get(format!(
+            "/v1/organizations/{org}/backlinks/{paid_id}/impact"
+        ))
+        .await;
+
+    let jobs_before: i64 = db::sqlx::query_scalar("SELECT count(*)::bigint FROM jobs")
+        .fetch_one(&s.pool)
+        .await
+        .unwrap();
+
+    let ov = s.get(format!("/v1/organizations/{org}/overview")).await;
+    assert!(!ov["post_link"].is_null(), "post_link present: {ov}");
+    assert_eq!(ov["post_link"]["tracked"], 1);
+    assert_eq!(ov["post_link"]["measured"], 1);
+    assert_eq!(ov["post_link"]["positive"], 1);
+    assert_eq!(ov["post_link"]["negative"], 0);
+
+    // §69 — the Overview signal is DB-only; no crawler/GSC jobs enqueued.
+    let jobs_after: i64 = db::sqlx::query_scalar("SELECT count(*)::bigint FROM jobs")
+        .fetch_one(&s.pool)
+        .await
+        .unwrap();
+    assert_eq!(
+        jobs_before, jobs_after,
+        "post_link signal must make no external calls"
+    );
+
+    // Cross-tenant: another workspace sees no signal from org A.
+    let other = bootstrap(false).await.unwrap();
+    let ov2 = other
+        .get(format!("/v1/organizations/{}/overview", other.org))
+        .await;
+    assert!(ov2["post_link"].is_null());
 }

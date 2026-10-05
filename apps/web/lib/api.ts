@@ -589,7 +589,17 @@ export interface OverviewResponse {
   top_opportunities: OverviewOpportunity[];
   competitive_position: OverviewCompetitive | null;
   recent_activity: OverviewActivity[];
+  post_link: PostLinkSignal | null;
   generated_at: string;
+}
+// Concise Post-Link Impact signal on the Overview (§40). Observation, not causation.
+export interface PostLinkSignal {
+  tracked: number;
+  measured: number;
+  positive: number;
+  neutral: number;
+  negative: number;
+  collecting: number;
 }
 export interface NewProspect {
   domain: string;

@@ -360,6 +360,71 @@ function OverviewBody({ data, beta }: { data: OverviewResponse; beta: boolean })
         </section>
       )}
 
+      {/* ── Post-Link Impact signal (§40) ── */}
+      {data.post_link && (
+        <section className="panel" style={{ marginTop: 16 }}>
+          <div className="panel-head">
+            <h2>
+              Post-Link Impact{" "}
+              <span
+                style={{
+                  fontSize: 9,
+                  fontWeight: 700,
+                  letterSpacing: "0.08em",
+                  padding: "2px 6px",
+                  borderRadius: 999,
+                  background: "var(--grad-soft)",
+                  color: "var(--violet)",
+                  verticalAlign: "middle",
+                }}
+              >
+                BETA
+              </span>
+            </h2>
+          </div>
+          <p className="muted" style={{ marginTop: 0 }}>
+            {data.post_link.tracked} link{data.post_link.tracked === 1 ? "" : "s"} tracked
+            {data.post_link.measured > 0 ? ` · ${data.post_link.measured} with 28-day data` : ""}
+            {data.post_link.collecting > 0 ? ` · ${data.post_link.collecting} still collecting` : ""}
+            .
+          </p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {(
+              [
+                ["var(--live)", data.post_link.positive, "positive"],
+                ["var(--changed)", data.post_link.neutral, "no change"],
+                ["var(--lost)", data.post_link.negative, "negative"],
+                ["var(--pending)", data.post_link.collecting, "collecting"],
+              ] as const
+            ).map(([color, n, label]) => (
+              <span
+                key={label}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  fontSize: 12,
+                  padding: "3px 9px",
+                  borderRadius: 999,
+                  border: "1px solid var(--border)",
+                }}
+              >
+                <span
+                  style={{ width: 7, height: 7, borderRadius: "50%", background: color }}
+                />
+                {n} {label}
+              </span>
+            ))}
+          </div>
+          <p
+            className="muted"
+            style={{ fontSize: 11.5, fontStyle: "italic", margin: "10px 0 0" }}
+          >
+            Observed response after acquisition — correlation, not causation.
+          </p>
+        </section>
+      )}
+
       {/* ── Recent activity ── */}
       <section className="panel" style={{ marginTop: 16 }}>
         <div className="panel-head">

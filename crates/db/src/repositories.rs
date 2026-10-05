@@ -3216,6 +3216,57 @@ pub mod overview {
         pub live: i64,
     }
 
+    /// Workspace-wide Post-Link Impact signal counts (§40). `measured` = links
+    /// whose 28-day window is complete and has GSC data; `collecting` = still in
+    /// the window. Mirrors `core::impact` thresholds (10% rate, zero-baseline →
+    /// positive) in ONE grouped query — DB-only, zero external calls (§69).
+    #[derive(Debug, Clone, Default, sqlx::FromRow)]
+    pub struct PostLinkAgg {
+        pub tracked: i64,
+        pub collecting: i64,
+        pub measured: i64,
+        pub positive: i64,
+        pub negative: i64,
+    }
+
+    pub async fn post_link_signal(pool: &PgPool, scope: &OrgScope) -> Result<PostLinkAgg, DbError> {
+        Ok(sqlx::query_as::<_, PostLinkAgg>(
+            "WITH tracked AS ( \
+                SELECT backlink_id AS id, organization_id, project_id, \
+                       target_url_normalized AS page, (t0 AT TIME ZONE 'UTC')::date AS t0d \
+                FROM backlink_impact WHERE organization_id = $1 \
+             ), \
+             win AS ( \
+                SELECT \
+                    ((now() AT TIME ZONE 'UTC')::date >= t.t0d + 28) AS complete, \
+                    COALESCE(SUM(g.impressions) FILTER ( \
+                        WHERE g.day >= t.t0d - 28 AND g.day < t.t0d), 0) AS pre, \
+                    COALESCE(SUM(g.impressions) FILTER ( \
+                        WHERE g.day >= t.t0d AND g.day < t.t0d + 28), 0) AS post \
+                FROM tracked t \
+                LEFT JOIN gsc_daily g \
+                    ON g.organization_id = t.organization_id \
+                   AND g.project_id = t.project_id \
+                   AND g.page_url_normalized = t.page \
+                   AND g.day >= t.t0d - 28 AND g.day < t.t0d + 28 \
+                GROUP BY t.id, t.t0d \
+             ) \
+             SELECT \
+                count(*)::bigint AS tracked, \
+                count(*) FILTER (WHERE NOT complete)::bigint AS collecting, \
+                count(*) FILTER (WHERE complete AND (pre > 0 OR post > 0))::bigint AS measured, \
+                count(*) FILTER (WHERE complete AND ( \
+                    (pre > 0 AND (post - pre) * 100.0 / pre >= 10) \
+                    OR (pre = 0 AND post > 0)))::bigint AS positive, \
+                count(*) FILTER (WHERE complete AND pre > 0 \
+                    AND (post - pre) * 100.0 / pre <= -10)::bigint AS negative \
+             FROM win",
+        )
+        .bind(scope.organization_id())
+        .fetch_one(pool)
+        .await?)
+    }
+
     /// (healthy, eligible) among actively monitored own links. `eligible` excludes
     /// unverifiable states (pending/blocked/unknown); `healthy` = currently live.
     pub async fn link_health(pool: &PgPool, scope: &OrgScope) -> Result<(i64, i64), DbError> {
