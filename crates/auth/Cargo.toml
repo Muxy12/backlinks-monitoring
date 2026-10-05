@@ -17,3 +17,6 @@ base64 = { workspace = true }
 secrecy = { workspace = true }
 thiserror = { workspace = true }
 subtle = { workspace = true }
+# AES-256-GCM for encrypting stored OAuth refresh tokens (GSC). `ring` is already
+# in the lock tree (via rustls), so this adds only a direct edge, no new crates.
+ring = "0.17"

@@ -40,6 +40,18 @@ export interface OrgView {
 }
 export interface Features {
   campaigns_beta: boolean;
+  gsc?: boolean;
+}
+export interface GscStatus {
+  configured: boolean;
+  connected: boolean;
+  site_url: string | null;
+  google_email: string | null;
+  last_sync_at: string | null;
+}
+export interface GscSite {
+  site_url: string;
+  permission_level: string | null;
 }
 export interface MeResponse {
   user: UserView;
@@ -632,6 +644,24 @@ export const orgApi = {
     request<OverviewResponse>(
       `/v1/organizations/${org}/overview${range ? `?range=${range}` : ""}`,
     ),
+  // ── Google Search Console (Post-Link Impact foundation) ──
+  gscStatus: (org: string, projectId: string) =>
+    request<GscStatus>(`/v1/organizations/${org}/projects/${projectId}/gsc/status`),
+  gscAuthUrl: (org: string, projectId: string) =>
+    request<{ url: string }>(`/v1/organizations/${org}/projects/${projectId}/gsc/auth-url`),
+  gscSites: (org: string, projectId: string) =>
+    request<GscSite[]>(`/v1/organizations/${org}/projects/${projectId}/gsc/sites`),
+  gscSetSite: (org: string, projectId: string, siteUrl: string) =>
+    request<null>(`/v1/organizations/${org}/projects/${projectId}/gsc/site`, {
+      method: "POST",
+      headers: csrfHeader(),
+      body: JSON.stringify({ site_url: siteUrl }),
+    }),
+  gscDisconnect: (org: string, projectId: string) =>
+    request<null>(`/v1/organizations/${org}/projects/${projectId}/gsc`, {
+      method: "DELETE",
+      headers: csrfHeader(),
+    }),
   projects: (org: string) => request<ProjectView[]>(`/v1/organizations/${org}/projects`),
   createProject: (
     org: string,

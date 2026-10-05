@@ -414,3 +414,23 @@ pub struct NotificationPreference {
     pub enabled: bool,
     pub digest: String,
 }
+
+/// A Google Search Console OAuth connection for one project (migration 0038).
+/// Tokens are stored encrypted (AES-256-GCM, app layer) — the DB only sees
+/// ciphertext as `bytea` (`Vec<u8>`). `site_url` is the mapped GSC property.
+#[derive(Debug, Clone, FromRow)]
+pub struct GscConnection {
+    pub id: Uuid,
+    pub organization_id: Uuid,
+    pub project_id: Uuid,
+    pub google_email: Option<String>,
+    pub site_url: Option<String>,
+    pub refresh_token_enc: Vec<u8>,
+    pub access_token_enc: Option<Vec<u8>>,
+    pub access_expires_at: Option<DateTime<Utc>>,
+    pub scopes: Option<String>,
+    pub last_sync_at: Option<DateTime<Utc>>,
+    pub last_error: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
