@@ -3586,7 +3586,8 @@ pub mod campaigns {
         () => {
             "id, organization_id, project_id, name, description, \
              status::text AS status, start_date, end_date, target_backlinks, \
-             budget::text AS budget, currency, created_at, updated_at"
+             budget::text AS budget, currency, objective, primary_target_url, \
+             created_at, updated_at"
         };
     }
 
@@ -3597,6 +3598,11 @@ pub mod campaigns {
         pub target_backlinks: Option<i32>,
         pub budget: Option<&'a str>,
         pub currency: Option<&'a str>,
+        // Link-building fields (migration 0036); dates are now wired too.
+        pub objective: Option<&'a str>,
+        pub primary_target_url: Option<&'a str>,
+        pub start_date: Option<chrono::NaiveDate>,
+        pub end_date: Option<chrono::NaiveDate>,
     }
 
     pub async fn create(
@@ -3608,8 +3614,9 @@ pub mod campaigns {
         sqlx::query_as::<_, Campaign>(concat!(
             "INSERT INTO campaigns \
                 (id, organization_id, project_id, name, description, \
-                 target_backlinks, budget, currency) \
-             VALUES ($1,$2,$3,$4,$5,$6,$7::numeric,$8) \
+                 target_backlinks, budget, currency, objective, primary_target_url, \
+                 start_date, end_date) \
+             VALUES ($1,$2,$3,$4,$5,$6,$7::numeric,$8,$9,$10,$11,$12) \
              RETURNING ",
             cols!()
         ))
@@ -3621,6 +3628,10 @@ pub mod campaigns {
         .bind(new.target_backlinks)
         .bind(new.budget)
         .bind(new.currency)
+        .bind(new.objective)
+        .bind(new.primary_target_url)
+        .bind(new.start_date)
+        .bind(new.end_date)
         .fetch_one(pool)
         .await
         .map_err(DbError::from_insert)
@@ -3652,45 +3663,70 @@ pub mod campaigns {
 
     /// Partial edit of a campaign (§22): any subset of name/description/status/
     /// target/budget+currency. `NotFound` if not in the org.
-    #[allow(clippy::too_many_arguments)]
+    /// Partial edit of a campaign (§22 + migration 0036). Any provided field is
+    /// set; `None` leaves it unchanged. Returns the campaign after the edit.
+    pub struct CampaignUpdate<'a> {
+        pub name: Option<&'a str>,
+        pub description: Option<&'a str>,
+        pub status: Option<&'a str>,
+        pub target_backlinks: Option<i32>,
+        pub budget: Option<&'a str>,
+        pub currency: Option<&'a str>,
+        pub objective: Option<&'a str>,
+        pub primary_target_url: Option<&'a str>,
+        pub start_date: Option<chrono::NaiveDate>,
+        pub end_date: Option<chrono::NaiveDate>,
+    }
+
     pub async fn update(
         pool: &PgPool,
         scope: &OrgScope,
         id: Uuid,
-        name: Option<&str>,
-        description: Option<&str>,
-        status: Option<&str>,
-        target_backlinks: Option<i32>,
-        budget: Option<&str>,
-        currency: Option<&str>,
+        upd: CampaignUpdate<'_>,
     ) -> Result<Campaign, DbError> {
         let mut qb = sqlx::QueryBuilder::<sqlx::Postgres>::new("UPDATE campaigns SET ");
         let mut sep = qb.separated(", ");
-        if let Some(n) = name {
+        if let Some(n) = upd.name {
             sep.push("name = ");
             sep.push_bind_unseparated(n);
         }
-        if let Some(d) = description {
+        if let Some(d) = upd.description {
             sep.push("description = ");
             sep.push_bind_unseparated(d);
         }
-        if let Some(s) = status {
+        if let Some(s) = upd.status {
             sep.push("status = ");
             sep.push_bind_unseparated(s.to_string());
             sep.push_unseparated("::campaign_status");
         }
-        if let Some(t) = target_backlinks {
+        if let Some(t) = upd.target_backlinks {
             sep.push("target_backlinks = ");
             sep.push_bind_unseparated(t);
         }
-        if let Some(b) = budget {
+        if let Some(b) = upd.budget {
             sep.push("budget = ");
             sep.push_bind_unseparated(b.to_string());
             sep.push_unseparated("::numeric");
         }
-        if let Some(c) = currency {
+        if let Some(c) = upd.currency {
             sep.push("currency = ");
             sep.push_bind_unseparated(c);
+        }
+        if let Some(o) = upd.objective {
+            sep.push("objective = ");
+            sep.push_bind_unseparated(o);
+        }
+        if let Some(p) = upd.primary_target_url {
+            sep.push("primary_target_url = ");
+            sep.push_bind_unseparated(p);
+        }
+        if let Some(sd) = upd.start_date {
+            sep.push("start_date = ");
+            sep.push_bind_unseparated(sd);
+        }
+        if let Some(ed) = upd.end_date {
+            sep.push("end_date = ");
+            sep.push_bind_unseparated(ed);
         }
         qb.push(" WHERE id = ");
         qb.push_bind(id);
@@ -3762,6 +3798,372 @@ pub mod campaigns {
         .bind(campaign_id)
         .fetch_all(pool)
         .await?)
+    }
+}
+
+// ─── Campaign targets (link-building, migration 0036) — our pages to link to ──
+pub mod campaign_targets {
+    use super::*;
+    use crate::entities::CampaignTarget;
+
+    macro_rules! cols {
+        () => {
+            "id, organization_id, campaign_id, url, label, created_at"
+        };
+    }
+
+    /// Add a target page to a campaign (idempotent on (campaign_id, url)). The
+    /// caller has already checked the campaign is in the org.
+    pub async fn create(
+        pool: &PgPool,
+        scope: &OrgScope,
+        id: Uuid,
+        campaign_id: Uuid,
+        url: &str,
+        label: Option<&str>,
+    ) -> Result<CampaignTarget, DbError> {
+        let inserted: Option<CampaignTarget> = sqlx::query_as::<_, CampaignTarget>(concat!(
+            "INSERT INTO campaign_targets (id, organization_id, campaign_id, url, label) \
+             VALUES ($1,$2,$3,$4,$5) \
+             ON CONFLICT (campaign_id, url) DO NOTHING RETURNING ",
+            cols!()
+        ))
+        .bind(id)
+        .bind(scope.organization_id())
+        .bind(campaign_id)
+        .bind(url.trim())
+        .bind(label)
+        .fetch_optional(pool)
+        .await
+        .map_err(DbError::from_insert)?;
+        if let Some(t) = inserted {
+            return Ok(t);
+        }
+        sqlx::query_as::<_, CampaignTarget>(concat!(
+            "SELECT ",
+            cols!(),
+            " FROM campaign_targets \
+             WHERE organization_id = $1 AND campaign_id = $2 AND url = $3"
+        ))
+        .bind(scope.organization_id())
+        .bind(campaign_id)
+        .bind(url.trim())
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_fetch)
+    }
+
+    pub async fn list(
+        pool: &PgPool,
+        scope: &OrgScope,
+        campaign_id: Uuid,
+    ) -> Result<Vec<CampaignTarget>, DbError> {
+        Ok(sqlx::query_as::<_, CampaignTarget>(concat!(
+            "SELECT ",
+            cols!(),
+            " FROM campaign_targets \
+             WHERE organization_id = $1 AND campaign_id = $2 ORDER BY created_at"
+        ))
+        .bind(scope.organization_id())
+        .bind(campaign_id)
+        .fetch_all(pool)
+        .await?)
+    }
+
+    pub async fn delete(pool: &PgPool, scope: &OrgScope, id: Uuid) -> Result<bool, DbError> {
+        let r = sqlx::query("DELETE FROM campaign_targets WHERE id = $1 AND organization_id = $2")
+            .bind(id)
+            .bind(scope.organization_id())
+            .execute(pool)
+            .await?;
+        Ok(r.rows_affected() > 0)
+    }
+}
+
+// ─── Prospects (link-building pipeline, migration 0036) ───────────────────────
+pub mod prospects {
+    use super::*;
+    use crate::entities::Prospect;
+    use backlio_core::{NormalizeOptions, ProspectSignals, host_of, normalize, score_prospect};
+
+    fn norm_domain(input: &str) -> Option<String> {
+        let url = if input.contains("://") {
+            input.to_string()
+        } else {
+            format!("https://{}", input.trim())
+        };
+        host_of(&normalize(&url, None, NormalizeOptions::default())?)
+    }
+
+    // estimated_cost cast to text so no custom numeric mapping is needed.
+    macro_rules! cols {
+        () => {
+            "id, organization_id, campaign_id, domain, normalized_domain, stage, \
+             source, score, score_reason, competitor_count, contact_name, \
+             contact_email, target_url, estimated_cost::text AS estimated_cost, \
+             currency, notes, last_contacted_at, won_backlink_id, created_at, updated_at"
+        };
+    }
+
+    pub struct NewProspect<'a> {
+        pub campaign_id: Uuid,
+        pub domain: &'a str,
+        pub source: &'a str,
+        pub contact_name: Option<&'a str>,
+        pub contact_email: Option<&'a str>,
+        pub target_url: Option<&'a str>,
+        pub estimated_cost: Option<&'a str>,
+        pub currency: Option<&'a str>,
+        pub notes: Option<&'a str>,
+        pub competitor_count: Option<i32>,
+        pub score: i32,
+        pub score_reason: &'a str,
+    }
+
+    /// Add a prospect to a campaign (idempotent on (campaign_id, normalized_domain)).
+    /// The caller has already checked the campaign is in the org and computed the score.
+    pub async fn create(
+        pool: &PgPool,
+        scope: &OrgScope,
+        id: Uuid,
+        new: NewProspect<'_>,
+    ) -> Result<Prospect, DbError> {
+        let normalized =
+            norm_domain(new.domain).ok_or_else(|| DbError::Config("invalid domain".into()))?;
+        let inserted: Option<Prospect> = sqlx::query_as::<_, Prospect>(concat!(
+            "INSERT INTO prospects \
+                (id, organization_id, campaign_id, domain, normalized_domain, source, \
+                 contact_name, contact_email, target_url, estimated_cost, currency, notes, \
+                 competitor_count, score, score_reason) \
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::numeric,$11,$12,$13,$14,$15) \
+             ON CONFLICT (campaign_id, normalized_domain) DO NOTHING RETURNING ",
+            cols!()
+        ))
+        .bind(id)
+        .bind(scope.organization_id())
+        .bind(new.campaign_id)
+        .bind(new.domain.trim())
+        .bind(&normalized)
+        .bind(new.source)
+        .bind(new.contact_name)
+        .bind(new.contact_email)
+        .bind(new.target_url)
+        .bind(new.estimated_cost)
+        .bind(new.currency)
+        .bind(new.notes)
+        .bind(new.competitor_count)
+        .bind(new.score)
+        .bind(new.score_reason)
+        .fetch_optional(pool)
+        .await
+        .map_err(DbError::from_insert)?;
+        if let Some(p) = inserted {
+            return Ok(p);
+        }
+        // Already present — return the existing row.
+        sqlx::query_as::<_, Prospect>(concat!(
+            "SELECT ",
+            cols!(),
+            " FROM prospects \
+             WHERE organization_id = $1 AND campaign_id = $2 AND normalized_domain = $3"
+        ))
+        .bind(scope.organization_id())
+        .bind(new.campaign_id)
+        .bind(&normalized)
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_fetch)
+    }
+
+    pub async fn list(
+        pool: &PgPool,
+        scope: &OrgScope,
+        campaign_id: Uuid,
+        stage: Option<&str>,
+    ) -> Result<Vec<Prospect>, DbError> {
+        let mut qb = sqlx::QueryBuilder::<sqlx::Postgres>::new(concat!(
+            "SELECT ",
+            cols!(),
+            " FROM prospects WHERE organization_id = "
+        ));
+        qb.push_bind(scope.organization_id());
+        qb.push(" AND campaign_id = ");
+        qb.push_bind(campaign_id);
+        if let Some(st) = stage {
+            qb.push(" AND stage = ");
+            qb.push_bind(st.to_string());
+        }
+        qb.push(" ORDER BY score DESC NULLS LAST, created_at");
+        Ok(qb.build_query_as::<Prospect>().fetch_all(pool).await?)
+    }
+
+    pub async fn get(pool: &PgPool, scope: &OrgScope, id: Uuid) -> Result<Prospect, DbError> {
+        sqlx::query_as::<_, Prospect>(concat!(
+            "SELECT ",
+            cols!(),
+            " FROM prospects WHERE id = $1 AND organization_id = $2"
+        ))
+        .bind(id)
+        .bind(scope.organization_id())
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_fetch)
+    }
+
+    /// The full new value of a prospect's mutable fields (§PATCH-merge): the
+    /// caller merges the patch over current values, recomputes the score, and
+    /// passes everything, so this is a straight write.
+    pub struct ProspectUpdate<'a> {
+        pub stage: &'a str,
+        pub contact_name: Option<&'a str>,
+        pub contact_email: Option<&'a str>,
+        pub target_url: Option<&'a str>,
+        pub estimated_cost: Option<&'a str>,
+        pub currency: Option<&'a str>,
+        pub notes: Option<&'a str>,
+        pub score: i32,
+        pub score_reason: &'a str,
+        pub last_contacted_at: Option<DateTime<Utc>>,
+        pub won_backlink_id: Option<Uuid>,
+    }
+
+    pub async fn update(
+        pool: &PgPool,
+        scope: &OrgScope,
+        id: Uuid,
+        upd: ProspectUpdate<'_>,
+    ) -> Result<Prospect, DbError> {
+        sqlx::query_as::<_, Prospect>(concat!(
+            "UPDATE prospects SET \
+                stage = $3, \
+                contact_name = $4, \
+                contact_email = $5, \
+                target_url = $6, \
+                estimated_cost = $7::numeric, \
+                currency = $8, \
+                notes = $9, \
+                score = $10, \
+                score_reason = $11, \
+                last_contacted_at = $12, \
+                won_backlink_id = $13, \
+                updated_at = now() \
+             WHERE id = $1 AND organization_id = $2 RETURNING ",
+            cols!()
+        ))
+        .bind(id)
+        .bind(scope.organization_id())
+        .bind(upd.stage)
+        .bind(upd.contact_name)
+        .bind(upd.contact_email)
+        .bind(upd.target_url)
+        .bind(upd.estimated_cost)
+        .bind(upd.currency)
+        .bind(upd.notes)
+        .bind(upd.score)
+        .bind(upd.score_reason)
+        .bind(upd.last_contacted_at)
+        .bind(upd.won_backlink_id)
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_fetch)
+    }
+
+    pub async fn delete(pool: &PgPool, scope: &OrgScope, id: Uuid) -> Result<bool, DbError> {
+        let r = sqlx::query("DELETE FROM prospects WHERE id = $1 AND organization_id = $2")
+            .bind(id)
+            .bind(scope.organization_id())
+            .execute(pool)
+            .await?;
+        Ok(r.rows_affected() > 0)
+    }
+
+    /// Bulk stage change over a set of ids. Keeps the score consistent for the
+    /// terminal stages (won = 100, lost = 0); other stages leave the score as-is.
+    /// Tenant-scoped. Returns rows affected.
+    pub async fn bulk_set_stage(
+        pool: &PgPool,
+        scope: &OrgScope,
+        ids: &[Uuid],
+        stage: &str,
+    ) -> Result<u64, DbError> {
+        let r = sqlx::query(
+            "UPDATE prospects SET stage = $3, \
+                score = CASE WHEN $3 = 'won' THEN 100 \
+                            WHEN $3 = 'lost' THEN 0 ELSE score END, \
+                updated_at = now() \
+             WHERE organization_id = $1 AND id = ANY($2)",
+        )
+        .bind(scope.organization_id())
+        .bind(ids.to_vec())
+        .bind(stage)
+        .execute(pool)
+        .await?;
+        Ok(r.rows_affected())
+    }
+
+    /// Prospect counts by stage for a campaign (pipeline header). `(stage, count)`.
+    pub async fn stage_counts(
+        pool: &PgPool,
+        scope: &OrgScope,
+        campaign_id: Uuid,
+    ) -> Result<Vec<(String, i64)>, DbError> {
+        Ok(sqlx::query_as::<_, (String, i64)>(
+            "SELECT stage, count(*)::bigint FROM prospects \
+             WHERE organization_id = $1 AND campaign_id = $2 GROUP BY stage",
+        )
+        .bind(scope.organization_id())
+        .bind(campaign_id)
+        .fetch_all(pool)
+        .await?)
+    }
+
+    /// Seed prospects from the competitor-gap analysis: referring domains that
+    /// link to ≥ `min_competitors` competitors but not to us become `identified`
+    /// prospects (source = competitor_gap), deduped on (campaign, domain). The
+    /// score is computed here from the competitor overlap. Returns the number of
+    /// NEW prospects created.
+    pub async fn seed_from_gap(
+        pool: &PgPool,
+        scope: &OrgScope,
+        campaign_id: Uuid,
+        project_id: Uuid,
+        min_competitors: i64,
+        limit: i64,
+    ) -> Result<u64, DbError> {
+        let gap = super::competitors::gap_analysis(pool, scope, project_id, min_competitors, limit)
+            .await?;
+        let mut created = 0u64;
+        for (source_domain, competitor_count) in gap {
+            let Some(normalized) = norm_domain(&source_domain) else {
+                continue;
+            };
+            let s = score_prospect(ProspectSignals {
+                competitor_count: competitor_count as i32,
+                has_contact: false,
+                has_estimated_cost: false,
+                stage: "identified",
+            });
+            let reason = s.reasons.join(", ");
+            let r = sqlx::query(
+                "INSERT INTO prospects \
+                    (id, organization_id, campaign_id, domain, normalized_domain, source, \
+                     competitor_count, score, score_reason) \
+                 VALUES ($1,$2,$3,$4,$5,'competitor_gap',$6,$7,$8) \
+                 ON CONFLICT (campaign_id, normalized_domain) DO NOTHING",
+            )
+            .bind(Uuid::now_v7())
+            .bind(scope.organization_id())
+            .bind(campaign_id)
+            .bind(source_domain.trim())
+            .bind(&normalized)
+            .bind(competitor_count as i32)
+            .bind(s.score as i32)
+            .bind(&reason)
+            .execute(pool)
+            .await?;
+            created += r.rows_affected();
+        }
+        Ok(created)
     }
 }
 

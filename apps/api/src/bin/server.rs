@@ -33,10 +33,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .ok()
         .and_then(|v| v.parse().ok())
         .unwrap_or(720);
+    // Link-building campaigns BETA: inert unless CAMPAIGNS_BETA=true.
+    let campaigns_beta = std::env::var("CAMPAIGNS_BETA").as_deref() == Ok("true");
     let cfg = ApiConfig {
         secure_cookies,
         stripe_webhook_secret,
         session_ttl_hours,
+        campaigns_beta,
         ..ApiConfig::default()
     };
     // Bootstrap platform admins from ADMIN_EMAILS (comma-separated). The operator
