@@ -1,0 +1,32 @@
+/* Link-building pipeline — stage groupings and the bulk action bar. Reuses the
+   dashboard design system (.panel, .bl-table, .badge, .btn, .tile, .drawer). */
+
+.stage-group {
+  margin-top: 14px;
+}
+.stage-group:first-of-type {
+  margin-top: 4px;
+}
+
+.stage-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.bulk-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.bulk-bar > span {
+  color: var(--muted);
+  font-size: 13px;
+}

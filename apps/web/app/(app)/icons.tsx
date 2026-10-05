@@ -156,6 +156,13 @@ const PATHS: Record<string, ReactNode> = {
   feedback: (
     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
   ),
+  // Link building — trending-up (growth).
+  campaigns: (
+    <>
+      <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
+      <polyline points="16 7 22 7 22 13" />
+    </>
+  ),
 };
 
 export function Icon({ name, size = 18 }: { name: string; size?: number }) {
