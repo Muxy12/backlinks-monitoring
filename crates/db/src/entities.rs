@@ -434,3 +434,20 @@ pub struct GscConnection {
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
+
+/// A Post-Link Impact analysis for one backlink (migration 0039). Derived metrics
+/// are computed on read from gsc_daily — only the T0 + status are stored.
+#[derive(Debug, Clone, FromRow)]
+pub struct BacklinkImpact {
+    pub id: Uuid,
+    pub organization_id: Uuid,
+    pub project_id: Uuid,
+    pub backlink_id: Uuid,
+    pub target_url_normalized: String,
+    pub t0: DateTime<Utc>,
+    pub t0_source: String,
+    pub status: String,
+    pub eligibility: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
