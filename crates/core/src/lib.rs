@@ -13,6 +13,7 @@ pub mod attention;
 pub mod csv_export;
 pub mod csv_import;
 pub mod event;
+pub mod impact;
 pub mod monitoring;
 pub mod net;
 pub mod observation;
@@ -27,6 +28,7 @@ pub use attention::{
     AttentionKind, Priority, priority as attention_priority, sort_key as attention_sort_key,
 };
 pub use event::{BacklinkEvent, EventType};
+pub use impact::{Confidence, SignalState};
 pub use monitoring::{
     MonitoringDecision, MonitoringInputs, MonitoringLevel, MonitoringReason,
     decide as monitoring_decide, frequency_days,

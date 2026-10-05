@@ -204,6 +204,15 @@ pub fn app(state: AppState) -> Router {
             "/v1/organizations/{org_id}/backlinks/{backlink_id}/events",
             get(routes::resource_routes::get_backlink_events),
         )
+        // Post-Link Impact (observe target-page response after acquisition).
+        .route(
+            "/v1/organizations/{org_id}/backlinks/{backlink_id}/impact",
+            get(routes::impact_routes::get_impact),
+        )
+        .route(
+            "/v1/organizations/{org_id}/backlinks/{backlink_id}/impact/enable",
+            post(routes::impact_routes::enable_impact),
+        )
         .route(
             "/v1/organizations/{org_id}/backlinks/{backlink_id}/occurrences",
             get(routes::resource_routes::list_backlink_occurrences),

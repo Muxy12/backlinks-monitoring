@@ -3608,6 +3608,148 @@ pub mod gsc_daily {
         .await?;
         Ok(r.rows_affected())
     }
+
+    /// Aggregated metrics for one target page over `[start, end)` — the raw input
+    /// to a before/after impact window. `pos_weighted/pos_weight` = the
+    /// impression-weighted average position.
+    #[derive(Debug, Clone, Default, sqlx::FromRow)]
+    pub struct WindowAgg {
+        pub impressions: i64,
+        pub clicks: i64,
+        pub days: i64,
+        pub pos_weighted: f64,
+        pub pos_weight: i64,
+    }
+
+    pub async fn page_window(
+        pool: &PgPool,
+        organization_id: Uuid,
+        project_id: Uuid,
+        page_url_normalized: &str,
+        start: chrono::NaiveDate,
+        end: chrono::NaiveDate,
+    ) -> Result<WindowAgg, DbError> {
+        Ok(sqlx::query_as::<_, WindowAgg>(
+            "SELECT COALESCE(sum(impressions),0)::bigint AS impressions, \
+                    COALESCE(sum(clicks),0)::bigint AS clicks, \
+                    count(*)::bigint AS days, \
+                    COALESCE(sum(position*impressions),0)::float8 AS pos_weighted, \
+                    COALESCE(sum(impressions),0)::bigint AS pos_weight \
+             FROM gsc_daily \
+             WHERE organization_id = $1 AND project_id = $2 \
+               AND page_url_normalized = $3 AND day >= $4 AND day < $5",
+        )
+        .bind(organization_id)
+        .bind(project_id)
+        .bind(page_url_normalized)
+        .bind(start)
+        .bind(end)
+        .fetch_one(pool)
+        .await?)
+    }
+}
+
+// ─── Post-Link Impact analyses (migration 0039) ──────────────────────────────
+pub mod impact {
+    use super::*;
+    use crate::entities::BacklinkImpact;
+
+    macro_rules! cols {
+        () => {
+            "id, organization_id, project_id, backlink_id, target_url_normalized, \
+             t0, t0_source, status, eligibility, created_at, updated_at"
+        };
+    }
+
+    /// Get the impact analysis for a backlink, if one exists. Tenant-scoped.
+    pub async fn get(
+        pool: &PgPool,
+        scope: &OrgScope,
+        backlink_id: Uuid,
+    ) -> Result<Option<BacklinkImpact>, DbError> {
+        Ok(sqlx::query_as::<_, BacklinkImpact>(concat!(
+            "SELECT ",
+            cols!(),
+            " FROM backlink_impact WHERE organization_id = $1 AND backlink_id = $2"
+        ))
+        .bind(scope.organization_id())
+        .bind(backlink_id)
+        .fetch_optional(pool)
+        .await?)
+    }
+
+    /// Create an analysis for a backlink (idempotent on backlink_id). Returns the
+    /// existing row if already present.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn create(
+        pool: &PgPool,
+        scope: &OrgScope,
+        id: Uuid,
+        backlink_id: Uuid,
+        project_id: Uuid,
+        target_url_normalized: &str,
+        t0: DateTime<Utc>,
+        t0_source: &str,
+        eligibility: Option<&str>,
+    ) -> Result<BacklinkImpact, DbError> {
+        let inserted: Option<BacklinkImpact> = sqlx::query_as::<_, BacklinkImpact>(concat!(
+            "INSERT INTO backlink_impact \
+                (id, organization_id, project_id, backlink_id, target_url_normalized, \
+                 t0, t0_source, eligibility) \
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8) \
+             ON CONFLICT (backlink_id) DO NOTHING RETURNING ",
+            cols!()
+        ))
+        .bind(id)
+        .bind(scope.organization_id())
+        .bind(project_id)
+        .bind(backlink_id)
+        .bind(target_url_normalized)
+        .bind(t0)
+        .bind(t0_source)
+        .bind(eligibility)
+        .fetch_optional(pool)
+        .await
+        .map_err(DbError::from_insert)?;
+        if let Some(r) = inserted {
+            return Ok(r);
+        }
+        get(pool, scope, backlink_id)
+            .await?
+            .ok_or(DbError::NotFound)
+    }
+
+    /// Count OTHER of the org's own backlinks acquired for the SAME target page
+    /// within ±`window_days` of `t0` — attribution collision (§44). Uses the same
+    /// T0 proxy (purchase_date → first_checked_at → created_at) as resolution.
+    pub async fn overlapping_count(
+        pool: &PgPool,
+        scope: &OrgScope,
+        project_id: Uuid,
+        target_url_normalized: &str,
+        backlink_id: Uuid,
+        t0: DateTime<Utc>,
+        window_days: i64,
+    ) -> Result<i64, DbError> {
+        let start = t0 - chrono::Duration::days(window_days);
+        let end = t0 + chrono::Duration::days(window_days);
+        let (n,): (i64,) = sqlx::query_as(
+            "SELECT count(*)::bigint FROM backlinks \
+             WHERE organization_id = $1 AND project_id = $2 AND subject = 'own' \
+               AND archived_at IS NULL AND target_url_normalized = $3 AND id <> $4 \
+               AND COALESCE(purchase_date::timestamptz, first_checked_at, created_at) \
+                   BETWEEN $5 AND $6",
+        )
+        .bind(scope.organization_id())
+        .bind(project_id)
+        .bind(target_url_normalized)
+        .bind(backlink_id)
+        .bind(start)
+        .bind(end)
+        .fetch_one(pool)
+        .await?;
+        Ok(n)
+    }
 }
 
 // ─── Billing: plan lookup + idempotent webhook event record (§39) ────────────
