@@ -6,6 +6,13 @@ import { api, orgApi, backlinksExportUrl, type BacklinkView, type ClientView, ty
 import { selectedOrg, selectedOrgId } from "@/lib/workspace";
 import { statusColor, statusLabel } from "@/lib/status";
 import { ACQUISITION, ATTRIBUTE, PLACEMENT, FORMAT, classLabel } from "@/lib/classification";
+import {
+  MONITORING_LEVEL,
+  CHECK_FREQUENCY,
+  COMMERCIAL_MODEL,
+  monitoringLabel,
+  LEVEL_BADGE,
+} from "@/lib/monitoring";
 import { toast } from "../toast";
 import { Icon } from "../icons";
 import "@/app/auth.css";
@@ -44,6 +51,11 @@ export default function DashboardPage() {
   const [attrFilter, setAttrFilter] = useState("");
   const [placeFilter, setPlaceFilter] = useState("");
   const [fmtFilter, setFmtFilter] = useState("");
+  // Monitoring view (segmented tab) + multi-select for bulk actions.
+  const [monitorFilter, setMonitorFilter] = useState(""); // "" | protected | tracked | inventory_only
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [reloadTick, setReloadTick] = useState(0);
   const [periodDays, setPeriodDays] = useState(0); // 0 = all time
   const [page, setPage] = useState(0);
   const [hasNext, setHasNext] = useState(false);
@@ -141,6 +153,7 @@ export default function DashboardPage() {
           attribute: attrFilter || undefined,
           placement: placeFilter || undefined,
           format: fmtFilter || undefined,
+          monitoringLevel: monitorFilter || undefined,
           limit: pageSize,
           offset: page * pageSize,
         })
@@ -148,17 +161,18 @@ export default function DashboardPage() {
           if (res.ok) {
             setBacklinks(res.data);
             setHasNext(res.data.length === pageSize);
+            setSelectedIds(new Set()); // clear selection on any reload
           }
         });
     }, 200); // debounce the search box
     return () => clearTimeout(t);
-  }, [orgId, projectId, clientFilter, statusFilter, searchQ, tagFilter, periodDays, acqFilter, attrFilter, placeFilter, fmtFilter, page, pageSize]);
+  }, [orgId, projectId, clientFilter, statusFilter, searchQ, tagFilter, periodDays, acqFilter, attrFilter, placeFilter, fmtFilter, monitorFilter, reloadTick, page, pageSize]);
 
   // Any filter (or page-size) change resets to the first page. (The load effect's
   // debounce cleanup cancels the stale-page fetch, so this doesn't double-request.)
   useEffect(() => {
     setPage(0);
-  }, [orgId, projectId, clientFilter, statusFilter, searchQ, tagFilter, periodDays, acqFilter, attrFilter, placeFilter, fmtFilter, pageSize]);
+  }, [orgId, projectId, clientFilter, statusFilter, searchQ, tagFilter, periodDays, acqFilter, attrFilter, placeFilter, fmtFilter, monitorFilter, pageSize]);
 
   // Drop a referring-domain filter that no longer matches the reloaded list.
   useEffect(() => {
@@ -227,6 +241,56 @@ export default function DashboardPage() {
     }
     setSelected(res.data);
     setBacklinks((bs) => bs.map((x) => (x.id === res.data.id ? res.data : x)));
+  }
+
+  // Patch the open backlink (monitoring/economic fields) and reflect it in-place.
+  async function patchBacklink(body: Parameters<typeof orgApi.updateBacklink>[2]) {
+    if (!orgId || !selected) return;
+    const res = await orgApi.updateBacklink(orgId, selected.id, body);
+    if (!res.ok) {
+      toast(`Update failed: ${res.detail}`, "error");
+      return;
+    }
+    setSelected(res.data);
+    setBacklinks((bs) => bs.map((x) => (x.id === res.data.id ? res.data : x)));
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds((s) => {
+      const n = new Set(s);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+  }
+
+  // Bulk monitoring change over the current selection, then reload.
+  async function bulkMonitor(body: {
+    monitoring_enabled?: boolean;
+    monitoring_level?: string;
+    check_frequency?: string;
+  }) {
+    if (!orgId || selectedIds.size === 0) return;
+    setBulkBusy(true);
+    const res = await orgApi.bulkMonitoring(orgId, [...selectedIds], body);
+    setBulkBusy(false);
+    if (!res.ok) {
+      toast(`Bulk update failed: ${res.detail}`, "error");
+      return;
+    }
+    toast(`Updated ${res.data.updated} backlink${res.data.updated === 1 ? "" : "s"}`, "success");
+    setReloadTick((t) => t + 1); // reload (also clears the selection)
+  }
+
+  // Monitoring level badge (Protected / Tracked / Inventory), colored.
+  function monitorBadge(b: BacklinkView) {
+    const lvl = b.monitoring_level ?? "inventory_only";
+    const c = LEVEL_BADGE[lvl] ?? LEVEL_BADGE.inventory_only;
+    return (
+      <span className="bl-tag" style={{ background: c.bg, color: c.fg, borderColor: c.bg }}>
+        {monitoringLabel(lvl)}
+      </span>
+    );
   }
 
   // One classification value as a chip (or "-" when unset).
@@ -518,9 +582,10 @@ export default function DashboardPage() {
       ) : (
         <>
           <section className="tiles">
-            <Tile label="Monitored" value={summary?.monitored ?? 0} icon={<Icon name="signal" size={16} />} hint="Active backlinks" />
+            <Tile label="Monitored" value={(summary?.protected ?? 0) + (summary?.tracked ?? 0)} icon={<Icon name="signal" size={16} />} hint={`${summary?.protected ?? 0} protected · ${summary?.inventory_only ?? 0} inventory`} />
             <Tile label="Live" value={summary?.counts["live"] ?? 0} accent="var(--green)" icon={<Icon name="check" size={16} />} hint="Confirmed present" />
             <Tile label="Needs attention" value={summary?.needs_attention ?? 0} accent="var(--yellow)" icon={<Icon name="warn" size={16} />} hint="Lost, changed or errored" />
+            <Tile label="Value protected" value={money(summary?.value_protected ?? [])} accent="var(--green)" icon={<Icon name="signal" size={16} />} hint="Cost of monitored links" />
             <Tile label="Value at risk" value={money(summary?.value_at_risk ?? [])} accent="var(--red)" icon={<Icon name="alert" size={16} />} hint="Cost of at-risk links" />
           </section>
 
@@ -748,6 +813,50 @@ export default function DashboardPage() {
                 {warranties.length > 5 ? "…" : ""}
               </div>
             )}
+            {/* Monitoring view tabs */}
+            <div style={{ display: "flex", gap: 6, margin: "10px 0 6px", flexWrap: "wrap" }}>
+              {([["", "All"], ["protected", "Protected"], ["tracked", "Tracked"], ["inventory_only", "Inventory"]] as const).map(
+                ([v, l]) => (
+                  <button
+                    key={v || "all"}
+                    className={`btn sm${monitorFilter === v ? " primary" : ""}`}
+                    onClick={() => setMonitorFilter(v)}
+                  >
+                    {l}
+                  </button>
+                ),
+              )}
+            </div>
+            {/* Bulk action bar (shown when rows are selected) */}
+            {selectedIds.size > 0 && (
+              <div
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  alignItems: "center",
+                  margin: "0 0 10px",
+                  padding: "8px 10px",
+                  border: "1px solid var(--border)",
+                  borderRadius: 8,
+                  flexWrap: "wrap",
+                }}
+              >
+                <span className="sm"><b>{selectedIds.size}</b> selected</span>
+                <button className="btn sm primary" disabled={bulkBusy} onClick={() => void bulkMonitor({ monitoring_enabled: true, monitoring_level: "protected" })}>Protect</button>
+                <button className="btn sm" disabled={bulkBusy} onClick={() => void bulkMonitor({ monitoring_enabled: true, monitoring_level: "tracked" })}>Track</button>
+                <button className="btn sm" disabled={bulkBusy} onClick={() => void bulkMonitor({ monitoring_enabled: false, monitoring_level: "inventory_only" })}>Move to Inventory</button>
+                <select
+                  disabled={bulkBusy}
+                  defaultValue=""
+                  onChange={(e) => { const v = e.target.value; e.currentTarget.value = ""; if (v) void bulkMonitor({ check_frequency: v }); }}
+                  title="Set check frequency for the selection"
+                >
+                  <option value="">Set frequency…</option>
+                  {CHECK_FREQUENCY.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+                <button className="btn sm" disabled={bulkBusy} onClick={() => setSelectedIds(new Set())}>Clear</button>
+              </div>
+            )}
             {backlinks.length === 0 ? (
               <div className="empty">
                 <div className="empty-icon"><Icon name="link" size={30} /></div>
@@ -776,7 +885,22 @@ export default function DashboardPage() {
               <table className="bl-table">
                 <thead>
                   <tr>
+                    <th style={{ width: 28 }}>
+                      <input
+                        type="checkbox"
+                        aria-label="Select all on page"
+                        checked={visibleBacklinks.length > 0 && selectedIds.size === visibleBacklinks.length}
+                        onChange={() =>
+                          setSelectedIds((s) =>
+                            s.size === visibleBacklinks.length && visibleBacklinks.length > 0
+                              ? new Set()
+                              : new Set(visibleBacklinks.map((b) => b.id)),
+                          )
+                        }
+                      />
+                    </th>
                     <th>Status</th>
+                    <th>Monitoring</th>
                     <th>Source</th>
                     <th>Target</th>
                     <th>Anchor</th>
@@ -787,19 +911,29 @@ export default function DashboardPage() {
                     <th>Rel</th>
                     <th>HTTP</th>
                     <th>Checked</th>
+                    <th>Next check</th>
                   </tr>
                 </thead>
                 <tbody>
                   {visibleBacklinks.length === 0 && (
                     <tr>
-                      <td colSpan={11} className="muted" style={{ padding: 16 }}>
+                      <td colSpan={14} className="muted" style={{ padding: 16 }}>
                         No backlinks from <b className="mono">{domainFilter}</b> in this view.
                       </td>
                     </tr>
                   )}
                   {visibleBacklinks.map((b) => (
                     <tr key={b.id} className="row-click" onClick={() => void openDetail(b)}>
+                      <td onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          aria-label="Select backlink"
+                          checked={selectedIds.has(b.id)}
+                          onChange={() => toggleSelect(b.id)}
+                        />
+                      </td>
                       <td><span className="badge" style={{ "--st": statusColor(b.status) } as CSSProperties}><span className="dot" />{statusLabel(b.status)}</span></td>
+                      <td>{monitorBadge(b)}</td>
                       <td className="cell-domain" title={b.source_url}>{b.source_domain}</td>
                       <td className="cell-domain target" title={b.target_url}>{b.target_domain}</td>
                       <td className="cell-anchor" title={b.detected_anchor_text ?? b.expected_anchor_text ?? ""}>{b.detected_anchor_text ?? b.expected_anchor_text ?? "-"}</td>
@@ -810,6 +944,7 @@ export default function DashboardPage() {
                       <td><RelChips b={b} /></td>
                       <td className="mono">{httpPair(b)}</td>
                       <td className="mono">{fmtShort(b.last_checked_at)}</td>
+                      <td className="mono">{b.next_check_at ? fmtShort(b.next_check_at) : "-"}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1019,6 +1154,102 @@ export default function DashboardPage() {
                   </select>
                 </label>
               ))}
+            </div>
+            <h3 className="drawer-sub">Monitoring</h3>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 6 }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+                <input
+                  type="checkbox"
+                  checked={!!selected.monitoring_enabled}
+                  onChange={(e) =>
+                    void patchBacklink({
+                      monitoring_enabled: e.target.checked,
+                      monitoring_level: e.target.checked
+                        ? (selected.monitoring_level ?? "inventory_only") === "inventory_only"
+                          ? "tracked"
+                          : (selected.monitoring_level ?? "tracked")
+                        : "inventory_only",
+                    })
+                  }
+                />
+                Monitoring active
+              </label>
+              <label className="auth-field" style={{ margin: 0, fontSize: 12 }}>
+                <span className="muted">Level</span>
+                <select
+                  value={selected.monitoring_level ?? "inventory_only"}
+                  onChange={(e) =>
+                    void patchBacklink({
+                      monitoring_level: e.target.value,
+                      monitoring_enabled: e.target.value !== "inventory_only",
+                    })
+                  }
+                >
+                  {MONITORING_LEVEL.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+              </label>
+              <label className="auth-field" style={{ margin: 0, fontSize: 12 }}>
+                <span className="muted">Check frequency</span>
+                <select
+                  value={selected.check_frequency ?? "weekly"}
+                  onChange={(e) => void patchBacklink({ check_frequency: e.target.value })}
+                >
+                  {CHECK_FREQUENCY.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+              </label>
+              <div className="sm muted" style={{ alignSelf: "center" }}>
+                {selected.monitoring_reason ? `Reason: ${monitoringLabel(selected.monitoring_reason)}` : ""}
+                {selected.next_check_at ? ` · next: ${fmtShort(selected.next_check_at)}` : ""}
+              </div>
+            </div>
+            <h3 className="drawer-sub">Economic</h3>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
+              <label className="auth-field" style={{ margin: 0, fontSize: 12 }}>
+                <span className="muted">Commercial model</span>
+                <select
+                  value={selected.commercial_model ?? ""}
+                  onChange={(e) => void patchBacklink({ commercial_model: e.target.value || null })}
+                >
+                  <option value="">—</option>
+                  {COMMERCIAL_MODEL.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+              </label>
+              <label className="auth-field" style={{ margin: 0, fontSize: 12 }}>
+                <span className="muted">Purchase date</span>
+                <input
+                  type="date"
+                  value={selected.purchase_date ?? ""}
+                  onChange={(e) => void patchBacklink({ purchase_date: e.target.value || null })}
+                />
+              </label>
+              <label className="auth-field" style={{ margin: 0, fontSize: 12 }}>
+                <span className="muted">Renewal date</span>
+                <input
+                  type="date"
+                  value={selected.renewal_date ?? ""}
+                  onChange={(e) => void patchBacklink({ renewal_date: e.target.value || null })}
+                />
+              </label>
+              <label className="auth-field" style={{ margin: 0, fontSize: 12 }}>
+                <span className="muted">Order reference</span>
+                <input
+                  key={selected.id}
+                  defaultValue={selected.order_reference ?? ""}
+                  placeholder="invoice / PO #"
+                  onBlur={(e) => {
+                    const v = e.target.value.trim();
+                    if (v !== (selected.order_reference ?? "")) void patchBacklink({ order_reference: v || null });
+                  }}
+                />
+              </label>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+                <input
+                  type="checkbox"
+                  checked={!!selected.replacement_eligible}
+                  onChange={(e) => void patchBacklink({ replacement_eligible: e.target.checked })}
+                />
+                Replacement eligible
+              </label>
             </div>
             {occurrences.length > 0 && (
               <>
