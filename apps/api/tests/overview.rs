@@ -233,6 +233,18 @@ async fn overview_kpis_attention_and_campaigns() {
         .await
         .unwrap();
 
+    // Two snapshot days so the Link Health delta has a baseline: 50% → 90%.
+    let project_uuid = Uuid::parse_str(&project).unwrap();
+    db::sqlx::query(
+        "INSERT INTO daily_backlink_snapshot (organization_id, project_id, day, live, monitored) \
+         VALUES ($1,$2, CURRENT_DATE - 1, 5, 10), ($1,$2, CURRENT_DATE, 9, 10)",
+    )
+    .bind(org)
+    .bind(project_uuid)
+    .execute(&s.pool)
+    .await
+    .unwrap();
+
     // A campaign with a prospect awaiting a decision.
     let camp = s
         .post(
@@ -307,6 +319,14 @@ async fn overview_kpis_attention_and_campaigns() {
 
     // Growth: the link counts as newly added this period.
     assert!(v["backlink_growth"]["new_count"].as_i64().unwrap() >= 1);
+
+    // Link Health delta from the two snapshot days (50% → 90% = +40pp).
+    assert_eq!(
+        v["summary"]["link_health"]["change"].as_f64(),
+        Some(40.0),
+        "health delta: {}",
+        v["summary"]["link_health"]
+    );
 
     // §61 — loading /overview enqueued no jobs.
     let jobs_after: i64 = db::sqlx::query_scalar("SELECT count(*)::bigint FROM jobs")

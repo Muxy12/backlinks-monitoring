@@ -52,6 +52,9 @@ pub struct LinkHealth {
     pub percentage: Option<f64>,
     pub healthy: i64,
     pub eligible: i64,
+    /// Percentage-point change vs the start of the selected period; null until
+    /// there are at least two daily snapshots to compare.
+    pub change: Option<f64>,
 }
 
 #[derive(Serialize)]
@@ -176,11 +179,27 @@ pub async fn overview(
 
     // ── Summary KPIs (current-state; ignore range) ──
     let (healthy, eligible) = overview::link_health(&state.pool, &scope).await?;
+    // Period-over-period delta from the daily snapshots (points), if we have a
+    // baseline day to compare against.
+    let hs = overview::health_series(&state.pool, &scope, since_date).await?;
+    let health_change = if hs.len() >= 2 {
+        let (_, f_live, f_mon) = hs[0];
+        let (_, l_live, l_mon) = hs[hs.len() - 1];
+        if f_mon > 0 && l_mon > 0 {
+            let delta = (l_live as f64 / l_mon as f64 - f_live as f64 / f_mon as f64) * 1000.0;
+            Some(delta.round() / 10.0)
+        } else {
+            None
+        }
+    } else {
+        None
+    };
     let link_health = LinkHealth {
         percentage: (eligible > 0)
             .then(|| ((healthy as f64 / eligible as f64) * 1000.0).round() / 10.0),
         healthy,
         eligible,
+        change: health_change,
     };
     let protected_value = amounts(dashboard::value_protected(&state.pool, &scope).await?);
     let value_at_risk_money = dashboard::value_at_risk(&state.pool, &scope).await?;

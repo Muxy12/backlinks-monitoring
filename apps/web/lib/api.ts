@@ -440,6 +440,7 @@ export interface OverviewLinkHealth {
   percentage: number | null;
   healthy: number;
   eligible: number;
+  change: number | null;
 }
 export interface OverviewActiveCampaigns {
   active: number;
