@@ -109,6 +109,7 @@ export default function OverviewPage() {
               <button
                 key={slug}
                 className={`btn sm${range === slug ? " primary" : ""}`}
+                aria-pressed={range === slug}
                 onClick={() => setRange(slug)}
               >
                 {lbl}
@@ -412,7 +413,9 @@ function KpiCard({
 function AttentionRow({ a, onAction }: { a: AttentionItemView; onAction: () => void }) {
   return (
     <div className="attn-item">
-      <span className={`attn-dot ${a.priority}`} aria-hidden="true" />
+      <span className={`attn-dot ${a.priority}`} title={`${a.priority} priority`}>
+        <span className="sr-only">{a.priority} priority</span>
+      </span>
       <div className="attn-main">
         <div className="attn-title">{a.title}</div>
         {a.subtitle && <div className="attn-sub">{a.subtitle}</div>}
