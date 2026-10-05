@@ -7,8 +7,8 @@
 //! "check now" is just a group of one.
 
 use backlio_core::{
-    BacklinkState, BlockReason, ConnErrorKind, DetectedFields, NormalizeOptions, Observation,
-    RelType, TransitionPolicy, transition,
+    BacklinkState, BacklinkStatus, BlockReason, ConnErrorKind, DetectedFields, NormalizeOptions,
+    Observation, RelType, TransitionPolicy, frequency_days, transition,
 };
 use crawler::{CrawlerConfig, FetchError, FetchOutcome, ParsedPage, fetch, parse_page};
 use db::repositories::link_occurrences;
@@ -106,11 +106,32 @@ pub async fn check_source_group(
             bytes: meta.bytes,
             error_kind: if found { None } else { meta.error_kind.clone() },
         };
+        // Honour the link's check_frequency for the normal cadence; leave the
+        // state machine's backoff/lost/blocked timing untouched. "manual" means
+        // no auto-reschedule (checked only on demand), stored as a NULL schedule.
+        let next_check_at: Option<chrono::DateTime<chrono::Utc>> = match st
+            .check_frequency
+            .as_deref()
+        {
+            Some("manual") => None,
+            freq => {
+                let normal_cadence = t.consecutive_failure_count == 0
+                    && !matches!(
+                        t.status,
+                        BacklinkStatus::Lost | BacklinkStatus::Blocked | BacklinkStatus::Unknown
+                    );
+                if normal_cadence {
+                    Some(now + chrono::Duration::days(frequency_days(freq).unwrap_or(7)))
+                } else {
+                    Some(t.next_check_at)
+                }
+            }
+        };
         let tw = TransitionWrite {
             status: t.status.as_str().to_string(),
             previous_status: t.previous_status.as_str().to_string(),
             consecutive_failure_count: t.consecutive_failure_count,
-            next_check_at: t.next_check_at,
+            next_check_at,
             last_seen_at: t.last_seen_at,
             detected_anchor_text: t.detected.anchor_text.clone(),
             detected_target_url: t.detected.target_url.clone(),

@@ -1106,7 +1106,10 @@ pub mod backlinks {
              detected_is_dofollow, source_http_status, target_http_status, \
              first_checked_at, last_seen_at, link_type, image_alt, lost_at, target_final_url, \
              subject, competitor_id, tier, parent_backlink_id, \
-             acquisition, link_attribute, placement, link_format"
+             acquisition, link_attribute, placement, link_format, \
+             monitoring_enabled, monitoring_level, check_frequency, monitoring_reason, \
+             monitoring_overridden, commercial_model, order_reference, \
+             purchase_date, renewal_date, replacement_eligible"
         };
     }
 
@@ -1129,6 +1132,12 @@ pub mod backlinks {
         pub warranty_type: &'a str,
         pub warranty_value: Option<i32>,
         pub warranty_expiration: Option<chrono::NaiveDate>,
+        // Monitoring stance (migration 0035); the caller computes it via the
+        // monitoring policy. A new link is only scheduled when enabled.
+        pub monitoring_enabled: bool,
+        pub monitoring_level: &'a str,
+        pub monitoring_reason: Option<&'a str>,
+        pub check_frequency: Option<&'a str>,
     }
 
     pub async fn create(
@@ -1145,17 +1154,26 @@ pub mod backlinks {
         let source_domain = host_of(&source_norm).unwrap_or_default();
         let target_domain = host_of(&target_norm).unwrap_or_default();
 
-        // next_check_at = now() so a new backlink is immediately due for its
-        // first check via the scheduler (§49 "schedule initial monitoring").
+        // A new link is scheduled (next_check_at = now, due immediately) only when
+        // monitoring is enabled and not on the `manual` cadence; otherwise it is
+        // inventory-only and generates zero crawl (next_check_at = NULL).
+        let next_check_at: Option<DateTime<Utc>> =
+            if new.monitoring_enabled && new.check_frequency != Some("manual") {
+                Some(Utc::now())
+            } else {
+                None
+            };
         sqlx::query_as::<_, Backlink>(concat!(
             "INSERT INTO backlinks (id, organization_id, project_id, \
                 campaign_id, publisher_id, \
                 source_url, source_url_normalized, source_domain, \
                 target_url, target_url_normalized, target_domain, \
                 expected_anchor_text, expected_rel_type, cost, currency, \
-                warranty_type, warranty_value, warranty_expiration, next_check_at) \
+                warranty_type, warranty_value, warranty_expiration, \
+                monitoring_enabled, monitoring_level, monitoring_reason, check_frequency, \
+                next_check_at) \
              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::rel_type,$14::numeric,$15, \
-                     $16::warranty_type,$17,$18, now()) \
+                     $16::warranty_type,$17,$18,$19,$20,$21,$22,$23) \
              RETURNING ",
             cols!()
         ))
@@ -1177,6 +1195,11 @@ pub mod backlinks {
         .bind(new.warranty_type)
         .bind(new.warranty_value)
         .bind(new.warranty_expiration)
+        .bind(new.monitoring_enabled)
+        .bind(new.monitoring_level)
+        .bind(new.monitoring_reason)
+        .bind(new.check_frequency)
+        .bind(next_check_at)
         .fetch_one(pool)
         .await
         .map_err(DbError::from_insert)
@@ -1197,11 +1220,25 @@ pub mod backlinks {
         pub link_attribute: Option<&'a str>,
         pub placement: Option<&'a str>,
         pub link_format: Option<&'a str>,
+        // Monitoring + economic (migration 0035). next_check_at is DERIVED in SQL
+        // from monitoring_enabled + check_frequency, so it is never passed here.
+        pub monitoring_enabled: bool,
+        pub monitoring_level: &'a str,
+        pub monitoring_reason: Option<&'a str>,
+        pub check_frequency: Option<&'a str>,
+        pub monitoring_overridden: bool,
+        pub commercial_model: Option<&'a str>,
+        pub order_reference: Option<&'a str>,
+        pub purchase_date: Option<chrono::NaiveDate>,
+        pub renewal_date: Option<chrono::NaiveDate>,
+        pub replacement_eligible: Option<bool>,
     }
 
     /// Replace a backlink's mutable fields (§36). Tenant-scoped; `NotFound` if it
     /// is not in the org. The caller merges the PATCH over current values and
-    /// validates before calling, so this is a straight write.
+    /// validates before calling, so this is a straight write. `next_check_at` is
+    /// derived: scheduled (keeping any existing due time, else now) when monitored
+    /// and not `manual`; cleared otherwise — mirroring enable/disable.
     pub async fn update(
         pool: &PgPool,
         scope: &OrgScope,
@@ -1219,7 +1256,21 @@ pub mod backlinks {
                 acquisition = $9, \
                 link_attribute = $10, \
                 placement = $11, \
-                link_format = $12 \
+                link_format = $12, \
+                monitoring_enabled = $13, \
+                monitoring_level = $14, \
+                monitoring_reason = $15, \
+                check_frequency = $16, \
+                monitoring_overridden = $17, \
+                commercial_model = $18, \
+                order_reference = $19, \
+                purchase_date = $20, \
+                renewal_date = $21, \
+                replacement_eligible = $22, \
+                next_check_at = CASE \
+                    WHEN $13 AND $16 IS DISTINCT FROM 'manual' \
+                        THEN COALESCE(next_check_at, now()) \
+                    ELSE NULL END \
              WHERE id = $1 AND organization_id = $2 RETURNING ",
             cols!()
         ))
@@ -1235,9 +1286,81 @@ pub mod backlinks {
         .bind(upd.link_attribute)
         .bind(upd.placement)
         .bind(upd.link_format)
+        .bind(upd.monitoring_enabled)
+        .bind(upd.monitoring_level)
+        .bind(upd.monitoring_reason)
+        .bind(upd.check_frequency)
+        .bind(upd.monitoring_overridden)
+        .bind(upd.commercial_model)
+        .bind(upd.order_reference)
+        .bind(upd.purchase_date)
+        .bind(upd.renewal_date)
+        .bind(upd.replacement_eligible)
         .fetch_one(pool)
         .await
         .map_err(DbError::from_fetch)
+    }
+
+    /// Bulk monitoring change over a set of ids (§15). Any of enabled/level/
+    /// check_frequency may be set (None = leave unchanged). Always marks the rows
+    /// `monitoring_overridden` (a deliberate user choice) and re-derives
+    /// `next_check_at` from the FINAL enabled + frequency, so disabling a set
+    /// immediately stops its future checks. Tenant-scoped. Returns rows affected.
+    pub async fn bulk_set_monitoring(
+        pool: &PgPool,
+        scope: &OrgScope,
+        ids: &[Uuid],
+        enabled: Option<bool>,
+        level: Option<&str>,
+        check_frequency: Option<&str>,
+    ) -> Result<u64, DbError> {
+        let mut qb = sqlx::QueryBuilder::<sqlx::Postgres>::new(
+            "UPDATE backlinks SET monitoring_overridden = true, updated_at = now()",
+        );
+        if let Some(e) = enabled {
+            qb.push(", monitoring_enabled = ");
+            qb.push_bind(e);
+        }
+        if let Some(l) = level {
+            qb.push(", monitoring_level = ");
+            qb.push_bind(l.to_string());
+        }
+        if let Some(f) = check_frequency {
+            qb.push(", check_frequency = ");
+            qb.push_bind(f.to_string());
+        }
+        // Re-derive the schedule from the resulting enabled + frequency (bound
+        // value when provided, else the existing column).
+        qb.push(", next_check_at = CASE WHEN ");
+        match enabled {
+            Some(e) => {
+                qb.push_bind(e);
+            }
+            None => {
+                qb.push("monitoring_enabled");
+            }
+        }
+        qb.push(" AND ");
+        match check_frequency {
+            Some(f) => {
+                qb.push_bind(f.to_string());
+            }
+            None => {
+                qb.push("check_frequency");
+            }
+        }
+        qb.push(" IS DISTINCT FROM 'manual' THEN COALESCE(next_check_at, now()) ELSE NULL END");
+        qb.push(" WHERE organization_id = ");
+        qb.push_bind(scope.organization_id());
+        qb.push(" AND id = ANY(");
+        qb.push_bind(ids.to_vec());
+        qb.push(")");
+        let res = qb
+            .build()
+            .execute(pool)
+            .await
+            .map_err(DbError::from_insert)?;
+        Ok(res.rows_affected())
     }
 
     /// List a project's backlinks (newest first). Tenant + project scoped.
@@ -1289,6 +1412,8 @@ pub mod backlinks {
         pub link_attribute_unset: bool,
         pub placement_unset: bool,
         pub link_format_unset: bool,
+        /// Monitoring level (protected/tracked/inventory_only) for the tab filters.
+        pub monitoring_level: Option<&'a str>,
     }
 
     /// Filtered backlink list (§35). Built with sqlx's `QueryBuilder`, so every
@@ -1370,6 +1495,10 @@ pub mod backlinks {
                    ELSE NULL END) = ",
             );
             qb.push_bind(attr.to_string());
+        }
+        if let Some(level) = filter.monitoring_level {
+            qb.push(" AND monitoring_level = ");
+            qb.push_bind(level.to_string());
         }
         if filter.acquisition_unset {
             qb.push(" AND acquisition IS NULL");
@@ -1642,7 +1771,8 @@ pub mod monitor {
                     expected_anchor_text, expected_rel_type::text AS expected_rel_type, \
                     detected_anchor_text, detected_target_url, detected_rel_attributes, \
                     detected_is_dofollow, source_canonical, source_robots_noindex, \
-                    consecutive_failure_count, last_seen_at, source_url, target_url \
+                    consecutive_failure_count, last_seen_at, source_url, target_url, \
+                    check_frequency \
              FROM backlinks WHERE id = $1",
         )
         .bind(id)
@@ -1657,7 +1787,9 @@ pub mod monitor {
         pub status: String,
         pub previous_status: String,
         pub consecutive_failure_count: i32,
-        pub next_check_at: chrono::DateTime<Utc>,
+        /// None = clear the schedule (link monitored but `manual`, or not due to
+        /// auto-reschedule) so the scheduler skips it.
+        pub next_check_at: Option<chrono::DateTime<Utc>>,
         pub last_seen_at: Option<chrono::DateTime<Utc>>,
         pub detected_anchor_text: Option<String>,
         pub detected_target_url: Option<String>,
@@ -2185,7 +2317,7 @@ pub mod competitors {
                 target_url, target_url_normalized, target_domain, \
                 expected_anchor_text, expected_rel_type, subject, competitor_id, \
                 first_checked_at, last_seen_at, source_http_status, next_check_at) \
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::rel_type,'competitor',$12,$13,$14,$15, now())",
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::rel_type,'competitor',$12,$13,$14,$15, NULL)",
         )
         .bind(id)
         .bind(org)
@@ -2324,7 +2456,7 @@ pub mod tiers {
                 source_url, source_url_normalized, source_domain, \
                 target_url, target_url_normalized, target_domain, \
                 expected_anchor_text, expected_rel_type, subject, tier, parent_backlink_id, next_check_at) \
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::rel_type,'own',$12,$13, now())",
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::rel_type,'own',$12,$13, NULL)",
         )
         .bind(id)
         .bind(org)
@@ -2577,7 +2709,7 @@ pub mod seeds {
                 target_url, target_url_normalized, target_domain, \
                 expected_anchor_text, expected_rel_type, subject, tier, \
                 first_checked_at, last_seen_at, source_http_status, next_check_at) \
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::rel_type,'own',1,$12,$13,$14, now())",
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::rel_type,'own',1,$12,$13,$14, NULL)",
         )
         .bind(Uuid::now_v7())
         .bind(organization_id)
@@ -2736,7 +2868,8 @@ pub mod scheduler {
         // the cost-protection gate (their data is kept, just not crawled).
         let due: Vec<(Uuid, String, String)> = sqlx::query_as(
             "SELECT b.id, b.source_url, b.source_url_normalized FROM backlinks b \
-             WHERE b.archived_at IS NULL AND b.next_check_at IS NOT NULL AND b.next_check_at <= now() \
+             WHERE b.archived_at IS NULL AND b.monitoring_enabled \
+               AND b.next_check_at IS NOT NULL AND b.next_check_at <= now() \
                AND EXISTS ( \
                    SELECT 1 FROM organizations o \
                    JOIN subscriptions s ON s.organization_id = o.id \
@@ -2949,6 +3082,39 @@ pub mod dashboard {
         Ok(sqlx::query_as::<_, (String, String)>(
             "SELECT currency, sum(cost)::text FROM backlinks \
              WHERE organization_id = $1 AND archived_at IS NULL AND subject = 'own' AND tier = 1 AND cost IS NOT NULL \
+             GROUP BY currency",
+        )
+        .bind(scope.organization_id())
+        .fetch_all(pool)
+        .await?)
+    }
+
+    /// (monitoring_level, count) for own backlinks — protected / tracked /
+    /// inventory_only (selective monitoring, migration 0035).
+    pub async fn monitoring_counts(
+        pool: &PgPool,
+        scope: &OrgScope,
+        since: Option<DateTime<Utc>>,
+    ) -> Result<Vec<(String, i64)>, DbError> {
+        let mut qb = scoped(
+            "SELECT b.monitoring_level, count(*) FROM backlinks b",
+            scope,
+            since,
+        );
+        qb.push(" GROUP BY b.monitoring_level");
+        Ok(qb.build_query_as::<(String, i64)>().fetch_all(pool).await?)
+    }
+
+    /// (currency, sum(cost)) for actively monitored links — the link-building
+    /// investment we are protecting. Grouped by currency.
+    pub async fn value_protected(
+        pool: &PgPool,
+        scope: &OrgScope,
+    ) -> Result<Vec<(String, String)>, DbError> {
+        Ok(sqlx::query_as::<_, (String, String)>(
+            "SELECT currency, sum(cost)::text FROM backlinks \
+             WHERE organization_id = $1 AND archived_at IS NULL AND subject = 'own' AND tier = 1 \
+               AND cost IS NOT NULL AND monitoring_enabled \
              GROUP BY currency",
         )
         .bind(scope.organization_id())

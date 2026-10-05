@@ -90,6 +90,10 @@ async fn check_makes_a_present_backlink_live_with_check_and_event() {
             warranty_type: "none",
             warranty_value: None,
             warranty_expiration: None,
+            monitoring_enabled: true,
+            monitoring_level: "protected",
+            monitoring_reason: Some("manual"),
+            check_frequency: None,
         },
     )
     .await
@@ -197,6 +201,10 @@ async fn check_target_records_target_final_url_and_status() {
             warranty_type: "none",
             warranty_value: None,
             warranty_expiration: None,
+            monitoring_enabled: true,
+            monitoring_level: "protected",
+            monitoring_reason: Some("manual"),
+            check_frequency: None,
         },
     )
     .await
@@ -306,6 +314,10 @@ async fn multiple_occurrences_recorded_for_one_backlink() {
             warranty_type: "none",
             warranty_value: None,
             warranty_expiration: None,
+            monitoring_enabled: true,
+            monitoring_level: "protected",
+            monitoring_reason: Some("manual"),
+            check_frequency: None,
         },
     )
     .await
@@ -400,6 +412,10 @@ async fn check_of_absent_link_does_not_lose_it_on_first_miss() {
             warranty_type: "none",
             warranty_value: None,
             warranty_expiration: None,
+            monitoring_enabled: true,
+            monitoring_level: "protected",
+            monitoring_reason: Some("manual"),
+            check_frequency: None,
         },
     )
     .await

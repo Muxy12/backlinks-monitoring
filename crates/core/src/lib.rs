@@ -12,6 +12,7 @@
 pub mod csv_export;
 pub mod csv_import;
 pub mod event;
+pub mod monitoring;
 pub mod net;
 pub mod observation;
 pub mod state_machine;
@@ -20,6 +21,10 @@ pub mod url_normalize;
 pub mod warranty;
 
 pub use event::{BacklinkEvent, EventType};
+pub use monitoring::{
+    MonitoringDecision, MonitoringInputs, MonitoringLevel, MonitoringReason,
+    decide as monitoring_decide, frequency_days,
+};
 pub use net::{SsrfBlock, classify_host, classify_ip, classify_port, classify_scheme};
 pub use observation::{BlockReason, ConnErrorKind, Detected, Observation};
 pub use state_machine::{BacklinkState, DetectedFields, Transition, TransitionPolicy, transition};

@@ -195,6 +195,10 @@ async fn gap_analysis_finds_opportunity_domains() {
             warranty_type: "none",
             warranty_value: None,
             warranty_expiration: None,
+            monitoring_enabled: true,
+            monitoring_level: "protected",
+            monitoring_reason: Some("manual"),
+            check_frequency: None,
         },
     )
     .await
@@ -283,6 +287,10 @@ async fn tier2_ingestion_links_to_the_tier1_source() {
             warranty_type: "none",
             warranty_value: None,
             warranty_expiration: None,
+            monitoring_enabled: true,
+            monitoring_level: "protected",
+            monitoring_reason: Some("manual"),
+            check_frequency: None,
         },
     )
     .await

@@ -252,11 +252,11 @@ console.log('\n=== Scheduler query plan (docs/03 §4.1, §11) ===')
   await db.exec(`
     INSERT INTO backlinks (id,organization_id,project_id,source_url,source_url_normalized,
                            source_domain,target_url,target_url_normalized,target_domain,
-                           next_check_at,status)
+                           next_check_at,status,monitoring_enabled)
     SELECT gen_random_uuid(), '${A.org}', '${A.project}',
            'https://pub.com/p'||g, 'https://pub.com/p'||g, 'pub.com',
            'https://example.com/t'||g, 'https://example.com/t'||g, 'example.com',
-           now() + (g || ' seconds')::interval - interval '1000 seconds', 'live'
+           now() + (g || ' seconds')::interval - interval '1000 seconds', 'live', true
     FROM generate_series(1, 3000) g;
     ANALYZE backlinks;`)
 
@@ -266,7 +266,8 @@ console.log('\n=== Scheduler query plan (docs/03 §4.1, §11) ===')
   const plan = (await db.query(`
     EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
     SELECT id, source_url_normalized FROM backlinks
-    WHERE archived_at IS NULL AND next_check_at IS NOT NULL AND next_check_at <= now()
+    WHERE archived_at IS NULL AND monitoring_enabled
+      AND next_check_at IS NOT NULL AND next_check_at <= now()
     ORDER BY next_check_at LIMIT 500`)).rows.map(r => r['QUERY PLAN']).join('\n')
 
   console.log(plan.split('\n').map(l => '        ' + l).join('\n'))

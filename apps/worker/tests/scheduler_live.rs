@@ -97,6 +97,10 @@ async fn scheduler_dedupes_by_source_and_handler_checks_all() {
         warranty_type: "none",
         warranty_value: None,
         warranty_expiration: None,
+        monitoring_enabled: true,
+        monitoring_level: "protected",
+        monitoring_reason: Some("manual"),
+        check_frequency: None,
     };
     let a = backlinks::create(pool, &scope, Uuid::now_v7(), new("https://acme.com/a"))
         .await

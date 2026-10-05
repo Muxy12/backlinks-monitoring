@@ -76,6 +76,10 @@ async fn warranty_sweep_alerts_once_and_is_idempotent() {
             warranty_type: "days",
             warranty_value: Some(30),
             warranty_expiration: exp,
+            monitoring_enabled: true,
+            monitoring_level: "protected",
+            monitoring_reason: Some("manual"),
+            check_frequency: None,
         },
     )
     .await
@@ -100,6 +104,10 @@ async fn warranty_sweep_alerts_once_and_is_idempotent() {
             warranty_type: "days",
             warranty_value: Some(365),
             warranty_expiration: far,
+            monitoring_enabled: true,
+            monitoring_level: "protected",
+            monitoring_reason: Some("manual"),
+            check_frequency: None,
         },
     )
     .await
