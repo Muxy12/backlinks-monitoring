@@ -3164,14 +3164,6 @@ pub mod snapshots {
 pub mod overview {
     use super::*;
 
-    const ATTENTION_STATUSES: &str =
-        "'lost','suspected_lost','changed','nofollow','source_error','target_error','redirected'";
-    // Customer-facing backlink events for the activity feed (excludes noisy
-    // technical signals like noindex/canonical and all competitor_* events).
-    const ACTIVITY_EVENTS: &str = "'backlink_found','backlink_lost','backlink_restored',\
-        'anchor_changed','target_changed','dofollow_to_nofollow','nofollow_to_dofollow',\
-        'link_moved','source_404','target_404','source_404_to_200'";
-
     #[derive(Debug, Clone, sqlx::FromRow)]
     pub struct AtRiskRow {
         pub id: Uuid,
@@ -3308,19 +3300,20 @@ pub mod overview {
         scope: &OrgScope,
         limit: i64,
     ) -> Result<Vec<AtRiskRow>, DbError> {
-        let sql = format!(
+        // Status list inlined as a literal so the SQL stays a &'static str (the
+        // injection-audit lint forbids runtime-built query strings).
+        Ok(sqlx::query_as::<_, AtRiskRow>(
             "SELECT id, source_domain, target_url, status::text AS status, \
                cost::text AS cost, currency, monitoring_level \
              FROM backlinks \
              WHERE organization_id = $1 AND archived_at IS NULL AND subject = 'own' AND tier = 1 \
-               AND status IN ({ATTENTION_STATUSES}) \
-             ORDER BY (cost IS NULL), cost DESC LIMIT $2"
-        );
-        Ok(sqlx::query_as::<_, AtRiskRow>(&sql)
-            .bind(scope.organization_id())
-            .bind(limit.clamp(1, 100))
-            .fetch_all(pool)
-            .await?)
+               AND status IN ('lost','suspected_lost','changed','nofollow','source_error','target_error','redirected') \
+             ORDER BY (cost IS NULL), cost DESC LIMIT $2",
+        )
+        .bind(scope.organization_id())
+        .bind(limit.clamp(1, 100))
+        .fetch_all(pool)
+        .await?)
     }
 
     /// Recent customer-facing backlink events (activity feed), newest first.
@@ -3329,19 +3322,20 @@ pub mod overview {
         scope: &OrgScope,
         limit: i64,
     ) -> Result<Vec<RecentEventRow>, DbError> {
-        let sql = format!(
+        Ok(sqlx::query_as::<_, RecentEventRow>(
             "SELECT e.event_type::text AS event_type, e.detected_at, \
                b.source_domain, b.target_url, e.backlink_id \
              FROM backlink_events e JOIN backlinks b ON b.id = e.backlink_id \
              WHERE e.organization_id = $1 AND b.subject = 'own' \
-               AND e.event_type IN ({ACTIVITY_EVENTS}) \
-             ORDER BY e.detected_at DESC LIMIT $2"
-        );
-        Ok(sqlx::query_as::<_, RecentEventRow>(&sql)
-            .bind(scope.organization_id())
-            .bind(limit.clamp(1, 50))
-            .fetch_all(pool)
-            .await?)
+               AND e.event_type IN ('backlink_found','backlink_lost','backlink_restored',\
+                 'anchor_changed','target_changed','dofollow_to_nofollow','nofollow_to_dofollow',\
+                 'link_moved','source_404','target_404','source_404_to_200') \
+             ORDER BY e.detected_at DESC LIMIT $2",
+        )
+        .bind(scope.organization_id())
+        .bind(limit.clamp(1, 50))
+        .fetch_all(pool)
+        .await?)
     }
 
     /// (status, count) for the org's campaigns — Active Campaigns KPI.
