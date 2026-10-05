@@ -19,7 +19,8 @@ const SECTIONS: { title: string; links: Link[] }[] = [
   {
     title: "Monitor",
     links: [
-      { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
+      { href: "/dashboard", label: "Overview", icon: "dashboard" },
+      { href: "/backlinks", label: "Backlinks", icon: "link" },
       { href: "/projects", label: "Projects", icon: "projects" },
       { href: "/graph", label: "Graph", icon: "graph" },
     ],

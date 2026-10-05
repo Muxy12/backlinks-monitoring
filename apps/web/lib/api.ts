@@ -434,6 +434,85 @@ export interface OutreachDraft {
   subject: string;
   body: string;
 }
+
+// ─── Overview / command center (dashboard redesign) ──────────────────────────
+export interface OverviewLinkHealth {
+  percentage: number | null;
+  healthy: number;
+  eligible: number;
+}
+export interface OverviewActiveCampaigns {
+  active: number;
+  draft: number;
+  total: number;
+}
+export interface OverviewSummary {
+  link_health: OverviewLinkHealth;
+  protected_value: MoneyByCurrency[];
+  active_campaigns: OverviewActiveCampaigns;
+  value_at_risk: MoneyByCurrency[];
+}
+export interface AttentionItemView {
+  priority: string; // critical | high | medium | low
+  kind: string;
+  title: string;
+  subtitle: string | null;
+  value_at_risk: MoneyByCurrency | null;
+  action: string;
+  route: string;
+}
+export interface GrowthPoint {
+  day: string;
+  referring_domains: number;
+  protected: number;
+  live: number;
+}
+export interface OverviewBacklinkGrowth {
+  series: GrowthPoint[];
+  new_count: number;
+  lost_count: number;
+  net_count: number;
+}
+export interface OverviewCampaignPerformance {
+  active: number;
+  budget: MoneyByCurrency[];
+  spend: MoneyByCurrency[];
+  prospects_total: number;
+  stage_counts: StageCount[];
+}
+export interface OverviewOpportunity {
+  prospect_id: string;
+  campaign_id: string;
+  domain: string;
+  score: number | null;
+  score_reason: string | null;
+  estimated_cost: string | null;
+  currency: string | null;
+}
+export interface OverviewCompetitive {
+  our_referring_domains: number;
+  competitor_referring_domains: number;
+  biggest_gap_domain: string | null;
+  biggest_gap_competitors: number | null;
+}
+export interface OverviewActivity {
+  event_type: string;
+  source_domain: string;
+  target_url: string;
+  backlink_id: string;
+  detected_at: string;
+}
+export interface OverviewResponse {
+  summary: OverviewSummary;
+  attention: AttentionItemView[];
+  next_best_action: AttentionItemView | null;
+  backlink_growth: OverviewBacklinkGrowth;
+  campaign_performance: OverviewCampaignPerformance | null;
+  top_opportunities: OverviewOpportunity[];
+  competitive_position: OverviewCompetitive | null;
+  recent_activity: OverviewActivity[];
+  generated_at: string;
+}
 export interface NewProspect {
   domain: string;
   contact_name?: string;
@@ -547,6 +626,10 @@ export const orgApi = {
   dashboard: (org: string, days?: number) =>
     request<DashboardResponse>(
       `/v1/organizations/${org}/dashboard${days ? `?days=${days}` : ""}`,
+    ),
+  overview: (org: string, range?: string) =>
+    request<OverviewResponse>(
+      `/v1/organizations/${org}/overview${range ? `?range=${range}` : ""}`,
     ),
   projects: (org: string) => request<ProjectView[]>(`/v1/organizations/${org}/projects`),
   createProject: (

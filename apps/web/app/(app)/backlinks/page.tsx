@@ -1,0 +1,1427 @@
+"use client";
+
+import { useCallback, useEffect, useState, type CSSProperties, type FormEvent } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { api, orgApi, backlinksExportUrl, type BacklinkView, type ClientView, type DashboardResponse, type EventsSummary, type EventView, type MeResponse, type NotificationsResponse, type OccurrenceView, type ProjectView, type TagView } from "@/lib/api";
+import { selectedOrg, selectedOrgId } from "@/lib/workspace";
+import { statusColor, statusLabel } from "@/lib/status";
+import { ACQUISITION, ATTRIBUTE, PLACEMENT, FORMAT, classLabel } from "@/lib/classification";
+import {
+  MONITORING_LEVEL,
+  CHECK_FREQUENCY,
+  COMMERCIAL_MODEL,
+  monitoringLabel,
+  LEVEL_BADGE,
+} from "@/lib/monitoring";
+import { toast } from "../toast";
+import { Icon } from "../icons";
+import "@/app/auth.css";
+import "../dashboard/dashboard.css";
+
+export default function BacklinksPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [me, setMe] = useState<MeResponse | null>(null);
+  const [orgId, setOrgId] = useState<string | null>(null);
+  const [summary, setSummary] = useState<DashboardResponse | null>(null);
+  const [evsum, setEvsum] = useState<EventsSummary | null>(null);
+  const [projects, setProjects] = useState<ProjectView[]>([]);
+  const [projectId, setProjectId] = useState<string | null>(null);
+  const [backlinks, setBacklinks] = useState<BacklinkView[]>([]);
+  const [selected, setSelected] = useState<BacklinkView | null>(null);
+  const [events, setEvents] = useState<EventView[] | null>(null);
+  const [occurrences, setOccurrences] = useState<OccurrenceView[]>([]);
+  const [tier2, setTier2] = useState<BacklinkView[]>([]);
+  const [t2csv, setT2csv] = useState("");
+  const [t2msg, setT2msg] = useState<string | null>(null);
+  const [warranties, setWarranties] = useState<BacklinkView[]>([]);
+  const [notifs, setNotifs] = useState<NotificationsResponse | null>(null);
+  const [showNotifs, setShowNotifs] = useState(false);
+  const [clients, setClients] = useState<ClientView[]>([]);
+  const [orgTags, setOrgTags] = useState<TagView[]>([]);
+  const [blTags, setBlTags] = useState<TagView[]>([]);
+  const [newTag, setNewTag] = useState("");
+  const [classBusy, setClassBusy] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("");
+  const [clientFilter, setClientFilter] = useState("");
+  const [searchQ, setSearchQ] = useState("");
+  const [domainFilter, setDomainFilter] = useState("");
+  const [tagFilter, setTagFilter] = useState("");
+  // Classification filters (migration 0034); "" = all.
+  const [acqFilter, setAcqFilter] = useState("");
+  const [attrFilter, setAttrFilter] = useState("");
+  const [placeFilter, setPlaceFilter] = useState("");
+  const [fmtFilter, setFmtFilter] = useState("");
+  // Monitoring view (segmented tab) + multi-select for bulk actions.
+  const [monitorFilter, setMonitorFilter] = useState(""); // "" | protected | tracked | inventory_only
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [reloadTick, setReloadTick] = useState(0);
+  const [periodDays, setPeriodDays] = useState(0); // 0 = all time
+
+  // Preset the view from an Overview/nav deep-link: ?filter=protected|lost.
+  useEffect(() => {
+    const f = searchParams.get("filter");
+    if (f === "protected") setMonitorFilter("protected");
+    else if (f === "lost") setStatusFilter("lost");
+  }, [searchParams]);
+  const [page, setPage] = useState(0);
+  const [hasNext, setHasNext] = useState(false);
+  const [autoTagBusy, setAutoTagBusy] = useState(false);
+  const [pageSize, setPageSize] = useState(50);
+  const [loading, setLoading] = useState(true);
+  const [wsName, setWsName] = useState("");
+  const [wsBusy, setWsBusy] = useState(false);
+  const [wsErr, setWsErr] = useState<string | null>(null);
+  const [showAdd, setShowAdd] = useState(false);
+  const [addBusy, setAddBusy] = useState(false);
+  const [addErr, setAddErr] = useState<string | null>(null);
+  const [addForm, setAddForm] = useState({
+    project_id: "",
+    source_url: "",
+    target_url: "",
+    expected_rel_type: "dofollow",
+    expected_anchor_text: "",
+    cost: "",
+    currency: "",
+  });
+
+  const STATUSES = ["live", "suspected_lost", "lost", "changed", "nofollow", "redirected", "source_error", "target_error", "blocked", "pending"];
+
+  useEffect(() => {
+    api.me().then((res) => {
+      if (!res.ok) {
+        router.push("/login");
+        return;
+      }
+      setMe(res.data);
+      const first = selectedOrgId(res.data.organizations);
+      setOrgId(first);
+      setLoading(false);
+    });
+  }, [router]);
+
+  const loadNotifs = useCallback(async (org: string) => {
+    const res = await orgApi.notifications(org);
+    if (res.ok) setNotifs(res.data);
+  }, []);
+
+  const loadOrg = useCallback(
+    async (org: string) => {
+      const [dash, projs, warr, evs] = await Promise.all([
+        orgApi.dashboard(org),
+        orgApi.projects(org),
+        orgApi.expiringWarranties(org),
+        orgApi.eventsSummary(org, 30),
+      ]);
+      if (evs.ok) setEvsum(evs.data);
+      if (dash.ok) setSummary(dash.data);
+      if (projs.ok) {
+        setProjects(projs.data);
+        const p = projs.data[0]?.id ?? null;
+        setProjectId(p);
+      }
+      if (warr.ok) setWarranties(warr.data);
+      const [tags, cls] = await Promise.all([orgApi.tags(org), orgApi.clients(org)]);
+      if (tags.ok) setOrgTags(tags.data);
+      if (cls.ok) setClients(cls.data);
+      await loadNotifs(org);
+    },
+    [loadNotifs],
+  );
+
+  async function markRead(id: string) {
+    if (!orgId) return;
+    const res = await orgApi.markNotificationRead(orgId, id);
+    if (res.ok) await loadNotifs(orgId);
+  }
+
+  useEffect(() => {
+    if (orgId) void loadOrg(orgId);
+  }, [orgId, loadOrg]);
+
+  useEffect(() => {
+    // A client filter shows that client's backlinks across all its projects;
+    // otherwise the view is scoped to the selected project.
+    if (!orgId || (!clientFilter && !projectId)) {
+      setBacklinks([]);
+      setHasNext(false);
+      return;
+    }
+    const t = setTimeout(() => {
+      orgApi
+        .searchBacklinks(orgId, {
+          projectId: clientFilter ? undefined : projectId || undefined,
+          clientId: clientFilter || undefined,
+          status: statusFilter || undefined,
+          q: searchQ.trim() || undefined,
+          tagId: tagFilter || undefined,
+          days: periodDays || undefined,
+          acquisition: acqFilter || undefined,
+          attribute: attrFilter || undefined,
+          placement: placeFilter || undefined,
+          format: fmtFilter || undefined,
+          monitoringLevel: monitorFilter || undefined,
+          limit: pageSize,
+          offset: page * pageSize,
+        })
+        .then((res) => {
+          if (res.ok) {
+            setBacklinks(res.data);
+            setHasNext(res.data.length === pageSize);
+            setSelectedIds(new Set()); // clear selection on any reload
+          }
+        });
+    }, 200); // debounce the search box
+    return () => clearTimeout(t);
+  }, [orgId, projectId, clientFilter, statusFilter, searchQ, tagFilter, periodDays, acqFilter, attrFilter, placeFilter, fmtFilter, monitorFilter, reloadTick, page, pageSize]);
+
+  // Any filter (or page-size) change resets to the first page. (The load effect's
+  // debounce cleanup cancels the stale-page fetch, so this doesn't double-request.)
+  useEffect(() => {
+    setPage(0);
+  }, [orgId, projectId, clientFilter, statusFilter, searchQ, tagFilter, periodDays, acqFilter, attrFilter, placeFilter, fmtFilter, monitorFilter, pageSize]);
+
+  // Drop a referring-domain filter that no longer matches the reloaded list.
+  useEffect(() => {
+    if (domainFilter && !backlinks.some((b) => b.source_domain === domainFilter)) {
+      setDomainFilter("");
+    }
+  }, [backlinks, domainFilter]);
+
+  // Reload the dashboard stats + illustrations when the period changes.
+  useEffect(() => {
+    if (!orgId) return;
+    orgApi.dashboard(orgId, periodDays || undefined).then((r) => {
+      if (r.ok) setSummary(r.data);
+    });
+  }, [orgId, periodDays]);
+
+  async function runAutoTag() {
+    if (!orgId || !projectId) return;
+    if (
+      !confirm(
+        "Auto-tag this project's backlinks by footprint?\n\n" +
+          "Adds a category tag to each link: comment (ninja linking), pbn, forum-profile, self-built, or earned. " +
+          "Reversible, you can retag or remove tags afterward.",
+      )
+    )
+      return;
+    setAutoTagBusy(true);
+    const res = await orgApi.autoTagBacklinks(orgId, projectId);
+    setAutoTagBusy(false);
+    if (!res.ok) {
+      toast(`Auto-tag failed: ${res.detail}`, "error");
+      return;
+    }
+    const c = res.data.counts;
+    const summary = Object.keys(c)
+      .sort((a, b) => (c[b] ?? 0) - (c[a] ?? 0))
+      .map((k) => `${k} ${c[k]}`)
+      .join(" · ");
+    toast(`Tagged ${res.data.total} backlinks, ${summary}`, "success");
+    // Refresh the org tag list + the illustrations so the new tags show up.
+    const [tags, dash] = await Promise.all([orgApi.tags(orgId), orgApi.dashboard(orgId, periodDays || undefined)]);
+    if (tags.ok) setOrgTags(tags.data);
+    if (dash.ok) setSummary(dash.data);
+  }
+
+  // Set one classification dimension on the open backlink. Empty value clears it
+  // (back to unclassified / auto for the attribute). Updates the drawer + the row.
+  async function setClass(
+    field: "acquisition" | "link_attribute" | "placement" | "link_format",
+    value: string,
+  ) {
+    if (!orgId || !selected) return;
+    const body: {
+      acquisition?: string | null;
+      link_attribute?: string | null;
+      placement?: string | null;
+      link_format?: string | null;
+    } = {};
+    body[field] = value || null;
+    setClassBusy(true);
+    const res = await orgApi.updateBacklink(orgId, selected.id, body);
+    setClassBusy(false);
+    if (!res.ok) {
+      toast(`Update failed: ${res.detail}`, "error");
+      return;
+    }
+    setSelected(res.data);
+    setBacklinks((bs) => bs.map((x) => (x.id === res.data.id ? res.data : x)));
+  }
+
+  // Patch the open backlink (monitoring/economic fields) and reflect it in-place.
+  async function patchBacklink(body: Parameters<typeof orgApi.updateBacklink>[2]) {
+    if (!orgId || !selected) return;
+    const res = await orgApi.updateBacklink(orgId, selected.id, body);
+    if (!res.ok) {
+      toast(`Update failed: ${res.detail}`, "error");
+      return;
+    }
+    setSelected(res.data);
+    setBacklinks((bs) => bs.map((x) => (x.id === res.data.id ? res.data : x)));
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds((s) => {
+      const n = new Set(s);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+  }
+
+  // Bulk monitoring change over the current selection, then reload.
+  async function bulkMonitor(body: {
+    monitoring_enabled?: boolean;
+    monitoring_level?: string;
+    check_frequency?: string;
+  }) {
+    if (!orgId || selectedIds.size === 0) return;
+    setBulkBusy(true);
+    const res = await orgApi.bulkMonitoring(orgId, [...selectedIds], body);
+    setBulkBusy(false);
+    if (!res.ok) {
+      toast(`Bulk update failed: ${res.detail}`, "error");
+      return;
+    }
+    toast(`Updated ${res.data.updated} backlink${res.data.updated === 1 ? "" : "s"}`, "success");
+    setReloadTick((t) => t + 1); // reload (also clears the selection)
+  }
+
+  // Monitoring level badge (Protected / Tracked / Inventory), colored.
+  function monitorBadge(b: BacklinkView) {
+    const lvl = b.monitoring_level ?? "inventory_only";
+    const c = LEVEL_BADGE[lvl] ?? LEVEL_BADGE.inventory_only;
+    return (
+      <span className="bl-tag" style={{ background: c.bg, color: c.fg, borderColor: c.bg }}>
+        {monitoringLabel(lvl)}
+      </span>
+    );
+  }
+
+  // One classification value as a chip (or "-" when unset).
+  function classChip(slug?: string | null) {
+    return slug ? <span className="bl-tag">{classLabel(slug)}</span> : <span className="muted">-</span>;
+  }
+
+  // Attribute cell: the manual override if set, else the crawler-detected value
+  // (shown muted + italic to mark it as auto). "-" when never observed.
+  function attrCell(b: BacklinkView) {
+    if (b.link_attribute) return <span className="bl-tag">{classLabel(b.link_attribute)}</span>;
+    if (b.link_attribute_auto)
+      return (
+        <span
+          className="bl-tag"
+          style={{ opacity: 0.65, fontStyle: "italic" }}
+          title="Auto-detected from the crawler (no manual override)"
+        >
+          {classLabel(b.link_attribute_auto)}
+        </span>
+      );
+    return <span className="muted">-</span>;
+  }
+
+  async function openDetail(b: BacklinkView) {
+    setSelected(b);
+    setEvents(null);
+    setBlTags([]);
+    setOccurrences([]);
+    setTier2([]);
+    setT2csv("");
+    setT2msg(null);
+    setNewTag("");
+    if (orgId) {
+      const [ev, tg, oc, t2] = await Promise.all([
+        orgApi.backlinkEvents(orgId, b.id),
+        orgApi.backlinkTags(orgId, b.id),
+        orgApi.backlinkOccurrences(orgId, b.id),
+        orgApi.backlinkTier2(orgId, b.id),
+      ]);
+      setEvents(ev.ok ? ev.data : []);
+      if (tg.ok) setBlTags(tg.data);
+      if (oc.ok) setOccurrences(oc.data);
+      if (t2.ok) setTier2(t2.data);
+    }
+  }
+
+  async function importTier2() {
+    if (!orgId || !selected) return;
+    const rows = t2csv
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .map((l) => {
+        const [source_url, anchor, rel] = l.split(",").map((s) => s?.trim());
+        return { source_url, anchor, rel };
+      })
+      .filter((r) => r.source_url);
+    if (rows.length === 0) {
+      setT2msg("Paste rows: source_url,anchor,rel");
+      return;
+    }
+    const res = await orgApi.importTier2(orgId, selected.id, rows);
+    if (!res.ok) {
+      setT2msg(res.detail || "Import failed.");
+      return;
+    }
+    setT2msg(`Imported ${res.data.imported} (${res.data.new} new).`);
+    setT2csv("");
+    const t2 = await orgApi.backlinkTier2(orgId, selected.id);
+    if (t2.ok) setTier2(t2.data);
+  }
+
+  async function refreshBlTags(id: string) {
+    if (!orgId) return;
+    const tg = await orgApi.backlinkTags(orgId, id);
+    if (tg.ok) setBlTags(tg.data);
+  }
+
+  async function attachExisting(tagId: string) {
+    if (!orgId || !selected || !tagId) return;
+    const res = await orgApi.attachTag(orgId, selected.id, tagId);
+    if (res.ok) await refreshBlTags(selected.id);
+  }
+
+  async function removeTag(tagId: string) {
+    if (!orgId || !selected) return;
+    const res = await orgApi.detachTag(orgId, selected.id, tagId);
+    if (res.ok) await refreshBlTags(selected.id);
+  }
+
+  async function createAndAttach() {
+    if (!orgId || !selected) return;
+    const name = newTag.trim();
+    if (!name) return;
+    const created = await orgApi.createTag(orgId, name);
+    if (created.ok) {
+      await orgApi.attachTag(orgId, selected.id, created.data.id);
+      setNewTag("");
+      const [tags, blt] = await Promise.all([orgApi.tags(orgId), orgApi.backlinkTags(orgId, selected.id)]);
+      if (tags.ok) setOrgTags(tags.data);
+      if (blt.ok) setBlTags(blt.data);
+    }
+  }
+
+  async function archiveSelected() {
+    if (!orgId || !selected || !projectId) return;
+    const res = await orgApi.archiveBacklink(orgId, selected.id);
+    if (res.ok) {
+      setSelected(null);
+      const list = await orgApi.backlinks(orgId, projectId);
+      if (list.ok) setBacklinks(list.data);
+    }
+  }
+
+  if (loading)
+    return (
+      <div className="dash" aria-busy="true" aria-label="Loading dashboard">
+        <div className="page-head"><h1>Dashboard</h1></div>
+        <div className="tiles">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div className="tile" key={i}><div className="sk-row" style={{ height: 52 }} /></div>
+          ))}
+        </div>
+        <div className="skeleton-rows" style={{ marginTop: 18 }}>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div className="sk-row" key={i} />
+          ))}
+        </div>
+      </div>
+    );
+  if (!me) return null;
+
+  const money = (rows: { currency: string; amount: string }[]) =>
+    rows.length === 0 ? "-" : rows.map((r) => `${r.amount} ${r.currency}`).join(" · ");
+
+  // The client these backlinks belong to: the explicit client filter, else the
+  // selected project's client.
+  const selectedProject = projects.find((p) => p.id === projectId) ?? null;
+  const activeClientId = clientFilter || selectedProject?.client_id || "";
+  const selectedClient = activeClientId
+    ? clients.find((c) => c.id === activeClientId) ?? null
+    : null;
+
+  // Referring-domain filter (client-side, over the loaded list). Options are the
+  // distinct source domains currently loaded; picking one narrows the table.
+  const referringDomains = Array.from(
+    new Set(backlinks.map((b) => b.source_domain).filter(Boolean)),
+  ).sort();
+  const visibleBacklinks = domainFilter
+    ? backlinks.filter((b) => b.source_domain === domainFilter)
+    : backlinks;
+
+  async function createWorkspace(e: FormEvent) {
+    e.preventDefault();
+    const name = wsName.trim();
+    if (name.length < 2) {
+      setWsErr("Enter a workspace name (at least 2 characters).");
+      return;
+    }
+    setWsErr(null);
+    setWsBusy(true);
+    const res = await api.createOrganization(name);
+    if (!res.ok) {
+      setWsBusy(false);
+      setWsErr(res.detail || "Could not create the workspace.");
+      return;
+    }
+    // Reload the session so the new org (and its id) propagate.
+    const meRes = await api.me();
+    setWsBusy(false);
+    if (meRes.ok) {
+      setMe(meRes.data);
+      setOrgId(selectedOrgId(meRes.data.organizations));
+      setWsName("");
+    }
+  }
+
+  function openAdd() {
+    setAddErr(null);
+    setAddForm((f) => ({ ...f, project_id: projectId ?? projects[0]?.id ?? "" }));
+    setShowAdd(true);
+  }
+
+  async function submitBacklink(e: FormEvent) {
+    e.preventDefault();
+    if (!orgId) return;
+    const f = addForm;
+    if (!f.project_id) {
+      setAddErr("Pick a project for this backlink.");
+      return;
+    }
+    const src = f.source_url.trim();
+    const tgt = f.target_url.trim();
+    if (!/^https?:\/\//.test(src) || !/^https?:\/\//.test(tgt)) {
+      setAddErr("Source and target must start with http:// or https://.");
+      return;
+    }
+    setAddErr(null);
+    setAddBusy(true);
+    const res = await orgApi.createBacklink(orgId, {
+      project_id: f.project_id,
+      source_url: src,
+      target_url: tgt,
+      expected_rel_type: f.expected_rel_type,
+      ...(f.expected_anchor_text.trim() ? { expected_anchor_text: f.expected_anchor_text.trim() } : {}),
+      ...(f.cost.trim() ? { cost: Number(f.cost), currency: f.currency.trim() || "USD" } : {}),
+    });
+    setAddBusy(false);
+    if (!res.ok) {
+      setAddErr(res.detail || "Could not add the backlink.");
+      return;
+    }
+    setShowAdd(false);
+    setAddForm({ project_id: f.project_id, source_url: "", target_url: "", expected_rel_type: "dofollow", expected_anchor_text: "", cost: "", currency: "" });
+    // Show the project we just added to, and refresh the numbers + list.
+    setClientFilter("");
+    setProjectId(f.project_id);
+    const [dash, list] = await Promise.all([
+      orgApi.dashboard(orgId),
+      orgApi.searchBacklinks(orgId, { projectId: f.project_id }),
+    ]);
+    if (dash.ok) setSummary(dash.data);
+    if (list.ok) setBacklinks(list.data);
+  }
+
+  // Segments for the status-breakdown bar (only statuses that actually occur).
+  const distSegments = STATUSES.map((st) => ({ st, n: summary?.counts[st] ?? 0 })).filter((s) => s.n > 0);
+  const distTotal = distSegments.reduce((acc, s) => acc + s.n, 0);
+
+  // Follow ratio (do/nofollow) illustration.
+  const relSegments = [
+    { label: "Dofollow", n: summary?.rel?.[0] ?? 0, color: "#36d399" },
+    { label: "Nofollow", n: summary?.rel?.[1] ?? 0, color: "#fbbf24" },
+  ].filter((s) => s.n > 0);
+  const relTotal = relSegments.reduce((acc, s) => acc + s.n, 0);
+
+  // Link-type illustration (auto-tagger categories).
+  const TYPE_COLORS: Record<string, string> = {
+    comment: "#22d3ee",
+    pbn: "#fb7185",
+    "forum-profile": "#a78bfa",
+    "self-built": "#fbbf24",
+    earned: "#36d399",
+  };
+  const typeSegments = ["earned", "self-built", "forum-profile", "pbn", "comment"]
+    .map((k) => ({ label: k, n: summary?.link_types?.[k] ?? 0, color: TYPE_COLORS[k] }))
+    .filter((s) => s.n > 0);
+  const typeTotal = typeSegments.reduce((acc, s) => acc + s.n, 0);
+
+  return (
+    <main className="dash">
+      <header className="dash-head">
+        <div className="dash-id">
+          <h1>
+            {selectedOrg(me.organizations)?.name ?? "Dashboard"}
+            {selectedOrg(me.organizations)?.role && <span className="role-pill">{selectedOrg(me.organizations)?.role}</span>}
+          </h1>
+          <p className="muted">{me.user.email}</p>
+        </div>
+        <div className="head-actions">
+          <button className="btn bell" onClick={() => setShowNotifs((v) => !v)} aria-label="Notifications">
+            <Icon name="bell" size={17} />
+            {notifs && notifs.unread > 0 && <span className="bell-badge">{notifs.unread}</span>}
+          </button>
+        </div>
+      </header>
+
+      {me.organizations.length === 0 ? (
+        <section className="panel create-ws">
+          <div className="empty-icon"><Icon name="rocket" size={26} /></div>
+          <h2>Create your workspace</h2>
+          <p className="muted">A workspace holds your clients, projects and backlinks. Name it after your agency or your own site.</p>
+          <form onSubmit={createWorkspace} className="ws-form">
+            <input
+              type="text"
+              placeholder="e.g. Acme SEO"
+              value={wsName}
+              onChange={(e) => setWsName(e.target.value)}
+              disabled={wsBusy}
+              autoFocus
+            />
+            <button type="submit" className="btn primary" disabled={wsBusy}>
+              {wsBusy ? "Creating…" : "Create workspace"}
+            </button>
+          </form>
+          {wsErr && <p className="error">{wsErr}</p>}
+        </section>
+      ) : (
+        <>
+          <section className="tiles">
+            <Tile label="Monitored" value={(summary?.protected ?? 0) + (summary?.tracked ?? 0)} icon={<Icon name="signal" size={16} />} hint={`${summary?.protected ?? 0} protected · ${summary?.inventory_only ?? 0} inventory`} />
+            <Tile label="Live" value={summary?.counts["live"] ?? 0} accent="var(--green)" icon={<Icon name="check" size={16} />} hint="Confirmed present" />
+            <Tile label="Needs attention" value={summary?.needs_attention ?? 0} accent="var(--yellow)" icon={<Icon name="warn" size={16} />} hint="Lost, changed or errored" />
+            <Tile label="Value protected" value={money(summary?.value_protected ?? [])} accent="var(--green)" icon={<Icon name="signal" size={16} />} hint="Cost of monitored links" />
+            <Tile label="Value at risk" value={money(summary?.value_at_risk ?? [])} accent="var(--red)" icon={<Icon name="alert" size={16} />} hint="Cost of at-risk links" />
+          </section>
+
+          {summary && (
+            <div className="substats">
+              <span><b>{summary.referring_domains}</b> referring domains</span>
+              <span><b>{summary.referring_pages}</b> referring pages</span>
+              <span><b>{summary.occurrences}</b> occurrences</span>
+            </div>
+          )}
+
+          {evsum && Object.keys(evsum.counts).length > 0 && (
+            <div className="substats evo">
+              <span className="evo-label">Last {evsum.days} days:</span>
+              {evsum.counts["backlink_found"] ? <span><b>+{evsum.counts["backlink_found"]}</b> found</span> : null}
+              {evsum.counts["backlink_lost"] ? <span><b>{evsum.counts["backlink_lost"]}</b> lost</span> : null}
+              {evsum.counts["backlink_restored"] ? <span><b>{evsum.counts["backlink_restored"]}</b> recovered</span> : null}
+              {evsum.counts["dofollow_to_nofollow"] ? <span><b>{evsum.counts["dofollow_to_nofollow"]}</b> → nofollow</span> : null}
+              {evsum.counts["anchor_changed"] ? <span><b>{evsum.counts["anchor_changed"]}</b> anchor changes</span> : null}
+              {evsum.counts["target_changed"] ? <span><b>{evsum.counts["target_changed"]}</b> target changes</span> : null}
+              {evsum.counts["link_moved"] ? <span><b>{evsum.counts["link_moved"]}</b> moved</span> : null}
+            </div>
+          )}
+
+          {distTotal > 0 && (
+            <section className="dist">
+              <div className="dist-head">
+                <h2>Status breakdown</h2>
+                <span className="dist-total">{distTotal} link{distTotal > 1 ? "s" : ""}</span>
+              </div>
+              <div className="dist-bar">
+                {distSegments.map((s) => (
+                  <div
+                    key={s.st}
+                    className="dist-seg"
+                    style={{ flexGrow: s.n, background: statusColor(s.st) }}
+                    title={`${statusLabel(s.st)}: ${s.n}`}
+                  />
+                ))}
+              </div>
+              <div className="legend">
+                {distSegments.map((s) => (
+                  <span key={s.st} className="legend-item" style={{ color: statusColor(s.st) }}>
+                    <span className="legend-dot" />
+                    <span style={{ color: "var(--muted)" }}>{statusLabel(s.st)}</span>
+                    <b>{s.n}</b>
+                  </span>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {summary && (
+            <div className="dist-row">
+              {relSegments.length > 0 && (
+                <section className="dist">
+                  <div className="dist-head">
+                    <h2>Follow ratio</h2>
+                    <span className="dist-total">{relTotal} link{relTotal > 1 ? "s" : ""}</span>
+                  </div>
+                  <div className="dist-bar">
+                    {relSegments.map((s) => (
+                      <div key={s.label} className="dist-seg" style={{ flexGrow: s.n, background: s.color }} title={`${s.label}: ${s.n}`} />
+                    ))}
+                  </div>
+                  <div className="legend">
+                    {relSegments.map((s) => (
+                      <span key={s.label} className="legend-item" style={{ color: s.color }}>
+                        <span className="legend-dot" />
+                        <span style={{ color: "var(--muted)" }}>{s.label}</span>
+                        <b>{s.n}</b>
+                        <span style={{ color: "var(--muted)" }}>({relTotal ? Math.round((s.n / relTotal) * 100) : 0}%)</span>
+                      </span>
+                    ))}
+                  </div>
+                </section>
+              )}
+              {typeSegments.length > 0 && (
+                <section className="dist">
+                  <div className="dist-head">
+                    <h2>Link type</h2>
+                    <span className="dist-total">
+                      {typeTotal} tagged · <a href="#" onClick={(e) => { e.preventDefault(); void runAutoTag(); }}>re-tag</a>
+                    </span>
+                  </div>
+                  <div className="dist-bar">
+                    {typeSegments.map((s) => (
+                      <div key={s.label} className="dist-seg" style={{ flexGrow: s.n, background: s.color }} title={`${s.label}: ${s.n}`} />
+                    ))}
+                  </div>
+                  <div className="legend">
+                    {typeSegments.map((s) => (
+                      <span key={s.label} className="legend-item" style={{ color: s.color }}>
+                        <span className="legend-dot" />
+                        <span style={{ color: "var(--muted)" }}>{s.label}</span>
+                        <b>{s.n}</b>
+                      </span>
+                    ))}
+                  </div>
+                </section>
+              )}
+            </div>
+          )}
+
+          <section className="panel">
+            <div className="panel-head">
+              <h2>
+                Backlinks
+                {selectedClient && <span className="client-badge">{selectedClient.name}</span>}
+              </h2>
+              <div className="panel-actions">
+                {clients.length > 0 && (
+                  <select value={clientFilter} onChange={(e) => setClientFilter(e.target.value)} title="Filter by client">
+                    <option value="">All clients</option>
+                    {clients.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                )}
+                {projects.length > 0 && (
+                  <select
+                    value={projectId ?? ""}
+                    onChange={(e) => setProjectId(e.target.value)}
+                    disabled={!!clientFilter}
+                    title={clientFilter ? "Clear the client filter to pick a project" : "Project"}
+                  >
+                    {projects.map((p) => (
+                      <option key={p.id} value={p.id}>{p.name}, {p.domain}</option>
+                    ))}
+                  </select>
+                )}
+                <input
+                  className="bl-search"
+                  placeholder="Search domain/anchor"
+                  value={searchQ}
+                  onChange={(e) => setSearchQ(e.target.value)}
+                />
+                <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                  <option value="">All statuses</option>
+                  {STATUSES.map((st) => (
+                    <option key={st} value={st}>{statusLabel(st)}</option>
+                  ))}
+                </select>
+                <select
+                  value={periodDays}
+                  onChange={(e) => setPeriodDays(Number(e.target.value))}
+                  title="Filter by acquisition period (first seen)"
+                >
+                  <option value={0}>All time</option>
+                  <option value={7}>Last 7 days</option>
+                  <option value={30}>Last 30 days</option>
+                  <option value={90}>Last 90 days</option>
+                </select>
+                <select
+                  value={domainFilter}
+                  onChange={(e) => setDomainFilter(e.target.value)}
+                  title="Filter by referring domain"
+                >
+                  <option value="">All domains</option>
+                  {referringDomains.map((d) => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+                {orgTags.length > 0 && (
+                  <select
+                    value={tagFilter}
+                    onChange={(e) => setTagFilter(e.target.value)}
+                    title="Filter by tag"
+                  >
+                    <option value="">All tags</option>
+                    {orgTags.map((t) => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
+                )}
+                <select value={acqFilter} onChange={(e) => setAcqFilter(e.target.value)} title="Filter by acquisition">
+                  <option value="">All acquisition</option>
+                  <option value="none">(Unclassified)</option>
+                  {ACQUISITION.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+                <select value={attrFilter} onChange={(e) => setAttrFilter(e.target.value)} title="Filter by link attribute">
+                  <option value="">All attributes</option>
+                  <option value="none">(Unclassified)</option>
+                  {ATTRIBUTE.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+                <select value={placeFilter} onChange={(e) => setPlaceFilter(e.target.value)} title="Filter by placement">
+                  <option value="">All placements</option>
+                  <option value="none">(Unclassified)</option>
+                  {PLACEMENT.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+                <select value={fmtFilter} onChange={(e) => setFmtFilter(e.target.value)} title="Filter by format">
+                  <option value="">All formats</option>
+                  <option value="none">(Unclassified)</option>
+                  {FORMAT.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+                {projects.length > 0 && (
+                  <button className="btn sm primary" onClick={openAdd}>+ Add backlink</button>
+                )}
+                <a className="btn sm" href="/import">Import</a>
+                {orgId && projectId && (
+                  <button
+                    className="btn sm"
+                    disabled={autoTagBusy}
+                    title="Classify this project's backlinks by footprint (comment / PBN / forum / self-built / earned)"
+                    onClick={() => void runAutoTag()}
+                  >
+                    {autoTagBusy ? "Tagging…" : <><Icon name="tag" size={14} /> Auto-tag</>}
+                  </button>
+                )}
+                {orgId && (
+                  <a className="btn sm" href={backlinksExportUrl(orgId, projectId ?? undefined, clientFilter || undefined)}>
+                    Export CSV
+                  </a>
+                )}
+              </div>
+            </div>
+            {warranties.length > 0 && (
+              <div className="warranty-note">
+                <Icon name="alert" size={15} /> {warranties.length} backlink{warranties.length > 1 ? "s" : ""} with a warranty
+                expiring soon or lapsed:{" "}
+                {warranties
+                  .slice(0, 5)
+                  .map((w) => `${w.source_domain} (${w.warranty_status ?? "?"})`)
+                  .join(", ")}
+                {warranties.length > 5 ? "…" : ""}
+              </div>
+            )}
+            {/* Monitoring view tabs */}
+            <div style={{ display: "flex", gap: 6, margin: "10px 0 6px", flexWrap: "wrap" }}>
+              {([["", "All"], ["protected", "Protected"], ["tracked", "Tracked"], ["inventory_only", "Inventory"]] as const).map(
+                ([v, l]) => (
+                  <button
+                    key={v || "all"}
+                    className={`btn sm${monitorFilter === v ? " primary" : ""}`}
+                    onClick={() => setMonitorFilter(v)}
+                  >
+                    {l}
+                  </button>
+                ),
+              )}
+            </div>
+            {/* Bulk action bar (shown when rows are selected) */}
+            {selectedIds.size > 0 && (
+              <div
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  alignItems: "center",
+                  margin: "0 0 10px",
+                  padding: "8px 10px",
+                  border: "1px solid var(--border)",
+                  borderRadius: 8,
+                  flexWrap: "wrap",
+                }}
+              >
+                <span className="sm"><b>{selectedIds.size}</b> selected</span>
+                <button className="btn sm primary" disabled={bulkBusy} onClick={() => void bulkMonitor({ monitoring_enabled: true, monitoring_level: "protected" })}>Protect</button>
+                <button className="btn sm" disabled={bulkBusy} onClick={() => void bulkMonitor({ monitoring_enabled: true, monitoring_level: "tracked" })}>Track</button>
+                <button className="btn sm" disabled={bulkBusy} onClick={() => void bulkMonitor({ monitoring_enabled: false, monitoring_level: "inventory_only" })}>Move to Inventory</button>
+                <select
+                  disabled={bulkBusy}
+                  defaultValue=""
+                  onChange={(e) => { const v = e.target.value; e.currentTarget.value = ""; if (v) void bulkMonitor({ check_frequency: v }); }}
+                  title="Set check frequency for the selection"
+                >
+                  <option value="">Set frequency…</option>
+                  {CHECK_FREQUENCY.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+                <button className="btn sm" disabled={bulkBusy} onClick={() => setSelectedIds(new Set())}>Clear</button>
+              </div>
+            )}
+            {backlinks.length === 0 ? (
+              <div className="empty">
+                <div className="empty-icon"><Icon name="link" size={30} /></div>
+                <h3>{projectId || clientFilter ? "No backlinks here yet" : "Pick a project to view its backlinks"}</h3>
+                <p>
+                  {projects.length === 0
+                    ? "Create a project first, then import the backlinks you want to monitor."
+                    : "Import a CSV of backlinks and LinkPulz will track their status, anchors, rel and warranties."}
+                </p>
+                <div className="empty-cta">
+                  {projects.length === 0 ? (
+                    <>
+                      <a className="btn primary" href="/projects">Create a project</a>
+                      <a className="btn" href="/projects">Manage projects</a>
+                    </>
+                  ) : (
+                    <>
+                      <button className="btn primary" onClick={openAdd}>+ Add backlink</button>
+                      <a className="btn" href="/import">Import CSV</a>
+                    </>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="bl-scroll">
+              <table className="bl-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: 28 }}>
+                      <input
+                        type="checkbox"
+                        aria-label="Select all on page"
+                        checked={visibleBacklinks.length > 0 && selectedIds.size === visibleBacklinks.length}
+                        onChange={() =>
+                          setSelectedIds((s) =>
+                            s.size === visibleBacklinks.length && visibleBacklinks.length > 0
+                              ? new Set()
+                              : new Set(visibleBacklinks.map((b) => b.id)),
+                          )
+                        }
+                      />
+                    </th>
+                    <th>Status</th>
+                    <th>Monitoring</th>
+                    <th>Source</th>
+                    <th>Target</th>
+                    <th>Anchor</th>
+                    <th>Acquisition</th>
+                    <th>Attribute</th>
+                    <th>Placement</th>
+                    <th>Format</th>
+                    <th>Rel</th>
+                    <th>HTTP</th>
+                    <th>Checked</th>
+                    <th>Next check</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visibleBacklinks.length === 0 && (
+                    <tr>
+                      <td colSpan={14} className="muted" style={{ padding: 16 }}>
+                        No backlinks from <b className="mono">{domainFilter}</b> in this view.
+                      </td>
+                    </tr>
+                  )}
+                  {visibleBacklinks.map((b) => (
+                    <tr key={b.id} className="row-click" onClick={() => void openDetail(b)}>
+                      <td onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          aria-label="Select backlink"
+                          checked={selectedIds.has(b.id)}
+                          onChange={() => toggleSelect(b.id)}
+                        />
+                      </td>
+                      <td><span className="badge" style={{ "--st": statusColor(b.status) } as CSSProperties}><span className="dot" />{statusLabel(b.status)}</span></td>
+                      <td>{monitorBadge(b)}</td>
+                      <td className="cell-domain" title={b.source_url}>{b.source_domain}</td>
+                      <td className="cell-domain target" title={b.target_url}>{b.target_domain}</td>
+                      <td className="cell-anchor" title={b.detected_anchor_text ?? b.expected_anchor_text ?? ""}>{b.detected_anchor_text ?? b.expected_anchor_text ?? "-"}</td>
+                      <td>{classChip(b.acquisition)}</td>
+                      <td>{attrCell(b)}</td>
+                      <td>{classChip(b.placement)}</td>
+                      <td>{classChip(b.link_format)}</td>
+                      <td><RelChips b={b} /></td>
+                      <td className="mono">{httpPair(b)}</td>
+                      <td className="mono">{fmtShort(b.last_checked_at)}</td>
+                      <td className="mono">{b.next_check_at ? fmtShort(b.next_check_at) : "-"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              </div>
+            )}
+            {(backlinks.length > 0 || page > 0) && (
+              <div className="pager">
+                <button
+                  className="btn sm"
+                  disabled={page === 0}
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                >
+                  ← Prev
+                </button>
+                <span className="muted">
+                  Page {page + 1}
+                  {domainFilter ? ` · ${visibleBacklinks.length} shown` : ""}
+                </span>
+                <button className="btn sm" disabled={!hasNext} onClick={() => setPage((p) => p + 1)}>
+                  Next →
+                </button>
+                <select
+                  value={pageSize}
+                  onChange={(e) => setPageSize(Number(e.target.value))}
+                  title="Rows per page"
+                  style={{ marginLeft: 8 }}
+                >
+                  {[10, 50, 100].map((n) => (
+                    <option key={n} value={n}>{n} / page</option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </section>
+        </>
+      )}
+      {showAdd && (
+        <div className="drawer-backdrop" onClick={() => setShowAdd(false)}>
+          <aside className="drawer" onClick={(e) => e.stopPropagation()}>
+            <div className="panel-head">
+              <h2>Add a backlink</h2>
+              <button className="btn" onClick={() => setShowAdd(false)}>Close</button>
+            </div>
+            <form onSubmit={submitBacklink} className="add-form">
+              <label>
+                <span>Project</span>
+                <select
+                  value={addForm.project_id}
+                  onChange={(e) => setAddForm((f) => ({ ...f, project_id: e.target.value }))}
+                >
+                  {projects.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}, {p.domain}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Source URL (the page that links to you)</span>
+                <input
+                  placeholder="https://blog.example.com/post"
+                  value={addForm.source_url}
+                  onChange={(e) => setAddForm((f) => ({ ...f, source_url: e.target.value }))}
+                  autoFocus
+                />
+              </label>
+              <label>
+                <span>Target URL (your page)</span>
+                <input
+                  placeholder="https://yourdomain.com/landing"
+                  value={addForm.target_url}
+                  onChange={(e) => setAddForm((f) => ({ ...f, target_url: e.target.value }))}
+                />
+              </label>
+              <div className="add-row">
+                <label>
+                  <span>Rel</span>
+                  <select
+                    value={addForm.expected_rel_type}
+                    onChange={(e) => setAddForm((f) => ({ ...f, expected_rel_type: e.target.value }))}
+                  >
+                    <option value="dofollow">dofollow</option>
+                    <option value="nofollow">nofollow</option>
+                    <option value="sponsored">sponsored</option>
+                    <option value="ugc">ugc</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Anchor text (optional)</span>
+                  <input
+                    placeholder="e.g. best SEO tools"
+                    value={addForm.expected_anchor_text}
+                    onChange={(e) => setAddForm((f) => ({ ...f, expected_anchor_text: e.target.value }))}
+                  />
+                </label>
+              </div>
+              <div className="add-row">
+                <label>
+                  <span>Cost (optional)</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={addForm.cost}
+                    onChange={(e) => setAddForm((f) => ({ ...f, cost: e.target.value }))}
+                  />
+                </label>
+                <label>
+                  <span>Currency</span>
+                  <input
+                    placeholder="USD"
+                    value={addForm.currency}
+                    onChange={(e) => setAddForm((f) => ({ ...f, currency: e.target.value }))}
+                  />
+                </label>
+              </div>
+              {addErr && <p className="error">{addErr}</p>}
+              <button className="btn primary" type="submit" disabled={addBusy}>
+                {addBusy ? "Adding…" : "Add backlink"}
+              </button>
+            </form>
+          </aside>
+        </div>
+      )}
+      {showNotifs && (
+        <div className="drawer-backdrop" onClick={() => setShowNotifs(false)}>
+          <aside className="drawer" onClick={(e) => e.stopPropagation()}>
+            <div className="panel-head">
+              <h2>Notifications</h2>
+              <div className="panel-actions"><a className="btn sm" href="/settings/notifications">Settings</a><button className="btn" onClick={() => setShowNotifs(false)}>Close</button></div>
+            </div>
+            {!notifs || notifs.items.length === 0 ? (
+              <p className="muted">No notifications yet.</p>
+            ) : (
+              <ul className="notif-list">
+                {notifs.items.map((n) => (
+                  <li key={n.id} className={n.read ? "notif read" : "notif"}>
+                    <div>
+                      <div className="notif-title">{n.title}</div>
+                      {n.body && <div className="muted">{n.body}</div>}
+                      <div className="muted mono">{new Date(n.created_at).toLocaleString()}</div>
+                    </div>
+                    {!n.read && (
+                      <button className="btn sm" onClick={() => void markRead(n.id)}>Mark read</button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </aside>
+        </div>
+      )}
+      {selected && (
+        <div className="drawer-backdrop" onClick={() => setSelected(null)}>
+          <aside className="drawer" onClick={(e) => e.stopPropagation()}>
+            <div className="panel-head">
+              <h2>Backlink history</h2>
+              <div className="panel-actions">
+                <button className="btn sm" onClick={() => void archiveSelected()}>Archive</button>
+                <button className="btn" onClick={() => setSelected(null)}>Close</button>
+              </div>
+            </div>
+            <p style={{ margin: "6px 0 14px" }}>
+              <span className="badge" style={{ "--st": statusColor(selected.status) } as CSSProperties}><span className="dot" />{statusLabel(selected.status)}</span>
+            </p>
+            <dl className="detail-grid">
+              <div><dt>Source</dt><dd className="mono br">{selected.source_url}</dd></div>
+              <div><dt>Target</dt><dd className="mono br">{selected.target_url}</dd></div>
+              <div><dt>Target final URL</dt><dd className="mono br">{selected.target_final_url ?? "-"}</dd></div>
+              <div><dt>Link URL (found)</dt><dd className="mono br">{selected.detected_target_url ?? "-"}</dd></div>
+              <div><dt>Anchor (found)</dt><dd>{selected.detected_anchor_text ?? "-"}</dd></div>
+              <div><dt>Anchor (expected)</dt><dd>{selected.expected_anchor_text ?? "-"}</dd></div>
+              <div><dt>Rel (found)</dt><dd className="mono">{selected.detected_rel?.join(" ") || "-"}</dd></div>
+              <div><dt>dofollow / nofollow</dt><dd>{yn(selected.is_dofollow)} / {yn(selected.is_nofollow)}</dd></div>
+              <div><dt>sponsored / ugc</dt><dd>{yn(selected.is_sponsored)} / {yn(selected.is_ugc)}</dd></div>
+              <div><dt>Link type</dt><dd>{selected.link_type ?? "-"}</dd></div>
+              <div><dt>Image alt</dt><dd>{selected.link_type === "image" ? (selected.image_alt || "(empty)") : "-"}</dd></div>
+              <div><dt>HTTP source / target</dt><dd className="mono">{httpPair(selected)}</dd></div>
+              <div><dt>First seen</dt><dd>{fmtLong(selected.first_checked_at)}</dd></div>
+              <div><dt>Last seen</dt><dd>{fmtLong(selected.last_seen_at)}</dd></div>
+              <div><dt>Last checked</dt><dd>{fmtLong(selected.last_checked_at)}</dd></div>
+              <div><dt>Lost at</dt><dd>{fmtLong(selected.lost_at)}</dd></div>
+              <div><dt>Cost</dt><dd>{selected.cost ? `${selected.cost} ${selected.currency ?? ""}` : "-"}</dd></div>
+            </dl>
+            <h3 className="drawer-sub">Classification</h3>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
+              {([
+                ["Acquisition", "acquisition", ACQUISITION, "— Unclassified"],
+                ["Attribute", "link_attribute", ATTRIBUTE, "Auto (detected)"],
+                ["Placement", "placement", PLACEMENT, "— Unclassified"],
+                ["Format", "link_format", FORMAT, "— Unclassified"],
+              ] as const).map(([label, field, opts, blank]) => (
+                <label key={field} style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                  <span className="muted">
+                    {label}
+                    {field === "link_attribute" && selected.link_attribute == null && selected.link_attribute_auto
+                      ? ` · auto: ${classLabel(selected.link_attribute_auto)}`
+                      : ""}
+                  </span>
+                  <select
+                    value={(selected[field] as string | null | undefined) ?? ""}
+                    disabled={classBusy}
+                    onChange={(e) => void setClass(field, e.target.value)}
+                  >
+                    <option value="">{blank}</option>
+                    {opts.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                  </select>
+                </label>
+              ))}
+            </div>
+            <h3 className="drawer-sub">Monitoring</h3>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 6 }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+                <input
+                  type="checkbox"
+                  checked={!!selected.monitoring_enabled}
+                  onChange={(e) =>
+                    void patchBacklink({
+                      monitoring_enabled: e.target.checked,
+                      monitoring_level: e.target.checked
+                        ? (selected.monitoring_level ?? "inventory_only") === "inventory_only"
+                          ? "tracked"
+                          : (selected.monitoring_level ?? "tracked")
+                        : "inventory_only",
+                    })
+                  }
+                />
+                Monitoring active
+              </label>
+              <label className="auth-field" style={{ margin: 0, fontSize: 12 }}>
+                <span className="muted">Level</span>
+                <select
+                  value={selected.monitoring_level ?? "inventory_only"}
+                  onChange={(e) =>
+                    void patchBacklink({
+                      monitoring_level: e.target.value,
+                      monitoring_enabled: e.target.value !== "inventory_only",
+                    })
+                  }
+                >
+                  {MONITORING_LEVEL.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+              </label>
+              <label className="auth-field" style={{ margin: 0, fontSize: 12 }}>
+                <span className="muted">Check frequency</span>
+                <select
+                  value={selected.check_frequency ?? "weekly"}
+                  onChange={(e) => void patchBacklink({ check_frequency: e.target.value })}
+                >
+                  {CHECK_FREQUENCY.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+              </label>
+              <div className="sm muted" style={{ alignSelf: "center" }}>
+                {selected.monitoring_reason ? `Reason: ${monitoringLabel(selected.monitoring_reason)}` : ""}
+                {selected.next_check_at ? ` · next: ${fmtShort(selected.next_check_at)}` : ""}
+              </div>
+            </div>
+            <h3 className="drawer-sub">Economic</h3>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
+              <label className="auth-field" style={{ margin: 0, fontSize: 12 }}>
+                <span className="muted">Commercial model</span>
+                <select
+                  value={selected.commercial_model ?? ""}
+                  onChange={(e) => void patchBacklink({ commercial_model: e.target.value || null })}
+                >
+                  <option value="">—</option>
+                  {COMMERCIAL_MODEL.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+              </label>
+              <label className="auth-field" style={{ margin: 0, fontSize: 12 }}>
+                <span className="muted">Purchase date</span>
+                <input
+                  type="date"
+                  value={selected.purchase_date ?? ""}
+                  onChange={(e) => void patchBacklink({ purchase_date: e.target.value || null })}
+                />
+              </label>
+              <label className="auth-field" style={{ margin: 0, fontSize: 12 }}>
+                <span className="muted">Renewal date</span>
+                <input
+                  type="date"
+                  value={selected.renewal_date ?? ""}
+                  onChange={(e) => void patchBacklink({ renewal_date: e.target.value || null })}
+                />
+              </label>
+              <label className="auth-field" style={{ margin: 0, fontSize: 12 }}>
+                <span className="muted">Order reference</span>
+                <input
+                  key={selected.id}
+                  defaultValue={selected.order_reference ?? ""}
+                  placeholder="invoice / PO #"
+                  onBlur={(e) => {
+                    const v = e.target.value.trim();
+                    if (v !== (selected.order_reference ?? "")) void patchBacklink({ order_reference: v || null });
+                  }}
+                />
+              </label>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+                <input
+                  type="checkbox"
+                  checked={!!selected.replacement_eligible}
+                  onChange={(e) => void patchBacklink({ replacement_eligible: e.target.checked })}
+                />
+                Replacement eligible
+              </label>
+            </div>
+            {occurrences.length > 0 && (
+              <>
+                <h3 className="drawer-sub">Occurrences ({occurrences.length})</h3>
+                <ul className="occ-list">
+                  {occurrences.map((o) => (
+                    <li key={o.id} className="occ">
+                      <div className="occ-top">
+                        <span className="occ-anchor">
+                          {o.anchor_text ||
+                            (o.link_type === "image"
+                              ? `[image${o.image_alt ? ": " + o.image_alt : ""}]`
+                              : "-")}
+                        </span>
+                        <span className="occ-place">{o.placement}</span>
+                      </div>
+                      <div className="rel-chips">
+                        {o.link_type === "image" && <span className="rel-chip">image</span>}
+                        {o.is_nofollow ? (
+                          <span className="rel-chip rel-nofollow">nofollow</span>
+                        ) : (
+                          <span className="rel-chip rel-dofollow">dofollow</span>
+                        )}
+                        {o.is_sponsored && <span className="rel-chip rel-sponsored">sponsored</span>}
+                        {o.is_ugc && <span className="rel-chip rel-ugc">ugc</span>}
+                      </div>
+                      {o.surrounding_text && <div className="occ-ctx muted">“{o.surrounding_text}”</div>}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+            <h3 className="drawer-sub">Tier 2, reinforcing links ({tier2.length})</h3>
+            {tier2.length === 0 ? (
+              <p className="muted">No Tier-2 links yet.</p>
+            ) : (
+              <ul className="occ-list">
+                {tier2.map((t) => (
+                  <li key={t.id} className="occ">
+                    <div className="occ-top">
+                      <span className="occ-anchor mono">{t.source_domain}</span>
+                      <span className="badge" style={{ "--st": statusColor(t.status) } as CSSProperties}><span className="dot" />{statusLabel(t.status)}</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="tags-add">
+              <textarea
+                style={{ flex: 1, minHeight: 44, fontFamily: "ui-monospace, monospace", fontSize: 12, background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 6, padding: "6px 8px" }}
+                placeholder="source_url,anchor,rel (one per line)"
+                value={t2csv}
+                onChange={(e) => setT2csv(e.target.value)}
+              />
+              <button className="btn sm" onClick={() => void importTier2()}>Add T2</button>
+            </div>
+            {t2msg && <p className="muted" style={{ marginTop: -6, marginBottom: 10 }}>{t2msg}</p>}
+            <div className="tags-row">
+              {blTags.map((t) => (
+                <span key={t.id} className="tag-chip" style={t.color ? { borderColor: t.color, color: t.color } : undefined}>
+                  {t.name}
+                  <button className="tag-x" onClick={() => void removeTag(t.id)} aria-label={`Remove ${t.name}`}>×</button>
+                </span>
+              ))}
+              {blTags.length === 0 && <span className="muted">No tags</span>}
+            </div>
+            <div className="tags-add">
+              <select
+                value=""
+                onChange={(e) => { if (e.target.value) void attachExisting(e.target.value); }}
+              >
+                <option value="">Add tag…</option>
+                {orgTags
+                  .filter((t) => !blTags.some((b) => b.id === t.id))
+                  .map((t) => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+              </select>
+              <input
+                placeholder="new tag"
+                value={newTag}
+                onChange={(e) => setNewTag(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") void createAndAttach(); }}
+              />
+              <button className="btn sm" onClick={() => void createAndAttach()}>Add</button>
+            </div>
+            {events === null ? (
+              <p className="muted">Loading history…</p>
+            ) : events.length === 0 ? (
+              <p className="muted">No changes recorded yet.</p>
+            ) : (
+              <ul className="timeline">
+                {events.map((e, i) => (
+                  <li key={i}>
+                    <span className="tl-dot" />
+                    <div>
+                      <div className="tl-type">{statusLabel(e.event_type)}</div>
+                      <div className="muted mono">{new Date(e.detected_at).toLocaleString()}</div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </aside>
+        </div>
+      )}
+    </main>
+  );
+}
+
+function fmtShort(s?: string | null): string {
+  if (!s) return "-";
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? "-" : d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+function fmtLong(s?: string | null): string {
+  if (!s) return "-";
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? "-" : d.toLocaleString();
+}
+function httpPair(b: BacklinkView): string {
+  const s = b.source_http_status ?? null;
+  const t = b.target_http_status ?? null;
+  if (s == null && t == null) return "-";
+  return `${s ?? "-"} / ${t ?? "-"}`;
+}
+function yn(v?: boolean | null): string {
+  return v == null ? "-" : v ? "yes" : "no";
+}
+function RelChips({ b }: { b: BacklinkView }) {
+  const rel = b.detected_rel;
+  if (!rel || rel.length === 0) {
+    return <span className="rel-chip rel-expected" title="Expected (not yet observed)">{b.expected_rel_type}</span>;
+  }
+  return (
+    <span className="rel-chips">
+      {rel.map((r) => (
+        <span key={r} className={`rel-chip rel-${r}`}>{r}</span>
+      ))}
+    </span>
+  );
+}
+
+function Tile({
+  label,
+  value,
+  accent,
+  icon,
+  hint,
+}: {
+  label: string;
+  value: number | string;
+  accent?: string;
+  icon?: React.ReactNode;
+  hint?: string;
+}) {
+  return (
+    <div className="tile" style={accent ? ({ "--tile-accent": accent } as CSSProperties) : undefined}>
+      <div className="tile-top">
+        <div className="tile-label">{label}</div>
+        {icon && <div className="tile-icon">{icon}</div>}
+      </div>
+      <div className="tile-value">{value}</div>
+      {hint && <div className="tile-hint">{hint}</div>}
+    </div>
+  );
+}
