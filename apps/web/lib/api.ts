@@ -38,9 +38,13 @@ export interface OrgView {
   slug: string;
   role: string;
 }
+export interface Features {
+  campaigns_beta: boolean;
+}
 export interface MeResponse {
   user: UserView;
   organizations: OrgView[];
+  features?: Features;
 }
 
 export interface BacklinkCheckResult {
@@ -375,6 +379,69 @@ export interface CampaignView {
   target_backlinks: number | null;
   budget: string | null;
   currency: string | null;
+  // Link-building fields (migration 0036). Dates are ISO YYYY-MM-DD strings.
+  objective?: string | null;
+  primary_target_url?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+}
+
+// ─── Link-building campaigns (BETA, migration 0036) ──────────────────────────
+export interface CampaignTargetView {
+  id: string;
+  campaign_id: string;
+  url: string;
+  label: string | null;
+}
+export interface ProspectView {
+  id: string;
+  campaign_id: string;
+  domain: string;
+  stage: string;
+  source: string;
+  score: number | null;
+  score_reason: string | null;
+  competitor_count: number | null;
+  contact_name: string | null;
+  contact_email: string | null;
+  target_url: string | null;
+  estimated_cost: string | null;
+  currency: string | null;
+  notes: string | null;
+  last_contacted_at: string | null;
+  won_backlink_id: string | null;
+}
+export interface StageCount {
+  stage: string;
+  count: number;
+}
+export interface CampaignSummary {
+  campaign_id: string;
+  total: number;
+  live: number;
+  lost: number;
+  needs_attention: number;
+  removal_rate: number;
+  target_backlinks: number | null;
+  target_progress: number | null;
+  budget: string | null;
+  currency: string | null;
+  spend: MoneyByCurrency[];
+  prospects_total: number;
+  stage_counts: StageCount[];
+}
+export interface OutreachDraft {
+  subject: string;
+  body: string;
+}
+export interface NewProspect {
+  domain: string;
+  contact_name?: string;
+  contact_email?: string;
+  target_url?: string;
+  estimated_cost?: number;
+  currency?: string;
+  notes?: string;
 }
 export interface CampaignRollup {
   campaign_id: string;
@@ -412,6 +479,10 @@ export interface NewCampaign {
   target_backlinks?: number;
   budget?: number;
   currency?: string;
+  objective?: string;
+  primary_target_url?: string;
+  start_date?: string;
+  end_date?: string;
 }
 export interface NewPublisher {
   name: string;
@@ -632,6 +703,8 @@ export const orgApi = {
       headers: csrfHeader(),
     }),
   campaigns: (org: string) => request<CampaignView[]>(`/v1/organizations/${org}/campaigns`),
+  campaign: (org: string, id: string) =>
+    request<CampaignView>(`/v1/organizations/${org}/campaigns/${id}`),
   createCampaign: (org: string, body: NewCampaign) =>
     request<CampaignView>(`/v1/organizations/${org}/campaigns`, {
       method: "POST",
@@ -648,6 +721,10 @@ export const orgApi = {
       target_backlinks?: number;
       budget?: number;
       currency?: string;
+      objective?: string;
+      primary_target_url?: string;
+      start_date?: string;
+      end_date?: string;
     },
   ) =>
     request<CampaignView>(`/v1/organizations/${org}/campaigns/${id}`, {
@@ -662,6 +739,88 @@ export const orgApi = {
     }),
   campaignRollup: (org: string, id: string) =>
     request<CampaignRollup>(`/v1/organizations/${org}/campaigns/${id}/rollup`),
+  // ── Link-building campaigns BETA (migration 0036) ──
+  campaignSummary: (org: string, id: string) =>
+    request<CampaignSummary>(`/v1/organizations/${org}/campaigns/${id}/summary`),
+  campaignTargets: (org: string, id: string) =>
+    request<CampaignTargetView[]>(`/v1/organizations/${org}/campaigns/${id}/targets`),
+  createCampaignTarget: (org: string, id: string, body: { url: string; label?: string }) =>
+    request<CampaignTargetView>(`/v1/organizations/${org}/campaigns/${id}/targets`, {
+      method: "POST",
+      headers: csrfHeader(),
+      body: JSON.stringify(body),
+    }),
+  deleteCampaignTarget: (org: string, targetId: string) =>
+    request<null>(`/v1/organizations/${org}/campaign-targets/${targetId}`, {
+      method: "DELETE",
+      headers: csrfHeader(),
+    }),
+  prospects: (org: string, campaignId: string, stage?: string) =>
+    request<ProspectView[]>(
+      `/v1/organizations/${org}/campaigns/${campaignId}/prospects${stage ? `?stage=${stage}` : ""}`,
+    ),
+  createProspect: (org: string, campaignId: string, body: NewProspect) =>
+    request<ProspectView>(`/v1/organizations/${org}/campaigns/${campaignId}/prospects`, {
+      method: "POST",
+      headers: csrfHeader(),
+      body: JSON.stringify(body),
+    }),
+  updateProspect: (
+    org: string,
+    prospectId: string,
+    body: {
+      stage?: string;
+      contact_name?: string;
+      contact_email?: string;
+      target_url?: string;
+      estimated_cost?: number;
+      currency?: string;
+      notes?: string;
+    },
+  ) =>
+    request<ProspectView>(`/v1/organizations/${org}/prospects/${prospectId}`, {
+      method: "PATCH",
+      headers: csrfHeader(),
+      body: JSON.stringify(body),
+    }),
+  deleteProspect: (org: string, prospectId: string) =>
+    request<null>(`/v1/organizations/${org}/prospects/${prospectId}`, {
+      method: "DELETE",
+      headers: csrfHeader(),
+    }),
+  bulkProspectStage: (org: string, campaignId: string, ids: string[], stage: string) =>
+    request<{ updated: number }>(
+      `/v1/organizations/${org}/campaigns/${campaignId}/prospects/bulk-stage`,
+      { method: "POST", headers: csrfHeader(), body: JSON.stringify({ ids, stage }) },
+    ),
+  seedProspectsFromGap: (org: string, campaignId: string, min = 1) =>
+    request<{ created: number }>(
+      `/v1/organizations/${org}/campaigns/${campaignId}/prospects/from-gap`,
+      { method: "POST", headers: csrfHeader(), body: JSON.stringify({ min }) },
+    ),
+  prospectDraft: (org: string, prospectId: string, senderName?: string) =>
+    request<OutreachDraft>(`/v1/organizations/${org}/prospects/${prospectId}/draft`, {
+      method: "POST",
+      headers: csrfHeader(),
+      body: JSON.stringify({ sender_name: senderName }),
+    }),
+  convertProspect: (
+    org: string,
+    prospectId: string,
+    body: {
+      source_url: string;
+      target_url?: string;
+      publisher_id?: string;
+      cost?: number;
+      currency?: string;
+      anchor?: string;
+      rel?: string;
+    },
+  ) =>
+    request<{ prospect: ProspectView; backlink_id: string }>(
+      `/v1/organizations/${org}/prospects/${prospectId}/convert`,
+      { method: "POST", headers: csrfHeader(), body: JSON.stringify(body) },
+    ),
   publishers: (org: string) => request<PublisherView[]>(`/v1/organizations/${org}/publishers`),
   createPublisher: (org: string, body: NewPublisher) =>
     request<PublisherView>(`/v1/organizations/${org}/publishers`, {

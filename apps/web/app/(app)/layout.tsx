@@ -14,7 +14,7 @@ import "./shell.css";
 // unchanged). It owns the cross-cutting navigation — a vertical sidebar on
 // desktop, a slide-in drawer on mobile — so pages only render their own title
 // and content, never the nav.
-type Link = { href: string; label: string; icon: string };
+type Link = { href: string; label: string; icon: string; badge?: string };
 const SECTIONS: { title: string; links: Link[] }[] = [
   {
     title: "Monitor",
@@ -47,6 +47,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const [me, setMe] = useState<MeResponse | null>(null);
   const isAdmin = !!me?.user.is_admin;
+  const campaignsBeta = !!me?.features?.campaigns_beta;
+  // Surface the link-building workflow under "Grow" only when the BETA is on.
+  const sections = SECTIONS.map((s) =>
+    s.title === "Grow" && campaignsBeta
+      ? {
+          ...s,
+          links: [
+            ...s.links,
+            { href: "/campaigns", label: "Link Building", icon: "campaigns", badge: "BETA" },
+          ],
+        }
+      : s,
+  );
   const orgs = me?.organizations ?? [];
   const current = selectedOrg(orgs);
   const workspace = current?.name ?? null;
@@ -95,6 +108,22 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     >
       <span className="side-ico"><Icon name={l.icon} /></span>
       {l.label}
+      {l.badge && (
+        <span
+          style={{
+            marginLeft: "auto",
+            fontSize: "9px",
+            fontWeight: 700,
+            letterSpacing: "0.04em",
+            padding: "1px 5px",
+            borderRadius: "999px",
+            background: "#2f6bff",
+            color: "#fff",
+          }}
+        >
+          {l.badge}
+        </span>
+      )}
     </a>
   );
 
@@ -118,7 +147,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </select>
         )}
         <nav className="side-nav" aria-label="Sections">
-          {SECTIONS.map((s) => (
+          {sections.map((s) => (
             <div className="side-group" key={s.title}>
               <div className="side-group-title">{s.title}</div>
               {s.links.map(navLink)}
