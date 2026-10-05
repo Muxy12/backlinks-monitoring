@@ -6,10 +6,12 @@
 //! shows "connect". Refresh tokens are stored AES-256-GCM-encrypted (`auth::
 //! encrypt_secret`); the DB only ever holds ciphertext.
 //!
-//! The OAuth callback lands on the API origin with NO session cookie (the session
-//! is first-party on the web origin), so the authenticated `auth-url` endpoint
-//! seals `org|project|exp` into the `state` with the server key; the callback
-//! decrypts it to recover the tenant — the signed state IS the authorization.
+//! `auth-url` seals `org|project|exp` into the `state` (AES-GCM, server key) so it
+//! can't be forged or read. The redirect URI goes through the web proxy
+//! (`APP_URL/api/v1/gsc/oauth/callback`), so the callback is first-party and the
+//! session cookie is present: it both decrypts the state for the tenant AND
+//! requires the signed-in user to be a Member of that org — closing OAuth CSRF /
+//! cross-tenant injection. (Google only returns `state`+`code`, hence the state.)
 
 use crate::error::ApiError;
 use crate::session::{check_csrf, current};
@@ -166,7 +168,11 @@ struct TokenResponse {
     scope: Option<String>,
 }
 
-pub async fn callback(State(state): State<AppState>, Query(q): Query<CallbackQuery>) -> Redirect {
+pub async fn callback(
+    State(state): State<AppState>,
+    jar: CookieJar,
+    Query(q): Query<CallbackQuery>,
+) -> Redirect {
     let back =
         |status: &str| Redirect::to(&format!("{}/settings/integrations?gsc={status}", app_url()));
 
@@ -185,6 +191,21 @@ pub async fn callback(State(state): State<AppState>, Query(q): Query<CallbackQue
     let Some((org_id, project_id)) = open_state(&key, &state_param) else {
         return back("error");
     };
+
+    // Bind the flow to the signed-in browser: the callback is reached through the
+    // web proxy (same-origin), so the first-party session cookie is present. We
+    // require the user to be a Member of the org the state names — closing OAuth
+    // CSRF / cross-tenant connection injection (security audit #1). No session or
+    // wrong org -> refuse without writing anything.
+    let Ok((user, _s)) = current(&state, &jar).await else {
+        return back("unauthenticated");
+    };
+    let Ok(scope) = authorize_org(&state.pool, user.id, org_id).await else {
+        return back("error");
+    };
+    if scope.require(Role::Member).is_err() {
+        return back("error");
+    }
 
     let Ok(client) = http_client() else {
         return back("error");
