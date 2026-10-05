@@ -427,6 +427,19 @@ pub struct BacklinkView {
     /// Crawler-derived attribute (follow/nofollow/sponsored/ugc); null if the
     /// link has never been successfully observed.
     pub link_attribute_auto: Option<String>,
+    // ─── Selective monitoring (migration 0035) ────────────────────────────────
+    pub monitoring_enabled: bool,
+    pub monitoring_level: String,
+    pub check_frequency: Option<String>,
+    pub monitoring_reason: Option<String>,
+    pub monitoring_overridden: bool,
+    pub next_check_at: Option<String>,
+    // ─── Economic / commercial ────────────────────────────────────────────────
+    pub commercial_model: Option<String>,
+    pub order_reference: Option<String>,
+    pub purchase_date: Option<String>,
+    pub renewal_date: Option<String>,
+    pub replacement_eligible: Option<bool>,
 }
 
 impl From<db::entities::Backlink> for BacklinkView {
@@ -482,6 +495,17 @@ impl From<db::entities::Backlink> for BacklinkView {
             link_format: b.link_format,
             link_attribute: b.link_attribute,
             link_attribute_auto,
+            monitoring_enabled: b.monitoring_enabled,
+            monitoring_level: b.monitoring_level,
+            check_frequency: b.check_frequency,
+            monitoring_reason: b.monitoring_reason,
+            monitoring_overridden: b.monitoring_overridden,
+            next_check_at: b.next_check_at.map(|d| d.to_rfc3339()),
+            commercial_model: b.commercial_model,
+            order_reference: b.order_reference,
+            purchase_date: b.purchase_date.map(|d| d.to_string()),
+            renewal_date: b.renewal_date.map(|d| d.to_string()),
+            replacement_eligible: b.replacement_eligible,
         }
     }
 }
@@ -519,6 +543,52 @@ const LINK_FORMATS: &[&str] = &[
     "directory",
     "forum",
 ];
+
+// ─── Selective monitoring vocabularies (migration 0035) ───────────────────────
+const MONITORING_LEVELS: &[&str] = &["protected", "tracked", "inventory_only"];
+const CHECK_FREQUENCIES: &[&str] = &["daily", "weekly", "biweekly", "monthly", "manual"];
+const COMMERCIAL_MODELS: &[&str] = &[
+    "one_time",
+    "rental",
+    "recurring",
+    "exchange",
+    "partnership",
+    "free",
+    "unknown",
+];
+
+/// Merge a PATCH date field (YYYY-MM-DD string): present -> parsed (empty -> clear),
+/// absent -> keep current.
+fn merge_date(
+    field: &Option<Option<String>>,
+    current: Option<chrono::NaiveDate>,
+    name: &str,
+) -> Result<Option<chrono::NaiveDate>, ApiError> {
+    match field {
+        Some(v) => match v.as_ref().map(|s| s.trim()).filter(|s| !s.is_empty()) {
+            Some(s) => chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d")
+                .map(Some)
+                .map_err(|_| ApiError::Validation(format!("{name} must be YYYY-MM-DD"))),
+            None => Ok(None),
+        },
+        None => Ok(current),
+    }
+}
+
+/// Monitoring decision for a bulk/import row (no acquisition or warranty context):
+/// organic by default, monitored only when it carries a positive cost.
+fn monitoring_decision_for_row(cost: Option<&str>) -> backlio_core::MonitoringDecision {
+    let has_cost = cost
+        .and_then(|s| s.parse::<f64>().ok())
+        .is_some_and(|c| c > 0.0);
+    backlio_core::monitoring::decide(backlio_core::MonitoringInputs {
+        acquisition: None,
+        has_cost,
+        under_warranty: false,
+        subject: "own",
+        tier: 1,
+    })
+}
 
 /// Interpret a classification filter query param. The sentinel `"none"` means
 /// "unclassified" (match rows with no value); any other value is validated
@@ -822,6 +892,15 @@ pub async fn create_backlink(
         .as_deref()
         .map(str::trim)
         .filter(|s| !s.is_empty());
+    // Selective monitoring (§ monitoring policy): a new link is only scheduled
+    // when it has an economic/contractual reason; everything else is inventory.
+    let decision = backlio_core::monitoring::decide(backlio_core::MonitoringInputs {
+        acquisition: None,
+        has_cost: body.cost.is_some_and(|c| c > 0.0),
+        under_warranty: warranty_kind != backlio_core::WarrantyType::None,
+        subject: "own",
+        tier: 1,
+    });
     let new = db::repositories::backlinks::NewBacklink {
         project_id: body.project_id,
         campaign_id: body.campaign_id,
@@ -835,6 +914,10 @@ pub async fn create_backlink(
         warranty_type,
         warranty_value,
         warranty_expiration,
+        monitoring_enabled: decision.enabled,
+        monitoring_level: decision.level.as_str(),
+        monitoring_reason: decision.reason.map(|r| r.as_str()),
+        check_frequency: None,
     };
     let backlink = db::repositories::backlinks::create(&state.pool, &scope, Uuid::now_v7(), new)
         .await
@@ -892,6 +975,22 @@ pub struct UpdateBacklinkBody {
     pub placement: Option<Option<String>>,
     #[serde(default, deserialize_with = "de_double_opt")]
     pub link_format: Option<Option<String>>,
+    // Monitoring + economic (migration 0035). Setting any monitoring field marks
+    // the link as a manual override (the policy will not touch it again).
+    pub monitoring_enabled: Option<bool>,
+    pub monitoring_level: Option<String>,
+    #[serde(default, deserialize_with = "de_double_opt")]
+    pub check_frequency: Option<Option<String>>,
+    #[serde(default, deserialize_with = "de_double_opt")]
+    pub commercial_model: Option<Option<String>>,
+    #[serde(default, deserialize_with = "de_double_opt")]
+    pub order_reference: Option<Option<String>>,
+    #[serde(default, deserialize_with = "de_double_opt")]
+    pub purchase_date: Option<Option<String>>,
+    #[serde(default, deserialize_with = "de_double_opt")]
+    pub renewal_date: Option<Option<String>>,
+    #[serde(default, deserialize_with = "de_double_opt")]
+    pub replacement_eligible: Option<Option<bool>>,
 }
 
 /// PATCH …/backlinks/{id} — edit mutable fields (§36). Source/target URLs are
@@ -986,6 +1085,66 @@ pub async fn update_backlink(
         "format",
     )?;
 
+    // Monitoring (migration 0035). Any monitoring field in the body is a manual
+    // override that wins over the default policy from then on.
+    let monitoring_enabled = body
+        .monitoring_enabled
+        .unwrap_or(current.monitoring_enabled);
+    let monitoring_level = match body.monitoring_level.as_deref() {
+        Some(l) => {
+            if !MONITORING_LEVELS.contains(&l) {
+                return Err(ApiError::Validation("unknown monitoring level".into()));
+            }
+            l.to_string()
+        }
+        None => current.monitoring_level,
+    };
+    let check_frequency = match &body.check_frequency {
+        Some(v) => {
+            let f = v
+                .as_ref()
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty());
+            if let Some(ref s) = f
+                && !CHECK_FREQUENCIES.contains(&s.as_str())
+            {
+                return Err(ApiError::Validation("unknown check frequency".into()));
+            }
+            f
+        }
+        None => current.check_frequency,
+    };
+    let monitoring_touched = body.monitoring_enabled.is_some()
+        || body.monitoring_level.is_some()
+        || body.check_frequency.is_some();
+    let monitoring_overridden = current.monitoring_overridden || monitoring_touched;
+    let monitoring_reason: Option<String> = if monitoring_touched {
+        Some("manual".to_string())
+    } else {
+        current.monitoring_reason
+    };
+
+    // Economic (migration 0035).
+    let commercial_model = merge_classification(
+        &body.commercial_model,
+        current.commercial_model,
+        COMMERCIAL_MODELS,
+        "commercial model",
+    )?;
+    let order_reference = match &body.order_reference {
+        Some(v) => v
+            .as_ref()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty()),
+        None => current.order_reference,
+    };
+    let purchase_date = merge_date(&body.purchase_date, current.purchase_date, "purchase_date")?;
+    let renewal_date = merge_date(&body.renewal_date, current.renewal_date, "renewal_date")?;
+    let replacement_eligible = match body.replacement_eligible {
+        Some(v) => v,
+        None => current.replacement_eligible,
+    };
+
     let upd = db::repositories::backlinks::BacklinkUpdate {
         expected_anchor_text: anchor.as_deref(),
         expected_rel_type: &rel,
@@ -997,10 +1156,90 @@ pub async fn update_backlink(
         link_attribute: link_attribute.as_deref(),
         placement: placement.as_deref(),
         link_format: link_format.as_deref(),
+        monitoring_enabled,
+        monitoring_level: &monitoring_level,
+        monitoring_reason: monitoring_reason.as_deref(),
+        check_frequency: check_frequency.as_deref(),
+        monitoring_overridden,
+        commercial_model: commercial_model.as_deref(),
+        order_reference: order_reference.as_deref(),
+        purchase_date,
+        renewal_date,
+        replacement_eligible,
     };
     let backlink =
         db::repositories::backlinks::update(&state.pool, &scope, backlink_id, upd).await?;
     Ok(Json(backlink.into()))
+}
+
+// ─── Bulk monitoring changes (§15, migration 0035) ───────────────────────────
+const BULK_MONITORING_MAX: usize = 5000;
+
+#[derive(Debug, Deserialize)]
+pub struct BulkMonitoringBody {
+    pub ids: Vec<Uuid>,
+    /// Any subset may be set; omitted fields are left unchanged.
+    pub monitoring_enabled: Option<bool>,
+    pub monitoring_level: Option<String>,
+    pub check_frequency: Option<String>,
+}
+
+#[derive(Serialize)]
+pub struct BulkMonitoringResult {
+    pub updated: i64,
+}
+
+/// POST …/backlinks/bulk-monitoring — change monitoring on many links at once
+/// (§15). Marks each row as a manual override and re-derives its schedule, so
+/// disabling a set immediately stops its future checks.
+pub async fn bulk_monitoring(
+    State(state): State<AppState>,
+    Path(org_id): Path<Uuid>,
+    jar: CookieJar,
+    headers: HeaderMap,
+    Json(body): Json<BulkMonitoringBody>,
+) -> Result<Json<BulkMonitoringResult>, ApiError> {
+    let (user, session) = current(&state, &jar).await?;
+    check_csrf(&jar, &headers, &session)?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Member)?;
+
+    if body.ids.is_empty() {
+        return Err(ApiError::Validation("no backlink ids provided".into()));
+    }
+    if body.ids.len() > BULK_MONITORING_MAX {
+        return Err(ApiError::Validation(format!(
+            "at most {BULK_MONITORING_MAX} ids per call"
+        )));
+    }
+    if let Some(l) = body.monitoring_level.as_deref()
+        && !MONITORING_LEVELS.contains(&l)
+    {
+        return Err(ApiError::Validation("unknown monitoring level".into()));
+    }
+    if let Some(f) = body.check_frequency.as_deref()
+        && !CHECK_FREQUENCIES.contains(&f)
+    {
+        return Err(ApiError::Validation("unknown check frequency".into()));
+    }
+    if body.monitoring_enabled.is_none()
+        && body.monitoring_level.is_none()
+        && body.check_frequency.is_none()
+    {
+        return Err(ApiError::Validation("nothing to change".into()));
+    }
+    let updated = db::repositories::backlinks::bulk_set_monitoring(
+        &state.pool,
+        &scope,
+        &body.ids,
+        body.monitoring_enabled,
+        body.monitoring_level.as_deref(),
+        body.check_frequency.as_deref(),
+    )
+    .await?;
+    Ok(Json(BulkMonitoringResult {
+        updated: updated as i64,
+    }))
 }
 
 // ─── Bulk create (§35) ────────────────────────────────────────────────────────
@@ -1077,6 +1316,7 @@ pub async fn bulk_create_backlinks(
     let mut created = 0usize;
     let mut duplicates = 0usize;
     for (i, p) in &valid {
+        let decision = monitoring_decision_for_row(p.cost.as_deref());
         let new = db::repositories::backlinks::NewBacklink {
             project_id: body.project_id,
             campaign_id: None,
@@ -1090,6 +1330,10 @@ pub async fn bulk_create_backlinks(
             warranty_type: "none",
             warranty_value: None,
             warranty_expiration: None,
+            monitoring_enabled: decision.enabled,
+            monitoring_level: decision.level.as_str(),
+            monitoring_reason: decision.reason.map(|r| r.as_str()),
+            check_frequency: None,
         };
         match db::repositories::backlinks::create(&state.pool, &scope, Uuid::now_v7(), new).await {
             Ok(_) => created += 1,
@@ -1170,6 +1414,8 @@ pub struct ListBacklinksQuery {
     pub attribute: Option<String>,
     pub placement: Option<String>,
     pub format: Option<String>,
+    /// Monitoring tab filter: protected / tracked / inventory_only.
+    pub monitoring_level: Option<String>,
 }
 
 const BACKLINK_STATUSES: &[&str] = &[
@@ -1206,6 +1452,13 @@ pub async fn list_backlinks(
     let (attr, attr_unset) = classify_filter(q.attribute.as_deref(), LINK_ATTRIBUTES, "attribute")?;
     let (place, place_unset) = classify_filter(q.placement.as_deref(), PLACEMENTS, "placement")?;
     let (fmt, fmt_unset) = classify_filter(q.format.as_deref(), LINK_FORMATS, "format")?;
+    if let Some(level) = q.monitoring_level.as_deref()
+        && !MONITORING_LEVELS.contains(&level)
+    {
+        return Err(ApiError::Validation(
+            "unknown monitoring level filter".into(),
+        ));
+    }
     let since = q
         .days
         .filter(|d| *d > 0)
@@ -1226,6 +1479,7 @@ pub async fn list_backlinks(
         link_attribute_unset: attr_unset,
         placement_unset: place_unset,
         link_format_unset: fmt_unset,
+        monitoring_level: q.monitoring_level.as_deref(),
     };
     let rows =
         db::repositories::backlinks::search(&state.pool, &scope, &filter, q.limit.unwrap_or(50))
@@ -1361,6 +1615,11 @@ pub struct DashboardView {
     pub counts: std::collections::BTreeMap<String, i64>,
     pub monitored: i64,
     pub needs_attention: i64,
+    // Selective monitoring (migration 0035): counts by level + protected value.
+    pub protected: i64,
+    pub tracked: i64,
+    pub inventory_only: i64,
+    pub value_protected: Vec<MoneyByCurrency>,
     pub value_at_risk: Vec<MoneyByCurrency>,
     pub tracked_spend: Vec<MoneyByCurrency>,
     pub referring_domains: i64,
@@ -1424,6 +1683,18 @@ pub async fn dashboard(
         to_money(db::repositories::dashboard::value_at_risk(&state.pool, &scope).await?);
     let tracked_spend =
         to_money(db::repositories::dashboard::tracked_spend(&state.pool, &scope).await?);
+    let value_protected =
+        to_money(db::repositories::dashboard::value_protected(&state.pool, &scope).await?);
+    let (mut protected, mut tracked, mut inventory_only) = (0i64, 0i64, 0i64);
+    for (level, n) in
+        db::repositories::dashboard::monitoring_counts(&state.pool, &scope, since).await?
+    {
+        match level.as_str() {
+            "protected" => protected = n,
+            "tracked" => tracked = n,
+            _ => inventory_only += n,
+        }
+    }
     let (referring_domains, referring_pages) =
         db::repositories::dashboard::referring_counts(&state.pool, &scope).await?;
     let occurrences = db::repositories::link_occurrences::count_active(&state.pool, org_id).await?;
@@ -1439,6 +1710,10 @@ pub async fn dashboard(
         counts,
         monitored,
         needs_attention,
+        protected,
+        tracked,
+        inventory_only,
+        value_protected,
         value_at_risk,
         tracked_spend,
         referring_domains,
@@ -1741,6 +2016,7 @@ pub async fn import_csv(
                 });
             }
             backlio_core::csv_import::RowResult::Ok(r) => {
+                let decision = monitoring_decision_for_row(r.cost.as_deref());
                 let new = db::repositories::backlinks::NewBacklink {
                     project_id: body.project_id,
                     campaign_id: None,
@@ -1754,6 +2030,10 @@ pub async fn import_csv(
                     warranty_type: "none",
                     warranty_value: None,
                     warranty_expiration: None,
+                    monitoring_enabled: decision.enabled,
+                    monitoring_level: decision.level.as_str(),
+                    monitoring_reason: decision.reason.map(|r| r.as_str()),
+                    check_frequency: None,
                 };
                 match db::repositories::backlinks::create(&state.pool, &scope, Uuid::now_v7(), new)
                     .await

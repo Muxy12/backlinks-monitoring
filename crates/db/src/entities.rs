@@ -161,6 +161,23 @@ pub struct Backlink {
     pub placement: Option<String>,
     /// The content format the link came in (guest_post/niche_edit/editorial/…).
     pub link_format: Option<String>,
+    // ─── Selective monitoring (migration 0035) ────────────────────────────────
+    /// Whether this link is actively re-checked. False = inventory only (zero crawl).
+    pub monitoring_enabled: bool,
+    /// protected | tracked | inventory_only.
+    pub monitoring_level: String,
+    /// daily | weekly | biweekly | monthly | manual, or NULL = default cadence.
+    pub check_frequency: Option<String>,
+    /// Why it is monitored (economic_value/paid_link/guarantee/…), nullable.
+    pub monitoring_reason: Option<String>,
+    /// True once a user manually set monitoring, so the policy never overrides it.
+    pub monitoring_overridden: bool,
+    // ─── Economic / commercial (migration 0035; cost/currency/warranty on 0005) ─
+    pub commercial_model: Option<String>,
+    pub order_reference: Option<String>,
+    pub purchase_date: Option<chrono::NaiveDate>,
+    pub renewal_date: Option<chrono::NaiveDate>,
+    pub replacement_eligible: Option<bool>,
 }
 
 /// A referring domain queued for expansion-crawl discovery (spec §21).
@@ -239,6 +256,9 @@ pub struct MonitorState {
     pub last_seen_at: Option<DateTime<Utc>>,
     pub source_url: String,
     pub target_url: String,
+    /// Per-link check cadence (migration 0035): daily/weekly/biweekly/monthly/
+    /// manual, or NULL = default. Drives the next_check_at the worker writes.
+    pub check_frequency: Option<String>,
 }
 
 /// A change event on a backlink's timeline (§30). `previous_data`/`current_data`
