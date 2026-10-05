@@ -27,6 +27,7 @@ async fn app() -> Option<axum::Router> {
         secure_cookies: false,
         stripe_webhook_secret: Some(SECRET.to_string()),
         allow_private_fetch: false,
+        campaigns_beta: false,
     };
     Some(api::app(AppState::new(db.pool, cfg)))
 }

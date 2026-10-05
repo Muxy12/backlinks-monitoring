@@ -28,6 +28,7 @@ async fn state() -> Option<AppState> {
             secure_cookies: false,
             stripe_webhook_secret: None,
             allow_private_fetch: false,
+            campaigns_beta: false,
         },
     ))
 }

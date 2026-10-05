@@ -20,10 +20,18 @@ pub struct OrgMembershipView {
     pub role: String,
 }
 
+/// Runtime feature flags surfaced to the UI so it can hide BETA/unconfigured
+/// surfaces (same idea as billing's `configured`). Add a field per flag.
+#[derive(Debug, Serialize)]
+pub struct Features {
+    pub campaigns_beta: bool,
+}
+
 #[derive(Debug, Serialize)]
 pub struct MeResponse {
     pub user: UserView,
     pub organizations: Vec<OrgMembershipView>,
+    pub features: Features,
 }
 
 pub async fn me(
@@ -44,5 +52,8 @@ pub async fn me(
     Ok(Json(MeResponse {
         user: user.into(),
         organizations,
+        features: Features {
+            campaigns_beta: state.cfg.campaigns_beta,
+        },
     }))
 }

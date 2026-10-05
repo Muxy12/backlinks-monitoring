@@ -288,6 +288,47 @@ pub struct Campaign {
     pub target_backlinks: Option<i32>,
     pub budget: Option<String>,
     pub currency: Option<String>,
+    /// Link-building objective + headline target page (migration 0036).
+    pub objective: Option<String>,
+    pub primary_target_url: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+/// One of our own pages a campaign is building links to (migration 0036).
+#[derive(Debug, Clone, FromRow)]
+pub struct CampaignTarget {
+    pub id: Uuid,
+    pub organization_id: Uuid,
+    pub campaign_id: Uuid,
+    pub url: String,
+    pub label: Option<String>,
+    pub created_at: DateTime<Utc>,
+}
+
+/// A prospect in a campaign's pipeline (migration 0036) — a candidate site to
+/// pursue for a backlink. `estimated_cost` is read as text (like campaign budget)
+/// so no custom numeric mapping is needed.
+#[derive(Debug, Clone, FromRow)]
+pub struct Prospect {
+    pub id: Uuid,
+    pub organization_id: Uuid,
+    pub campaign_id: Uuid,
+    pub domain: String,
+    pub normalized_domain: String,
+    pub stage: String,
+    pub source: String,
+    pub score: Option<i32>,
+    pub score_reason: Option<String>,
+    pub competitor_count: Option<i32>,
+    pub contact_name: Option<String>,
+    pub contact_email: Option<String>,
+    pub target_url: Option<String>,
+    pub estimated_cost: Option<String>,
+    pub currency: Option<String>,
+    pub notes: Option<String>,
+    pub last_contacted_at: Option<DateTime<Utc>>,
+    pub won_backlink_id: Option<Uuid>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }

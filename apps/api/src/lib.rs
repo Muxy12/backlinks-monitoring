@@ -96,6 +96,47 @@ pub fn app(state: AppState) -> Router {
             "/v1/organizations/{org_id}/campaigns/{campaign_id}/rollup",
             get(routes::ops_routes::campaign_rollup),
         )
+        // Link-building campaigns BETA (migration 0036) — gated on CAMPAIGNS_BETA
+        // inside each handler (404 when off).
+        .route(
+            "/v1/organizations/{org_id}/campaigns/{campaign_id}/summary",
+            get(routes::campaigns_routes::campaign_summary),
+        )
+        .route(
+            "/v1/organizations/{org_id}/campaigns/{campaign_id}/targets",
+            get(routes::campaigns_routes::list_targets)
+                .post(routes::campaigns_routes::create_target),
+        )
+        .route(
+            "/v1/organizations/{org_id}/campaign-targets/{target_id}",
+            axum::routing::delete(routes::campaigns_routes::delete_target),
+        )
+        .route(
+            "/v1/organizations/{org_id}/campaigns/{campaign_id}/prospects",
+            get(routes::campaigns_routes::list_prospects)
+                .post(routes::campaigns_routes::create_prospect),
+        )
+        .route(
+            "/v1/organizations/{org_id}/campaigns/{campaign_id}/prospects/from-gap",
+            post(routes::campaigns_routes::seed_from_gap),
+        )
+        .route(
+            "/v1/organizations/{org_id}/campaigns/{campaign_id}/prospects/bulk-stage",
+            post(routes::campaigns_routes::bulk_stage),
+        )
+        .route(
+            "/v1/organizations/{org_id}/prospects/{prospect_id}",
+            axum::routing::patch(routes::campaigns_routes::update_prospect)
+                .delete(routes::campaigns_routes::delete_prospect),
+        )
+        .route(
+            "/v1/organizations/{org_id}/prospects/{prospect_id}/draft",
+            post(routes::campaigns_routes::prospect_draft),
+        )
+        .route(
+            "/v1/organizations/{org_id}/prospects/{prospect_id}/convert",
+            post(routes::campaigns_routes::convert_prospect),
+        )
         .route(
             "/v1/organizations/{org_id}/publishers",
             get(routes::ops_routes::list_publishers).post(routes::ops_routes::create_publisher),

@@ -19,6 +19,10 @@ pub struct ApiConfig {
     /// Let the public backlink-checker fetch private/loopback addresses. MUST
     /// stay false in production (SSRF); tests flip it to reach a local mock.
     pub allow_private_fetch: bool,
+    /// Link-building campaigns BETA (migration 0036). Env-gated and off by
+    /// default: when false, the new campaign-workflow routes 404 and the UI
+    /// hides the nav entry (surfaced via `me.features.campaigns_beta`).
+    pub campaigns_beta: bool,
 }
 
 impl Default for ApiConfig {
@@ -29,6 +33,7 @@ impl Default for ApiConfig {
             secure_cookies: true,
             stripe_webhook_secret: None,
             allow_private_fetch: false,
+            campaigns_beta: false,
         }
     }
 }

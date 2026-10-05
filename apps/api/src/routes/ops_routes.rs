@@ -51,6 +51,11 @@ pub struct CampaignView {
     pub target_backlinks: Option<i32>,
     pub budget: Option<String>,
     pub currency: Option<String>,
+    /// Link-building fields (migration 0036). Dates are ISO `YYYY-MM-DD` strings.
+    pub objective: Option<String>,
+    pub primary_target_url: Option<String>,
+    pub start_date: Option<String>,
+    pub end_date: Option<String>,
 }
 
 impl From<db::entities::Campaign> for CampaignView {
@@ -64,8 +69,18 @@ impl From<db::entities::Campaign> for CampaignView {
             target_backlinks: c.target_backlinks,
             budget: c.budget,
             currency: c.currency,
+            objective: c.objective,
+            primary_target_url: c.primary_target_url,
+            start_date: c.start_date.map(|d| d.to_string()),
+            end_date: c.end_date.map(|d| d.to_string()),
         }
     }
+}
+
+/// Parse an ISO `YYYY-MM-DD` date, mapping a bad value to a 422.
+fn parse_date(s: &str) -> Result<chrono::NaiveDate, ApiError> {
+    chrono::NaiveDate::parse_from_str(s.trim(), "%Y-%m-%d")
+        .map_err(|_| ApiError::Validation(format!("invalid date {s:?} (expected YYYY-MM-DD)")))
 }
 
 #[derive(Debug, Deserialize)]
@@ -77,6 +92,10 @@ pub struct CreateCampaignBody {
     /// Budget requires a currency; a bare number would be undisplayable (§33).
     pub budget: Option<f64>,
     pub currency: Option<String>,
+    pub objective: Option<String>,
+    pub primary_target_url: Option<String>,
+    pub start_date: Option<String>,
+    pub end_date: Option<String>,
 }
 
 pub async fn create_campaign(
@@ -122,6 +141,18 @@ pub async fn create_campaign(
         .as_deref()
         .map(str::trim)
         .filter(|s| !s.is_empty());
+    let objective = body
+        .objective
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty());
+    let primary_target_url = body
+        .primary_target_url
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty());
+    let start_date = body.start_date.as_deref().map(parse_date).transpose()?;
+    let end_date = body.end_date.as_deref().map(parse_date).transpose()?;
     let new = campaigns::NewCampaign {
         project_id: body.project_id,
         name,
@@ -129,6 +160,10 @@ pub async fn create_campaign(
         target_backlinks: body.target_backlinks,
         budget: budget.as_deref(),
         currency: body.currency.as_deref(),
+        objective,
+        primary_target_url,
+        start_date,
+        end_date,
     };
     let campaign = campaigns::create(&state.pool, &scope, Uuid::now_v7(), new).await?;
     Ok((StatusCode::CREATED, Json(campaign.into())))
@@ -167,6 +202,10 @@ pub struct UpdateCampaignBody {
     pub target_backlinks: Option<i32>,
     pub budget: Option<f64>,
     pub currency: Option<String>,
+    pub objective: Option<String>,
+    pub primary_target_url: Option<String>,
+    pub start_date: Option<String>,
+    pub end_date: Option<String>,
 }
 
 /// PATCH a campaign — change status (draft → active …), rename, or edit its
@@ -214,11 +253,19 @@ pub async fn update_campaign(
         (None, _) => None,
     };
     let description = body.description.as_deref().map(str::trim);
+    let objective = body.objective.as_deref().map(str::trim);
+    let primary_target_url = body.primary_target_url.as_deref().map(str::trim);
+    let start_date = body.start_date.as_deref().map(parse_date).transpose()?;
+    let end_date = body.end_date.as_deref().map(parse_date).transpose()?;
     if name.is_none()
         && description.is_none()
         && body.status.is_none()
         && body.target_backlinks.is_none()
         && budget.is_none()
+        && objective.is_none()
+        && primary_target_url.is_none()
+        && start_date.is_none()
+        && end_date.is_none()
     {
         return Err(ApiError::Validation("nothing to update".into()));
     }
@@ -227,12 +274,18 @@ pub async fn update_campaign(
         &state.pool,
         &scope,
         campaign_id,
-        name,
-        description,
-        body.status.as_deref(),
-        body.target_backlinks,
-        budget.as_deref(),
-        body.currency.as_deref(),
+        campaigns::CampaignUpdate {
+            name,
+            description,
+            status: body.status.as_deref(),
+            target_backlinks: body.target_backlinks,
+            budget: budget.as_deref(),
+            currency: body.currency.as_deref(),
+            objective,
+            primary_target_url,
+            start_date,
+            end_date,
+        },
     )
     .await?;
     Ok(Json(campaign.into()))
