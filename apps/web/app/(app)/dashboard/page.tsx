@@ -170,6 +170,7 @@ function OverviewBody({ data, beta }: { data: OverviewResponse; beta: boolean })
               ? `${num(health.healthy)} / ${num(health.eligible)} healthy`
               : "No monitored links yet"
           }
+          delta={health.change}
           accent="var(--live)"
           onClick={() => go("/backlinks?filter=protected")}
         />
@@ -387,6 +388,7 @@ function KpiCard({
   tip,
   value,
   hint,
+  delta,
   accent,
   onClick,
 }: {
@@ -394,9 +396,11 @@ function KpiCard({
   tip: string;
   value: string;
   hint: string;
+  delta?: number | null;
   accent?: string;
   onClick: () => void;
 }) {
+  const dir = delta == null ? null : delta > 0 ? "up" : delta < 0 ? "down" : "flat";
   return (
     <button className="tile kpi-link" onClick={onClick} title={tip}>
       <div className="tile-top">
@@ -405,6 +409,11 @@ function KpiCard({
       <div className="tile-value" style={accent ? { color: accent } : undefined}>
         {value}
       </div>
+      {dir && (
+        <div className={`tile-delta ${dir}`}>
+          {dir === "up" ? "↑" : dir === "down" ? "↓" : ""} {Math.abs(delta!).toFixed(1)}% vs prev.
+        </div>
+      )}
       <div className="tile-hint">{hint}</div>
     </button>
   );

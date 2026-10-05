@@ -3257,6 +3257,24 @@ pub mod overview {
         Ok((new_count, lost_count))
     }
 
+    /// (day, live, monitored) per day across the org's snapshots in the range —
+    /// used to derive the Link Health period-over-period delta. Oldest first.
+    pub async fn health_series(
+        pool: &PgPool,
+        scope: &OrgScope,
+        since: chrono::NaiveDate,
+    ) -> Result<Vec<(chrono::NaiveDate, i64, i64)>, DbError> {
+        Ok(sqlx::query_as::<_, (chrono::NaiveDate, i64, i64)>(
+            "SELECT day, sum(live)::bigint, sum(monitored)::bigint \
+             FROM daily_backlink_snapshot \
+             WHERE organization_id = $1 AND day >= $2 GROUP BY day ORDER BY day",
+        )
+        .bind(scope.organization_id())
+        .bind(since)
+        .fetch_all(pool)
+        .await?)
+    }
+
     /// (our referring domains, competitor referring domains) for the org.
     pub async fn referring_domain_counts(
         pool: &PgPool,
