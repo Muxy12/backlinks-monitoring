@@ -1,0 +1,261 @@
+/* Overview / command center — layout for the redesigned dashboard. Reuses the
+   dashboard design system (.tile, .panel, .badge, .btn, .bl-table) and the color
+   tokens, so everything themes light/dark automatically. */
+
+.ov-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.ov-head h1 {
+  margin: 0;
+  font-size: 22px;
+}
+.ov-sub {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 2px;
+}
+.ov-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.range-tabs {
+  display: inline-flex;
+  gap: 4px;
+}
+
+/* KPI delta line under a tile value. */
+.tile-delta {
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 2px;
+}
+.tile-delta.up {
+  color: var(--live);
+}
+.tile-delta.down {
+  color: var(--lost);
+}
+.tile-delta.flat {
+  color: var(--muted);
+}
+.kpi-link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+.kpi-link:hover {
+  border-color: var(--border-hover);
+}
+
+/* ── Needs Your Attention ── */
+.attention-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.attn-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 4px;
+  border-top: 1px solid var(--border);
+}
+.attn-item:first-child {
+  border-top: none;
+}
+.attn-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex: none;
+}
+.attn-dot.critical {
+  background: var(--lost);
+}
+.attn-dot.high {
+  background: var(--changed);
+}
+.attn-dot.medium {
+  background: var(--redirected);
+}
+.attn-dot.low {
+  background: var(--muted);
+}
+.attn-main {
+  flex: 1;
+  min-width: 0;
+}
+.attn-title {
+  font-weight: 600;
+  font-size: 14px;
+}
+.attn-sub {
+  color: var(--muted);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.attn-value {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--lost);
+  white-space: nowrap;
+}
+.nba {
+  border: 1px solid var(--primary-weak, var(--border));
+  background: var(--grad-soft, var(--surface-2));
+  border-radius: var(--r-lg, 12px);
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.nba-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--primary);
+}
+.ov-caught-up {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  padding: 10px 2px;
+}
+.ov-caught-up .ok {
+  color: var(--live);
+}
+
+/* ── Growth | Campaign two-column ── */
+.ov-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 16px;
+}
+.growth-summary {
+  display: flex;
+  gap: 18px;
+  margin-top: 8px;
+}
+.growth-summary .gs {
+  font-size: 13px;
+}
+.growth-summary .gs b {
+  font-size: 18px;
+  display: block;
+}
+.chart-empty {
+  min-height: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+  border: 1px dashed var(--border);
+  border-radius: var(--r-md, 10px);
+  padding: 16px;
+}
+.growth-chart {
+  margin: 0;
+}
+.chart-axis {
+  fill: var(--muted);
+  font-size: 10px;
+}
+.chart-legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 6px;
+}
+.legend-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+/* Campaign performance */
+.budget-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-3, var(--border));
+  overflow: hidden;
+  margin: 6px 0 10px;
+}
+.budget-fill {
+  height: 100%;
+  background: var(--grad, var(--primary));
+}
+.funnel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+}
+.funnel .fstage {
+  font-size: 13px;
+}
+.funnel .fstage b {
+  font-size: 18px;
+  display: block;
+}
+
+/* Competitive position */
+.comp-grid {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 4px 16px;
+  align-items: baseline;
+}
+.comp-grid .ch {
+  color: var(--muted);
+  font-size: 12px;
+}
+.comp-grid .cv {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+/* Recent activity */
+.activity-list {
+  display: flex;
+  flex-direction: column;
+}
+.act-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 7px 2px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+}
+.act-item:first-child {
+  border-top: none;
+}
+.act-when {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .ov-grid {
+    grid-template-columns: 1fr;
+  }
+}
