@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import {
   api,
   orgApi,
+  type CampaignImpact,
   type CampaignSummary,
   type CampaignTargetView,
   type CampaignView,
@@ -136,6 +137,7 @@ export default function CampaignDetailPage() {
           campaign={campaign}
           summary={summary}
           targets={targets}
+          gsc={me?.features?.gsc ?? false}
           onCampaign={setCampaign}
           onTargets={() => void reloadTargets(orgId)}
         />
@@ -169,6 +171,7 @@ function OverviewTab({
   campaign,
   summary,
   targets,
+  gsc,
   onCampaign,
   onTargets,
 }: {
@@ -176,12 +179,25 @@ function OverviewTab({
   campaign: CampaignView;
   summary: CampaignSummary | null;
   targets: CampaignTargetView[];
+  gsc: boolean;
   onCampaign: (c: CampaignView) => void;
   onTargets: () => void;
 }) {
   const [url, setUrl] = useState("");
   const [label, setLabel] = useState("");
   const [err, setErr] = useState<string | null>(null);
+  const [impact, setImpact] = useState<CampaignImpact | null>(null);
+
+  useEffect(() => {
+    if (!gsc) return;
+    let live = true;
+    void orgApi.campaignImpact(org, campaign.id).then((r) => {
+      if (live && r.ok) setImpact(r.data);
+    });
+    return () => {
+      live = false;
+    };
+  }, [gsc, org, campaign.id]);
 
   async function addTarget(e: React.FormEvent) {
     e.preventDefault();
@@ -301,6 +317,109 @@ function OverviewTab({
             </button>
           </form>
         </section>
+
+        {gsc && (
+          <section className="panel">
+            <div className="panel-head">
+              <h2>
+                Post-Link Impact{" "}
+                <span
+                  style={{
+                    fontSize: 9,
+                    fontWeight: 700,
+                    letterSpacing: "0.08em",
+                    padding: "2px 6px",
+                    borderRadius: 999,
+                    background: "var(--grad-soft)",
+                    color: "var(--violet)",
+                    verticalAlign: "middle",
+                  }}
+                >
+                  BETA
+                </span>
+              </h2>
+            </div>
+            {!impact ? (
+              <p className="muted">Loading impact…</p>
+            ) : impact.eligible_links === 0 ? (
+              <p className="muted">{impact.summary}</p>
+            ) : (
+              <>
+                <p className="muted" style={{ marginTop: 0 }}>
+                  {impact.summary}
+                </p>
+                <div className="detail-grid">
+                  <span>Tracked links</span>
+                  <span>{impact.eligible_links}</span>
+                  <span>With 28-day data</span>
+                  <span>{impact.measured_links}</span>
+                  <span>Median visibility Δ</span>
+                  <span className="mono">
+                    {impact.median_visibility_change_percent == null
+                      ? "—"
+                      : `${impact.median_visibility_change_percent >= 0 ? "+" : ""}${Math.round(
+                          impact.median_visibility_change_percent,
+                        )}%`}
+                  </span>
+                  <span>Median position Δ</span>
+                  <span className="mono">
+                    {impact.median_position_delta == null
+                      ? "—"
+                      : `${impact.median_position_delta > 0 ? "+" : ""}${impact.median_position_delta.toFixed(
+                          1,
+                        )}`}
+                    {impact.median_position_delta != null && (
+                      <span className="muted" style={{ marginLeft: 6, fontSize: 11 }}>
+                        (lower = better)
+                      </span>
+                    )}
+                  </span>
+                </div>
+                <div
+                  style={{ display: "flex", flexWrap: "wrap", gap: 8, margin: "10px 0" }}
+                >
+                  {(
+                    [
+                      ["var(--live)", impact.positive, "up"],
+                      ["var(--changed)", impact.neutral, "flat"],
+                      ["var(--lost)", impact.negative, "down"],
+                      ["var(--pending)", impact.pending, "pending"],
+                    ] as const
+                  ).map(([color, n, label]) => (
+                    <span
+                      key={label}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
+                        fontSize: 12,
+                        padding: "3px 9px",
+                        borderRadius: 999,
+                        border: "1px solid var(--border)",
+                      }}
+                    >
+                      <span
+                        style={{
+                          width: 7,
+                          height: 7,
+                          borderRadius: "50%",
+                          background: color as string,
+                        }}
+                      />
+                      {n} {label}
+                    </span>
+                  ))}
+                </div>
+                <p
+                  className="muted"
+                  style={{ fontSize: 11.5, fontStyle: "italic", margin: 0 }}
+                >
+                  Observed correlation, not proof of causation.
+                </p>
+              </>
+            )}
+          </section>
+        )}
       </div>
     </>
   );

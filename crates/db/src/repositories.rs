@@ -1567,6 +1567,30 @@ pub mod backlinks {
         .map_err(DbError::from_fetch)
     }
 
+    /// The campaign's own acquired backlinks (tier-1, not archived), newest
+    /// first, capped. Used by the campaign Post-Link Impact aggregate. Tenant-scoped.
+    pub async fn list_for_campaign(
+        pool: &PgPool,
+        scope: &OrgScope,
+        campaign_id: Uuid,
+        limit: i64,
+    ) -> Result<Vec<Backlink>, DbError> {
+        sqlx::query_as::<_, Backlink>(concat!(
+            "SELECT ",
+            cols!(),
+            " FROM backlinks \
+             WHERE organization_id = $1 AND campaign_id = $2 \
+               AND archived_at IS NULL AND subject = 'own' AND tier = 1 \
+             ORDER BY created_at DESC LIMIT $3"
+        ))
+        .bind(scope.organization_id())
+        .bind(campaign_id)
+        .bind(limit.clamp(1, 1000))
+        .fetch_all(pool)
+        .await
+        .map_err(DbError::from_fetch)
+    }
+
     /// Backlinks for CSV export (§36): the whole org, one project, or one
     /// client, newest first, capped. Tenant-scoped. `QueryBuilder`, so the
     /// optional filters are bound params (S9-safe) rather than string-built.
