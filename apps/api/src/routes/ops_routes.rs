@@ -19,7 +19,7 @@ use uuid::Uuid;
 
 /// A money amount tagged with its currency. Amounts are never summed across
 /// currencies (§33/§34) — each currency is its own line.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct CurrencyAmount {
     pub currency: String,
     pub amount: String,

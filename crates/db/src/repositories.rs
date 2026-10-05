@@ -3123,6 +3123,280 @@ pub mod dashboard {
     }
 }
 
+// ─── Daily snapshot roll-up (Overview growth trend, migration 0037) ──────────
+pub mod snapshots {
+    use super::*;
+
+    /// Upsert today's (org, project) backlink counts into daily_backlink_snapshot
+    /// for EVERY org in one set-based statement. Idempotent per day (re-running
+    /// just refreshes today's row), cheap, and the only write the Overview's
+    /// growth trend depends on. Called from the scheduler/internal tick. Returns
+    /// rows affected.
+    pub async fn roll_up_today(pool: &PgPool) -> Result<u64, DbError> {
+        let r = sqlx::query(
+            "INSERT INTO daily_backlink_snapshot \
+                (organization_id, project_id, day, live, lost, needs_attention, \
+                 referring_domains, monitored, protected_count) \
+             SELECT organization_id, project_id, CURRENT_DATE, \
+                 count(*) FILTER (WHERE status = 'live')::int, \
+                 count(*) FILTER (WHERE status = 'lost')::int, \
+                 count(*) FILTER (WHERE status IN \
+                    ('lost','suspected_lost','changed','nofollow','source_error','target_error','redirected'))::int, \
+                 count(DISTINCT source_domain)::int, \
+                 count(*) FILTER (WHERE monitoring_enabled)::int, \
+                 count(*) FILTER (WHERE monitoring_enabled AND monitoring_level = 'protected')::int \
+             FROM backlinks \
+             WHERE archived_at IS NULL AND subject = 'own' AND tier = 1 \
+             GROUP BY organization_id, project_id \
+             ON CONFLICT (organization_id, project_id, day) DO UPDATE SET \
+                 live = EXCLUDED.live, lost = EXCLUDED.lost, \
+                 needs_attention = EXCLUDED.needs_attention, \
+                 referring_domains = EXCLUDED.referring_domains, \
+                 monitored = EXCLUDED.monitored, protected_count = EXCLUDED.protected_count",
+        )
+        .execute(pool)
+        .await?;
+        Ok(r.rows_affected())
+    }
+}
+
+// ─── Overview / command center aggregation (dashboard redesign) ──────────────
+pub mod overview {
+    use super::*;
+
+    #[derive(Debug, Clone, sqlx::FromRow)]
+    pub struct AtRiskRow {
+        pub id: Uuid,
+        pub source_domain: String,
+        pub target_url: String,
+        pub status: String,
+        pub cost: Option<String>,
+        pub currency: Option<String>,
+        pub monitoring_level: String,
+    }
+
+    #[derive(Debug, Clone, sqlx::FromRow)]
+    pub struct RecentEventRow {
+        pub event_type: String,
+        pub detected_at: DateTime<Utc>,
+        pub source_domain: String,
+        pub target_url: String,
+        pub backlink_id: Uuid,
+    }
+
+    #[derive(Debug, Clone, sqlx::FromRow)]
+    pub struct GrowthPointRow {
+        pub day: chrono::NaiveDate,
+        pub referring_domains: i64,
+        pub protected: i64,
+        pub live: i64,
+    }
+
+    /// (healthy, eligible) among actively monitored own links. `eligible` excludes
+    /// unverifiable states (pending/blocked/unknown); `healthy` = currently live.
+    pub async fn link_health(pool: &PgPool, scope: &OrgScope) -> Result<(i64, i64), DbError> {
+        Ok(sqlx::query_as::<_, (i64, i64)>(
+            "SELECT \
+               count(*) FILTER (WHERE status = 'live')::bigint, \
+               count(*) FILTER (WHERE status NOT IN ('pending','blocked','unknown'))::bigint \
+             FROM backlinks \
+             WHERE organization_id = $1 AND archived_at IS NULL AND subject = 'own' \
+               AND tier = 1 AND monitoring_enabled",
+        )
+        .bind(scope.organization_id())
+        .fetch_one(pool)
+        .await?)
+    }
+
+    /// Growth series from the daily snapshot, summed across the org's projects,
+    /// oldest-first, from `since` (a date).
+    pub async fn growth_series(
+        pool: &PgPool,
+        scope: &OrgScope,
+        since: chrono::NaiveDate,
+    ) -> Result<Vec<GrowthPointRow>, DbError> {
+        Ok(sqlx::query_as::<_, GrowthPointRow>(
+            "SELECT day, \
+               sum(referring_domains)::bigint AS referring_domains, \
+               sum(protected_count)::bigint AS protected, \
+               sum(live)::bigint AS live \
+             FROM daily_backlink_snapshot \
+             WHERE organization_id = $1 AND day >= $2 \
+             GROUP BY day ORDER BY day",
+        )
+        .bind(scope.organization_id())
+        .bind(since)
+        .fetch_all(pool)
+        .await?)
+    }
+
+    /// (new, lost) over the period: links first seen since `since`, and
+    /// `backlink_lost` events since `since`.
+    pub async fn growth_counts(
+        pool: &PgPool,
+        scope: &OrgScope,
+        since: DateTime<Utc>,
+    ) -> Result<(i64, i64), DbError> {
+        let (new_count,): (i64,) = sqlx::query_as(
+            "SELECT count(*)::bigint FROM backlinks \
+             WHERE organization_id = $1 AND archived_at IS NULL AND subject = 'own' AND tier = 1 \
+               AND COALESCE(first_checked_at, created_at) >= $2",
+        )
+        .bind(scope.organization_id())
+        .bind(since)
+        .fetch_one(pool)
+        .await?;
+        let (lost_count,): (i64,) = sqlx::query_as(
+            "SELECT count(*)::bigint FROM backlink_events \
+             WHERE organization_id = $1 AND event_type = 'backlink_lost' AND detected_at >= $2",
+        )
+        .bind(scope.organization_id())
+        .bind(since)
+        .fetch_one(pool)
+        .await?;
+        Ok((new_count, lost_count))
+    }
+
+    /// (our referring domains, competitor referring domains) for the org.
+    pub async fn referring_domain_counts(
+        pool: &PgPool,
+        scope: &OrgScope,
+    ) -> Result<(i64, i64), DbError> {
+        Ok(sqlx::query_as::<_, (i64, i64)>(
+            "SELECT \
+               count(DISTINCT source_domain) FILTER (WHERE subject = 'own' AND tier = 1)::bigint, \
+               count(DISTINCT source_domain) FILTER (WHERE subject = 'competitor')::bigint \
+             FROM backlinks WHERE organization_id = $1 AND archived_at IS NULL",
+        )
+        .bind(scope.organization_id())
+        .fetch_one(pool)
+        .await?)
+    }
+
+    /// The single biggest gap domain org-wide: links to the most competitors but
+    /// not to us. `(source_domain, competitor_count)` or None.
+    pub async fn top_gap(
+        pool: &PgPool,
+        scope: &OrgScope,
+    ) -> Result<Option<(String, i64)>, DbError> {
+        Ok(sqlx::query_as::<_, (String, i64)>(
+            "SELECT b.source_domain, count(DISTINCT b.competitor_id)::bigint AS c \
+             FROM backlinks b \
+             WHERE b.organization_id = $1 AND b.subject = 'competitor' AND b.archived_at IS NULL \
+               AND b.source_domain NOT IN ( \
+                   SELECT source_domain FROM backlinks \
+                   WHERE organization_id = $1 AND subject = 'own' AND tier = 1 AND archived_at IS NULL) \
+             GROUP BY b.source_domain ORDER BY c DESC, b.source_domain LIMIT 1",
+        )
+        .bind(scope.organization_id())
+        .fetch_optional(pool)
+        .await?)
+    }
+
+    /// Top at-risk own links (needs-attention status), most valuable first — the
+    /// raw material for the "Needs Your Attention" backlink items.
+    pub async fn at_risk_items(
+        pool: &PgPool,
+        scope: &OrgScope,
+        limit: i64,
+    ) -> Result<Vec<AtRiskRow>, DbError> {
+        // Status list inlined as a literal so the SQL stays a &'static str (the
+        // injection-audit lint forbids runtime-built query strings).
+        Ok(sqlx::query_as::<_, AtRiskRow>(
+            "SELECT id, source_domain, target_url, status::text AS status, \
+               cost::text AS cost, currency, monitoring_level \
+             FROM backlinks \
+             WHERE organization_id = $1 AND archived_at IS NULL AND subject = 'own' AND tier = 1 \
+               AND status IN ('lost','suspected_lost','changed','nofollow','source_error','target_error','redirected') \
+             ORDER BY (cost IS NULL), cost DESC LIMIT $2",
+        )
+        .bind(scope.organization_id())
+        .bind(limit.clamp(1, 100))
+        .fetch_all(pool)
+        .await?)
+    }
+
+    /// Recent customer-facing backlink events (activity feed), newest first.
+    pub async fn recent_events(
+        pool: &PgPool,
+        scope: &OrgScope,
+        limit: i64,
+    ) -> Result<Vec<RecentEventRow>, DbError> {
+        Ok(sqlx::query_as::<_, RecentEventRow>(
+            "SELECT e.event_type::text AS event_type, e.detected_at, \
+               b.source_domain, b.target_url, e.backlink_id \
+             FROM backlink_events e JOIN backlinks b ON b.id = e.backlink_id \
+             WHERE e.organization_id = $1 AND b.subject = 'own' \
+               AND e.event_type IN ('backlink_found','backlink_lost','backlink_restored',\
+                 'anchor_changed','target_changed','dofollow_to_nofollow','nofollow_to_dofollow',\
+                 'link_moved','source_404','target_404','source_404_to_200') \
+             ORDER BY e.detected_at DESC LIMIT $2",
+        )
+        .bind(scope.organization_id())
+        .bind(limit.clamp(1, 50))
+        .fetch_all(pool)
+        .await?)
+    }
+
+    /// (status, count) for the org's campaigns — Active Campaigns KPI.
+    pub async fn campaign_status_counts(
+        pool: &PgPool,
+        scope: &OrgScope,
+    ) -> Result<Vec<(String, i64)>, DbError> {
+        Ok(sqlx::query_as::<_, (String, i64)>(
+            "SELECT status::text, count(*)::bigint FROM campaigns \
+             WHERE organization_id = $1 GROUP BY status",
+        )
+        .bind(scope.organization_id())
+        .fetch_all(pool)
+        .await?)
+    }
+
+    /// (stage, count) across ALL the org's prospects — aggregated campaign funnel.
+    pub async fn prospect_stage_counts_org(
+        pool: &PgPool,
+        scope: &OrgScope,
+    ) -> Result<Vec<(String, i64)>, DbError> {
+        Ok(sqlx::query_as::<_, (String, i64)>(
+            "SELECT stage, count(*)::bigint FROM prospects \
+             WHERE organization_id = $1 GROUP BY stage",
+        )
+        .bind(scope.organization_id())
+        .fetch_all(pool)
+        .await?)
+    }
+
+    /// (currency, sum) spent across all campaign-tagged links — aggregated spend.
+    pub async fn campaign_spend_org(
+        pool: &PgPool,
+        scope: &OrgScope,
+    ) -> Result<Vec<(String, String)>, DbError> {
+        Ok(sqlx::query_as::<_, (String, String)>(
+            "SELECT currency, sum(cost)::text FROM backlinks \
+             WHERE organization_id = $1 AND archived_at IS NULL AND campaign_id IS NOT NULL \
+               AND cost IS NOT NULL GROUP BY currency",
+        )
+        .bind(scope.organization_id())
+        .fetch_all(pool)
+        .await?)
+    }
+
+    /// (currency, sum(budget)) of active campaigns — aggregated budget.
+    pub async fn active_campaign_budget(
+        pool: &PgPool,
+        scope: &OrgScope,
+    ) -> Result<Vec<(String, String)>, DbError> {
+        Ok(sqlx::query_as::<_, (String, String)>(
+            "SELECT currency, sum(budget)::text FROM campaigns \
+             WHERE organization_id = $1 AND status = 'active' \
+               AND budget IS NOT NULL AND currency IS NOT NULL GROUP BY currency",
+        )
+        .bind(scope.organization_id())
+        .fetch_all(pool)
+        .await?)
+    }
+}
+
 // ─── Billing: plan lookup + idempotent webhook event record (§39) ────────────
 pub mod billing {
     use super::*;
@@ -4113,6 +4387,25 @@ pub mod prospects {
         )
         .bind(scope.organization_id())
         .bind(campaign_id)
+        .fetch_all(pool)
+        .await?)
+    }
+
+    /// The org's best open opportunities across all campaigns: prospects not yet
+    /// won/lost, highest score first — the Overview "Top Opportunities" feed.
+    pub async fn top_opportunities(
+        pool: &PgPool,
+        scope: &OrgScope,
+        limit: i64,
+    ) -> Result<Vec<Prospect>, DbError> {
+        Ok(sqlx::query_as::<_, Prospect>(concat!(
+            "SELECT ",
+            cols!(),
+            " FROM prospects WHERE organization_id = $1 AND stage NOT IN ('won','lost') \
+             ORDER BY score DESC NULLS LAST, created_at LIMIT $2"
+        ))
+        .bind(scope.organization_id())
+        .bind(limit.clamp(1, 50))
         .fetch_all(pool)
         .await?)
     }

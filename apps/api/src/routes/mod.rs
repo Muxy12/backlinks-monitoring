@@ -14,6 +14,7 @@ pub mod internal_routes;
 pub mod me_routes;
 pub mod ops_routes;
 pub mod org_routes;
+pub mod overview_routes;
 pub mod prefs_routes;
 pub mod resource_routes;
 pub mod tags_routes;

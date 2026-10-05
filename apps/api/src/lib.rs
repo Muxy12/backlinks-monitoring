@@ -219,6 +219,11 @@ pub fn app(state: AppState) -> Router {
             "/v1/organizations/{org_id}/dashboard",
             get(routes::resource_routes::dashboard),
         )
+        // Overview / command center — one aggregation for the redesigned dashboard.
+        .route(
+            "/v1/organizations/{org_id}/overview",
+            get(routes::overview_routes::overview),
+        )
         .route(
             "/v1/organizations/{org_id}/events/summary",
             get(routes::resource_routes::events_summary),
