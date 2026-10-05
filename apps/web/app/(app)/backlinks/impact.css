@@ -1,0 +1,167 @@
+/* Post-Link Impact (BETA) — the drawer section on /backlinks. Observation, never
+   causation: muted, factual, no celebratory treatment. Colors come from tokens. */
+
+.impact-beta {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--grad-soft);
+  color: var(--violet);
+  vertical-align: middle;
+  margin-left: 6px;
+}
+
+.impact .sm {
+  font-size: 11.5px;
+}
+
+.impact-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+.impact {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.impact-summary {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.impact-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  font-size: 11.5px;
+}
+
+.impact-conf {
+  text-transform: capitalize;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--muted);
+}
+.impact-conf.conf-high {
+  color: var(--live);
+  border-color: color-mix(in srgb, var(--live) 40%, transparent);
+}
+.impact-conf.conf-medium {
+  color: var(--changed);
+  border-color: color-mix(in srgb, var(--changed) 40%, transparent);
+}
+
+.impact-layers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.impact-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-2);
+}
+.impact-chip .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--sig, var(--unknown));
+}
+
+.impact-windows {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 12px;
+}
+
+.impact-window {
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 10px 12px;
+  background: var(--surface);
+}
+
+.iw-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.iw-head strong {
+  font-size: 12.5px;
+}
+
+.impact-rank {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 13px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+
+.impact-warn {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  padding: 8px 12px;
+  border-radius: var(--r-md);
+  border: 1px solid color-mix(in srgb, var(--changed) 35%, transparent);
+  background: color-mix(in srgb, var(--changed) 9%, transparent);
+  color: var(--text-2);
+}
+
+.impact-foot {
+  margin: 0;
+  font-style: italic;
+}
+
+/* BeforeAfterChart */
+.ba-chart {
+  margin: 0;
+}
+.ba-val {
+  fill: var(--text);
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+.ba-cap {
+  fill: var(--muted-2);
+  font-size: 10px;
+}
+.ba-t0 {
+  fill: var(--primary-contrast);
+  font-size: 9px;
+  font-weight: 700;
+}
+.ba-delta {
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
