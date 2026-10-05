@@ -2,6 +2,7 @@
 //! container `server` binary and any other host share one definition (ADR-0002).
 
 pub mod error;
+pub mod gsc_sync;
 pub mod routes;
 pub mod security;
 pub mod session;

@@ -189,6 +189,17 @@ pub async fn tick(
             0
         });
 
+    // Pull one due Search Console property's daily Search Analytics into
+    // gsc_daily (Post-Link Impact). One property per tick keeps the external
+    // calls tiny; a property is re-synced at most ~daily (stale gate). Bounded so
+    // it can't blow the request budget. Inert (returns 0) when GSC is unconfigured.
+    let gsc_synced = tokio::time::timeout(
+        Duration::from_secs(12),
+        crate::gsc_sync::sync_due(&state.pool, 1),
+    )
+    .await
+    .unwrap_or(0);
+
     // Reclaim any leases from this or a prior tick that stopped mid-flight.
     let _ = db::repositories::job_queue::reap(&state.pool, 900).await;
 
@@ -200,6 +211,7 @@ pub async fn tick(
         "discovered": discovered,
         "delivered": delivered,
         "snapshots": snapshots,
+        "gsc_synced": gsc_synced,
         "partial": partial,
     })))
 }

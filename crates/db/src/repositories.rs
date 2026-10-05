@@ -3522,6 +3522,92 @@ pub mod gsc {
         .await?;
         Ok(r.rows_affected() > 0)
     }
+
+    /// A connection ready for a Search Analytics sync (a property is mapped).
+    #[derive(Debug, Clone, sqlx::FromRow)]
+    pub struct DueConnection {
+        pub id: Uuid,
+        pub organization_id: Uuid,
+        pub project_id: Uuid,
+        pub site_url: String,
+        pub refresh_token_enc: Vec<u8>,
+    }
+
+    /// Connections whose daily GSC sync is due (never synced, or stale). Not
+    /// tenant-scoped — this is a system sweep (like the warranty/snapshot ticks).
+    pub async fn list_due(
+        pool: &PgPool,
+        stale_before: DateTime<Utc>,
+        limit: i64,
+    ) -> Result<Vec<DueConnection>, DbError> {
+        Ok(sqlx::query_as::<_, DueConnection>(
+            "SELECT id, organization_id, project_id, site_url, refresh_token_enc \
+             FROM gsc_connections \
+             WHERE site_url IS NOT NULL \
+               AND (last_sync_at IS NULL OR last_sync_at < $1) \
+             ORDER BY last_sync_at NULLS FIRST LIMIT $2",
+        )
+        .bind(stale_before)
+        .bind(limit.clamp(1, 100))
+        .fetch_all(pool)
+        .await?)
+    }
+
+    /// Record the result of a sync attempt (clears or sets `last_error`).
+    pub async fn mark_synced(pool: &PgPool, id: Uuid, error: Option<&str>) -> Result<(), DbError> {
+        sqlx::query(
+            "UPDATE gsc_connections SET last_sync_at = now(), last_error = $2, updated_at = now() \
+             WHERE id = $1",
+        )
+        .bind(id)
+        .bind(error)
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+}
+
+// ─── GSC daily Search Analytics time-series (per target URL) ─────────────────
+pub mod gsc_daily {
+    use super::*;
+
+    /// Upsert a batch of (page, day) rows for one project via UNNEST (one
+    /// statement, 8 params). Re-running refreshes the same rows (idempotent).
+    #[allow(clippy::too_many_arguments)]
+    pub async fn upsert_many(
+        pool: &PgPool,
+        organization_id: Uuid,
+        project_id: Uuid,
+        pages: &[String],
+        days: &[chrono::NaiveDate],
+        impressions: &[i32],
+        clicks: &[i32],
+        ctr: &[f64],
+        position: &[f64],
+    ) -> Result<u64, DbError> {
+        let r = sqlx::query(
+            "INSERT INTO gsc_daily \
+                (organization_id, project_id, page_url_normalized, day, \
+                 impressions, clicks, ctr, position) \
+             SELECT $1, $2, p, d, i, c, r, pos \
+             FROM unnest($3::text[], $4::date[], $5::int[], $6::int[], $7::float8[], $8::float8[]) \
+                  AS t(p, d, i, c, r, pos) \
+             ON CONFLICT (organization_id, project_id, page_url_normalized, day) DO UPDATE SET \
+                 impressions = EXCLUDED.impressions, clicks = EXCLUDED.clicks, \
+                 ctr = EXCLUDED.ctr, position = EXCLUDED.position, fetched_at = now()",
+        )
+        .bind(organization_id)
+        .bind(project_id)
+        .bind(pages.to_vec())
+        .bind(days.to_vec())
+        .bind(impressions.to_vec())
+        .bind(clicks.to_vec())
+        .bind(ctr.to_vec())
+        .bind(position.to_vec())
+        .execute(pool)
+        .await?;
+        Ok(r.rows_affected())
+    }
 }
 
 // ─── Billing: plan lookup + idempotent webhook event record (§39) ────────────
