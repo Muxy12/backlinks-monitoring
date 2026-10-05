@@ -33,13 +33,13 @@ const TOKEN_URL: &str = "https://oauth2.googleapis.com/token";
 const SITES_URL: &str = "https://www.googleapis.com/webmasters/v3/sites";
 const STATE_TTL_SECS: i64 = 900;
 
-struct OAuthEnv {
-    client_id: String,
-    client_secret: String,
-    redirect_uri: String,
+pub(crate) struct OAuthEnv {
+    pub(crate) client_id: String,
+    pub(crate) client_secret: String,
+    pub(crate) redirect_uri: String,
 }
 
-fn oauth_env() -> Option<OAuthEnv> {
+pub(crate) fn oauth_env() -> Option<OAuthEnv> {
     let client_id = std::env::var("GOOGLE_OAUTH_CLIENT_ID")
         .ok()
         .filter(|s| !s.is_empty())?;
@@ -56,11 +56,21 @@ fn oauth_env() -> Option<OAuthEnv> {
     })
 }
 
-fn token_key() -> Option<[u8; 32]> {
+pub(crate) fn token_key() -> Option<[u8; 32]> {
     let k = std::env::var("GSC_TOKEN_KEY")
         .ok()
         .filter(|s| !s.is_empty())?;
     auth::key_from_base64(&k).ok()
+}
+
+/// A GSC property is either a domain property (`sc-domain:example.com`) or a URL-
+/// prefix property (`https://example.com/`). Reject anything else so it can't be
+/// smuggled into the Search Analytics request path later.
+pub(crate) fn valid_site_url(s: &str) -> bool {
+    let s = s.trim();
+    (s.starts_with("sc-domain:") || s.starts_with("https://") || s.starts_with("http://"))
+        && s.len() <= 300
+        && !s.contains(['\n', '\r', ' '])
 }
 
 /// Whether the GSC integration is configured (surfaced to the UI via `me.features`).
@@ -396,8 +406,10 @@ pub async fn set_site(
     let scope = authorize_org(&state.pool, user.id, org_id).await?;
     scope.require(Role::Member)?;
     let site = body.site_url.trim();
-    if site.is_empty() {
-        return Err(ApiError::Validation("site_url is required".into()));
+    if !valid_site_url(site) {
+        return Err(ApiError::Validation(
+            "site_url must be a GSC property (sc-domain:… or https://…)".into(),
+        ));
     }
     if gsc::set_site(&state.pool, &scope, project_id, site).await? {
         Ok(StatusCode::NO_CONTENT)
