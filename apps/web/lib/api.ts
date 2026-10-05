@@ -53,6 +53,55 @@ export interface GscSite {
   site_url: string;
   permission_level: string | null;
 }
+// Post-Link Impact (BETA) — observed before/after around a backlink's T0.
+// `status` values: positive | neutral | negative | insufficient_data | unavailable | pending.
+export interface ImpactLayerStub {
+  status: string;
+  note: string | null;
+}
+export interface ImpactVisibilityWindow {
+  label: string; // "7d" | "28d"
+  status: string;
+  available_on: string | null; // set while the window is still "pending"
+  impressions_before: number;
+  impressions_after: number;
+  clicks_before: number;
+  clicks_after: number;
+  change_percent: number | null; // null when the baseline was 0 (new activity)
+}
+export interface ImpactVisibilityLayer {
+  status: string;
+  windows: ImpactVisibilityWindow[];
+}
+export interface ImpactRankingLayer {
+  status: string;
+  position_before: number | null;
+  position_after: number | null;
+  position_change: number | null; // negative = improved (lower is better)
+}
+export interface ImpactTimelineItem {
+  kind: string; // "t0" | backlink_* event types
+  at: string;
+  label: string;
+}
+export interface ImpactContext {
+  overlapping_acquisitions: number; // other links to the same page in the window (§44)
+}
+export interface ImpactView {
+  status: string;
+  eligible: boolean;
+  impact_started_at: string | null; // T0
+  t0_source: string | null; // acquisition | verification | manual
+  data_sources: string[];
+  crawl: ImpactLayerStub; // "unavailable" in BETA
+  indexation: ImpactLayerStub; // "unavailable" in BETA
+  visibility: ImpactVisibilityLayer;
+  ranking: ImpactRankingLayer;
+  timeline: ImpactTimelineItem[];
+  context: ImpactContext;
+  confidence: string | null; // low | medium | high
+  summary: string;
+}
 export interface MeResponse {
   user: UserView;
   organizations: OrgView[];
@@ -735,6 +784,13 @@ export const orgApi = {
     request<EventView[]>(`/v1/organizations/${org}/backlinks/${id}/events`),
   backlinkOccurrences: (org: string, id: string) =>
     request<OccurrenceView[]>(`/v1/organizations/${org}/backlinks/${id}/occurrences`),
+  backlinkImpact: (org: string, id: string) =>
+    request<ImpactView>(`/v1/organizations/${org}/backlinks/${id}/impact`),
+  enableBacklinkImpact: (org: string, id: string) =>
+    request<null>(`/v1/organizations/${org}/backlinks/${id}/impact/enable`, {
+      method: "POST",
+      headers: csrfHeader(),
+    }),
   backlinkTier2: (org: string, id: string) =>
     request<BacklinkView[]>(`/v1/organizations/${org}/backlinks/${id}/tier2`),
   importTier2: (

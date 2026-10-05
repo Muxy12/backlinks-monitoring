@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState, type CSSProperties, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { api, orgApi, backlinksExportUrl, type BacklinkView, type ClientView, type DashboardResponse, type EventView, type MeResponse, type NotificationsResponse, type OccurrenceView, type ProjectView, type TagView } from "@/lib/api";
+import { api, orgApi, backlinksExportUrl, type BacklinkView, type ClientView, type DashboardResponse, type EventView, type ImpactView, type MeResponse, type NotificationsResponse, type OccurrenceView, type ProjectView, type TagView } from "@/lib/api";
+import { BeforeAfterChart } from "@/components/BeforeAfterChart";
 import { selectedOrg, selectedOrgId } from "@/lib/workspace";
 import { statusColor, statusLabel } from "@/lib/status";
 import { ACQUISITION, ATTRIBUTE, PLACEMENT, FORMAT, classLabel } from "@/lib/classification";
@@ -17,6 +18,7 @@ import { toast } from "../toast";
 import { Icon } from "../icons";
 import "@/app/auth.css";
 import "../dashboard/dashboard.css";
+import "./impact.css";
 
 export default function BacklinksPage() {
   const router = useRouter();
@@ -29,6 +31,8 @@ export default function BacklinksPage() {
   const [backlinks, setBacklinks] = useState<BacklinkView[]>([]);
   const [selected, setSelected] = useState<BacklinkView | null>(null);
   const [events, setEvents] = useState<EventView[] | null>(null);
+  const [impact, setImpact] = useState<ImpactView | null>(null);
+  const [impactBusy, setImpactBusy] = useState(false);
   const [occurrences, setOccurrences] = useState<OccurrenceView[]>([]);
   const [tier2, setTier2] = useState<BacklinkView[]>([]);
   const [t2csv, setT2csv] = useState("");
@@ -323,6 +327,7 @@ export default function BacklinksPage() {
   async function openDetail(b: BacklinkView) {
     setSelected(b);
     setEvents(null);
+    setImpact(null);
     setBlTags([]);
     setOccurrences([]);
     setTier2([]);
@@ -340,7 +345,27 @@ export default function BacklinksPage() {
       if (tg.ok) setBlTags(tg.data);
       if (oc.ok) setOccurrences(oc.data);
       if (t2.ok) setTier2(t2.data);
+      // Post-Link Impact — only when Search Console is configured for this install.
+      if (me?.features?.gsc) {
+        const im = await orgApi.backlinkImpact(orgId, b.id);
+        setImpact(im.ok ? im.data : null);
+      }
     }
+  }
+
+  // Manual opt-in for a link that isn't auto-tracked, then refresh the view.
+  async function enableImpact() {
+    if (!orgId || !selected || impactBusy) return;
+    setImpactBusy(true);
+    const res = await orgApi.enableBacklinkImpact(orgId, selected.id);
+    if (res.ok) {
+      const im = await orgApi.backlinkImpact(orgId, selected.id);
+      if (im.ok) setImpact(im.data);
+      toast("Now tracking post-link impact", "success");
+    } else {
+      toast(res.detail || "Could not enable tracking", "error");
+    }
+    setImpactBusy(false);
   }
 
   async function importTier2() {
@@ -1309,6 +1334,113 @@ export default function BacklinksPage() {
               />
               <button className="btn sm" onClick={() => void createAndAttach()}>Add</button>
             </div>
+            {me?.features?.gsc && (
+              <>
+                <h3 className="drawer-sub">
+                  Post-Link Impact <span className="impact-beta">BETA</span>
+                </h3>
+                {impact === null ? (
+                  <p className="muted">Loading impact…</p>
+                ) : !impact.eligible ? (
+                  <div className="impact-empty">
+                    <p className="muted">{impact.summary}</p>
+                    <button
+                      className="btn sm"
+                      disabled={impactBusy}
+                      onClick={() => void enableImpact()}
+                    >
+                      {impactBusy ? "Enabling…" : "Track impact"}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="impact">
+                    <p className="impact-summary">{impact.summary}</p>
+                    <div className="impact-meta">
+                      {impact.impact_started_at && (
+                        <span className="muted mono">
+                          Observed since {fmtShort(impact.impact_started_at)}
+                        </span>
+                      )}
+                      {impact.confidence && (
+                        <span className={`impact-conf conf-${impact.confidence}`}>
+                          {impact.confidence} confidence
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="impact-layers">
+                      {(
+                        [
+                          ["Crawl", impact.crawl.status],
+                          ["Indexation", impact.indexation.status],
+                          ["Visibility", impact.visibility.status],
+                          ["Ranking", impact.ranking.status],
+                        ] as const
+                      ).map(([name, st]) => (
+                        <span
+                          key={name}
+                          className="impact-chip"
+                          style={{ "--sig": signalColor(st) } as CSSProperties}
+                        >
+                          <span className="dot" />
+                          {name}: {signalLabel(st)}
+                        </span>
+                      ))}
+                    </div>
+
+                    {impact.visibility.windows.length > 0 && (
+                      <div className="impact-windows">
+                        {impact.visibility.windows.map((w) => (
+                          <div key={w.label} className="impact-window">
+                            <div className="iw-head">
+                              <strong>{w.label} visibility</strong>
+                              <span className="muted sm">{signalLabel(w.status)}</span>
+                            </div>
+                            {w.status === "pending" ? (
+                              <p className="muted sm">
+                                Completes on {w.available_on ? fmtShort(w.available_on) : "—"}.
+                              </p>
+                            ) : (
+                              <BeforeAfterChart
+                                before={w.impressions_before}
+                                after={w.impressions_after}
+                                unit="impressions"
+                                signal={w.status}
+                                changePercent={w.change_percent}
+                              />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {impact.ranking.position_before != null &&
+                      impact.ranking.position_after != null && (
+                        <div className="impact-rank">
+                          <strong>Avg. position</strong>
+                          <span className="mono">
+                            {impact.ranking.position_before.toFixed(1)} →{" "}
+                            {impact.ranking.position_after.toFixed(1)}
+                          </span>
+                          <span className="muted sm">(lower is better)</span>
+                        </div>
+                      )}
+
+                    {impact.context.overlapping_acquisitions > 0 && (
+                      <p className="impact-warn">
+                        {impact.context.overlapping_acquisitions} other link(s) to this page
+                        were acquired in the same window — changes can&apos;t be isolated to
+                        one link.
+                      </p>
+                    )}
+
+                    <p className="impact-foot muted sm">
+                      Observed correlation, not proof of causation.
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
             {events === null ? (
               <p className="muted">Loading history…</p>
             ) : events.length === 0 ? (
@@ -1337,6 +1469,37 @@ function fmtShort(s?: string | null): string {
   if (!s) return "-";
   const d = new Date(s);
   return Number.isNaN(d.getTime()) ? "-" : d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+// Post-Link Impact signal → token color / human label (mirrors the Rust SignalState).
+function signalColor(st: string): string {
+  switch (st) {
+    case "positive":
+      return "var(--live)";
+    case "negative":
+      return "var(--lost)";
+    case "neutral":
+      return "var(--changed)";
+    case "pending":
+      return "var(--pending)";
+    default:
+      return "var(--unknown)";
+  }
+}
+function signalLabel(st: string): string {
+  switch (st) {
+    case "positive":
+      return "Positive";
+    case "negative":
+      return "Negative";
+    case "neutral":
+      return "No clear change";
+    case "pending":
+      return "Collecting";
+    case "insufficient_data":
+      return "Not enough data";
+    default:
+      return "Unavailable";
+  }
 }
 function fmtLong(s?: string | null): string {
   if (!s) return "-";
