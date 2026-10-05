@@ -9,6 +9,7 @@
 //!
 //! — is enforced here as a property of the types, not as a convention.
 
+pub mod attention;
 pub mod csv_export;
 pub mod csv_import;
 pub mod event;
@@ -22,6 +23,9 @@ pub mod status;
 pub mod url_normalize;
 pub mod warranty;
 
+pub use attention::{
+    AttentionKind, Priority, priority as attention_priority, sort_key as attention_sort_key,
+};
 pub use event::{BacklinkEvent, EventType};
 pub use monitoring::{
     MonitoringDecision, MonitoringInputs, MonitoringLevel, MonitoringReason,

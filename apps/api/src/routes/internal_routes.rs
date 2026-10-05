@@ -179,6 +179,16 @@ pub async fn tick(
             }
         };
 
+    // Roll up today's per-(org, project) backlink counts for the Overview growth
+    // trend (migration 0037). Cheap, idempotent per day, DB-only — safe on every
+    // tick regardless of the crawl budget or env guards.
+    let snapshots = db::repositories::snapshots::roll_up_today(&state.pool)
+        .await
+        .unwrap_or_else(|e| {
+            tracing::warn!(error = %e, "tick: snapshot roll-up failed");
+            0
+        });
+
     // Reclaim any leases from this or a prior tick that stopped mid-flight.
     let _ = db::repositories::job_queue::reap(&state.pool, 900).await;
 
@@ -189,6 +199,7 @@ pub async fn tick(
         "warranty_alerts": warranty_alerts,
         "discovered": discovered,
         "delivered": delivered,
+        "snapshots": snapshots,
         "partial": partial,
     })))
 }
