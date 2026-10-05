@@ -434,10 +434,10 @@ fn build_summary(
             (_, None) => {}
         }
     }
-    if let (Some(a), Some(b)) = (ranking.position_before, ranking.position_after) {
-        if (a - b).abs() >= POSITION_THRESHOLD {
-            parts.push(format!("Average position moved from {a:.1} to {b:.1}."));
-        }
+    if let (Some(a), Some(b)) = (ranking.position_before, ranking.position_after)
+        && (a - b).abs() >= POSITION_THRESHOLD
+    {
+        parts.push(format!("Average position moved from {a:.1} to {b:.1}."));
     }
     let head = match overall {
         SignalState::Positive => "Positive post-acquisition signals.",
