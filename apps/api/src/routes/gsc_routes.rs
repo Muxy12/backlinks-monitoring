@@ -100,6 +100,22 @@ fn http_client() -> Result<reqwest::Client, ApiError> {
         .map_err(|_| ApiError::Internal)
 }
 
+/// Encode form pairs as `application/x-www-form-urlencoded`. (reqwest's `.form()`
+/// isn't available with this crate's `default-features = false` build, so we build
+/// the body ourselves.)
+fn urlencode(pairs: &[(&str, &str)]) -> String {
+    let mut u = reqwest::Url::parse("http://x/").expect("static base url");
+    {
+        let mut q = u.query_pairs_mut();
+        for (k, v) in pairs {
+            q.append_pair(k, v);
+        }
+    }
+    u.query().unwrap_or("").to_string()
+}
+
+const FORM_CT: &str = "application/x-www-form-urlencoded";
+
 // ─── GET auth-url ─────────────────────────────────────────────────────────────
 #[derive(Serialize)]
 pub struct AuthUrlView {
@@ -180,7 +196,13 @@ pub async fn callback(State(state): State<AppState>, Query(q): Query<CallbackQue
         ("redirect_uri", env.redirect_uri.as_str()),
         ("grant_type", "authorization_code"),
     ];
-    let tok: TokenResponse = match client.post(TOKEN_URL).form(&form).send().await {
+    let tok: TokenResponse = match client
+        .post(TOKEN_URL)
+        .header(reqwest::header::CONTENT_TYPE, FORM_CT)
+        .body(urlencode(&form))
+        .send()
+        .await
+    {
         Ok(r) => match r.json().await {
             Ok(t) => t,
             Err(e) => {
@@ -278,7 +300,8 @@ async fn fresh_access_token(
     ];
     let tok: TokenResponse = client
         .post(TOKEN_URL)
-        .form(&form)
+        .header(reqwest::header::CONTENT_TYPE, FORM_CT)
+        .body(urlencode(&form))
         .send()
         .await
         .map_err(|_| ApiError::Internal)?
