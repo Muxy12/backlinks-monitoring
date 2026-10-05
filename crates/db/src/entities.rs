@@ -175,8 +175,8 @@ pub struct Backlink {
     // ─── Economic / commercial (migration 0035; cost/currency/warranty on 0005) ─
     pub commercial_model: Option<String>,
     pub order_reference: Option<String>,
-    pub purchase_date: Option<NaiveDate>,
-    pub renewal_date: Option<NaiveDate>,
+    pub purchase_date: Option<chrono::NaiveDate>,
+    pub renewal_date: Option<chrono::NaiveDate>,
     pub replacement_eligible: Option<bool>,
 }
 
