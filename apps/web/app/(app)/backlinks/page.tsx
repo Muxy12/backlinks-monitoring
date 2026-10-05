@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, type CSSProperties, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { api, orgApi, backlinksExportUrl, type BacklinkView, type ClientView, type DashboardResponse, type EventsSummary, type EventView, type MeResponse, type NotificationsResponse, type OccurrenceView, type ProjectView, type TagView } from "@/lib/api";
+import { api, orgApi, backlinksExportUrl, type BacklinkView, type ClientView, type DashboardResponse, type EventView, type MeResponse, type NotificationsResponse, type OccurrenceView, type ProjectView, type TagView } from "@/lib/api";
 import { selectedOrg, selectedOrgId } from "@/lib/workspace";
 import { statusColor, statusLabel } from "@/lib/status";
 import { ACQUISITION, ATTRIBUTE, PLACEMENT, FORMAT, classLabel } from "@/lib/classification";
@@ -24,7 +24,6 @@ export default function BacklinksPage() {
   const [me, setMe] = useState<MeResponse | null>(null);
   const [orgId, setOrgId] = useState<string | null>(null);
   const [summary, setSummary] = useState<DashboardResponse | null>(null);
-  const [evsum, setEvsum] = useState<EventsSummary | null>(null);
   const [projects, setProjects] = useState<ProjectView[]>([]);
   const [projectId, setProjectId] = useState<string | null>(null);
   const [backlinks, setBacklinks] = useState<BacklinkView[]>([]);
@@ -108,13 +107,11 @@ export default function BacklinksPage() {
 
   const loadOrg = useCallback(
     async (org: string) => {
-      const [dash, projs, warr, evs] = await Promise.all([
+      const [dash, projs, warr] = await Promise.all([
         orgApi.dashboard(org),
         orgApi.projects(org),
         orgApi.expiringWarranties(org),
-        orgApi.eventsSummary(org, 30),
       ]);
-      if (evs.ok) setEvsum(evs.data);
       if (dash.ok) setSummary(dash.data);
       if (projs.ok) {
         setProjects(projs.data);
@@ -432,9 +429,6 @@ export default function BacklinksPage() {
     );
   if (!me) return null;
 
-  const money = (rows: { currency: string; amount: string }[]) =>
-    rows.length === 0 ? "-" : rows.map((r) => `${r.amount} ${r.currency}`).join(" · ");
-
   // The client these backlinks belong to: the explicit client filter, else the
   // selected project's client.
   const selectedProject = projects.find((p) => p.id === projectId) ?? null;
@@ -589,35 +583,6 @@ export default function BacklinksPage() {
         </section>
       ) : (
         <>
-          <section className="tiles">
-            <Tile label="Monitored" value={(summary?.protected ?? 0) + (summary?.tracked ?? 0)} icon={<Icon name="signal" size={16} />} hint={`${summary?.protected ?? 0} protected · ${summary?.inventory_only ?? 0} inventory`} />
-            <Tile label="Live" value={summary?.counts["live"] ?? 0} accent="var(--green)" icon={<Icon name="check" size={16} />} hint="Confirmed present" />
-            <Tile label="Needs attention" value={summary?.needs_attention ?? 0} accent="var(--yellow)" icon={<Icon name="warn" size={16} />} hint="Lost, changed or errored" />
-            <Tile label="Value protected" value={money(summary?.value_protected ?? [])} accent="var(--green)" icon={<Icon name="signal" size={16} />} hint="Cost of monitored links" />
-            <Tile label="Value at risk" value={money(summary?.value_at_risk ?? [])} accent="var(--red)" icon={<Icon name="alert" size={16} />} hint="Cost of at-risk links" />
-          </section>
-
-          {summary && (
-            <div className="substats">
-              <span><b>{summary.referring_domains}</b> referring domains</span>
-              <span><b>{summary.referring_pages}</b> referring pages</span>
-              <span><b>{summary.occurrences}</b> occurrences</span>
-            </div>
-          )}
-
-          {evsum && Object.keys(evsum.counts).length > 0 && (
-            <div className="substats evo">
-              <span className="evo-label">Last {evsum.days} days:</span>
-              {evsum.counts["backlink_found"] ? <span><b>+{evsum.counts["backlink_found"]}</b> found</span> : null}
-              {evsum.counts["backlink_lost"] ? <span><b>{evsum.counts["backlink_lost"]}</b> lost</span> : null}
-              {evsum.counts["backlink_restored"] ? <span><b>{evsum.counts["backlink_restored"]}</b> recovered</span> : null}
-              {evsum.counts["dofollow_to_nofollow"] ? <span><b>{evsum.counts["dofollow_to_nofollow"]}</b> → nofollow</span> : null}
-              {evsum.counts["anchor_changed"] ? <span><b>{evsum.counts["anchor_changed"]}</b> anchor changes</span> : null}
-              {evsum.counts["target_changed"] ? <span><b>{evsum.counts["target_changed"]}</b> target changes</span> : null}
-              {evsum.counts["link_moved"] ? <span><b>{evsum.counts["link_moved"]}</b> moved</span> : null}
-            </div>
-          )}
-
           {distTotal > 0 && (
             <section className="dist">
               <div className="dist-head">
@@ -1401,27 +1366,3 @@ function RelChips({ b }: { b: BacklinkView }) {
   );
 }
 
-function Tile({
-  label,
-  value,
-  accent,
-  icon,
-  hint,
-}: {
-  label: string;
-  value: number | string;
-  accent?: string;
-  icon?: React.ReactNode;
-  hint?: string;
-}) {
-  return (
-    <div className="tile" style={accent ? ({ "--tile-accent": accent } as CSSProperties) : undefined}>
-      <div className="tile-top">
-        <div className="tile-label">{label}</div>
-        {icon && <div className="tile-icon">{icon}</div>}
-      </div>
-      <div className="tile-value">{value}</div>
-      {hint && <div className="tile-hint">{hint}</div>}
-    </div>
-  );
-}
