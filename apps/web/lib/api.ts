@@ -185,6 +185,10 @@ export interface DashboardResponse {
   counts: Record<string, number>;
   monitored: number;
   needs_attention: number;
+  protected?: number;
+  tracked?: number;
+  inventory_only?: number;
+  value_protected?: { currency: string; amount: string }[];
   value_at_risk: { currency: string; amount: string }[];
   tracked_spend: { currency: string; amount: string }[];
   referring_domains: number;
@@ -311,6 +315,19 @@ export interface BacklinkView {
   link_attribute?: string | null;
   /// Crawler-derived attribute; null if never observed.
   link_attribute_auto?: string | null;
+  // Selective monitoring (migration 0035).
+  monitoring_enabled?: boolean;
+  monitoring_level?: string;
+  check_frequency?: string | null;
+  monitoring_reason?: string | null;
+  monitoring_overridden?: boolean;
+  next_check_at?: string | null;
+  // Economic / commercial.
+  commercial_model?: string | null;
+  order_reference?: string | null;
+  purchase_date?: string | null;
+  renewal_date?: string | null;
+  replacement_eligible?: boolean | null;
 }
 
 export interface NotificationItem {
@@ -507,6 +524,7 @@ export const orgApi = {
       attribute?: string;
       placement?: string;
       format?: string;
+      monitoringLevel?: string;
     },
   ) => {
     const p = new URLSearchParams();
@@ -522,6 +540,7 @@ export const orgApi = {
     if (opts.attribute) p.set("attribute", opts.attribute);
     if (opts.placement) p.set("placement", opts.placement);
     if (opts.format) p.set("format", opts.format);
+    if (opts.monitoringLevel) p.set("monitoring_level", opts.monitoringLevel);
     const qs = p.toString();
     return request<BacklinkView[]>(
       `/v1/organizations/${org}/backlinks${qs ? `?${qs}` : ""}`,
@@ -683,12 +702,32 @@ export const orgApi = {
       expected_anchor_text?: string | null;
       cost?: number | null;
       currency?: string | null;
+      monitoring_enabled?: boolean;
+      monitoring_level?: string;
+      check_frequency?: string | null;
+      commercial_model?: string | null;
+      order_reference?: string | null;
+      purchase_date?: string | null;
+      renewal_date?: string | null;
+      replacement_eligible?: boolean | null;
     },
   ) =>
     request<BacklinkView>(`/v1/organizations/${org}/backlinks/${id}`, {
       method: "PATCH",
       headers: csrfHeader(),
       body: JSON.stringify(body),
+    }),
+  // Bulk monitoring change over a set of backlink ids (§15). Any subset of
+  // enabled/level/frequency; omitted fields are left unchanged.
+  bulkMonitoring: (
+    org: string,
+    ids: string[],
+    body: { monitoring_enabled?: boolean; monitoring_level?: string; check_frequency?: string },
+  ) =>
+    request<{ updated: number }>(`/v1/organizations/${org}/backlinks/bulk-monitoring`, {
+      method: "POST",
+      headers: csrfHeader(),
+      body: JSON.stringify({ ids, ...body }),
     }),
   importCsv: (org: string, projectId: string, csv: string) =>
     request<ImportResult>(`/v1/organizations/${org}/imports`, {
