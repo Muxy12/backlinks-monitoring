@@ -526,30 +526,16 @@ pub async fn get_campaign_impact(
     }
     let (user, _s) = current(&state, &jar).await?;
     let scope = authorize_org(&state.pool, user.id, org_id).await?;
-    let _campaign = campaigns::get(&state.pool, &scope, campaign_id).await?; // 404 if not ours
-
-    let gsc_connected = crate::routes::gsc_routes::configured();
+    // A campaign belongs to one project; that project's GSC property mapping (in
+    // the DB, NOT the global env) gates whether there's any data to aggregate —
+    // same rule as the per-backlink impact view.
+    let campaign = campaigns::get(&state.pool, &scope, campaign_id).await?; // 404 if not ours
+    let gsc_connected = gsc::get(&state.pool, &scope, campaign.project_id)
+        .await?
+        .map(|c| c.site_url.is_some())
+        .unwrap_or(false);
     let links = backlinks::list_for_campaign(&state.pool, &scope, campaign_id, 500).await?;
     let now = Utc::now();
-
-    // Not GSC-configured: still report how many links WOULD be tracked.
-    if !gsc_connected {
-        let eligible_links = links.iter().filter(|b| eligibility(b).is_some()).count() as i64;
-        return Ok(Json(CampaignImpactView {
-            campaign_id,
-            gsc_connected: false,
-            eligible_links,
-            measured_links: 0,
-            positive: 0,
-            neutral: 0,
-            negative: 0,
-            pending: 0,
-            insufficient: 0,
-            median_visibility_change_percent: None,
-            median_position_delta: None,
-            summary: campaign_summary_text(false, eligible_links, 0, 0, 0, 0, 0, None),
-        }));
-    }
 
     let mut eligible_links = 0i64;
     let mut signals: Vec<SignalState> = Vec::new();
@@ -561,12 +547,8 @@ pub async fn get_campaign_impact(
             continue;
         }
         eligible_links += 1;
-        // The link's project must have a mapped GSC property to have any data.
-        let connected = gsc::get(&state.pool, &scope, b.project_id)
-            .await?
-            .map(|c| c.site_url.is_some())
-            .unwrap_or(false);
-        if !connected {
+        // No mapped property → count the link as tracked, but no data to measure.
+        if !gsc_connected {
             continue;
         }
         let (t0, _) = resolve_t0(b);
@@ -628,7 +610,7 @@ pub async fn get_campaign_impact(
     let median_change = median(&changes);
 
     let summary = campaign_summary_text(
-        true,
+        gsc_connected,
         eligible_links,
         measured,
         positive,
@@ -640,7 +622,7 @@ pub async fn get_campaign_impact(
 
     Ok(Json(CampaignImpactView {
         campaign_id,
-        gsc_connected: true,
+        gsc_connected,
         eligible_links,
         measured_links: measured,
         positive,
