@@ -35,7 +35,20 @@ pub struct OverviewView {
     pub top_opportunities: Vec<OpportunityRow>,
     pub competitive_position: Option<CompetitivePosition>,
     pub recent_activity: Vec<ActivityItem>,
+    /// Concise Post-Link Impact signal (§40); None when GSC isn't configured or
+    /// nothing is tracked yet. Observation, never causation.
+    pub post_link: Option<PostLinkSignal>,
     pub generated_at: String,
+}
+
+#[derive(Serialize)]
+pub struct PostLinkSignal {
+    pub tracked: i64,
+    pub measured: i64,
+    pub positive: i64,
+    pub neutral: i64,
+    pub negative: i64,
+    pub collecting: i64,
 }
 
 #[derive(Serialize)]
@@ -432,6 +445,19 @@ pub async fn overview(
         (None, Vec::new())
     };
 
+    // ── Post-Link Impact signal (§40) — one DB query, no external calls (§69).
+    // Gated on data presence (tracked rows exist), not the global env: the signal
+    // spans projects, and without GSC data links simply read as "collecting".
+    let a = overview::post_link_signal(&state.pool, &scope).await?;
+    let post_link = (a.tracked > 0).then(|| PostLinkSignal {
+        tracked: a.tracked,
+        measured: a.measured,
+        positive: a.positive,
+        neutral: (a.measured - a.positive - a.negative).max(0),
+        negative: a.negative,
+        collecting: a.collecting,
+    });
+
     Ok((
         StatusCode::OK,
         Json(OverviewView {
@@ -452,6 +478,7 @@ pub async fn overview(
             top_opportunities,
             competitive_position,
             recent_activity,
+            post_link,
             generated_at: chrono::Utc::now().to_rfc3339(),
         }),
     ))
