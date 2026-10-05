@@ -143,8 +143,8 @@ pub fn headline(signals: &[SignalState]) -> SignalState {
     if real.is_empty() {
         return SignalState::InsufficientData;
     }
-    let pos = real.iter().any(|s| *s == SignalState::Positive);
-    let neg = real.iter().any(|s| *s == SignalState::Negative);
+    let pos = real.contains(&SignalState::Positive);
+    let neg = real.contains(&SignalState::Negative);
     match (pos, neg) {
         (true, false) => SignalState::Positive,
         (false, true) => SignalState::Negative,
