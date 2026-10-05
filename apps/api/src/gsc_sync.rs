@@ -235,8 +235,10 @@ mod tests {
             u.as_str(),
             "https://www.googleapis.com/webmasters/v3/sites/sc-domain%3Aexample.com/searchAnalytics/query"
         );
-        // A malicious value can't escape the segment.
+        // A malicious value can't escape the segment: the slashes are encoded
+        // (%2F), so "../.." is one inert segment, not a path traversal.
         let u = sa_url("../../evil").unwrap();
-        assert!(u.as_str().contains("%2E%2E%2F%2E%2E%2Fevil"));
+        assert!(u.as_str().contains("..%2F..%2Fevil"), "got {}", u.as_str());
+        assert!(u.path().ends_with("/searchAnalytics/query"));
     }
 }
