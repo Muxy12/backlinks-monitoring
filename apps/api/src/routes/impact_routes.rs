@@ -15,14 +15,14 @@ use axum::http::{HeaderMap, StatusCode};
 use axum_extra::extract::cookie::CookieJar;
 use backlio_core::impact::{
     POSITION_THRESHOLD, RATE_THRESHOLD_PCT, SignalState, change_percent, confidence, headline,
-    per_day, position_signal, up_signal,
+    median, per_day, position_signal, up_signal,
 };
 use chrono::{DateTime, Duration, Utc};
 use common::Role;
 use db::authorize_org;
 use db::entities::Backlink;
 use db::repositories::gsc_daily::WindowAgg;
-use db::repositories::{backlinks, events, gsc, gsc_daily, impact};
+use db::repositories::{backlinks, campaigns, events, gsc, gsc_daily, impact};
 use serde::Serialize;
 use uuid::Uuid;
 
@@ -493,4 +493,207 @@ pub async fn enable_impact(
     )
     .await?;
     Ok(StatusCode::CREATED)
+}
+
+// ─── Campaign aggregate (§31 — prudent: medians + signal counts, never a sum of %) ─
+const CAMPAIGN_WINDOW: i64 = 28;
+
+#[derive(Serialize)]
+pub struct CampaignImpactView {
+    pub campaign_id: Uuid,
+    pub gsc_connected: bool,
+    /// Acquired links in the campaign that are eligible for impact.
+    pub eligible_links: i64,
+    /// Links with a complete 28-day window and GSC data (positive+neutral+negative).
+    pub measured_links: i64,
+    pub positive: i64,
+    pub neutral: i64,
+    pub negative: i64,
+    pub pending: i64,      // still inside their 28-day window
+    pub insufficient: i64, // window complete but no GSC data
+    pub median_visibility_change_percent: Option<f64>,
+    pub median_position_delta: Option<f64>, // negative = improved
+    pub summary: String,
+}
+
+pub async fn get_campaign_impact(
+    State(state): State<AppState>,
+    Path((org_id, campaign_id)): Path<(Uuid, Uuid)>,
+    jar: CookieJar,
+) -> Result<Json<CampaignImpactView>, ApiError> {
+    if !state.cfg.campaigns_beta {
+        return Err(ApiError::NotFound);
+    }
+    let (user, _s) = current(&state, &jar).await?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    let _campaign = campaigns::get(&state.pool, &scope, campaign_id).await?; // 404 if not ours
+
+    let gsc_connected = crate::routes::gsc_routes::configured();
+    let links = backlinks::list_for_campaign(&state.pool, &scope, campaign_id, 500).await?;
+    let now = Utc::now();
+
+    // Not GSC-configured: still report how many links WOULD be tracked.
+    if !gsc_connected {
+        let eligible_links = links.iter().filter(|b| eligibility(b).is_some()).count() as i64;
+        return Ok(Json(CampaignImpactView {
+            campaign_id,
+            gsc_connected: false,
+            eligible_links,
+            measured_links: 0,
+            positive: 0,
+            neutral: 0,
+            negative: 0,
+            pending: 0,
+            insufficient: 0,
+            median_visibility_change_percent: None,
+            median_position_delta: None,
+            summary: campaign_summary_text(false, eligible_links, 0, 0, 0, 0, 0, None),
+        }));
+    }
+
+    let mut eligible_links = 0i64;
+    let mut signals: Vec<SignalState> = Vec::new();
+    let mut changes: Vec<f64> = Vec::new();
+    let mut deltas: Vec<f64> = Vec::new();
+
+    for b in &links {
+        if eligibility(b).is_none() {
+            continue;
+        }
+        eligible_links += 1;
+        // The link's project must have a mapped GSC property to have any data.
+        let connected = gsc::get(&state.pool, &scope, b.project_id)
+            .await?
+            .map(|c| c.site_url.is_some())
+            .unwrap_or(false);
+        if !connected {
+            continue;
+        }
+        let (t0, _) = resolve_t0(b);
+        let t0d = t0.date_naive();
+        let post_end = t0d + Duration::days(CAMPAIGN_WINDOW);
+        if now.date_naive() < post_end {
+            signals.push(SignalState::Pending);
+            continue;
+        }
+        let pre = gsc_daily::page_window(
+            &state.pool,
+            b.organization_id,
+            b.project_id,
+            &b.target_url_normalized,
+            t0d - Duration::days(CAMPAIGN_WINDOW),
+            t0d,
+        )
+        .await
+        .unwrap_or_default();
+        let post = gsc_daily::page_window(
+            &state.pool,
+            b.organization_id,
+            b.project_id,
+            &b.target_url_normalized,
+            t0d,
+            post_end,
+        )
+        .await
+        .unwrap_or_default();
+        if pre.days == 0 && post.days == 0 {
+            signals.push(SignalState::InsufficientData);
+            continue;
+        }
+        let change = change_percent(
+            per_day(pre.impressions, CAMPAIGN_WINDOW),
+            per_day(post.impressions, CAMPAIGN_WINDOW),
+        );
+        signals.push(up_signal(
+            change,
+            pre.impressions,
+            post.impressions,
+            RATE_THRESHOLD_PCT,
+        ));
+        if let Some(c) = change {
+            changes.push(c);
+        }
+        if let (Some(a), Some(c)) = (avg_pos(&pre), avg_pos(&post)) {
+            deltas.push(c - a);
+        }
+    }
+
+    let count = |s: SignalState| signals.iter().filter(|x| **x == s).count() as i64;
+    let positive = count(SignalState::Positive);
+    let neutral = count(SignalState::Neutral);
+    let negative = count(SignalState::Negative);
+    let pending = count(SignalState::Pending);
+    let insufficient = count(SignalState::InsufficientData);
+    let measured = positive + neutral + negative;
+    let median_change = median(&changes);
+
+    let summary = campaign_summary_text(
+        true,
+        eligible_links,
+        measured,
+        positive,
+        neutral,
+        negative,
+        pending,
+        median_change,
+    );
+
+    Ok(Json(CampaignImpactView {
+        campaign_id,
+        gsc_connected: true,
+        eligible_links,
+        measured_links: measured,
+        positive,
+        neutral,
+        negative,
+        pending,
+        insufficient,
+        median_visibility_change_percent: median_change,
+        median_position_delta: median(&deltas),
+        summary,
+    }))
+}
+
+#[allow(clippy::too_many_arguments)]
+fn campaign_summary_text(
+    gsc_connected: bool,
+    eligible: i64,
+    measured: i64,
+    positive: i64,
+    neutral: i64,
+    negative: i64,
+    pending: i64,
+    median_change: Option<f64>,
+) -> String {
+    if !gsc_connected {
+        return "Connect Google Search Console to see the post-link response of this campaign's \
+                links."
+            .to_string();
+    }
+    if eligible == 0 {
+        return "No acquired links are tracked for impact in this campaign yet.".to_string();
+    }
+    let mut s = format!("{eligible} acquired link(s) tracked.");
+    if measured > 0 {
+        match median_change {
+            Some(c) => s.push_str(&format!(
+                " Median 28-day impressions change across the {measured} with data: {}{:.0}% \
+                 ({positive} up, {neutral} flat, {negative} down).",
+                if c >= 0.0 { "+" } else { "" },
+                c
+            )),
+            None => s.push_str(&format!(
+                " {measured} link(s) have 28-day data ({positive} up, {neutral} flat, \
+                 {negative} down)."
+            )),
+        }
+    }
+    if pending > 0 {
+        s.push_str(&format!(" {pending} still inside their 28-day window."));
+    }
+    s.push_str(
+        " Medians across links, not totals — individual results vary and reflect many factors, \
+         not this campaign alone.",
+    );
+    s
 }

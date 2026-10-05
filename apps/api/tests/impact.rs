@@ -11,7 +11,7 @@ use http_body_util::BodyExt;
 use tower::ServiceExt;
 use uuid::Uuid;
 
-async fn build() -> Option<(AppState, PgPool)> {
+async fn build(beta: bool) -> Option<(AppState, PgPool)> {
     let url = std::env::var("DATABASE_URL")
         .ok()
         .filter(|s| !s.is_empty())?;
@@ -27,7 +27,7 @@ async fn build() -> Option<(AppState, PgPool)> {
             secure_cookies: false,
             stripe_webhook_secret: None,
             allow_private_fetch: false,
-            campaigns_beta: false,
+            campaigns_beta: beta,
         },
     );
     Some((state, db.pool))
@@ -53,8 +53,8 @@ struct Session {
     pool: PgPool,
 }
 
-async fn bootstrap() -> Option<Session> {
-    let (state, pool) = build().await?;
+async fn bootstrap(beta: bool) -> Option<Session> {
+    let (state, pool) = build(beta).await?;
     let app = api::app(state);
     let email = format!("imp-{}@example.com", Uuid::now_v7().simple());
     app.clone()
@@ -151,7 +151,7 @@ impl Session {
 
 #[tokio::test]
 async fn impact_eligibility_visibility_attribution() {
-    let Some(s) = bootstrap().await else {
+    let Some(s) = bootstrap(false).await else {
         return;
     };
     let org = s.org;
@@ -347,7 +347,7 @@ async fn impact_eligibility_visibility_attribution() {
     );
 
     // Tenant isolation: another workspace can't read this backlink's impact.
-    let other = bootstrap().await.unwrap();
+    let other = bootstrap(false).await.unwrap();
     let (st, _) = other
         .send(
             "GET",
@@ -365,7 +365,7 @@ async fn impact_eligibility_visibility_attribution() {
 
 #[tokio::test]
 async fn impact_pending_window_for_recent_link() {
-    let Some(s) = bootstrap().await else {
+    let Some(s) = bootstrap(false).await else {
         return;
     };
     let org = s.org;
@@ -404,4 +404,139 @@ async fn impact_pending_window_for_recent_link() {
     // No GSC connection in this test → visibility unavailable; windows not faked.
     assert_eq!(v["visibility"]["status"], "unavailable");
     assert_eq!(v["status"], "unavailable");
+}
+
+// The campaign aggregate (§31): prudent medians + signal counts, never a sum of %.
+#[tokio::test]
+async fn campaign_impact_aggregate() {
+    let Some(s) = bootstrap(true).await else {
+        return;
+    };
+    let org = s.org;
+    let project = s
+        .post(
+            format!("/v1/organizations/{org}/projects"),
+            serde_json::json!({"name":"Site","domain":"example.com"}),
+        )
+        .await["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let project_uuid = Uuid::parse_str(&project).unwrap();
+
+    // GSC connection with a mapped property (stub token, no OAuth).
+    db::sqlx::query(
+        "INSERT INTO gsc_connections (id, organization_id, project_id, refresh_token_enc, site_url) \
+         VALUES ($1, $2, $3, $4, $5)",
+    )
+    .bind(Uuid::now_v7())
+    .bind(org)
+    .bind(project_uuid)
+    .bind(vec![1u8, 2, 3])
+    .bind("https://example.com/")
+    .execute(&s.pool)
+    .await
+    .unwrap();
+
+    let campaign = s
+        .post(
+            format!("/v1/organizations/{org}/campaigns"),
+            serde_json::json!({"project_id":project,"name":"Q4 push"}),
+        )
+        .await["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let campaign_uuid = Uuid::parse_str(&campaign).unwrap();
+
+    // A paid link acquired via the campaign, 60 days ago (so windows are complete).
+    let paid_id = Uuid::parse_str(
+        s.post(
+            format!("/v1/organizations/{org}/backlinks"),
+            serde_json::json!({
+                "project_id":project,"source_url":"https://authority.com/post",
+                "target_url":"https://example.com/guide","cost":200.0,"currency":"USD"
+            }),
+        )
+        .await["id"]
+            .as_str()
+            .unwrap(),
+    )
+    .unwrap();
+    let t0 = chrono::Utc::now().date_naive() - chrono::Duration::days(60);
+    db::sqlx::query("UPDATE backlinks SET purchase_date = $2, campaign_id = $3 WHERE id = $1")
+        .bind(paid_id)
+        .bind(t0)
+        .bind(campaign_uuid)
+        .execute(&s.pool)
+        .await
+        .unwrap();
+
+    let (page,): (String,) =
+        db::sqlx::query_as("SELECT target_url_normalized FROM backlinks WHERE id = $1")
+            .bind(paid_id)
+            .fetch_one(&s.pool)
+            .await
+            .unwrap();
+
+    // Seed a clear positive response: 7 days low before T0, 7 days high from T0.
+    let mut pages = Vec::new();
+    let mut days = Vec::new();
+    let mut imps = Vec::new();
+    let mut clicks = Vec::new();
+    let mut ctrs = Vec::new();
+    let mut poss = Vec::new();
+    for i in 1..=7 {
+        pages.push(page.clone());
+        days.push(t0 - chrono::Duration::days(i));
+        imps.push(10);
+        clicks.push(1);
+        ctrs.push(0.1);
+        poss.push(8.0);
+    }
+    for i in 0..7 {
+        pages.push(page.clone());
+        days.push(t0 + chrono::Duration::days(i));
+        imps.push(30);
+        clicks.push(4);
+        ctrs.push(0.13);
+        poss.push(4.0);
+    }
+    db::repositories::gsc_daily::upsert_many(
+        &s.pool,
+        org,
+        project_uuid,
+        &pages,
+        &days,
+        &imps,
+        &clicks,
+        &ctrs,
+        &poss,
+    )
+    .await
+    .unwrap();
+
+    let (st, v) = s
+        .send(
+            "GET",
+            format!("/v1/organizations/{org}/campaigns/{campaign}/impact"),
+            None,
+            false,
+        )
+        .await;
+    assert_eq!(st, StatusCode::OK, "campaign impact: {v}");
+    assert_eq!(v["gsc_connected"], true);
+    assert_eq!(v["eligible_links"], 1);
+    assert_eq!(v["measured_links"], 1);
+    assert_eq!(v["positive"], 1);
+    assert_eq!(v["negative"], 0);
+    assert!(
+        v["median_visibility_change_percent"].as_f64().unwrap() > 0.0,
+        "median change should be positive: {v}"
+    );
+    // The position median should reflect the 8.0 → 4.0 improvement (negative delta).
+    assert!(v["median_position_delta"].as_f64().unwrap() < 0.0);
+    let summary = v["summary"].as_str().unwrap().to_lowercase();
+    assert!(summary.contains("median"), "prudent wording: {summary}");
+    assert!(!summary.contains("caused"), "never causal: {summary}");
 }

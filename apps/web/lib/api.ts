@@ -491,6 +491,22 @@ export interface CampaignSummary {
   prospects_total: number;
   stage_counts: StageCount[];
 }
+// Post-Link Impact aggregate for a campaign (prudent: medians + signal counts,
+// never a sum of %). Gated on features.gsc + campaigns_beta.
+export interface CampaignImpact {
+  campaign_id: string;
+  gsc_connected: boolean;
+  eligible_links: number;
+  measured_links: number;
+  positive: number;
+  neutral: number;
+  negative: number;
+  pending: number;
+  insufficient: number;
+  median_visibility_change_percent: number | null;
+  median_position_delta: number | null; // negative = improved
+  summary: string;
+}
 export interface OutreachDraft {
   subject: string;
   body: string;
@@ -912,6 +928,8 @@ export const orgApi = {
   // ── Link-building campaigns BETA (migration 0036) ──
   campaignSummary: (org: string, id: string) =>
     request<CampaignSummary>(`/v1/organizations/${org}/campaigns/${id}/summary`),
+  campaignImpact: (org: string, id: string) =>
+    request<CampaignImpact>(`/v1/organizations/${org}/campaigns/${id}/impact`),
   campaignTargets: (org: string, id: string) =>
     request<CampaignTargetView[]>(`/v1/organizations/${org}/campaigns/${id}/targets`),
   createCampaignTarget: (org: string, id: string, body: { url: string; label?: string }) =>

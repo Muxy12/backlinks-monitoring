@@ -153,9 +153,40 @@ pub fn headline(signals: &[SignalState]) -> SignalState {
     }
 }
 
+/// The median of a set of samples — the honest way to aggregate per-link change
+/// across a campaign (§31). We report the median and the signal counts, NEVER a
+/// sum of percentages (summing rates is meaningless and overstates impact).
+/// `None` when empty. Even counts average the two middle values.
+pub fn median(values: &[f64]) -> Option<f64> {
+    if values.is_empty() {
+        return None;
+    }
+    let mut v: Vec<f64> = values.iter().copied().filter(|x| x.is_finite()).collect();
+    if v.is_empty() {
+        return None;
+    }
+    v.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    let n = v.len();
+    if n % 2 == 1 {
+        Some(v[n / 2])
+    } else {
+        Some((v[n / 2 - 1] + v[n / 2]) / 2.0)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn median_odd_even_and_empty() {
+        assert_eq!(median(&[]), None);
+        assert_eq!(median(&[5.0]), Some(5.0));
+        assert_eq!(median(&[3.0, 1.0, 2.0]), Some(2.0)); // sorts first
+        assert_eq!(median(&[1.0, 2.0, 3.0, 4.0]), Some(2.5)); // avg of middle two
+        assert_eq!(median(&[-10.0, 10.0]), Some(0.0));
+        assert_eq!(median(&[f64::INFINITY, f64::NAN]), None); // non-finite dropped
+    }
 
     #[test]
     fn change_percent_handles_zero_baseline() {

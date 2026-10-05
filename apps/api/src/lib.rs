@@ -214,6 +214,10 @@ pub fn app(state: AppState) -> Router {
             post(routes::impact_routes::enable_impact),
         )
         .route(
+            "/v1/organizations/{org_id}/campaigns/{campaign_id}/impact",
+            get(routes::impact_routes::get_campaign_impact),
+        )
+        .route(
             "/v1/organizations/{org_id}/backlinks/{backlink_id}/occurrences",
             get(routes::resource_routes::list_backlink_occurrences),
         )
