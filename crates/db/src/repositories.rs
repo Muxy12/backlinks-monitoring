@@ -3415,6 +3415,115 @@ pub mod overview {
     }
 }
 
+// ─── Google Search Console connections (Post-Link Impact, migration 0038) ────
+pub mod gsc {
+    use super::*;
+    use crate::entities::GscConnection;
+
+    macro_rules! cols {
+        () => {
+            "id, organization_id, project_id, google_email, site_url, \
+             refresh_token_enc, access_token_enc, access_expires_at, scopes, \
+             last_sync_at, last_error, created_at, updated_at"
+        };
+    }
+
+    /// Upsert a project's GSC connection on OAuth callback. The authority here is
+    /// the signed+encrypted OAuth `state` (not a session), so this takes a raw org
+    /// id; the composite FK `(organization_id, project_id) -> projects` guarantees
+    /// the project truly belongs to that org (a mismatched pair fails the insert).
+    #[allow(clippy::too_many_arguments)]
+    pub async fn upsert(
+        pool: &PgPool,
+        id: Uuid,
+        organization_id: Uuid,
+        project_id: Uuid,
+        google_email: Option<&str>,
+        refresh_enc: &[u8],
+        access_enc: Option<&[u8]>,
+        access_expires: Option<DateTime<Utc>>,
+        scopes: Option<&str>,
+    ) -> Result<GscConnection, DbError> {
+        sqlx::query_as::<_, GscConnection>(concat!(
+            "INSERT INTO gsc_connections \
+                (id, organization_id, project_id, google_email, refresh_token_enc, \
+                 access_token_enc, access_expires_at, scopes) \
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8) \
+             ON CONFLICT (project_id) DO UPDATE SET \
+                 google_email = EXCLUDED.google_email, \
+                 refresh_token_enc = EXCLUDED.refresh_token_enc, \
+                 access_token_enc = EXCLUDED.access_token_enc, \
+                 access_expires_at = EXCLUDED.access_expires_at, \
+                 scopes = EXCLUDED.scopes, last_error = NULL, updated_at = now() \
+             RETURNING ",
+            cols!()
+        ))
+        .bind(id)
+        .bind(organization_id)
+        .bind(project_id)
+        .bind(google_email)
+        .bind(refresh_enc)
+        .bind(access_enc)
+        .bind(access_expires)
+        .bind(scopes)
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_insert)
+    }
+
+    /// The project's connection, if any. Tenant-scoped.
+    pub async fn get(
+        pool: &PgPool,
+        scope: &OrgScope,
+        project_id: Uuid,
+    ) -> Result<Option<GscConnection>, DbError> {
+        Ok(sqlx::query_as::<_, GscConnection>(concat!(
+            "SELECT ",
+            cols!(),
+            " FROM gsc_connections WHERE organization_id = $1 AND project_id = $2"
+        ))
+        .bind(scope.organization_id())
+        .bind(project_id)
+        .fetch_optional(pool)
+        .await?)
+    }
+
+    /// Map the chosen GSC property to the project. Tenant-scoped.
+    pub async fn set_site(
+        pool: &PgPool,
+        scope: &OrgScope,
+        project_id: Uuid,
+        site_url: &str,
+    ) -> Result<bool, DbError> {
+        let r = sqlx::query(
+            "UPDATE gsc_connections SET site_url = $3, updated_at = now() \
+             WHERE organization_id = $1 AND project_id = $2",
+        )
+        .bind(scope.organization_id())
+        .bind(project_id)
+        .bind(site_url)
+        .execute(pool)
+        .await?;
+        Ok(r.rows_affected() > 0)
+    }
+
+    /// Disconnect (delete) the project's connection. Tenant-scoped.
+    pub async fn delete(
+        pool: &PgPool,
+        scope: &OrgScope,
+        project_id: Uuid,
+    ) -> Result<bool, DbError> {
+        let r = sqlx::query(
+            "DELETE FROM gsc_connections WHERE organization_id = $1 AND project_id = $2",
+        )
+        .bind(scope.organization_id())
+        .bind(project_id)
+        .execute(pool)
+        .await?;
+        Ok(r.rows_affected() > 0)
+    }
+}
+
 // ─── Billing: plan lookup + idempotent webhook event record (§39) ────────────
 pub mod billing {
     use super::*;

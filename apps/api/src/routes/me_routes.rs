@@ -25,6 +25,8 @@ pub struct OrgMembershipView {
 #[derive(Debug, Serialize)]
 pub struct Features {
     pub campaigns_beta: bool,
+    /// Google Search Console integration is configured (Post-Link Impact).
+    pub gsc: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -54,6 +56,7 @@ pub async fn me(
         organizations,
         features: Features {
             campaigns_beta: state.cfg.campaigns_beta,
+            gsc: crate::routes::gsc_routes::configured(),
         },
     }))
 }

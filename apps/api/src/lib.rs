@@ -224,6 +224,30 @@ pub fn app(state: AppState) -> Router {
             "/v1/organizations/{org_id}/overview",
             get(routes::overview_routes::overview),
         )
+        // Google Search Console OAuth + connection (Post-Link Impact foundation).
+        // The callback lands here without a session; it is authorized by the
+        // signed/encrypted `state`.
+        .route("/v1/gsc/oauth/callback", get(routes::gsc_routes::callback))
+        .route(
+            "/v1/organizations/{org_id}/projects/{project_id}/gsc/auth-url",
+            get(routes::gsc_routes::auth_url),
+        )
+        .route(
+            "/v1/organizations/{org_id}/projects/{project_id}/gsc/status",
+            get(routes::gsc_routes::status),
+        )
+        .route(
+            "/v1/organizations/{org_id}/projects/{project_id}/gsc/sites",
+            get(routes::gsc_routes::sites),
+        )
+        .route(
+            "/v1/organizations/{org_id}/projects/{project_id}/gsc/site",
+            post(routes::gsc_routes::set_site),
+        )
+        .route(
+            "/v1/organizations/{org_id}/projects/{project_id}/gsc",
+            axum::routing::delete(routes::gsc_routes::disconnect),
+        )
         .route(
             "/v1/organizations/{org_id}/events/summary",
             get(routes::resource_routes::events_summary),

@@ -14,7 +14,12 @@ pub mod csrf;
 pub mod error;
 pub mod password;
 pub mod token;
+pub mod token_crypto;
 
 pub use error::AuthError;
 pub use password::{Argon2Params, hash_password, verify_password};
 pub use token::{Token, hash_token, verify_token};
+pub use token_crypto::{
+    CryptoError, decrypt as decrypt_secret, decrypt_b64 as decrypt_secret_b64,
+    encrypt as encrypt_secret, encrypt_b64 as encrypt_secret_b64, key_from_base64,
+};

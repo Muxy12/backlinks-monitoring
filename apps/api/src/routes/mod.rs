@@ -10,6 +10,7 @@ pub mod competitor_routes;
 pub mod discovery_routes;
 pub mod feedback_routes;
 pub mod graph_routes;
+pub mod gsc_routes;
 pub mod internal_routes;
 pub mod me_routes;
 pub mod ops_routes;
