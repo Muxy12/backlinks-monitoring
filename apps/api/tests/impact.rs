@@ -283,6 +283,32 @@ async fn impact_eligibility_visibility_attribution() {
     .await
     .unwrap();
 
+    // A URL Inspection snapshot: indexed (verdict PASS), crawled after T0, no
+    // canonical mismatch → Crawl + Indexation read positive (Phase 2).
+    db::sqlx::query(
+        "INSERT INTO gsc_url_inspection \
+            (organization_id, project_id, page_url_normalized, coverage_state, verdict, \
+             page_fetch_state, last_crawl_time, google_canonical, user_canonical) \
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)",
+    )
+    .bind(org)
+    .bind(project_uuid)
+    .bind(&page)
+    .bind("Submitted and indexed")
+    .bind("PASS")
+    .bind("SUCCESSFUL")
+    .bind(
+        (t0 + chrono::Duration::days(5))
+            .and_hms_opt(12, 0, 0)
+            .unwrap()
+            .and_utc(),
+    )
+    .bind(&page)
+    .bind(&page)
+    .execute(&s.pool)
+    .await
+    .unwrap();
+
     // Jobs before the read (the §69 cost guard).
     let jobs_before: i64 = db::sqlx::query_scalar("SELECT count(*)::bigint FROM jobs")
         .fetch_one(&s.pool)
@@ -300,9 +326,13 @@ async fn impact_eligibility_visibility_attribution() {
     assert_eq!(st, StatusCode::OK, "impact: {v}");
     assert_eq!(v["eligible"], true);
     assert_eq!(v["t0_source"], "acquisition");
-    // Crawl + Indexation are unavailable in this BETA.
-    assert_eq!(v["crawl"]["status"], "unavailable");
-    assert_eq!(v["indexation"]["status"], "unavailable");
+    // Crawl + Indexation (Phase 2) reflect the URL Inspection snapshot.
+    assert_eq!(v["crawl"]["status"], "positive");
+    assert_eq!(v["crawl"]["crawled_since_t0"], true);
+    assert!(v["crawl"]["last_crawl_time"].is_string());
+    assert_eq!(v["indexation"]["status"], "positive");
+    assert_eq!(v["indexation"]["indexed"], true);
+    assert_eq!(v["indexation"]["canonical_mismatch"], false);
     // Visibility: a 28d window with a positive change.
     let win28 = v["visibility"]["windows"]
         .as_array()

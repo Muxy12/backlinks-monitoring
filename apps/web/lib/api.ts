@@ -55,9 +55,19 @@ export interface GscSite {
 }
 // Post-Link Impact (BETA) — observed before/after around a backlink's T0.
 // `status` values: positive | neutral | negative | insufficient_data | unavailable | pending.
-export interface ImpactLayerStub {
+// Crawl + Indexation (Phase 2) from Google URL Inspection.
+export interface ImpactCrawlLayer {
   status: string;
   note: string | null;
+  last_crawl_time: string | null;
+  crawled_since_t0: boolean | null;
+}
+export interface ImpactIndexationLayer {
+  status: string;
+  note: string | null;
+  coverage_state: string | null;
+  indexed: boolean | null;
+  canonical_mismatch: boolean | null;
 }
 export interface ImpactVisibilityWindow {
   label: string; // "7d" | "28d"
@@ -93,8 +103,8 @@ export interface ImpactView {
   impact_started_at: string | null; // T0
   t0_source: string | null; // acquisition | verification | manual
   data_sources: string[];
-  crawl: ImpactLayerStub; // "unavailable" in BETA
-  indexation: ImpactLayerStub; // "unavailable" in BETA
+  crawl: ImpactCrawlLayer; // from URL Inspection (Phase 2)
+  indexation: ImpactIndexationLayer; // from URL Inspection (Phase 2)
   visibility: ImpactVisibilityLayer;
   ranking: ImpactRankingLayer;
   timeline: ImpactTimelineItem[];

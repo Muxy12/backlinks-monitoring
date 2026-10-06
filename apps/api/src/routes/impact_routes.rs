@@ -22,7 +22,8 @@ use common::Role;
 use db::authorize_org;
 use db::entities::Backlink;
 use db::repositories::gsc_daily::WindowAgg;
-use db::repositories::{backlinks, campaigns, events, gsc, gsc_daily, impact};
+use db::repositories::gsc_inspection::UrlInspection;
+use db::repositories::{backlinks, campaigns, events, gsc, gsc_daily, gsc_inspection, impact};
 use serde::Serialize;
 use uuid::Uuid;
 
@@ -36,8 +37,8 @@ pub struct ImpactView {
     pub impact_started_at: Option<String>,
     pub t0_source: Option<String>,
     pub data_sources: Vec<&'static str>,
-    pub crawl: LayerStub,
-    pub indexation: LayerStub,
+    pub crawl: CrawlLayer,
+    pub indexation: IndexationLayer,
     pub visibility: VisibilityLayer,
     pub ranking: RankingLayer,
     pub timeline: Vec<TimelineItem>,
@@ -46,10 +47,25 @@ pub struct ImpactView {
     pub summary: String,
 }
 
+/// Crawl layer (Phase 2, from URL Inspection): when Googlebot last fetched the
+/// TARGET page, and whether that was after acquisition. Observation, not causation.
 #[derive(Serialize)]
-pub struct LayerStub {
+pub struct CrawlLayer {
     pub status: String,
     pub note: Option<String>,
+    pub last_crawl_time: Option<String>,
+    pub crawled_since_t0: Option<bool>,
+}
+
+/// Indexation layer (Phase 2, from URL Inspection): is the page on Google, with
+/// its coverage state and any Google-vs-declared canonical mismatch.
+#[derive(Serialize)]
+pub struct IndexationLayer {
+    pub status: String,
+    pub note: Option<String>,
+    pub coverage_state: Option<String>,
+    pub indexed: Option<bool>,
+    pub canonical_mismatch: Option<bool>,
 }
 
 #[derive(Serialize)]
@@ -123,10 +139,91 @@ fn avg_pos(w: &WindowAgg) -> Option<f64> {
     }
 }
 
-fn unavailable_layer(note: &str) -> LayerStub {
-    LayerStub {
-        status: SignalState::Unavailable.as_str().to_string(),
+/// Crawl layer from a URL Inspection snapshot (Phase 2). Not connected → the
+/// layer is "unavailable"; connected but not yet inspected → "pending".
+fn crawl_layer(connected: bool, ins: Option<&UrlInspection>, t0: DateTime<Utc>) -> CrawlLayer {
+    let base = |status: SignalState, note: &str| CrawlLayer {
+        status: status.as_str().to_string(),
         note: Some(note.to_string()),
+        last_crawl_time: None,
+        crawled_since_t0: None,
+    };
+    if !connected {
+        return base(
+            SignalState::Unavailable,
+            "Connect Search Console to see crawl activity.",
+        );
+    }
+    let Some(ins) = ins else {
+        return base(SignalState::Pending, "Awaiting the first URL inspection.");
+    };
+    let since = ins.last_crawl_time.map(|t| t >= t0);
+    let fetch_ok = ins
+        .page_fetch_state
+        .as_deref()
+        .map(|s| s == "SUCCESSFUL")
+        .unwrap_or(true);
+    let status = if !fetch_ok {
+        SignalState::Negative
+    } else if since == Some(true) {
+        SignalState::Positive
+    } else if ins.last_crawl_time.is_some() {
+        SignalState::Neutral
+    } else {
+        SignalState::InsufficientData
+    };
+    CrawlLayer {
+        status: status.as_str().to_string(),
+        note: ins.page_fetch_state.clone(),
+        last_crawl_time: ins.last_crawl_time.map(|t| t.to_rfc3339()),
+        crawled_since_t0: since,
+    }
+}
+
+/// Indexation layer from a URL Inspection snapshot (Phase 2). `verdict == PASS`
+/// means the page is on Google.
+fn indexation_layer(connected: bool, ins: Option<&UrlInspection>) -> IndexationLayer {
+    let base = |status: SignalState, note: Option<String>| IndexationLayer {
+        status: status.as_str().to_string(),
+        note,
+        coverage_state: None,
+        indexed: None,
+        canonical_mismatch: None,
+    };
+    if !connected {
+        return base(
+            SignalState::Unavailable,
+            Some("Connect Search Console to see indexation.".to_string()),
+        );
+    }
+    let Some(ins) = ins else {
+        return base(
+            SignalState::Pending,
+            Some("Awaiting the first URL inspection.".to_string()),
+        );
+    };
+    let indexed = ins.verdict.as_deref().map(|v| v == "PASS");
+    let cov_lower = ins.coverage_state.as_deref().unwrap_or("").to_lowercase();
+    let status = match indexed {
+        Some(true) => SignalState::Positive,
+        Some(false)
+            if cov_lower.contains("not indexed") || ins.verdict.as_deref() == Some("FAIL") =>
+        {
+            SignalState::Negative
+        }
+        Some(false) => SignalState::Neutral,
+        None => SignalState::InsufficientData,
+    };
+    let canonical_mismatch = match (&ins.google_canonical, &ins.user_canonical) {
+        (Some(g), Some(u)) => Some(g != u),
+        _ => None,
+    };
+    IndexationLayer {
+        status: status.as_str().to_string(),
+        note: ins.coverage_state.clone(),
+        coverage_state: ins.coverage_state.clone(),
+        indexed,
+        canonical_mismatch,
     }
 }
 
@@ -138,8 +235,8 @@ fn not_eligible_view() -> ImpactView {
         impact_started_at: None,
         t0_source: None,
         data_sources: vec![],
-        crawl: unavailable_layer("Crawl observation isn't available yet."),
-        indexation: unavailable_layer("Indexation data isn't available yet."),
+        crawl: crawl_layer(false, None, Utc::now()),
+        indexation: indexation_layer(false, None),
         visibility: VisibilityLayer {
             status: SignalState::Unavailable.as_str().to_string(),
             windows: vec![],
@@ -218,6 +315,17 @@ pub async fn get_impact(
         .await?
         .map(|c| c.site_url.is_some())
         .unwrap_or(false);
+
+    // Crawl + Indexation (Phase 2) from the latest URL Inspection snapshot.
+    let inspection = if gsc_connected {
+        gsc_inspection::get(&state.pool, &scope, b.project_id, page)
+            .await
+            .unwrap_or(None)
+    } else {
+        None
+    };
+    let crawl = crawl_layer(gsc_connected, inspection.as_ref(), t0);
+    let indexation = indexation_layer(gsc_connected, inspection.as_ref());
 
     // Build the visibility windows + capture the 28d aggregates for ranking.
     let mut vis_windows = Vec::new();
@@ -384,8 +492,8 @@ pub async fn get_impact(
         } else {
             vec![]
         },
-        crawl: unavailable_layer("Crawl observation isn't available yet (coming soon)."),
-        indexation: unavailable_layer("Indexation data isn't available yet (coming soon)."),
+        crawl,
+        indexation,
         visibility,
         ranking,
         timeline,
