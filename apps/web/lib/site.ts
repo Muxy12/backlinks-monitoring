@@ -13,4 +13,4 @@ export const SITE_TAGLINE = "Backlink monitoring for SEO teams";
 // Google Analytics 4 measurement id (public — it ships in the page anyway).
 // Loading is CONSENT-GATED and production-only; see app/analytics.tsx. Override
 // per environment with NEXT_PUBLIC_GA_ID.
-export const GA_ID = process.env.NEXT_PUBLIC_GA_ID ?? "G-HST8WJ0ZHV";
+export const GA_ID = process.env.NEXT_PUBLIC_GA_ID ?? "G-NMT0YJEBRS";
