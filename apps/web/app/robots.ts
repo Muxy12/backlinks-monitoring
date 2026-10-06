@@ -24,7 +24,10 @@ export default function robots(): MetadataRoute.Robots {
           "/login",
           "/register",
           "/invite",
-          "/verify",
+          // The email-verification page carries a ?token= query. Match that
+          // precisely — a bare "/verify" prefix would also block the
+          // "/verify-backlinks" marketing page (which IS in the sitemap).
+          "/verify?",
           "/reset",
           "/forgot",
           "/legal",
