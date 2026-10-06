@@ -1388,6 +1388,39 @@ export default function BacklinksPage() {
                       ))}
                     </div>
 
+                    {(impact.crawl.last_crawl_time || impact.indexation.coverage_state) && (
+                      <div
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 4,
+                          fontSize: 12,
+                        }}
+                      >
+                        {impact.crawl.last_crawl_time && (
+                          <div>
+                            <strong>Crawl</strong>{" "}
+                            <span className="muted">
+                              Googlebot last fetched this page{" "}
+                              {fmtShort(impact.crawl.last_crawl_time)}
+                              {impact.crawl.crawled_since_t0 ? " · since acquisition" : ""}
+                            </span>
+                          </div>
+                        )}
+                        {impact.indexation.coverage_state && (
+                          <div>
+                            <strong>Indexation</strong>{" "}
+                            <span className="muted">
+                              {impact.indexation.coverage_state}
+                              {impact.indexation.canonical_mismatch
+                                ? " · Google's canonical differs from yours"
+                                : ""}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     {impact.visibility.windows.length > 0 && (
                       <div className="impact-windows">
                         {impact.visibility.windows.map((w) => (
