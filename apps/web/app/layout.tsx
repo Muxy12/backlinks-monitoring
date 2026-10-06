@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { Inter } from "next/font/google";
 import { SITE_URL } from "@/lib/site";
+import { Analytics } from "./analytics";
 import { CookieBanner } from "./cookie-banner";
 import { ThemeToggle } from "./theme-toggle";
 import "./tokens.css";
@@ -57,6 +58,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         {children}
         <CookieBanner />
         <ThemeToggle />
+        <Analytics />
       </body>
     </html>
   );

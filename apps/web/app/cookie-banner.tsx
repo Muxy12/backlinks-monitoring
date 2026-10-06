@@ -3,21 +3,19 @@
 import { useEffect, useState } from "react";
 import "./cookie-banner.css";
 
-const KEY = "backlio_cookies_ack";
+// Consent key: "all" = essential + analytics (Google Analytics), "essential" =
+// strictly-necessary only (session + CSRF). Stored per-browser in localStorage,
+// wrapped so a blocked/empty store degrades gracefully. Analytics never loads
+// until the visitor chooses "all" (see app/analytics.tsx), which is what keeps
+// us GDPR/ePrivacy-correct: no tracking cookies before consent.
+export const CONSENT_KEY = "backlio_consent";
 
-// Lightweight cookie notice. LinkPulz sets only strictly-necessary cookies
-// (session + CSRF), so this is an informational notice, not a consent gate —
-// there is nothing to opt out of. If optional (e.g. analytics) cookies are ever
-// added, this becomes a real consent choice. Acknowledgement is remembered in
-// localStorage (per-browser), wrapped so a blocked/again-empty store degrades
-// gracefully. Renders nothing on the server / first paint to avoid a hydration
-// mismatch, then appears only if not yet acknowledged.
 export function CookieBanner() {
   const [show, setShow] = useState(false);
 
   useEffect(() => {
     try {
-      if (localStorage.getItem(KEY) !== "1") setShow(true);
+      if (!localStorage.getItem(CONSENT_KEY)) setShow(true);
     } catch {
       setShow(true);
     }
@@ -25,25 +23,38 @@ export function CookieBanner() {
 
   if (!show) return null;
 
-  const ack = () => {
+  const choose = (value: "all" | "essential") => {
     try {
-      localStorage.setItem(KEY, "1");
+      localStorage.setItem(CONSENT_KEY, value);
     } catch {
       /* private mode / blocked — just hide for this session */
+    }
+    if (value === "all") {
+      // Tell the analytics loader to start now, without a reload.
+      try {
+        window.dispatchEvent(new Event("consent-granted"));
+      } catch {
+        /* no-op */
+      }
     }
     setShow(false);
   };
 
   return (
-    <div className="cookie-banner" role="region" aria-label="Cookie notice">
+    <div className="cookie-banner" role="region" aria-label="Cookie choices">
       <p className="cookie-text">
-        We use only essential cookies to keep you signed in and to secure the app. No tracking or
-        advertising cookies.{" "}
+        We use essential cookies to keep you signed in and secure the app. With your consent we also
+        use Google Analytics to understand how the site is used — never advertising cookies.{" "}
         <a href="/legal/cookies">Learn more</a>.
       </p>
-      <button className="cookie-btn" onClick={ack}>
-        Got it
-      </button>
+      <div className="cookie-actions">
+        <button className="cookie-btn ghost" onClick={() => choose("essential")}>
+          Essential only
+        </button>
+        <button className="cookie-btn" onClick={() => choose("all")}>
+          Accept analytics
+        </button>
+      </div>
     </div>
   );
 }

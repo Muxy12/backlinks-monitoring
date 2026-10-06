@@ -34,16 +34,24 @@ const TURNSTILE_ORIGIN = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
   ? "https://challenges.cloudflare.com"
   : "";
 
+// Google Analytics (gtag.js). Loading is consent-gated in the client, but the
+// CSP must permit the tag host (script-src fallback for browsers that ignore
+// 'strict-dynamic') and the collect beacons (connect-src). Harmless until the
+// user consents and GA actually loads. img-src already allows https: pixels.
+const GA_SCRIPT = "https://www.googletagmanager.com";
+const GA_CONNECT =
+  "https://www.googletagmanager.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com";
+
 export function middleware(request: NextRequest) {
   const dev = process.env.NODE_ENV !== "production";
   const nonce = btoa(crypto.randomUUID());
 
   // Dev needs eval + websockets for React Refresh / HMR; prod does not.
   const scriptExtra = dev ? " 'unsafe-eval'" : "";
-  const connectSrc = ["'self'", API_ORIGIN, TURNSTILE_ORIGIN, ...(dev ? ["ws:", "http://localhost:*"] : [])]
+  const connectSrc = ["'self'", API_ORIGIN, TURNSTILE_ORIGIN, GA_CONNECT, ...(dev ? ["ws:", "http://localhost:*"] : [])]
     .filter(Boolean)
     .join(" ");
-  const scriptSrc = ["'self'", `'nonce-${nonce}'`, "'strict-dynamic'", TURNSTILE_ORIGIN]
+  const scriptSrc = ["'self'", `'nonce-${nonce}'`, "'strict-dynamic'", TURNSTILE_ORIGIN, GA_SCRIPT]
     .filter(Boolean)
     .join(" ");
   const frameSrc = ["'self'", TURNSTILE_ORIGIN].filter(Boolean).join(" ");
