@@ -51,6 +51,8 @@ pub async fn me(
             role: role.to_string(),
         })
         .collect();
+    // Read the flag before `user` is moved into the view below.
+    let is_platform_admin = user.is_platform_admin;
     Ok(Json(MeResponse {
         user: user.into(),
         organizations,
@@ -60,7 +62,7 @@ pub async fn me(
             // verified for public use (a sensitive scope). Public users see
             // "coming soon"; the whole Impact UI gates on this flag. Drop the
             // `&& is_platform_admin` to open it to everyone after verification.
-            gsc: crate::routes::gsc_routes::configured() && user.is_platform_admin,
+            gsc: crate::routes::gsc_routes::configured() && is_platform_admin,
         },
     }))
 }
