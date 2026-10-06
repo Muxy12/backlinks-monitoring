@@ -82,7 +82,7 @@ const JSONLD = `{
       "description": "Backlink monitoring software that checks your earned and paid backlinks on a schedule and alerts you when a link is lost, redirected, nofollowed, noindexed or broken.",
       "url": "https://www.linkpulz.com/",
       "publisher": { "@id": "https://www.linkpulz.com/#organization" },
-      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD", "description": "Free trial. TO CONFIRM.", "url": "https://www.linkpulz.com/#pricing" }
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD", "description": "10-day free trial, no credit card. Paid plans from $29/mo.", "url": "https://www.linkpulz.com/#pricing" }
     },
     {
       "@type": "FAQPage",
@@ -93,7 +93,7 @@ const JSONLD = `{
         { "@type": "Question", "name": "What problems does a backlink audit find?", "acceptedAnswer": { "@type": "Answer", "text": "Lost links that were removed, broken links that point to errors, links switched from dofollow to nofollow, links on pages that went noindex, redirected links, and links on low-quality or spammy sites." } },
         { "@type": "Question", "name": "What are toxic or spammy backlinks?", "acceptedAnswer": { "@type": "Answer", "text": "They are links from low-quality, irrelevant or manipulative sites. Most sites can safely ignore them, as search engines discount low-quality links on their own. Assessing and, in rare cases, disavowing them is a separate judgement call from the lost, broken and changed links monitoring handles." } },
         { "@type": "Question", "name": "Do I need a tool to audit backlinks?", "acceptedAnswer": { "@type": "Answer", "text": "You can audit a small set by hand, but checking the live state of dozens or hundreds of links one by one does not scale, and the result is out of date the moment you finish. A tool checks them for you and keeps the result current." } },
-        { "@type": "Question", "name": "How does LinkPulz help with a backlink audit?", "acceptedAnswer": { "@type": "Answer", "text": "LinkPulz checks the live state of each link you add, present or lost, dofollow or nofollow, live or broken, and then keeps checking on a schedule, so your audit stays true instead of going stale. [TO CONFIRM: import, check frequency and alert channels]" } }
+        { "@type": "Question", "name": "How does LinkPulz help with a backlink audit?", "acceptedAnswer": { "@type": "Answer", "text": "LinkPulz checks the live state of each link you add, present or lost, dofollow or nofollow, live or broken, and then keeps checking on a schedule, so your audit stays true instead of going stale." } }
       ]
     }
   ]
@@ -115,7 +115,7 @@ const MAIN = `
         <a class="btn" href="/register">Audit my backlinks</a>
         <a class="btn ghost" href="#steps">The 5 steps</a>
       </div>
-      <p class="micro">No credit card required <span class="tc">TO CONFIRM</span></p>
+      <p class="micro">No credit card required</p>
     </div>
     <div class="lost-demo" role="img" aria-label="Example audit result: links flagged as live, nofollow, broken and lost">
       <p class="micro verify-label">Audit result</p>
@@ -208,7 +208,7 @@ const MAIN = `
       </table>
     </div>
     <div class="prose" style="margin-top:24px">
-      <p>LinkPulz checks the live state of each link you add and then keeps checking on a schedule, so your audit stays true instead of going stale. <span class="tc">TO CONFIRM: import, check frequency and alert channels</span></p>
+      <p>LinkPulz checks the live state of each link you add and then keeps checking on a schedule, so your audit stays true instead of going stale.</p>
     </div>
   </div>
 </section>
@@ -223,7 +223,7 @@ const MAIN = `
       <details><summary>What problems does a backlink audit find?</summary><p>Lost links that were removed, broken links that point to errors, links switched from dofollow to nofollow, links on pages that went noindex, redirected links, and links on low-quality or spammy sites.</p></details>
       <details><summary>What are toxic or spammy backlinks?</summary><p>They are links from low-quality, irrelevant or manipulative sites. Most sites can safely ignore them, as search engines discount low-quality links on their own. Assessing and, in rare cases, disavowing them is a separate judgement call from the lost, broken and changed links monitoring handles.</p></details>
       <details><summary>Do I need a tool to audit backlinks?</summary><p>You can audit a small set by hand, but checking the live state of dozens or hundreds of links one by one does not scale, and the result is out of date the moment you finish. A tool checks them for you and keeps the result current.</p></details>
-      <details><summary>How does LinkPulz help with a backlink audit?</summary><p>LinkPulz checks the live state of each link you add, present or lost, dofollow or nofollow, live or broken, and then keeps checking on a schedule, so your audit stays true instead of going stale. <span class="tc">TO CONFIRM: import, check frequency and alert channels</span></p></details>
+      <details><summary>How does LinkPulz help with a backlink audit?</summary><p>LinkPulz checks the live state of each link you add, present or lost, dofollow or nofollow, live or broken, and then keeps checking on a schedule, so your audit stays true instead of going stale.</p></details>
     </div>
   </div>
 </section>

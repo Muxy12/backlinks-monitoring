@@ -69,7 +69,7 @@ const JSONLD = `{
       "description": "Backlink monitoring software that checks your earned and paid backlinks on a schedule and alerts you when a link is lost, redirected, nofollowed, noindexed or broken.",
       "url": "https://www.linkpulz.com/",
       "publisher": { "@id": "https://www.linkpulz.com/#organization" },
-      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD", "description": "Free trial. TO CONFIRM.", "url": "https://www.linkpulz.com/#pricing" }
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD", "description": "10-day free trial, no credit card. Paid plans from $29/mo.", "url": "https://www.linkpulz.com/#pricing" }
     },
     {
       "@type": "FAQPage",
@@ -80,7 +80,7 @@ const JSONLD = `{
         { "@type": "Question", "name": "How do I analyze my backlink profile?", "acceptedAnswer": { "@type": "Answer", "text": "Look at the number of referring domains, the dofollow to nofollow ratio, the distribution of anchor text, the relevance and quality of the linking sites, and how the profile is changing over time, including links you have lost." } },
         { "@type": "Question", "name": "What is the dofollow to nofollow ratio?", "acceptedAnswer": { "@type": "Answer", "text": "It is the share of your links that pass authority (dofollow) versus those that do not (nofollow). A natural profile contains both. There is no single correct number, but a sudden swing toward nofollow can mean links you valued have quietly changed." } },
         { "@type": "Question", "name": "Why does anchor text distribution matter?", "acceptedAnswer": { "@type": "Answer", "text": "Anchor text tells search engines what a link is about. A natural profile has varied anchors, brand, URL, and descriptive phrases. An unnatural concentration of the same exact-match keyword can look manipulative." } },
-        { "@type": "Question", "name": "How does LinkPulz help with my backlink profile?", "acceptedAnswer": { "@type": "Answer", "text": "LinkPulz focuses on keeping the profile accurate over time: it re-checks each link you add and alerts you when one is lost, redirected, nofollowed, noindexed or broken, so your view of the profile reflects reality rather than the day you last looked. [TO CONFIRM: profile metrics and check frequency]" } }
+        { "@type": "Question", "name": "How does LinkPulz help with my backlink profile?", "acceptedAnswer": { "@type": "Answer", "text": "LinkPulz focuses on keeping the profile accurate over time: it re-checks each link you add and alerts you when one is lost, redirected, nofollowed, noindexed or broken, so your view of the profile reflects reality rather than the day you last looked." } }
       ]
     }
   ]
@@ -102,11 +102,11 @@ const MAIN = `
         <a class="btn" href="/register">Monitor my backlink profile</a>
         <a class="btn ghost" href="#analyze">How to analyze it</a>
       </div>
-      <p class="micro">No credit card required <span class="tc">TO CONFIRM</span></p>
+      <p class="micro">No credit card required</p>
     </div>
     <div class="health" role="img" aria-label="Example backlink profile snapshot with a health score and a breakdown of link states" style="margin:0">
       <div class="health-top">
-        <div class="health-score"><small>Profile score</small><b>82</b><span>/ 100 <span class="tc">TO CONFIRM</span></span></div>
+        <div class="health-score"><small>Profile score</small><b>82</b><span>/ 100</span></div>
         <div class="health-main">
           <div class="health-bar"><i style="width:74%;background:var(--accent)"></i><i style="width:12%;background:var(--warn)"></i><i style="width:14%;background:var(--danger)"></i></div>
           <table class="health-table">
@@ -173,7 +173,7 @@ const MAIN = `
     <div class="prose">
       <h2 id="keep-h">A profile is only as good as its data</h2>
       <p>The hard part is not analyzing the profile once, it is keeping that analysis true. A profile you checked last quarter already describes a site that no longer exists: links have been removed, nofollowed or broken since.</p>
-      <p>LinkPulz focuses on exactly that gap. It re-checks each link you add and alerts you when one is lost, redirected, nofollowed, noindexed or broken, so your view of the profile reflects reality rather than the last time you looked. <span class="tc">TO CONFIRM: profile metrics and check frequency</span></p>
+      <p>LinkPulz focuses on exactly that gap. It re-checks each link you add and alerts you when one is lost, redirected, nofollowed, noindexed or broken, so your view of the profile reflects reality rather than the last time you looked.</p>
       <p>For a single-screen summary of where the profile stands, see the <a href="/backlink-health-check">backlink health check</a>.</p>
     </div>
   </div>
@@ -189,7 +189,7 @@ const MAIN = `
       <details><summary>How do I analyze my backlink profile?</summary><p>Look at the number of referring domains, the dofollow to nofollow ratio, the distribution of anchor text, the relevance and quality of the linking sites, and how the profile is changing over time, including links you have lost.</p></details>
       <details><summary>What is the dofollow to nofollow ratio?</summary><p>It is the share of your links that pass authority (dofollow) versus those that do not (nofollow). A natural profile contains both. There is no single correct number, but a sudden swing toward nofollow can mean links you valued have quietly changed.</p></details>
       <details><summary>Why does anchor text distribution matter?</summary><p>Anchor text tells search engines what a link is about. A natural profile has varied anchors, brand, URL, and descriptive phrases. An unnatural concentration of the same exact-match keyword can look manipulative.</p></details>
-      <details><summary>How does LinkPulz help with my backlink profile?</summary><p>LinkPulz focuses on keeping the profile accurate over time: it re-checks each link you add and alerts you when one is lost, redirected, nofollowed, noindexed or broken, so your view of the profile reflects reality rather than the day you last looked. <span class="tc">TO CONFIRM: profile metrics and check frequency</span></p></details>
+      <details><summary>How does LinkPulz help with my backlink profile?</summary><p>LinkPulz focuses on keeping the profile accurate over time: it re-checks each link you add and alerts you when one is lost, redirected, nofollowed, noindexed or broken, so your view of the profile reflects reality rather than the day you last looked.</p></details>
     </div>
   </div>
 </section>

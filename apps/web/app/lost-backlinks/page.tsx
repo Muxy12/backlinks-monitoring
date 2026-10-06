@@ -68,7 +68,7 @@ const JSONLD = `{
       "description": "Backlink monitoring software that checks your earned and paid backlinks on a schedule and alerts you when a link is lost, redirected, nofollowed, noindexed or broken.",
       "url": "https://www.linkpulz.com/",
       "publisher": { "@id": "https://www.linkpulz.com/#organization" },
-      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD", "description": "Free trial. TO CONFIRM.", "url": "https://www.linkpulz.com/#pricing" }
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD", "description": "10-day free trial, no credit card. Paid plans from $29/mo.", "url": "https://www.linkpulz.com/#pricing" }
     },
     {
       "@type": "FAQPage",
@@ -78,8 +78,8 @@ const JSONLD = `{
         { "@type": "Question", "name": "How do I find lost backlinks?", "acceptedAnswer": { "@type": "Answer", "text": "Compare a past list of your backlinks with the live state of each linking page. A lost backlink checker re-fetches each page and flags any link that is no longer present, so you do not have to check them by hand." } },
         { "@type": "Question", "name": "Why do backlinks disappear?", "acceptedAnswer": { "@type": "Answer", "text": "Common causes are the publisher removing the link, the page being deleted or returning a 404, the article being edited or rewritten, a site migration breaking the URL, a redirect sending the link elsewhere, or the link switching to nofollow or the page going noindex." } },
         { "@type": "Question", "name": "Do lost backlinks hurt my rankings?", "acceptedAnswer": { "@type": "Answer", "text": "Losing a strong link can reduce the authority flowing to your pages and the referral traffic it sent. The impact depends on the link's value and how many you lose, so catching losses early matters." } },
-        { "@type": "Question", "name": "Can I recover a lost backlink?", "acceptedAnswer": { "@type": "Answer", "text": "Often, yes. If you know who owns the page, when the link disappeared and why, you can contact the site and ask them to restore it while the change is still recent. [TO CONFIRM: recovery workflow]" } },
-        { "@type": "Question", "name": "How does LinkPulz detect lost backlinks?", "acceptedAnswer": { "@type": "Answer", "text": "Add your links to LinkPulz. It re-checks each linking page on a schedule and alerts you the moment a link is no longer there, with the likely cause. [TO CONFIRM: check frequency and alert channels]" } }
+        { "@type": "Question", "name": "Can I recover a lost backlink?", "acceptedAnswer": { "@type": "Answer", "text": "Often, yes. If you know who owns the page, when the link disappeared and why, you can contact the site and ask them to restore it while the change is still recent." } },
+        { "@type": "Question", "name": "How does LinkPulz detect lost backlinks?", "acceptedAnswer": { "@type": "Answer", "text": "Add your links to LinkPulz. It re-checks each linking page on a schedule and alerts you the moment a link is no longer there, with the likely cause." } }
       ]
     }
   ]
@@ -101,7 +101,7 @@ const MAIN = `
         <a class="btn" href="/register">Get Alerted When a Backlink Disappears</a>
         <a class="btn ghost" href="#how-to-find">How to find them</a>
       </div>
-      <p class="micro">No credit card required <span class="tc">TO CONFIRM</span></p>
+      <p class="micro">No credit card required</p>
     </div>
     <div class="lost-demo" role="img" aria-label="Example: a backlink goes from live yesterday to lost today, with a LinkPulz alert">
       <p class="micro verify-label">Example</p>
@@ -145,7 +145,7 @@ const MAIN = `
       </ol>
       <p>This works for a handful of links. For dozens or hundreds, it does not scale, and you only ever see the state of a link on the day you happen to check.</p>
       <h3>With monitoring</h3>
-      <p>Add your links to LinkPulz once. It re-checks every linking page on a schedule and flags any link that is no longer there, with the likely cause, so a loss reaches you in minutes instead of months. <span class="tc">TO CONFIRM: check frequency and alert channels</span></p>
+      <p>Add your links to LinkPulz once. It re-checks every linking page on a schedule and flags any link that is no longer there, with the likely cause, so a loss reaches you in minutes instead of months.</p>
     </div>
   </div>
 </section>
@@ -161,7 +161,7 @@ const MAIN = `
         <li><b>Find out why.</b> Removed on purpose, lost in an edit, or broken by a migration each need a different ask.</li>
         <li><b>Identify who owns the page.</b> The author, the editor or the webmaster, depending on the site.</li>
         <li><b>Reach out with the specifics.</b> Link, date, and what changed, and a reason it is worth restoring.</li>
-        <li><b>Track the outcome.</b> Keep each attempt until the link is back. <span class="tc">TO CONFIRM: recovery workflow feature</span></li>
+        <li><b>Reach out while it's fresh.</b> You have the owner, the date and exactly what changed, so you can ask for the link back.</li>
       </ol>
     </div>
   </div>
@@ -192,8 +192,8 @@ const MAIN = `
       <details><summary>How do I find lost backlinks?</summary><p>Compare a past list of your backlinks with the live state of each linking page. A lost backlink checker re-fetches each page and flags any link that is no longer present, so you do not have to check them by hand.</p></details>
       <details><summary>Why do backlinks disappear?</summary><p>Common causes are the publisher removing the link, the page being deleted or returning a 404, the article being edited or rewritten, a site migration breaking the URL, a redirect sending the link elsewhere, or the link switching to nofollow or the page going noindex.</p></details>
       <details><summary>Do lost backlinks hurt my rankings?</summary><p>Losing a strong link can reduce the authority flowing to your pages and the referral traffic it sent. The impact depends on the link's value and how many you lose, so catching losses early matters.</p></details>
-      <details><summary>Can I recover a lost backlink?</summary><p>Often, yes. If you know who owns the page, when the link disappeared and why, you can contact the site and ask them to restore it while the change is still recent. <span class="tc">TO CONFIRM: recovery workflow</span></p></details>
-      <details><summary>How does LinkPulz detect lost backlinks?</summary><p>Add your links to LinkPulz. It re-checks each linking page on a schedule and alerts you the moment a link is no longer there, with the likely cause. <span class="tc">TO CONFIRM: check frequency and alert channels</span></p></details>
+      <details><summary>Can I recover a lost backlink?</summary><p>Often, yes. If you know who owns the page, when the link disappeared and why, you can contact the site and ask them to restore it while the change is still recent.</p></details>
+      <details><summary>How does LinkPulz detect lost backlinks?</summary><p>Add your links to LinkPulz. It re-checks each linking page on a schedule and alerts you the moment a link is no longer there, with the likely cause.</p></details>
     </div>
   </div>
 </section>

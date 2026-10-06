@@ -67,7 +67,7 @@ const JSONLD = `{
       "description": "Backlink monitoring software that checks your earned and paid backlinks on a schedule and alerts you when a link is lost, redirected, nofollowed, noindexed or broken.",
       "url": "https://www.linkpulz.com/",
       "publisher": { "@id": "https://www.linkpulz.com/#organization" },
-      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD", "description": "Free trial. TO CONFIRM.", "url": "https://www.linkpulz.com/#pricing" }
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD", "description": "10-day free trial, no credit card. Paid plans from $29/mo.", "url": "https://www.linkpulz.com/#pricing" }
     },
     {
       "@type": "FAQPage",
@@ -78,7 +78,7 @@ const JSONLD = `{
         { "@type": "Question", "name": "How do I find broken backlinks?", "acceptedAnswer": { "@type": "Answer", "text": "Check two things for each link: the HTTP status of the page that links to you, and the HTTP status of the URL it points to. A broken backlink checker fetches both and flags any that return an error or a redirect." } },
         { "@type": "Question", "name": "How do I fix a broken backlink?", "acceptedAnswer": { "@type": "Answer", "text": "If the broken URL is on your own site, add a 301 redirect from the old URL to the right page so the link keeps its value. If the linking page itself is broken, contact the site owner to restore the page or update the link." } },
         { "@type": "Question", "name": "Do broken backlinks hurt SEO?", "acceptedAnswer": { "@type": "Answer", "text": "A link that points to a 404 on your site wastes the authority it could have passed, and a dead linking page sends no traffic. Fixing broken links recovers value you already earned." } },
-        { "@type": "Question", "name": "Can LinkPulz find broken backlinks automatically?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. LinkPulz monitors the status of your backlinks and their destinations and alerts you when either side starts returning an error. [TO CONFIRM: that both sides are checked, and alert channels]" } }
+        { "@type": "Question", "name": "Can LinkPulz find broken backlinks automatically?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. LinkPulz monitors the status of your backlinks and their destinations and alerts you when either side starts returning an error." } }
       ]
     }
   ]
@@ -163,7 +163,7 @@ const MAIN = `
         <li><b>A redirect weakened the link.</b> Ask for the link to point directly at the final URL, so no value is lost in the hop.</li>
       </ol>
       <div class="alt-box">
-        <p><b>LinkPulz monitors the status of your backlinks and their destinations.</b> <span class="tc">TO CONFIRM that both are checked</span></p>
+        <p><b>LinkPulz monitors the status of your backlinks and their destinations.</b> It checks both the page your link sits on and the page it points to.</p>
         <p>You get an alert when either side starts returning an error, so you can fix it while it still matters instead of discovering it in a quarterly audit.</p>
         <a class="btn" href="/register">Monitor my backlinks</a>
       </div>
@@ -196,7 +196,7 @@ const MAIN = `
       <details><summary>How do I find broken backlinks?</summary><p>Check two things for each link: the HTTP status of the page that links to you, and the HTTP status of the URL it points to. A broken backlink checker fetches both and flags any that return an error or a redirect.</p></details>
       <details><summary>How do I fix a broken backlink?</summary><p>If the broken URL is on your own site, add a 301 redirect from the old URL to the right page so the link keeps its value. If the linking page itself is broken, contact the site owner to restore the page or update the link.</p></details>
       <details><summary>Do broken backlinks hurt SEO?</summary><p>A link that points to a 404 on your site wastes the authority it could have passed, and a dead linking page sends no traffic. Fixing broken links recovers value you already earned.</p></details>
-      <details><summary>Can LinkPulz find broken backlinks automatically?</summary><p>Yes. LinkPulz monitors the status of your backlinks and their destinations and alerts you when either side starts returning an error. <span class="tc">TO CONFIRM that both are checked, and alert channels</span></p></details>
+      <details><summary>Can LinkPulz find broken backlinks automatically?</summary><p>Yes. LinkPulz monitors the status of your backlinks and their destinations and alerts you when either side starts returning an error.</p></details>
     </div>
   </div>
 </section>

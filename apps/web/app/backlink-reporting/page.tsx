@@ -69,7 +69,7 @@ const JSONLD = `{
       "description": "Backlink monitoring software that checks your earned and paid backlinks on a schedule and alerts you when a link is lost, redirected, nofollowed, noindexed or broken.",
       "url": "https://www.linkpulz.com/",
       "publisher": { "@id": "https://www.linkpulz.com/#organization" },
-      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD", "description": "Free trial. TO CONFIRM.", "url": "https://www.linkpulz.com/#pricing" }
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD", "description": "10-day free trial, no credit card. Paid plans from $29/mo.", "url": "https://www.linkpulz.com/#pricing" }
     },
     {
       "@type": "FAQPage",
@@ -79,8 +79,8 @@ const JSONLD = `{
         { "@type": "Question", "name": "What should a backlink report include?", "acceptedAnswer": { "@type": "Answer", "text": "The links being tracked and their current status, what changed since the last report, any links lost or recovered in the period, and the dofollow and live counts. The goal is a clear before-and-after, not a raw data dump." } },
         { "@type": "Question", "name": "Who needs backlink reporting?", "acceptedAnswer": { "@type": "Answer", "text": "SEO agencies reporting to clients, in-house SEOs reporting to stakeholders, and freelancers proving the value of link-building work. Anyone who has to show that the links they earned or paid for are still delivering." } },
         { "@type": "Question", "name": "How often should I send backlink reports?", "acceptedAnswer": { "@type": "Answer", "text": "Monthly is a common cadence for client reporting. The key is that the report reflects fresh data, links re-checked recently, rather than numbers that were true weeks ago when you last looked by hand." } },
-        { "@type": "Question", "name": "Can backlink reports be white-labelled?", "acceptedAnswer": { "@type": "Answer", "text": "White-labelled and scheduled client reports are part of the LinkPulz plan for agencies. [TO CONFIRM: white-label, scheduling and export formats]" } },
-        { "@type": "Question", "name": "How does LinkPulz help with backlink reporting?", "acceptedAnswer": { "@type": "Answer", "text": "LinkPulz continuously re-checks each link you add and records what changed, so the data behind a report is always current. You can organise links by project or client and report on each. [TO CONFIRM: report formats, scheduling and white-label]" } }
+        { "@type": "Question", "name": "Can backlink reports be white-labelled?", "acceptedAnswer": { "@type": "Answer", "text": "LinkPulz doesn't generate white-labelled reports itself yet. You can export your links and their full change history as CSV and use it in your own client reports, organised by project or client." } },
+        { "@type": "Question", "name": "How does LinkPulz help with backlink reporting?", "acceptedAnswer": { "@type": "Answer", "text": "LinkPulz continuously re-checks each link you add and records what changed, so the data behind a report is always current. You can organise links by project or client and report on each." } }
       ]
     }
   ]
@@ -102,10 +102,10 @@ const MAIN = `
         <a class="btn" href="/register">Report on my backlinks</a>
         <a class="btn ghost" href="#whats-in">What's in a report</a>
       </div>
-      <p class="micro">No credit card required <span class="tc">TO CONFIRM</span></p>
+      <p class="micro">No credit card required</p>
     </div>
     <div class="health" role="img" aria-label="Example backlink report summary for a client, with live, changed and recovered counts" style="margin:0">
-      <p class="micro verify-label">Client report, this month <span class="tc">TO CONFIRM</span></p>
+      <p class="micro verify-label">Client report, this month</p>
       <div class="health-top">
         <div class="health-score"><small>Links live</small><b>128</b><span>of 134 tracked</span></div>
         <div class="health-main">
@@ -157,7 +157,7 @@ const MAIN = `
   <div class="wrap">
     <div class="center"><h2 id="who-h">Who backlink reporting is for</h2></div>
     <div class="cards">
-      <div class="card"><div class="ic">A</div><h3>Agencies</h3><p>Prove to clients each month that the links you built are still live, and flag the ones you saved. <span class="tc">TO CONFIRM: white-label &amp; scheduled reports</span></p></div>
+      <div class="card"><div class="ic">A</div><h3>Agencies</h3><p>Prove to clients each month that the links you built are still live, and flag the ones you saved.</p></div>
       <div class="card"><div class="ic">H</div><h3>In-house SEOs</h3><p>Show stakeholders that your link-building budget is holding its value, not quietly leaking away.</p></div>
       <div class="card"><div class="ic">F</div><h3>Freelancers</h3><p>Turn invisible maintenance work into a report that justifies the retainer.</p></div>
     </div>
@@ -172,7 +172,7 @@ const MAIN = `
       <h3>By hand</h3>
       <p>Re-check each link before every report, copy the results into a document, and hope nothing changed between finishing the report and the client reading it. It is slow, and the data is stale on arrival.</p>
       <h3>From monitoring</h3>
-      <p>When your links are already monitored, the report writes most of itself: the data is current because it is re-checked continuously, and the change log is already there. Organise links by project or client and report on each. <span class="tc">TO CONFIRM: report formats, scheduling and white-label</span></p>
+      <p>When your links are already monitored, the report writes most of itself: the data is current because it is re-checked continuously, and the change log is already there. Organise links by project or client and report on each.</p>
     </div>
   </div>
 </section>
@@ -186,8 +186,8 @@ const MAIN = `
       <details><summary>What should a backlink report include?</summary><p>The links being tracked and their current status, what changed since the last report, any links lost or recovered in the period, and the dofollow and live counts. The goal is a clear before-and-after, not a raw data dump.</p></details>
       <details><summary>Who needs backlink reporting?</summary><p>SEO agencies reporting to clients, in-house SEOs reporting to stakeholders, and freelancers proving the value of link-building work. Anyone who has to show that the links they earned or paid for are still delivering.</p></details>
       <details><summary>How often should I send backlink reports?</summary><p>Monthly is a common cadence for client reporting. The key is that the report reflects fresh data, links re-checked recently, rather than numbers that were true weeks ago when you last looked by hand.</p></details>
-      <details><summary>Can backlink reports be white-labelled?</summary><p>White-labelled and scheduled client reports are part of the LinkPulz plan for agencies. <span class="tc">TO CONFIRM: white-label, scheduling and export formats</span></p></details>
-      <details><summary>How does LinkPulz help with backlink reporting?</summary><p>LinkPulz continuously re-checks each link you add and records what changed, so the data behind a report is always current. You can organise links by project or client and report on each. <span class="tc">TO CONFIRM: report formats, scheduling and white-label</span></p></details>
+      <details><summary>Can backlink reports be white-labelled?</summary><p>LinkPulz doesn't generate white-labelled reports itself yet. You can export your links and their full change history as CSV and use it in your own client reports, organised by project or client.</p></details>
+      <details><summary>How does LinkPulz help with backlink reporting?</summary><p>LinkPulz continuously re-checks each link you add and records what changed, so the data behind a report is always current. You can organise links by project or client and report on each.</p></details>
     </div>
   </div>
 </section>
