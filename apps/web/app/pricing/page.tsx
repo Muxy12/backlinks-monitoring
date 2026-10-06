@@ -15,14 +15,14 @@ import { marketingPage } from "../marketing";
 export const metadata: Metadata = {
   title: { absolute: "Pricing: Backlink Monitoring Plans & Free Trial | LinkPulz" },
   description:
-    "Simple backlink monitoring pricing. Every plan includes a 10-day free trial (no credit card) and checks every backlink every 48 hours. Starter $29, Pro $59, Business $99, Agency $199 per month.",
+    "Simple backlink monitoring pricing. Every plan includes a 10-day free trial (no credit card) and checks every backlink on a schedule you set. Starter $29, Pro $59, Business $99, Agency $199 per month.",
   alternates: { canonical: "/pricing" },
   robots: { index: true, follow: true, "max-image-preview": "large" },
   openGraph: {
     type: "website",
     title: "Pricing: Backlink Monitoring Plans & Free Trial | LinkPulz",
     description:
-      "Simple backlink monitoring pricing. 10-day free trial, no credit card. Checks every 48 hours. Plans from $29/mo.",
+      "Simple backlink monitoring pricing. 10-day free trial, no credit card. Checks on a schedule you set. Plans from $29/mo.",
     url: "/pricing",
   },
 };
@@ -57,7 +57,7 @@ const JSONLD = `{
       "@id": "https://www.linkpulz.com/pricing#webpage",
       "url": "https://www.linkpulz.com/pricing",
       "name": "Pricing: Backlink Monitoring Plans & Free Trial | LinkPulz",
-      "description": "Backlink monitoring pricing with a 10-day free trial and checks every 48 hours. Plans from $29/mo.",
+      "description": "Backlink monitoring pricing with a 10-day free trial and checks on a schedule you set. Plans from $29/mo.",
       "isPartOf": { "@id": "https://www.linkpulz.com/#website" },
       "about": { "@id": "https://www.linkpulz.com/#software" },
       "breadcrumb": { "@id": "https://www.linkpulz.com/pricing#breadcrumb" },
@@ -78,7 +78,7 @@ const JSONLD = `{
       "applicationCategory": "BusinessApplication",
       "applicationSubCategory": "SEO software",
       "operatingSystem": "Web",
-      "description": "Backlink monitoring software that checks your earned and paid backlinks every 48 hours and alerts you when a link is lost, redirected, nofollowed, noindexed or broken.",
+      "description": "Backlink monitoring software that checks your earned and paid backlinks on a schedule you set and alerts you when a link is lost, redirected, nofollowed, noindexed or broken.",
       "url": "https://www.linkpulz.com/",
       "publisher": { "@id": "https://www.linkpulz.com/#organization" },
       "offers": {
@@ -118,7 +118,7 @@ const JSONLD = `{
         {
           "@type": "Question",
           "name": "How often do you check my backlinks?",
-          "acceptedAnswer": { "@type": "Answer", "text": "Every 48 hours, on every plan. LinkPulz re-checks each backlink on that schedule and alerts you when a link is lost, redirected, broken, nofollowed or noindexed." }
+          "acceptedAnswer": { "@type": "Answer", "text": "On a schedule you set — daily, weekly, bi-weekly or monthly — on every plan. LinkPulz re-checks each backlink on that schedule and alerts you when a link is lost, redirected, broken, nofollowed or noindexed." }
         },
         {
           "@type": "Question",
@@ -155,7 +155,7 @@ const MAIN = `
   <div class="wrap center">
     <span class="badge">Pricing</span>
     <h1 id="h1">Simple pricing for backlink monitoring</h1>
-    <p class="lead">Every plan includes a <b>10-day free trial, no credit card</b>. Automatic checks every 48 hours, with an alert the moment a link changes.</p>
+    <p class="lead">Every plan includes a <b>10-day free trial, no credit card</b>. Automatic checks on a schedule you set, with an alert the moment a link changes.</p>
 
     <input type="radio" name="billing" id="bill-m" class="bill-radio" checked>
     <input type="radio" name="billing" id="bill-a" class="bill-radio">
@@ -183,7 +183,7 @@ const MAIN = `
           <span><b>1</b> user</span>
         </div>
         <ul class="feats">
-          <li>Checks every 48 hours</li>
+          <li>Checks on a schedule you set</li>
           <li>Lost &amp; removed link alerts</li>
           <li>Broken &amp; redirected link detection</li>
           <li>Nofollow / noindex change alerts</li>
@@ -268,7 +268,7 @@ const MAIN = `
       </div>
 
     </div>
-    <p class="price-note">All plans check every backlink every 48 hours. Prices in USD. Going over a limit never stops monitoring or deletes data, you just can't add new links until you upgrade.</p>
+    <p class="price-note">All plans check every backlink on a schedule you set. Prices in USD. Going over a limit never stops monitoring or deletes data, you just can't add new links until you upgrade.</p>
   </div>
 </section>
 
@@ -280,7 +280,7 @@ const MAIN = `
       <p class="lead">No tiered-away essentials. Monitoring and alerting work the same on every plan, the plans differ by how much you track and how big your team is.</p>
     </div>
     <div class="cards">
-      <div class="card"><div class="ic">48h</div><h3>Checks every 48 hours</h3><p>Every backlink is re-checked on a fixed schedule, on every plan, not just the expensive ones.</p></div>
+      <div class="card"><div class="ic">⏱</div><h3>Checks on your schedule</h3><p>Every backlink is re-checked on a fixed schedule, on every plan, not just the expensive ones.</p></div>
       <div class="card"><div class="ic">🔔</div><h3>Change alerts</h3><p>Get alerted when a link is lost, redirected, broken, nofollowed or noindexed.</p></div>
       <div class="card"><div class="ic">10</div><h3>10-day free trial</h3><p>Start monitoring with no credit card. Decide once you've seen it work.</p></div>
       <div class="card"><div class="ic">↑↓</div><h3>Change plans anytime</h3><p>Upgrade or downgrade whenever you need to. Over-limit never deletes your data.</p></div>
@@ -296,7 +296,7 @@ const MAIN = `
       <details><summary>Is there a free trial?</summary><p>Yes. Every plan starts with a 10-day free trial and no credit card is required. You can monitor backlinks right away and only choose a plan when the trial ends.</p></details>
       <details><summary>Do I need a credit card to start?</summary><p>No. You can start the 10-day trial with just an email. We ask for payment details only if you decide to continue on a paid plan.</p></details>
       <details><summary>What happens when my trial ends?</summary><p>Nothing is deleted. Monitoring pauses and you choose a plan to continue. All your backlinks, projects and history are preserved and resume as soon as you subscribe.</p></details>
-      <details><summary>How often do you check my backlinks?</summary><p>Every 48 hours, on every plan. LinkPulz re-checks each backlink on that schedule and alerts you when a link is lost, redirected, broken, nofollowed or noindexed.</p></details>
+      <details><summary>How often do you check my backlinks?</summary><p>On a schedule you set — daily, weekly, bi-weekly or monthly — on every plan. LinkPulz re-checks each backlink on that schedule and alerts you when a link is lost, redirected, broken, nofollowed or noindexed.</p></details>
       <details><summary>What happens if I reach my plan limit?</summary><p>You can keep monitoring everything you already track, going over a limit never stops monitoring or deletes data. You simply can't add new backlinks, projects or team members until you upgrade.</p></details>
       <details><summary>Can I change plans later?</summary><p>Yes. You can upgrade or downgrade at any time from your billing settings. Upgrades take effect immediately so you can add more backlinks and projects straight away.</p></details>
       <details><summary>How does annual billing save money?</summary><p>Annual plans are billed once a year at the price of ten months, so you get two months free compared with paying monthly.</p></details>
@@ -309,7 +309,7 @@ const MAIN = `
 <section class="final" aria-labelledby="final-h">
   <div class="wrap">
     <h2 id="final-h">Start monitoring your backlinks in minutes</h2>
-    <p class="lead">10-day free trial, no credit card. Add your links and LinkPulz watches them for you, every 48 hours.</p>
+    <p class="lead">10-day free trial, no credit card. Add your links and LinkPulz watches them for you, on a schedule you set.</p>
     <div class="cta-row" style="justify-content:center"><a class="btn" href="/register">Start your free trial</a></div>
   </div>
 </section>

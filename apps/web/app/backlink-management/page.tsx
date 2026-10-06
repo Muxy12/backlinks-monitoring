@@ -69,7 +69,7 @@ const JSONLD = `{
       "description": "Backlink monitoring software that checks your earned and paid backlinks on a schedule and alerts you when a link is lost, redirected, nofollowed, noindexed or broken.",
       "url": "https://www.linkpulz.com/",
       "publisher": { "@id": "https://www.linkpulz.com/#organization" },
-      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD", "description": "Free trial. TO CONFIRM.", "url": "https://www.linkpulz.com/#pricing" }
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD", "description": "10-day free trial, no credit card. Paid plans from $29/mo.", "url": "https://www.linkpulz.com/#pricing" }
     },
     {
       "@type": "FAQPage",
@@ -80,7 +80,7 @@ const JSONLD = `{
         { "@type": "Question", "name": "What should I track for each backlink?", "acceptedAnswer": { "@type": "Answer", "text": "At minimum: the linking page URL, your target URL, the anchor text, whether the link is live, and whether it is dofollow or nofollow. Tracking the first-seen date and the last-checked date makes it clear when something changed." } },
         { "@type": "Question", "name": "Can I manage backlinks in a spreadsheet?", "acceptedAnswer": { "@type": "Answer", "text": "You can list them in a spreadsheet, but a spreadsheet cannot tell you when a link changes. It only ever shows the state on the day you last checked by hand. Monitoring software re-checks each link for you and flags changes automatically." } },
         { "@type": "Question", "name": "How is backlink management different from a backlink audit?", "acceptedAnswer": { "@type": "Answer", "text": "An audit is a point-in-time review that finds problems in your profile right now. Management is the continuous process that keeps the profile healthy between audits, so new problems are caught as they happen rather than at the next review." } },
-        { "@type": "Question", "name": "How does LinkPulz help manage backlinks?", "acceptedAnswer": { "@type": "Answer", "text": "Add your links to LinkPulz once. It keeps them in one place, re-checks each linking page on a schedule, and alerts you when a link is lost, redirected, nofollowed, noindexed or broken. [TO CONFIRM: check frequency, tagging and alert channels]" } }
+        { "@type": "Question", "name": "How does LinkPulz help manage backlinks?", "acceptedAnswer": { "@type": "Answer", "text": "Add your links to LinkPulz once. It keeps them in one place, re-checks each linking page on a schedule, and alerts you when a link is lost, redirected, nofollowed, noindexed or broken." } }
       ]
     }
   ]
@@ -102,7 +102,7 @@ const MAIN = `
         <a class="btn" href="/register">Start managing my backlinks</a>
         <a class="btn ghost" href="#what-to-track">What to track</a>
       </div>
-      <p class="micro">No credit card required <span class="tc">TO CONFIRM</span></p>
+      <p class="micro">No credit card required</p>
     </div>
     <div class="lost-demo" role="img" aria-label="Example backlink portfolio: three links with live, nofollow and lost statuses">
       <p class="micro verify-label">Your portfolio</p>
@@ -178,7 +178,7 @@ const MAIN = `
         <li><b>Repeat forever.</b> A spreadsheet only shows the state on the day you last checked, and the checking never ends.</li>
       </ol>
       <h3>With monitoring</h3>
-      <p>Add your links to LinkPulz once. It keeps them in one place and re-checks each linking page on a schedule, so a change reaches you in minutes instead of surfacing months later in a report. <span class="tc">TO CONFIRM: check frequency, tagging and alert channels</span></p>
+      <p>Add your links to LinkPulz once. It keeps them in one place and re-checks each linking page on a schedule, so a change reaches you in minutes instead of surfacing months later in a report.</p>
     </div>
   </div>
 </section>
@@ -193,7 +193,7 @@ const MAIN = `
       <details><summary>What should I track for each backlink?</summary><p>At minimum: the linking page URL, your target URL, the anchor text, whether the link is live, and whether it is dofollow or nofollow. Tracking the first-seen date and the last-checked date makes it clear when something changed.</p></details>
       <details><summary>Can I manage backlinks in a spreadsheet?</summary><p>You can list them in a spreadsheet, but a spreadsheet cannot tell you when a link changes. It only ever shows the state on the day you last checked by hand. Monitoring software re-checks each link for you and flags changes automatically.</p></details>
       <details><summary>How is backlink management different from a backlink audit?</summary><p>An audit is a point-in-time review that finds problems in your profile right now. Management is the continuous process that keeps the profile healthy between audits, so new problems are caught as they happen rather than at the next review.</p></details>
-      <details><summary>How does LinkPulz help manage backlinks?</summary><p>Add your links to LinkPulz once. It keeps them in one place, re-checks each linking page on a schedule, and alerts you when a link is lost, redirected, nofollowed, noindexed or broken. <span class="tc">TO CONFIRM: check frequency, tagging and alert channels</span></p></details>
+      <details><summary>How does LinkPulz help manage backlinks?</summary><p>Add your links to LinkPulz once. It keeps them in one place, re-checks each linking page on a schedule, and alerts you when a link is lost, redirected, nofollowed, noindexed or broken.</p></details>
     </div>
   </div>
 </section>

@@ -78,7 +78,7 @@ const JSONLD = `{
         "@type": "Offer",
         "price": "0",
         "priceCurrency": "USD",
-        "description": "Free trial. TO CONFIRM: replace with your real starting plan, price and currency.",
+        "description": "10-day free trial, no credit card. Paid plans from $29/mo.",
         "url": "https://www.linkpulz.com/#pricing"
       }
     },
@@ -124,12 +124,12 @@ const JSONLD = `{
         {
           "@type": "Question",
           "name": "How often should I verify my backlinks?",
-          "acceptedAnswer": { "@type": "Answer", "text": "Right after a link is published, then regularly, because links can be removed or changed at any time. Monitoring automates the repeat checks so you do not have to verify manually. [TO CONFIRM: LinkPulz check frequency]" }
+          "acceptedAnswer": { "@type": "Answer", "text": "Right after a link is published, then regularly, because links can be removed or changed at any time. Monitoring automates the repeat checks so you do not have to verify manually." }
         },
         {
           "@type": "Question",
           "name": "Can LinkPulz verify backlinks automatically?",
-          "acceptedAnswer": { "@type": "Answer", "text": "Yes. Add your links to LinkPulz and it re-checks them on a schedule, then alerts you when a link is lost, redirected, broken or changes attributes. [TO CONFIRM]" }
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes. Add your links to LinkPulz and it re-checks them on a schedule, then alerts you when a link is lost, redirected, broken or changes attributes." }
         }
       ]
     }
@@ -171,7 +171,7 @@ const MAIN = `
       </div>
 
       <div class="verify-cta">
-        <p><b>Want us to check it automatically every day?</b> <span class="tc">frequency: TO CONFIRM</span></p>
+        <p><b>Want us to re-check it automatically, on a schedule you set?</b></p>
         <a class="btn" href="/register">Monitor this backlink with LinkPulz →</a>
       </div>
     </div>
@@ -191,7 +191,7 @@ const MAIN = `
       <div class="card"><div class="ic">rel</div><h3>Link attributes</h3><p>Is the link followed, or marked nofollow, sponsored or UGC?</p></div>
       <div class="card"><div class="ic">Aa</div><h3>Anchor text</h3><p>What text is the link using? Does it match what was agreed?</p></div>
       <div class="card"><div class="ic">→</div><h3>Target URL</h3><p>Does the link point to the exact page you expect, not an old or wrong URL?</p></div>
-      <div class="card"><div class="ic">NI</div><h3>Indexing signals</h3><p>Does the source page carry a noindex directive? <span class="tc">TO CONFIRM</span></p></div>
+      <div class="card"><div class="ic">NI</div><h3>Indexing signals</h3><p>Does the source page carry a noindex directive?</p></div>
     </div>
   </div>
 </section>
@@ -242,9 +242,9 @@ const MAIN = `
       <table>
         <thead><tr><th></th><th>Backlink verification</th><th>Backlink monitoring with LinkPulz</th></tr></thead>
         <tbody>
-          <tr><th>When it runs</th><td>Once, when you check</td><td>On a schedule <span class="tc">frequency: TO CONFIRM</span></td></tr>
+          <tr><th>When it runs</th><td>Once, when you check</td><td>On a schedule you set</td></tr>
           <tr><th>What you learn</th><td>The link's state at that moment</td><td>The link's state and every change over time</td></tr>
-          <tr><th>If the link disappears</th><td>You only find out if you check again</td><td>You get an alert <span class="tc">channels: TO CONFIRM</span></td></tr>
+          <tr><th>If the link disappears</th><td>You only find out if you check again</td><td>You get an alert — email, Slack or webhook</td></tr>
           <tr><th>Best for</th><td>Confirming a new link</td><td>Protecting links you earned or paid for</td></tr>
         </tbody>
       </table>
@@ -265,8 +265,8 @@ const MAIN = `
       <details><summary>What is a backlink verification tool?</summary><p>A backlink verification tool loads the page that should contain your link and checks whether the link is there, what status the page returns, how the link is attributed (follow, nofollow, sponsored or UGC), what its anchor text is, and which URL it points to.</p></details>
       <details><summary>How can I tell if a backlink is dofollow or nofollow?</summary><p>Look at the link's rel attribute in the page source. A link without nofollow, sponsored or ugc is treated as a normal followed link. A verification tool reads this attribute for you.</p></details>
       <details><summary>Does a backlink that exists always count?</summary><p>Not necessarily. Search engines treat links as signals, not guarantees, and a link on a page that is noindex, low quality or not crawled may pass little value. Verifying only confirms that the link is present and correctly set up.</p></details>
-      <details><summary>How often should I verify my backlinks?</summary><p>Right after a link is published, then regularly, because links can be removed or changed at any time. Monitoring automates the repeat checks so you do not have to verify manually. <span class="tc">TO CONFIRM: LinkPulz check frequency</span></p></details>
-      <details><summary>Can LinkPulz verify backlinks automatically?</summary><p>Yes. Add your links to LinkPulz and it re-checks them on a schedule, then alerts you when a link is lost, redirected, broken or changes attributes. <span class="tc">TO CONFIRM</span></p></details>
+      <details><summary>How often should I verify my backlinks?</summary><p>Right after a link is published, then regularly, because links can be removed or changed at any time. Monitoring automates the repeat checks so you do not have to verify manually.</p></details>
+      <details><summary>Can LinkPulz verify backlinks automatically?</summary><p>Yes. Add your links to LinkPulz and it re-checks them on a schedule, then alerts you when a link is lost, redirected, broken or changes attributes.</p></details>
     </div>
   </div>
 </section>
