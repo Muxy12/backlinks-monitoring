@@ -13,10 +13,13 @@ import { selectedOrg, selectedOrgId } from "@/lib/workspace";
 import { stageLabel } from "@/lib/campaigns";
 import { money, moneyList, num, pct, timeAgo } from "@/lib/format";
 import { GrowthChart } from "@/components/GrowthChart";
+import { GettingStarted } from "./GettingStarted";
+import { Tour, TOUR_KEY } from "./Tour";
 import { Icon } from "../icons";
 import "@/app/auth.css";
 import "./dashboard.css";
 import "./overview.css";
+import "./onboarding.css";
 
 const RANGES: [string, string][] = [
   ["30d", "30D"],
@@ -48,6 +51,17 @@ export default function OverviewPage() {
   const [data, setData] = useState<OverviewResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [tourRun, setTourRun] = useState(false);
+
+  // First login: start the guided tour once (per browser).
+  useEffect(() => {
+    if (!orgId) return;
+    try {
+      if (!localStorage.getItem(TOUR_KEY)) setTourRun(true);
+    } catch {
+      /* private mode — skip the tour rather than loop */
+    }
+  }, [orgId]);
 
   useEffect(() => {
     api.me().then((res) => {
@@ -127,6 +141,8 @@ export default function OverviewPage() {
         </div>
       </header>
 
+      {orgId && <GettingStarted org={orgId} onStartTour={() => setTourRun(true)} />}
+
       {!orgId ? (
         <p className="muted">Create a workspace to get started.</p>
       ) : error && !data ? (
@@ -147,6 +163,8 @@ export default function OverviewPage() {
       ) : (
         <OverviewBody data={data} beta={beta} />
       )}
+
+      <Tour run={tourRun} onClose={() => setTourRun(false)} />
     </main>
   );
 }
