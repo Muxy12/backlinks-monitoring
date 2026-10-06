@@ -28,6 +28,13 @@ export default function LoginPage() {
   return (
     <div className="auth-wrap">
       <form className="auth-card" onSubmit={onSubmit}>
+        <img
+          className="auth-logo"
+          src="https://ye8jhaekbbcviws9.public.blob.vercel-storage.com/logo-linkpulz.webp"
+          alt="LinkPulz"
+          width="44"
+          height="44"
+        />
         <h1>Log in</h1>
         <p className="sub">Welcome back to LinkPulz.</p>
         {error && <div className="auth-error">{error}</div>}
