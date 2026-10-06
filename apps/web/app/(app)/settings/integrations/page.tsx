@@ -124,6 +124,32 @@ export default function IntegrationsPage() {
 
       {!orgId ? (
         <p className="muted">Create a workspace first.</p>
+      ) : !me.features?.gsc ? (
+        <section className="panel" style={{ maxWidth: 680 }}>
+          <div className="panel-head">
+            <h2>
+              Google Search Console{" "}
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  padding: "2px 7px",
+                  borderRadius: 999,
+                  background: "var(--surface-3)",
+                  color: "var(--muted)",
+                  verticalAlign: "middle",
+                }}
+              >
+                COMING SOON
+              </span>
+            </h2>
+          </div>
+          <p className="muted">
+            Post-Link Impact — measuring the visibility, ranking, crawl and indexation response
+            after each backlink is acquired — is coming soon. You'll be able to connect your own
+            Google Search Console property here shortly.
+          </p>
+        </section>
       ) : (
         <section className="panel" style={{ maxWidth: 680 }}>
           <div className="panel-head">
