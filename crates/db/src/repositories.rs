@@ -3827,6 +3827,143 @@ pub mod impact {
     }
 }
 
+// ─── GSC URL Inspection (Post-Link Impact Phase 2) — crawl + indexation ───────
+pub mod gsc_inspection {
+    use super::*;
+
+    /// The latest URL Inspection snapshot for one target page. Tenant-scoped reads.
+    #[derive(Debug, Clone, sqlx::FromRow)]
+    pub struct UrlInspection {
+        pub coverage_state: Option<String>,
+        pub indexing_state: Option<String>,
+        pub robots_txt_state: Option<String>,
+        pub page_fetch_state: Option<String>,
+        pub verdict: Option<String>,
+        pub last_crawl_time: Option<DateTime<Utc>>,
+        pub google_canonical: Option<String>,
+        pub user_canonical: Option<String>,
+        pub inspected_at: DateTime<Utc>,
+    }
+
+    macro_rules! cols {
+        () => {
+            "coverage_state, indexing_state, robots_txt_state, page_fetch_state, \
+             verdict, last_crawl_time, google_canonical, user_canonical, inspected_at"
+        };
+    }
+
+    /// The latest inspection for a page, if any. Tenant-scoped.
+    pub async fn get(
+        pool: &PgPool,
+        scope: &OrgScope,
+        project_id: Uuid,
+        page_url_normalized: &str,
+    ) -> Result<Option<UrlInspection>, DbError> {
+        Ok(sqlx::query_as::<_, UrlInspection>(concat!(
+            "SELECT ",
+            cols!(),
+            " FROM gsc_url_inspection \
+             WHERE organization_id = $1 AND project_id = $2 AND page_url_normalized = $3"
+        ))
+        .bind(scope.organization_id())
+        .bind(project_id)
+        .bind(page_url_normalized)
+        .fetch_optional(pool)
+        .await?)
+    }
+
+    /// Upsert one page's inspection result (latest snapshot). `raw` keeps the whole
+    /// `inspectionResult` for recalculation (§23). Not tenant-scoped — the sweep
+    /// supplies org/project itself.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn upsert(
+        pool: &PgPool,
+        organization_id: Uuid,
+        project_id: Uuid,
+        page_url_normalized: &str,
+        coverage_state: Option<&str>,
+        indexing_state: Option<&str>,
+        robots_txt_state: Option<&str>,
+        page_fetch_state: Option<&str>,
+        verdict: Option<&str>,
+        last_crawl_time: Option<DateTime<Utc>>,
+        google_canonical: Option<&str>,
+        user_canonical: Option<&str>,
+        raw: Option<&serde_json::Value>,
+    ) -> Result<(), DbError> {
+        sqlx::query(
+            "INSERT INTO gsc_url_inspection \
+                (organization_id, project_id, page_url_normalized, inspected_at, \
+                 coverage_state, indexing_state, robots_txt_state, page_fetch_state, \
+                 verdict, last_crawl_time, google_canonical, user_canonical, raw) \
+             VALUES ($1,$2,$3, now(), $4,$5,$6,$7,$8,$9,$10,$11,$12) \
+             ON CONFLICT (organization_id, project_id, page_url_normalized) DO UPDATE SET \
+                 inspected_at = now(), coverage_state = EXCLUDED.coverage_state, \
+                 indexing_state = EXCLUDED.indexing_state, \
+                 robots_txt_state = EXCLUDED.robots_txt_state, \
+                 page_fetch_state = EXCLUDED.page_fetch_state, verdict = EXCLUDED.verdict, \
+                 last_crawl_time = EXCLUDED.last_crawl_time, \
+                 google_canonical = EXCLUDED.google_canonical, \
+                 user_canonical = EXCLUDED.user_canonical, raw = EXCLUDED.raw",
+        )
+        .bind(organization_id)
+        .bind(project_id)
+        .bind(page_url_normalized)
+        .bind(coverage_state)
+        .bind(indexing_state)
+        .bind(robots_txt_state)
+        .bind(page_fetch_state)
+        .bind(verdict)
+        .bind(last_crawl_time)
+        .bind(google_canonical)
+        .bind(user_canonical)
+        .bind(raw)
+        .execute(pool)
+        .await
+        .map_err(DbError::from_insert)?;
+        Ok(())
+    }
+
+    /// A page due for (re-)inspection: tracked by `backlink_impact`, in a project
+    /// with a mapped GSC property, never inspected or stale. Not tenant-scoped —
+    /// a system sweep (like `gsc::list_due`). Deduped per (project, page).
+    #[derive(Debug, Clone, sqlx::FromRow)]
+    pub struct DueInspection {
+        pub organization_id: Uuid,
+        pub project_id: Uuid,
+        pub page_url_normalized: String,
+        pub site_url: String,
+        pub refresh_token_enc: Vec<u8>,
+    }
+
+    pub async fn list_due(
+        pool: &PgPool,
+        stale_before: DateTime<Utc>,
+        limit: i64,
+    ) -> Result<Vec<DueInspection>, DbError> {
+        Ok(sqlx::query_as::<_, DueInspection>(
+            "SELECT DISTINCT ON (bi.project_id, bi.target_url_normalized) \
+                 bi.organization_id, bi.project_id, \
+                 bi.target_url_normalized AS page_url_normalized, \
+                 c.site_url, c.refresh_token_enc \
+             FROM backlink_impact bi \
+             JOIN gsc_connections c \
+                 ON c.project_id = bi.project_id AND c.site_url IS NOT NULL \
+             LEFT JOIN gsc_url_inspection ins \
+                 ON ins.organization_id = bi.organization_id \
+                AND ins.project_id = bi.project_id \
+                AND ins.page_url_normalized = bi.target_url_normalized \
+             WHERE ins.inspected_at IS NULL OR ins.inspected_at < $1 \
+             ORDER BY bi.project_id, bi.target_url_normalized, ins.inspected_at NULLS FIRST \
+             LIMIT $2",
+        )
+        .bind(stale_before)
+        .bind(limit.clamp(1, 50))
+        .fetch_all(pool)
+        .await?)
+    }
+}
+
 // ─── Billing: plan lookup + idempotent webhook event record (§39) ────────────
 pub mod billing {
     use super::*;

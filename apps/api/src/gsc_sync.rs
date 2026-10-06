@@ -52,7 +52,7 @@ fn sa_url(site_url: &str) -> Option<reqwest::Url> {
     .ok()
 }
 
-async fn refresh_access_token(
+pub(crate) async fn refresh_access_token(
     client: &reqwest::Client,
     env: &OAuthEnv,
     refresh: &str,

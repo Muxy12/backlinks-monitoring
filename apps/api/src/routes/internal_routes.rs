@@ -200,6 +200,16 @@ pub async fn tick(
     .await
     .unwrap_or(0);
 
+    // Inspect up to 2 due tracked pages via the URL Inspection API (Phase 2:
+    // Crawl + Indexation). Quota-capped at ~2000/day/property, so the cadence is
+    // deliberately prudent — a page is re-inspected at most every few days.
+    let gsc_inspected = tokio::time::timeout(
+        Duration::from_secs(12),
+        crate::gsc_inspect::inspect_due(&state.pool, 2),
+    )
+    .await
+    .unwrap_or(0);
+
     // Reclaim any leases from this or a prior tick that stopped mid-flight.
     let _ = db::repositories::job_queue::reap(&state.pool, 900).await;
 
@@ -212,6 +222,7 @@ pub async fn tick(
         "delivered": delivered,
         "snapshots": snapshots,
         "gsc_synced": gsc_synced,
+        "gsc_inspected": gsc_inspected,
         "partial": partial,
     })))
 }
