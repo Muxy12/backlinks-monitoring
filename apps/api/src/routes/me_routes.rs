@@ -56,7 +56,11 @@ pub async fn me(
         organizations,
         features: Features {
             campaigns_beta: state.cfg.campaigns_beta,
-            gsc: crate::routes::gsc_routes::configured(),
+            // Post-Link Impact / GSC is admin-only until the Google OAuth app is
+            // verified for public use (a sensitive scope). Public users see
+            // "coming soon"; the whole Impact UI gates on this flag. Drop the
+            // `&& is_platform_admin` to open it to everyone after verification.
+            gsc: crate::routes::gsc_routes::configured() && user.is_platform_admin,
         },
     }))
 }
