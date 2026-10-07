@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useState, type CSSProperties, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { api, orgApi, backlinksExportUrl, type BacklinkView, type ClientView, type DashboardResponse, type EventView, type ImpactView, type MeResponse, type NotificationsResponse, type OccurrenceView, type ProjectView, type TagView } from "@/lib/api";
+import { api, orgApi, backlinksExportUrl, type AnchorsView, type BacklinkView, type ClientView, type DashboardResponse, type EventView, type ImpactView, type MeResponse, type NotificationsResponse, type OccurrenceView, type ProjectView, type TagView } from "@/lib/api";
 import { BeforeAfterChart } from "@/components/BeforeAfterChart";
+import { AnchorDistribution } from "@/components/AnchorDistribution";
 import { selectedOrg, selectedOrgId } from "@/lib/workspace";
 import { statusColor, statusLabel } from "@/lib/status";
 import { ACQUISITION, ATTRIBUTE, PLACEMENT, FORMAT, classLabel } from "@/lib/classification";
@@ -60,6 +61,7 @@ export default function BacklinksPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
   const [reloadTick, setReloadTick] = useState(0);
+  const [anchors, setAnchors] = useState<AnchorsView | null>(null);
   const [periodDays, setPeriodDays] = useState(0); // 0 = all time
 
   // Preset the view from an Overview/nav deep-link: ?filter=protected|lost.
@@ -203,6 +205,22 @@ export default function BacklinksPage() {
       if (r.ok) setSummary(r.data);
     });
   }, [orgId, periodDays]);
+
+  // Anchor text distribution: per-project, recomputed when the project changes
+  // or links are added/checked (reloadTick). Read-only, independent of filters.
+  useEffect(() => {
+    if (!orgId || !projectId) {
+      setAnchors(null);
+      return;
+    }
+    let live = true;
+    orgApi.anchors(orgId, projectId).then((r) => {
+      if (live) setAnchors(r.ok ? r.data : null);
+    });
+    return () => {
+      live = false;
+    };
+  }, [orgId, projectId, reloadTick]);
 
   async function runAutoTag() {
     if (!orgId || !projectId) return;
@@ -751,6 +769,8 @@ export default function BacklinksPage() {
               )}
             </div>
           )}
+
+          {anchors && <AnchorDistribution data={anchors} />}
 
           <section className="panel">
             <div className="panel-head">

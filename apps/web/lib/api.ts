@@ -348,6 +348,27 @@ export interface ProjectView {
   status: string;
   client_id: string | null;
 }
+export interface AnchorCategory {
+  slug: "branded" | "keyword" | "naked_url" | "generic" | "empty";
+  label: string;
+  count: number;
+  percent: number;
+}
+export interface AnchorPhrase {
+  anchor: string;
+  slug: AnchorCategory["slug"];
+  label: string;
+  count: number;
+  percent: number;
+}
+export interface AnchorsView {
+  total: number;
+  distinct: number;
+  categories: AnchorCategory[];
+  top_anchors: AnchorPhrase[];
+  over_concentration: AnchorPhrase | null;
+  note: string;
+}
 export interface BacklinkView {
   id: string;
   source_url: string;
@@ -779,6 +800,8 @@ export const orgApi = {
     ),
   backlinks: (org: string, projectId: string) =>
     request<BacklinkView[]>(`/v1/organizations/${org}/backlinks?project_id=${projectId}`),
+  anchors: (org: string, projectId: string) =>
+    request<AnchorsView>(`/v1/organizations/${org}/projects/${projectId}/anchors`),
   searchBacklinks: (
     org: string,
     opts: {
