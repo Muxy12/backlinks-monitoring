@@ -806,6 +806,28 @@ pub struct CreateBacklinkBody {
     /// `days`/`months` require a positive `warranty_value`.
     pub warranty_type: Option<String>,
     pub warranty_value: Option<i32>,
+    /// Explicit monitoring choice from the UI (the "Monitor these links" box,
+    /// checked by default). `Some(true)` forces monitoring on even for a link the
+    /// policy would leave as inventory; `Some(false)` forces inventory-only;
+    /// `None` keeps the automatic economic/contractual policy.
+    pub monitor: Option<bool>,
+}
+
+/// Apply the UI's explicit monitor choice on top of the automatic policy
+/// `decision`. Returns (enabled, level, reason).
+fn resolve_monitoring(
+    decision: &backlio_core::MonitoringDecision,
+    monitor: Option<bool>,
+) -> (bool, &'static str, Option<&'static str>) {
+    match monitor {
+        Some(true) if !decision.enabled => (true, "tracked", Some("user_opt_in")),
+        Some(false) => (false, "inventory_only", None),
+        _ => (
+            decision.enabled,
+            decision.level.as_str(),
+            decision.reason.map(|r| r.as_str()),
+        ),
+    }
 }
 
 fn is_http_url(s: &str) -> bool {
@@ -901,6 +923,7 @@ pub async fn create_backlink(
         subject: "own",
         tier: 1,
     });
+    let (mon_enabled, mon_level, mon_reason) = resolve_monitoring(&decision, body.monitor);
     let new = db::repositories::backlinks::NewBacklink {
         project_id: body.project_id,
         campaign_id: body.campaign_id,
@@ -914,9 +937,9 @@ pub async fn create_backlink(
         warranty_type,
         warranty_value,
         warranty_expiration,
-        monitoring_enabled: decision.enabled,
-        monitoring_level: decision.level.as_str(),
-        monitoring_reason: decision.reason.map(|r| r.as_str()),
+        monitoring_enabled: mon_enabled,
+        monitoring_level: mon_level,
+        monitoring_reason: mon_reason,
         check_frequency: None,
     };
     let backlink = db::repositories::backlinks::create(&state.pool, &scope, Uuid::now_v7(), new)
@@ -1259,6 +1282,9 @@ pub struct BulkBacklinkRow {
 pub struct BulkCreateBody {
     pub project_id: Uuid,
     pub backlinks: Vec<BulkBacklinkRow>,
+    /// Explicit monitoring choice (the "Monitor these links" box). See
+    /// `CreateBacklinkBody::monitor`. `None` keeps the automatic policy per row.
+    pub monitor: Option<bool>,
 }
 
 #[derive(Debug, Serialize)]
@@ -1317,6 +1343,7 @@ pub async fn bulk_create_backlinks(
     let mut duplicates = 0usize;
     for (i, p) in &valid {
         let decision = monitoring_decision_for_row(p.cost.as_deref());
+        let (mon_enabled, mon_level, mon_reason) = resolve_monitoring(&decision, body.monitor);
         let new = db::repositories::backlinks::NewBacklink {
             project_id: body.project_id,
             campaign_id: None,
@@ -1330,9 +1357,9 @@ pub async fn bulk_create_backlinks(
             warranty_type: "none",
             warranty_value: None,
             warranty_expiration: None,
-            monitoring_enabled: decision.enabled,
-            monitoring_level: decision.level.as_str(),
-            monitoring_reason: decision.reason.map(|r| r.as_str()),
+            monitoring_enabled: mon_enabled,
+            monitoring_level: mon_level,
+            monitoring_reason: mon_reason,
             check_frequency: None,
         };
         match db::repositories::backlinks::create(&state.pool, &scope, Uuid::now_v7(), new).await {

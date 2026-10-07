@@ -88,6 +88,12 @@ export default function BacklinksPage() {
     cost: "",
     currency: "",
   });
+  // Activation UX: monitor new links by default (the "Monitor these links" box),
+  // and a bulk-paste path (the primary way an SEO adds many links at once).
+  const [monitorNew, setMonitorNew] = useState(true);
+  const [bulkText, setBulkText] = useState("");
+  const [bulkAddBusy, setBulkAddBusy] = useState(false);
+  const [showSingle, setShowSingle] = useState(false);
 
   const STATUSES = ["live", "suspected_lost", "lost", "changed", "nofollow", "redirected", "source_error", "target_error", "blocked", "pending"];
 
@@ -523,6 +529,7 @@ export default function BacklinksPage() {
       source_url: src,
       target_url: tgt,
       expected_rel_type: f.expected_rel_type,
+      monitor: monitorNew,
       ...(f.expected_anchor_text.trim() ? { expected_anchor_text: f.expected_anchor_text.trim() } : {}),
       ...(f.cost.trim() ? { cost: Number(f.cost), currency: f.currency.trim() || "USD" } : {}),
     });
@@ -531,6 +538,10 @@ export default function BacklinksPage() {
       setAddErr(res.detail || "Could not add the backlink.");
       return;
     }
+    toast(
+      monitorNew ? "Backlink added — first check runs within ~10 minutes" : "Backlink added (not monitored)",
+      "success",
+    );
     setShowAdd(false);
     setAddForm({ project_id: f.project_id, source_url: "", target_url: "", expected_rel_type: "dofollow", expected_anchor_text: "", cost: "", currency: "" });
     // Show the project we just added to, and refresh the numbers + list.
@@ -539,6 +550,59 @@ export default function BacklinksPage() {
     const [dash, list] = await Promise.all([
       orgApi.dashboard(orgId),
       orgApi.searchBacklinks(orgId, { projectId: f.project_id }),
+    ]);
+    if (dash.ok) setSummary(dash.data);
+    if (list.ok) setBacklinks(list.data);
+  }
+
+  // Bulk add: one backlink per line as "source_url, target_url" (comma or tab).
+  async function submitBulk() {
+    if (!orgId) return;
+    if (!addForm.project_id) {
+      setAddErr("Pick a project first.");
+      return;
+    }
+    const rows = bulkText
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .map((l) => {
+        const [source_url, target_url] = l.split(/[,\t]/).map((s) => s?.trim());
+        return { source_url, target_url };
+      })
+      .filter(
+        (r) => /^https?:\/\//.test(r.source_url ?? "") && /^https?:\/\//.test(r.target_url ?? ""),
+      ) as { source_url: string; target_url: string }[];
+    if (rows.length === 0) {
+      setAddErr("Add at least one line as: source URL, target URL (both http/https).");
+      return;
+    }
+    setAddErr(null);
+    setBulkAddBusy(true);
+    const res = await orgApi.bulkCreateBacklinks(orgId, {
+      project_id: addForm.project_id,
+      backlinks: rows,
+      monitor: monitorNew,
+    });
+    setBulkAddBusy(false);
+    if (!res.ok) {
+      setAddErr(res.detail || "Could not add the backlinks.");
+      return;
+    }
+    const { created, duplicates } = res.data;
+    toast(
+      `Added ${created} backlink${created === 1 ? "" : "s"}` +
+        (duplicates ? `, ${duplicates} already existed` : "") +
+        (monitorNew ? " — first checks run within ~10 minutes" : ""),
+      "success",
+    );
+    setBulkText("");
+    setShowAdd(false);
+    setClientFilter("");
+    setProjectId(addForm.project_id);
+    const [dash, list] = await Promise.all([
+      orgApi.dashboard(orgId),
+      orgApi.searchBacklinks(orgId, { projectId: addForm.project_id }),
     ]);
     if (dash.ok) setSummary(dash.data);
     if (list.ok) setBacklinks(list.data);
@@ -984,10 +1048,10 @@ export default function BacklinksPage() {
         <div className="drawer-backdrop" onClick={() => setShowAdd(false)}>
           <aside className="drawer" onClick={(e) => e.stopPropagation()}>
             <div className="panel-head">
-              <h2>Add a backlink</h2>
+              <h2>Add backlinks</h2>
               <button className="btn" onClick={() => setShowAdd(false)}>Close</button>
             </div>
-            <form onSubmit={submitBacklink} className="add-form">
+            <div className="add-form">
               <label>
                 <span>Project</span>
                 <select
@@ -999,71 +1063,135 @@ export default function BacklinksPage() {
                   ))}
                 </select>
               </label>
-              <label>
-                <span>Source URL (the page that links to you)</span>
+
+              <label
+                style={{ display: "flex", gap: 10, alignItems: "flex-start", margin: "4px 0 10px", fontSize: 13 }}
+              >
                 <input
-                  placeholder="https://blog.example.com/post"
-                  value={addForm.source_url}
-                  onChange={(e) => setAddForm((f) => ({ ...f, source_url: e.target.value }))}
-                  autoFocus
+                  type="checkbox"
+                  checked={monitorNew}
+                  onChange={(e) => setMonitorNew(e.target.checked)}
+                  style={{ marginTop: 2 }}
+                />
+                <span>
+                  <b>Monitor these links</b> — re-check them on a schedule and alert me the moment
+                  one is lost, redirected, nofollowed or broken. <span className="muted">(Uncheck to
+                  just store them without monitoring.)</span>
+                </span>
+              </label>
+
+              <label>
+                <span>
+                  Paste your backlinks — one per line: <code>source URL, target URL</code>
+                </span>
+                <textarea
+                  rows={7}
+                  placeholder={
+                    "https://blog.example.com/post, https://yourdomain.com/page\nhttps://news.example.org/article, https://yourdomain.com/"
+                  }
+                  value={bulkText}
+                  onChange={(e) => setBulkText(e.target.value)}
+                  style={{
+                    width: "100%",
+                    minHeight: 140,
+                    fontFamily: "ui-monospace, monospace",
+                    fontSize: 12.5,
+                    padding: "8px 10px",
+                    background: "var(--bg)",
+                    color: "var(--text)",
+                    border: "1px solid var(--border)",
+                    borderRadius: 8,
+                  }}
                 />
               </label>
-              <label>
-                <span>Target URL (your page)</span>
-                <input
-                  placeholder="https://yourdomain.com/landing"
-                  value={addForm.target_url}
-                  onChange={(e) => setAddForm((f) => ({ ...f, target_url: e.target.value }))}
-                />
-              </label>
-              <div className="add-row">
-                <label>
-                  <span>Rel</span>
-                  <select
-                    value={addForm.expected_rel_type}
-                    onChange={(e) => setAddForm((f) => ({ ...f, expected_rel_type: e.target.value }))}
-                  >
-                    <option value="dofollow">dofollow</option>
-                    <option value="nofollow">nofollow</option>
-                    <option value="sponsored">sponsored</option>
-                    <option value="ugc">ugc</option>
-                  </select>
-                </label>
-                <label>
-                  <span>Anchor text (optional)</span>
-                  <input
-                    placeholder="e.g. best SEO tools"
-                    value={addForm.expected_anchor_text}
-                    onChange={(e) => setAddForm((f) => ({ ...f, expected_anchor_text: e.target.value }))}
-                  />
-                </label>
-              </div>
-              <div className="add-row">
-                <label>
-                  <span>Cost (optional)</span>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={addForm.cost}
-                    onChange={(e) => setAddForm((f) => ({ ...f, cost: e.target.value }))}
-                  />
-                </label>
-                <label>
-                  <span>Currency</span>
-                  <input
-                    placeholder="USD"
-                    value={addForm.currency}
-                    onChange={(e) => setAddForm((f) => ({ ...f, currency: e.target.value }))}
-                  />
-                </label>
-              </div>
               {addErr && <p className="error">{addErr}</p>}
-              <button className="btn primary" type="submit" disabled={addBusy}>
-                {addBusy ? "Adding…" : "Add backlink"}
+              <button className="btn primary" disabled={bulkAddBusy} onClick={() => void submitBulk()}>
+                {bulkAddBusy ? "Adding…" : "Add backlinks"}
               </button>
-            </form>
+              <p className="muted" style={{ fontSize: 12, marginTop: 8 }}>
+                Have a spreadsheet? <a href="/import">Import a CSV →</a>
+              </p>
+
+              <button
+                type="button"
+                className="btn sm ghost"
+                style={{ marginTop: 14 }}
+                onClick={() => setShowSingle((v) => !v)}
+              >
+                {showSingle ? "Hide single-link form" : "Add one link with details (anchor, cost, rel)…"}
+              </button>
+
+              {showSingle && (
+                <form
+                  onSubmit={submitBacklink}
+                  className="add-form"
+                  style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border)" }}
+                >
+                  <label>
+                    <span>Source URL (the page that links to you)</span>
+                    <input
+                      placeholder="https://blog.example.com/post"
+                      value={addForm.source_url}
+                      onChange={(e) => setAddForm((f) => ({ ...f, source_url: e.target.value }))}
+                    />
+                  </label>
+                  <label>
+                    <span>Target URL (your page)</span>
+                    <input
+                      placeholder="https://yourdomain.com/landing"
+                      value={addForm.target_url}
+                      onChange={(e) => setAddForm((f) => ({ ...f, target_url: e.target.value }))}
+                    />
+                  </label>
+                  <div className="add-row">
+                    <label>
+                      <span>Rel</span>
+                      <select
+                        value={addForm.expected_rel_type}
+                        onChange={(e) => setAddForm((f) => ({ ...f, expected_rel_type: e.target.value }))}
+                      >
+                        <option value="dofollow">dofollow</option>
+                        <option value="nofollow">nofollow</option>
+                        <option value="sponsored">sponsored</option>
+                        <option value="ugc">ugc</option>
+                      </select>
+                    </label>
+                    <label>
+                      <span>Anchor text (optional)</span>
+                      <input
+                        placeholder="e.g. best SEO tools"
+                        value={addForm.expected_anchor_text}
+                        onChange={(e) => setAddForm((f) => ({ ...f, expected_anchor_text: e.target.value }))}
+                      />
+                    </label>
+                  </div>
+                  <div className="add-row">
+                    <label>
+                      <span>Cost (optional)</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={addForm.cost}
+                        onChange={(e) => setAddForm((f) => ({ ...f, cost: e.target.value }))}
+                      />
+                    </label>
+                    <label>
+                      <span>Currency</span>
+                      <input
+                        placeholder="USD"
+                        value={addForm.currency}
+                        onChange={(e) => setAddForm((f) => ({ ...f, currency: e.target.value }))}
+                      />
+                    </label>
+                  </div>
+                  <button className="btn primary" type="submit" disabled={addBusy}>
+                    {addBusy ? "Adding…" : "Add this backlink"}
+                  </button>
+                </form>
+              )}
+            </div>
           </aside>
         </div>
       )}
