@@ -1048,6 +1048,7 @@ export const orgApi = {
       expected_anchor_text?: string;
       cost?: number;
       currency?: string;
+      monitor?: boolean;
     },
   ) =>
     request<BacklinkView>(`/v1/organizations/${org}/backlinks`, {
@@ -1055,6 +1056,24 @@ export const orgApi = {
       headers: csrfHeader(),
       body: JSON.stringify(body),
     }),
+  // Create many backlinks in one call (§35). `monitor` applies the "Monitor
+  // these links" choice to the whole batch.
+  bulkCreateBacklinks: (
+    org: string,
+    body: {
+      project_id: string;
+      backlinks: { source_url: string; target_url: string }[];
+      monitor?: boolean;
+    },
+  ) =>
+    request<{ total: number; created: number; duplicates: number; errors: { index: number; message: string }[] }>(
+      `/v1/organizations/${org}/backlinks/bulk`,
+      {
+        method: "POST",
+        headers: csrfHeader(),
+        body: JSON.stringify(body),
+      },
+    ),
   // Edit a backlink's mutable fields (PATCH). Pass only the fields to change; a
   // classification field set to null clears it (back to unclassified / auto).
   updateBacklink: (

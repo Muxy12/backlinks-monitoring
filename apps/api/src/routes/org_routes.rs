@@ -77,6 +77,21 @@ pub async fn create(
     let org = orgs::create_with_owner(&state.pool, Uuid::now_v7(), name, &slug, user.id).await?;
     // Start the 10-day free trial (no card) for the new workspace (docs/20).
     db::repositories::billing::start_trial(&state.pool, org.id).await?;
+    // Email alerts ON by default: seed the owner's address as an enabled email
+    // destination so a lost-link alert reaches their inbox out of the box. They
+    // can edit or remove it in Settings → Notifications. Best-effort.
+    if let Ok(scope) = db::authorize_org(&state.pool, user.id, org.id).await {
+        let _ = db::repositories::alerts::create(
+            &state.pool,
+            &scope,
+            Uuid::now_v7(),
+            "email",
+            &user.email,
+            "My email",
+            "immediate",
+        )
+        .await;
+    }
     // Funnel: trial started (best-effort — docs/20 §P8).
     if let Err(e) = db::repositories::analytics::record(
         &state.pool,
