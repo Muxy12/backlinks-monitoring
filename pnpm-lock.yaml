@@ -15,6 +15,9 @@ importers:
 
   apps/web:
     dependencies:
+      fflate:
+        specifier: ^0.8.3
+        version: 0.8.3
       next:
         specifier: 15.5.26
         version: 15.5.26(@types/node@22.10.2)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
@@ -383,6 +386,9 @@ packages:
   detect-libc@2.1.2:
     resolution: {integrity: sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ==}
     engines: {node: '>=8'}
+
+  fflate@0.8.3:
+    resolution: {integrity: sha512-tbZNuJrLwGUp3zshBtdy4W+ORxZuIh8a5ilyIEQDC5rY1f3U20JMry0Ll3WBzU58EZKsEuJFXhb5gwv8CsPvgA==}
 
   float-tooltip@1.7.5:
     resolution: {integrity: sha512-/kXzuDnnBqyyWyhDMH7+PfP8J/oXiAavGzcRxASOMRHFuReDtofizLLJsf7nnDLAfEaMW4pVWaXrAjtnglpEkg==}
@@ -847,6 +853,8 @@ snapshots:
 
   detect-libc@2.1.2:
     optional: true
+
+  fflate@0.8.3: {}
 
   float-tooltip@1.7.5:
     dependencies:
