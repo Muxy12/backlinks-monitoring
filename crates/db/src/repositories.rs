@@ -2976,6 +2976,34 @@ pub mod events {
     }
 }
 
+// ─── Anchor text distribution ────────────────────────────────────────────────
+pub mod anchors {
+    use super::*;
+
+    /// The anchor text of every own, tier-1, non-archived backlink in a project:
+    /// what the crawler last saw (`detected_anchor_text`), falling back to what
+    /// the user declared (`expected_anchor_text`). A `None` (or blank) means an
+    /// image / text-less link. Read-only — classification and aggregation are
+    /// pure core (`backlio_core::anchors`), so this returns the raw column.
+    pub async fn list_for_project(
+        pool: &PgPool,
+        scope: &OrgScope,
+        project_id: Uuid,
+    ) -> Result<Vec<Option<String>>, DbError> {
+        let rows: Vec<(Option<String>,)> = sqlx::query_as(
+            "SELECT COALESCE(NULLIF(btrim(detected_anchor_text), ''), expected_anchor_text) \
+             FROM backlinks \
+             WHERE organization_id = $1 AND project_id = $2 \
+               AND archived_at IS NULL AND subject = 'own' AND tier = 1",
+        )
+        .bind(scope.organization_id())
+        .bind(project_id)
+        .fetch_all(pool)
+        .await?;
+        Ok(rows.into_iter().map(|(a,)| a).collect())
+    }
+}
+
 // ─── Dashboard summary (§33, §34) ────────────────────────────────────────────
 pub mod dashboard {
     use super::*;

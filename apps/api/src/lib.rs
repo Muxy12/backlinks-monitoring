@@ -85,6 +85,10 @@ pub fn app(state: AppState) -> Router {
             post(routes::resource_routes::auto_tag_backlinks),
         )
         .route(
+            "/v1/organizations/{org_id}/projects/{project_id}/anchors",
+            get(routes::anchor_routes::get_anchors),
+        )
+        .route(
             "/v1/organizations/{org_id}/campaigns",
             get(routes::ops_routes::list_campaigns).post(routes::ops_routes::create_campaign),
         )
