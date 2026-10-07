@@ -107,7 +107,22 @@ export default function ImportPage() {
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
-    if (f) setCsv(await f.text());
+    if (!f) return;
+    const isXlsx =
+      /\.xlsx$/i.test(f.name) ||
+      f.type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    if (isXlsx) {
+      try {
+        // Lazy-load the parser (and fflate) only when an Excel file is picked.
+        const { xlsxToCsv } = await import("@/lib/xlsx");
+        setCsv(xlsxToCsv(await f.arrayBuffer()));
+        setError(null);
+      } catch {
+        setError("Could not read that Excel file — make sure it's a .xlsx, or export it to CSV.");
+      }
+    } else {
+      setCsv(await f.text());
+    }
   }
 
   async function onSubmit(e: React.FormEvent) {
@@ -141,7 +156,7 @@ export default function ImportPage() {
     <main className="dash">
       <header className="page-head">
         <h1>Import backlinks</h1>
-        <p className="muted">CSV, generic, Ahrefs, or Semrush headers. Duplicates are skipped.</p>
+        <p className="muted">CSV or Excel (.xlsx) — generic, Ahrefs, or Semrush headers. Duplicates are skipped.</p>
       </header>
 
       {!orgId ? (
@@ -165,7 +180,11 @@ export default function ImportPage() {
               </label>
               <label className="auth-field">
                 <span>CSV file</span>
-                <input type="file" accept=".csv,text/csv" onChange={onFile} />
+                <input
+                  type="file"
+                  accept=".csv,text/csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  onChange={onFile}
+                />
               </label>
               <label className="auth-field">
                 <span>…or paste CSV</span>
