@@ -32,6 +32,11 @@ document — *then* build.
 | [19](19-admin-operations-instrumentation.md) | Admin ops: telemetry status + instrumentation spec (16 founder questions) | 05, 07, 10, 12 |
 | [20](20-pricing-and-trial.md) | Pricing, plans & trial: source of truth, enforcement, billing, trial lifecycle emails, admin funnel & analytics | 10, 19 |
 
+## Product documents
+
+The six foundational product docs (PRD, TRD, App Flow, Design Brief, Backend Schema, Implementation
+Plan) live in [`product/`](product/00-index.md) and sit above these engineering docs.
+
 ## Decisions
 
 | ADR | Decision |
