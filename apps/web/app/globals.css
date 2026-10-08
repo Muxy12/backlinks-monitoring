@@ -36,6 +36,42 @@ textarea {
   font: inherit;
 }
 
+/* Consistent, theme-aware dropdowns everywhere: drop the native chrome, use a
+   custom chevron and the app's surface/border tokens. The native option popup
+   follows the theme because the root sets `color-scheme` per theme. */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding: 8px 32px 8px 11px;
+  color: var(--text);
+  background-color: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm, 8px);
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238a94a6' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  transition: border-color var(--t-fast, 120ms) var(--ease, ease),
+    box-shadow var(--t-fast, 120ms) var(--ease, ease);
+}
+select:hover {
+  border-color: var(--border-hover);
+}
+select:focus-visible {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-weak);
+}
+select:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+select option {
+  background: var(--surface);
+  color: var(--text);
+}
+
 ::selection {
   background: color-mix(in srgb, var(--primary) 24%, transparent);
 }
