@@ -129,6 +129,31 @@ pub mod users {
         Ok(res.rows_affected())
     }
 
+    /// Stripe subscription ids for the orgs this user *solely* owns — the ones
+    /// `delete_account` will erase. Call this BEFORE deletion to cancel them in
+    /// Stripe so billing stops. Skips comped/admin plans and ended subscriptions.
+    pub async fn sole_owned_subscription_ids(
+        pool: &PgPool,
+        user_id: Uuid,
+    ) -> Result<Vec<String>, DbError> {
+        let rows: Vec<(String,)> = sqlx::query_as(
+            "SELECT s.stripe_subscription_id FROM subscriptions s \
+             WHERE s.stripe_subscription_id IS NOT NULL \
+               AND s.stripe_customer_id NOT LIKE 'admin:%' \
+               AND s.status IN ('active', 'past_due', 'trialing', 'unpaid') \
+               AND s.organization_id IN ( \
+                 SELECT o.id FROM organizations o \
+                 WHERE EXISTS (SELECT 1 FROM organization_members m \
+                               WHERE m.organization_id = o.id AND m.user_id = $1 AND m.role::text = 'owner') \
+                   AND NOT EXISTS (SELECT 1 FROM organization_members m2 \
+                                   WHERE m2.organization_id = o.id AND m2.role::text = 'owner' AND m2.user_id <> $1))",
+        )
+        .bind(user_id)
+        .fetch_all(pool)
+        .await?;
+        Ok(rows.into_iter().map(|(s,)| s).collect())
+    }
+
     /// Permanently delete a user's account (GDPR erasure). In one transaction:
     /// first delete every organization this user *solely* owns — cascading to all
     /// of that org's data (projects, backlinks, campaigns, billing, …) via
