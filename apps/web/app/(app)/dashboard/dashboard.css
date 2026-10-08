@@ -55,8 +55,18 @@
 
 /* Simple page title used by secondary pages. */
 .page-head { margin-bottom: 24px; }
+.page-head.with-actions { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .page-head h1 { font-size: 23px; font-weight: 700; letter-spacing: -0.015em; line-height: 1.2; }
 .page-head .muted { margin-top: 3px; }
+.ph-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+/* Destructive action button (delete campaign / account, …). */
+.btn.danger {
+  color: var(--lost);
+  border-color: color-mix(in srgb, var(--lost) 42%, var(--border));
+  background: color-mix(in srgb, var(--lost) 8%, transparent);
+}
+.btn.danger:hover { background: var(--lost); color: #fff; border-color: var(--lost); }
+.btn.danger:disabled { opacity: 0.5; cursor: default; background: color-mix(in srgb, var(--lost) 8%, transparent); color: var(--lost); }
 
 /* ── Buttons ────────────────────────────────────────────────────────────── */
 .btn {
