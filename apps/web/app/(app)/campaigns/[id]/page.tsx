@@ -39,6 +39,20 @@ export default function CampaignDetailPage() {
   const [tab, setTab] = useState<Tab>("overview");
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  async function removeCampaign() {
+    if (!orgId || !campaign) return;
+    if (!confirm(`Delete campaign “${campaign.name}”? This removes its targets and prospects. This cannot be undone.`)) {
+      return;
+    }
+    setDeleting(true);
+    const res = await orgApi.deleteCampaign(orgId, campaign.id);
+    setDeleting(false);
+    if (res.ok) router.push("/campaigns");
+    else alert(res.detail);
+  }
 
   useEffect(() => {
     api.me().then((res) => {
@@ -112,16 +126,38 @@ export default function CampaignDetailPage() {
 
   return (
     <main className="dash">
-      <header className="page-head">
-        <h1>{campaign.name}</h1>
-        <p className="muted">
-          <a href="/campaigns" style={{ color: "var(--muted)" }}>
-            Link Building
-          </a>{" "}
-          · {campaign.status}
-          {campaign.objective ? ` · ${campaign.objective}` : ""}
-        </p>
+      <header className="page-head with-actions">
+        <div>
+          <h1>{campaign.name}</h1>
+          <p className="muted">
+            <a href="/campaigns" style={{ color: "var(--muted)" }}>
+              Link Building
+            </a>{" "}
+            · {campaign.status}
+            {campaign.objective ? ` · ${campaign.objective}` : ""}
+          </p>
+        </div>
+        <div className="ph-actions">
+          <button className="btn sm" onClick={() => setEditing(true)}>
+            Edit
+          </button>
+          <button className="btn sm danger" disabled={deleting} onClick={() => void removeCampaign()}>
+            {deleting ? "Deleting…" : "Delete"}
+          </button>
+        </div>
       </header>
+
+      {editing && (
+        <EditCampaignPanel
+          org={orgId}
+          campaign={campaign}
+          onSaved={(c) => {
+            setCampaign(c);
+            setEditing(false);
+          }}
+          onCancel={() => setEditing(false)}
+        />
+      )}
 
       <div className="tabs">
         {(["overview", "gap", "pipeline"] as Tab[]).map((t) => (
@@ -906,5 +942,123 @@ function Tile({
       <div className="tile-value">{value}</div>
       {hint && <div className="tile-hint">{hint}</div>}
     </div>
+  );
+}
+
+function EditCampaignPanel({
+  org,
+  campaign,
+  onSaved,
+  onCancel,
+}: {
+  org: string;
+  campaign: CampaignView;
+  onSaved: (c: CampaignView) => void;
+  onCancel: () => void;
+}) {
+  const [name, setName] = useState(campaign.name);
+  const [description, setDescription] = useState(campaign.description ?? "");
+  const [status, setStatus] = useState(campaign.status);
+  const [objective, setObjective] = useState(campaign.objective ?? "");
+  const [targetUrl, setTargetUrl] = useState(campaign.primary_target_url ?? "");
+  const [target, setTarget] = useState(campaign.target_backlinks?.toString() ?? "");
+  const [budget, setBudget] = useState(campaign.budget ?? "");
+  const [currency, setCurrency] = useState(campaign.currency ?? "USD");
+  const [startDate, setStartDate] = useState(campaign.start_date ?? "");
+  const [endDate, setEndDate] = useState(campaign.end_date ?? "");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setBusy(true);
+    const res = await orgApi.updateCampaign(org, campaign.id, {
+      name: name.trim(),
+      description: description.trim(),
+      status,
+      objective: objective.trim(),
+      primary_target_url: targetUrl.trim(),
+      target_backlinks: target ? Number(target) : undefined,
+      budget: budget ? Number(budget) : undefined,
+      currency: budget ? currency : undefined,
+      start_date: startDate || undefined,
+      end_date: endDate || undefined,
+    });
+    setBusy(false);
+    if (!res.ok) {
+      setError(res.detail);
+      return;
+    }
+    onSaved(res.data);
+  }
+
+  return (
+    <section className="panel" style={{ marginBottom: 16 }}>
+      <div className="panel-head">
+        <h2>Edit campaign</h2>
+      </div>
+      <form onSubmit={save} className="ops-form">
+        {error && <div className="auth-error">{error}</div>}
+        <label className="auth-field">
+          <span>Name</span>
+          <input value={name} onChange={(e) => setName(e.target.value)} required />
+        </label>
+        <label className="auth-field">
+          <span>Status</span>
+          <select value={status} onChange={(e) => setStatus(e.target.value)}>
+            {["draft", "active", "paused", "completed", "archived"].map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="auth-field">
+          <span>Objective</span>
+          <input value={objective} onChange={(e) => setObjective(e.target.value)} placeholder="Grow topical authority for /guide" />
+        </label>
+        <label className="auth-field">
+          <span>Description</span>
+          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
+        </label>
+        <label className="auth-field">
+          <span>Primary target page</span>
+          <input value={targetUrl} onChange={(e) => setTargetUrl(e.target.value)} placeholder="https://example.com/guide" />
+        </label>
+        <label className="auth-field">
+          <span>Target backlinks</span>
+          <input type="number" min="1" value={target} onChange={(e) => setTarget(e.target.value)} />
+        </label>
+        <div className="ops-money">
+          <label className="auth-field">
+            <span>Budget</span>
+            <input type="number" min="0" step="0.01" value={budget} onChange={(e) => setBudget(e.target.value)} />
+          </label>
+          <label className="auth-field">
+            <span>Currency</span>
+            <input value={currency} onChange={(e) => setCurrency(e.target.value.toUpperCase())} maxLength={3} />
+          </label>
+        </div>
+        <div className="ops-money">
+          <label className="auth-field">
+            <span>Start date</span>
+            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+          </label>
+          <label className="auth-field">
+            <span>End date</span>
+            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+          </label>
+        </div>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button className="auth-btn" type="submit" disabled={busy}>
+            {busy ? "Saving…" : "Save changes"}
+          </button>
+          <button className="btn" type="button" disabled={busy} onClick={onCancel}>
+            Cancel
+          </button>
+        </div>
+      </form>
+    </section>
   );
 }
