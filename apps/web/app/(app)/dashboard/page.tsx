@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import {
   api,
@@ -13,6 +13,7 @@ import { selectedOrg, selectedOrgId } from "@/lib/workspace";
 import { stageLabel } from "@/lib/campaigns";
 import { money, moneyList, num, pct, timeAgo } from "@/lib/format";
 import { GrowthChart } from "@/components/GrowthChart";
+import { Donut, type DonutSegment } from "@/components/Donut";
 import { GettingStarted } from "./GettingStarted";
 import { Tour, TOUR_KEY } from "./Tour";
 import { Icon } from "../icons";
@@ -190,6 +191,7 @@ function OverviewBody({ data, beta }: { data: OverviewResponse; beta: boolean })
           }
           delta={health.change}
           accent="var(--live)"
+          icon="check"
           onClick={() => go("/backlinks?filter=protected")}
         />
         <KpiCard
@@ -197,7 +199,8 @@ function OverviewBody({ data, beta }: { data: OverviewResponse; beta: boolean })
           tip="Acquisition value of backlinks currently protected by LinkPulz."
           value={moneyList(s.protected_value)}
           hint="Investment protected"
-          accent="var(--live)"
+          accent="var(--primary)"
+          icon="billing"
           onClick={() => go("/backlinks?filter=protected")}
         />
         <KpiCard
@@ -205,6 +208,8 @@ function OverviewBody({ data, beta }: { data: OverviewResponse; beta: boolean })
           tip="Link-building campaigns currently running."
           value={num(s.active_campaigns.total)}
           hint={`${s.active_campaigns.active} active · ${s.active_campaigns.draft} draft`}
+          accent="var(--violet)"
+          icon="campaigns"
           onClick={() => go(beta ? "/campaigns" : "/operations")}
         />
         <KpiCard
@@ -213,6 +218,7 @@ function OverviewBody({ data, beta }: { data: OverviewResponse; beta: boolean })
           value={moneyList(s.value_at_risk)}
           hint={s.value_at_risk.length ? "Needs attention" : "Nothing at risk"}
           accent="var(--lost)"
+          icon="warn"
           onClick={() => go("/backlinks?filter=lost")}
         />
       </div>
@@ -473,6 +479,7 @@ function KpiCard({
   hint,
   delta,
   accent,
+  icon,
   onClick,
 }: {
   label: string;
@@ -481,23 +488,32 @@ function KpiCard({
   hint: string;
   delta?: number | null;
   accent?: string;
+  icon?: string;
   onClick: () => void;
 }) {
   const dir = delta == null ? null : delta > 0 ? "up" : delta < 0 ? "down" : "flat";
+  const style = accent ? ({ "--tile-accent": accent } as CSSProperties) : undefined;
   return (
-    <button className="tile kpi-link" onClick={onClick} title={tip}>
+    <button className="tile kpi-link kpi-accent" onClick={onClick} title={tip} style={style}>
       <div className="tile-top">
         <span className="tile-label">{label}</span>
+        {icon && (
+          <span className="tile-icon">
+            <Icon name={icon} size={16} />
+          </span>
+        )}
       </div>
       <div className="tile-value" style={accent ? { color: accent } : undefined}>
         {value}
       </div>
-      {dir && (
-        <div className={`tile-delta ${dir}`}>
-          {dir === "up" ? "↑" : dir === "down" ? "↓" : ""} {Math.abs(delta!).toFixed(1)}% vs prev.
-        </div>
-      )}
-      <div className="tile-hint">{hint}</div>
+      <div className="tile-foot">
+        {dir && (
+          <span className={`delta-pill ${dir}`}>
+            {dir === "up" ? "↑" : dir === "down" ? "↓" : "→"} {Math.abs(delta!).toFixed(1)}%
+          </span>
+        )}
+        <span className="tile-hint">{hint}</span>
+      </div>
     </button>
   );
 }
@@ -540,7 +556,18 @@ function CampaignPerformance({
 
   const stageVal = (slug: string) =>
     perf.stage_counts.find((x) => x.stage === slug)?.count ?? 0;
-  const funnel = ["identified", "contacted", "negotiating", "won"];
+  const STAGES: [string, string][] = [
+    ["identified", "var(--pending)"],
+    ["contacted", "var(--primary)"],
+    ["negotiating", "var(--changed)"],
+    ["won", "var(--live)"],
+  ];
+  const segments: DonutSegment[] = STAGES.map(([slug, color]) => ({
+    label: stageLabel(slug),
+    value: stageVal(slug),
+    color,
+  }));
+  const totalProspects = segments.reduce((a, b) => a + b.value, 0);
 
   return (
     <>
@@ -558,14 +585,22 @@ function CampaignPerformance({
           No budget set · spend {moneyList(perf.spend)}
         </p>
       )}
-      <div className="funnel">
-        {funnel.map((st) => (
-          <span className="fstage" key={st}>
-            <b>{num(stageVal(st))}</b>
-            {stageLabel(st)}
-          </span>
-        ))}
-      </div>
+      {totalProspects > 0 ? (
+        <Donut
+          segments={segments}
+          centerValue={num(totalProspects)}
+          centerLabel={totalProspects === 1 ? "prospect" : "prospects"}
+        />
+      ) : (
+        <div className="funnel">
+          {STAGES.map(([st]) => (
+            <span className="fstage" key={st}>
+              <b>{num(stageVal(st))}</b>
+              {stageLabel(st)}
+            </span>
+          ))}
+        </div>
+      )}
       <button className="btn sm" style={{ marginTop: 12 }} onClick={onView}>
         View Campaigns
       </button>
