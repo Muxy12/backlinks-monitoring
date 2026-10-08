@@ -264,6 +264,19 @@ export const MARKETING_STYLE = `
 #lp-home footer.site .cols{display:flex;flex-wrap:wrap;gap:32px;justify-content:space-between}
 #lp-home footer.site a{color:var(--muted);display:block;margin-bottom:6px;text-decoration:none}
 #lp-home footer.site a:hover{color:var(--brand)}
+/* footer newsletter */
+#lp-home .nl{display:flex;flex-wrap:wrap;gap:16px 32px;align-items:center;justify-content:space-between;padding-bottom:28px;margin-bottom:28px;border-bottom:1px solid var(--line)}
+#lp-home .nl-copy b{display:block;color:var(--ink);font-size:1rem;margin-bottom:2px}
+#lp-home .nl-copy span{font-size:.9rem;color:var(--muted)}
+#lp-home .nl-slot{min-width:280px}
+#lp-home .nl-form{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+#lp-home .nl-form input{padding:11px 13px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font:inherit;font-size:.92rem;min-width:220px;flex:1}
+#lp-home .nl-form input:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px color-mix(in srgb,var(--brand) 18%,transparent)}
+#lp-home .nl-form button{cursor:pointer;font:inherit;font-weight:600;font-size:.92rem;padding:11px 20px;border-radius:10px;border:0;color:#fff;background:linear-gradient(135deg,var(--brand),var(--violet))}
+#lp-home .nl-form button:disabled{opacity:.6;cursor:default}
+#lp-home .nl-ts{flex-basis:100%}
+#lp-home .nl-error{color:var(--danger);font-size:.85rem;flex-basis:100%;margin:4px 0 0}
+#lp-home .nl-done{color:var(--accent);font-weight:600;font-size:.95rem;margin:0}
 
 /* ── craft: browser surfaces, focus, numerals, one authored entrance ── */
 #lp-home ::selection{background:color-mix(in srgb,var(--brand) 32%,transparent);color:var(--ink)}
@@ -320,7 +333,7 @@ export const MARKETING_STYLE = `
 export const MARKETING_HEADER = `
 <header class="site">
   <div class="wrap">
-    <a class="logo" href="/" aria-label="LinkPulz home"><img src="https://ye8jhaekbbcviws9.public.blob.vercel-storage.com/logo-linkpulz.webp" alt="LinkPulz backlink monitoring software" width="1254" height="1254" style="height:26px;width:auto;margin-right:9px;vertical-align:-6px;display:inline-block">Link<span>Pulz</span></a>
+    <a class="logo" href="/" aria-label="LinkPulz home"><img src="https://ye8jhaekbbcviws9.public.blob.vercel-storage.com/logo-linkpulz.webp" alt="LinkPulz backlink monitoring software" title="LinkPulz" width="1254" height="1254" style="height:26px;width:auto;margin-right:9px;vertical-align:-6px;display:inline-block">Link<span>Pulz</span></a>
     <nav class="main" aria-label="Main">
       <a href="/#features">Features</a>
       <a href="/#how-it-works">How it works</a>
@@ -333,8 +346,12 @@ export const MARKETING_HEADER = `
 
 export const MARKETING_FOOTER = `
 <footer class="site">
+  <div class="wrap nl">
+    <div class="nl-copy"><b>Stay in the loop</b><span>Backlink monitoring tips and launch news. No spam, unsubscribe anytime.</span></div>
+    <div id="lp-newsletter" class="nl-slot"></div>
+  </div>
   <div class="wrap cols">
-    <div><a class="logo" href="/">Link<span>Pulz</span></a><p class="micro" style="margin-top:8px">Backlink monitoring software.</p></div>
+    <div><a class="logo" href="/" aria-label="LinkPulz home"><img src="https://ye8jhaekbbcviws9.public.blob.vercel-storage.com/logo-linkpulz.webp" alt="LinkPulz backlink monitoring software" title="LinkPulz" width="1254" height="1254" style="height:24px;width:auto;margin-right:8px;vertical-align:-5px;display:inline-block">Link<span>Pulz</span></a><p class="micro" style="margin-top:8px">Backlink monitoring software.</p></div>
     <div><b>Product</b><br><a href="/lost-backlinks">Lost backlinks</a><a href="/broken-backlinks">Broken backlinks</a><a href="/verify-backlinks">Verify a backlink</a><a href="/backlink-health-check">Backlink health check</a></div>
     <div><b>Guides</b><br><a href="/backlink-management">Backlink management</a><a href="/backlink-audit">Backlink audit</a><a href="/backlink-profile">Backlink profile</a><a href="/backlink-reporting">Backlink reporting</a></div>
     <div><b>Tools</b><br><a href="/tools/backlink-checker">Free backlink checker</a><a href="/docs">Documentation</a><a href="/pricing">Pricing</a></div>

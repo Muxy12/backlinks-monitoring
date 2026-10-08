@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   title: { absolute: "Broken Backlinks: Find & Fix Broken Links | LinkPulz" },
   description:
     "A broken backlink checker that catches links pointing to errors and links on pages that error. Find broken backlinks, fix them, and monitor them automatically.",
-  alternates: { canonical: "/broken-backlinks" },
+  alternates: { canonical: "/broken-backlinks", languages: { en: "/broken-backlinks", "x-default": "/broken-backlinks" } },
   robots: { index: true, follow: true, "max-image-preview": "large" },
   openGraph: {
     type: "website",

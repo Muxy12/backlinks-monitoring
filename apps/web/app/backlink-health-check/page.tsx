@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   title: { absolute: "Backlink Health Check: Audit Your Link Profile | LinkPulz" },
   description:
     "Run a backlink health check: one score for your whole link profile, every problem grouped, tracked over time. See what to fix first and keep your links healthy.",
-  alternates: { canonical: "/backlink-health-check" },
+  alternates: { canonical: "/backlink-health-check", languages: { en: "/backlink-health-check", "x-default": "/backlink-health-check" } },
   robots: { index: true, follow: true, "max-image-preview": "large" },
   openGraph: {
     type: "website",

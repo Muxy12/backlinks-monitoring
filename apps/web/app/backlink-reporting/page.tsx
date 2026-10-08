@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   title: { absolute: "Backlink Reporting: Reports for Clients & Teams | LinkPulz" },
   description:
     "Backlink reporting that proves the links are still there: show what's live, what changed and what you recovered. Built for agencies, in-house SEOs and freelancers.",
-  alternates: { canonical: "/backlink-reporting" },
+  alternates: { canonical: "/backlink-reporting", languages: { en: "/backlink-reporting", "x-default": "/backlink-reporting" } },
   robots: { index: true, follow: true, "max-image-preview": "large" },
   openGraph: {
     type: "website",

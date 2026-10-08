@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   title: { absolute: "Backlink Management: Track & Monitor Your Links | LinkPulz" },
   description:
     "Backlink management done right: keep every earned and paid link in one place, monitor it on a schedule, and get alerted the moment a link is lost, nofollowed or broken.",
-  alternates: { canonical: "/backlink-management" },
+  alternates: { canonical: "/backlink-management", languages: { en: "/backlink-management", "x-default": "/backlink-management" } },
   robots: { index: true, follow: true, "max-image-preview": "large" },
   openGraph: {
     type: "website",

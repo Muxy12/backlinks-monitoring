@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   title: { absolute: "Backlink Monitoring Tool: Lost Link Alerts | LinkPulz" },
   description:
     "Monitor every backlink you earn or buy. Get instant alerts when a link is lost, nofollowed or deindexed. Start your free trial.",
-  alternates: { canonical: "/" },
+  alternates: { canonical: "/", languages: { en: "/", "x-default": "/" } },
   robots: { index: true, follow: true, "max-image-preview": "large" },
   openGraph: {
     type: "website",

@@ -5,7 +5,7 @@ export const metadata: Metadata = {
   title: "Documentation",
   description:
     "How LinkPulz works: monitor backlinks, track lost links and changes, watch competitors, build link tiers, discover new backlinks, explore the graph, and use the API.",
-  alternates: { canonical: "/docs" },
+  alternates: { canonical: "/docs", languages: { en: "/docs", "x-default": "/docs" } },
 };
 
 export default function DocsPage() {

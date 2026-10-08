@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   title: { absolute: "Pricing: Backlink Monitoring Plans & Free Trial | LinkPulz" },
   description:
     "Simple backlink monitoring pricing. Every plan includes a 10-day free trial (no credit card) and checks every backlink on a schedule you set. Starter $29, Pro $59, Business $99, Agency $199 per month.",
-  alternates: { canonical: "/pricing" },
+  alternates: { canonical: "/pricing", languages: { en: "/pricing", "x-default": "/pricing" } },
   robots: { index: true, follow: true, "max-image-preview": "large" },
   openGraph: {
     type: "website",
