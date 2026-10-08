@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   title: { absolute: "Verify Backlinks: Backlink Verification Tool | LinkPulz" },
   description:
     "Check if a backlink exists, is live and is dofollow. Use our backlink verification tool, then monitor the link automatically with LinkPulz.",
-  alternates: { canonical: "/verify-backlinks" },
+  alternates: { canonical: "/verify-backlinks", languages: { en: "/verify-backlinks", "x-default": "/verify-backlinks" } },
   robots: { index: true, follow: true, "max-image-preview": "large" },
   openGraph: {
     type: "website",

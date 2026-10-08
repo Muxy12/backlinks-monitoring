@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   title: { absolute: "Lost Backlinks: Find & Recover Lost Links | LinkPulz" },
   description:
     "A lost backlink checker that tells you which links disappeared, when and why. Find lost backlinks, recover them, and get alerted the next time one drops.",
-  alternates: { canonical: "/lost-backlinks" },
+  alternates: { canonical: "/lost-backlinks", languages: { en: "/lost-backlinks", "x-default": "/lost-backlinks" } },
   robots: { index: true, follow: true, "max-image-preview": "large" },
   openGraph: {
     type: "website",

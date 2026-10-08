@@ -153,7 +153,7 @@ const MAIN = `
       </div>
       <p class="micro">No credit card required · Set up in minutes</p>
     </div>
-    <img class="hero-img" src="https://ye8jhaekbbcviws9.public.blob.vercel-storage.com/banniere-dashboard-linkpulz.webp" alt="LinkPulz backlink monitoring dashboard showing a lost backlink alert" width="1448" height="1086" fetchpriority="high" style="width:100%;height:auto;border-radius:var(--radius);border:1px solid var(--line)">
+    <img class="hero-img" src="https://ye8jhaekbbcviws9.public.blob.vercel-storage.com/banniere-dashboard-linkpulz.webp" alt="LinkPulz backlink monitoring dashboard showing a lost backlink alert" title="LinkPulz backlink monitoring dashboard" width="1448" height="1086" fetchpriority="high" style="width:100%;height:auto;border-radius:var(--radius);border:1px solid var(--line)">
   </div>
 </section>
 

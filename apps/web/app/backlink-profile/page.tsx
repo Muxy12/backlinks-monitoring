@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   title: { absolute: "Backlink Profile: What It Is & How to Analyze It | LinkPulz" },
   description:
     "What a backlink profile is and how to analyze yours: referring domains, dofollow ratio, anchor text and relevance, plus how to keep the profile healthy over time.",
-  alternates: { canonical: "/backlink-profile" },
+  alternates: { canonical: "/backlink-profile", languages: { en: "/backlink-profile", "x-default": "/backlink-profile" } },
   robots: { index: true, follow: true, "max-image-preview": "large" },
   openGraph: {
     type: "website",

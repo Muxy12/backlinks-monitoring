@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   title: { absolute: "Backlink Audit: How to Audit Your Backlinks | LinkPulz" },
   description:
     "A backlink audit, step by step: find lost, broken, nofollowed and risky links in your profile, fix what you can, and set up monitoring so new problems never pile up.",
-  alternates: { canonical: "/backlink-audit" },
+  alternates: { canonical: "/backlink-audit", languages: { en: "/backlink-audit", "x-default": "/backlink-audit" } },
   robots: { index: true, follow: true, "max-image-preview": "large" },
   openGraph: {
     type: "website",
