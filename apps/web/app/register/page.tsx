@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { api } from "../../lib/api";
 import { readAttribution } from "../../lib/attribution";
 import { Turnstile, TURNSTILE_ENABLED } from "../turnstile";
+import { WaitlistModal } from "./WaitlistModal";
 import "../auth.css";
 
 export default function RegisterPage() {
@@ -17,9 +18,15 @@ export default function RegisterPage() {
   const [busy, setBusy] = useState(false);
   // null = still checking; true/false = sign-ups open or closed.
   const [open, setOpen] = useState<boolean | null>(null);
+  // Waitlist modal shows automatically once we learn sign-ups are closed.
+  const [showWaitlist, setShowWaitlist] = useState(false);
 
   useEffect(() => {
-    api.config().then((r) => setOpen(r.ok ? r.data.registration_open : true));
+    api.config().then((r) => {
+      const isOpen = r.ok ? r.data.registration_open : true;
+      setOpen(isOpen);
+      if (!isOpen) setShowWaitlist(true);
+    });
   }, []);
 
   async function onSubmit(e: React.FormEvent) {
@@ -52,15 +59,19 @@ export default function RegisterPage() {
           <h1>We&apos;re almost ready</h1>
           <p className="sub">
             New sign-ups aren&apos;t open just yet — we&apos;re putting the final touches on LinkPulz.
-            Check back soon.
+            Join the waitlist and we&apos;ll email you the moment early access opens.
           </p>
-          <p className="auth-alt" style={{ marginTop: 8 }}>
+          <button className="auth-btn" type="button" onClick={() => setShowWaitlist(true)}>
+            Join the waitlist
+          </button>
+          <p className="auth-alt" style={{ marginTop: 14 }}>
             Already have an account? <a href="/login">Log in</a>
           </p>
           <p className="auth-alt">
             Want to look around first? <a href="/">See what LinkPulz does</a>
           </p>
         </div>
+        {showWaitlist && <WaitlistModal onClose={() => setShowWaitlist(false)} />}
       </div>
     );
   }
