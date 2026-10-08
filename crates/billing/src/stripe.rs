@@ -186,3 +186,28 @@ pub async fn create_portal_session(
         .map(str::to_string)
         .ok_or_else(|| "stripe: no portal url in response".to_string())
 }
+
+/// Cancel a subscription immediately (used when an account is deleted, so no
+/// further invoices are issued). Idempotent: an already-canceled or unknown
+/// subscription counts as success, since the only goal is "no more billing".
+pub async fn cancel_subscription(secret: &str, subscription_id: &str) -> Result<(), String> {
+    let url = format!("https://api.stripe.com/v1/subscriptions/{subscription_id}");
+    let resp = client()
+        .delete(&url)
+        .bearer_auth(secret)
+        .send()
+        .await
+        .map_err(|e| format!("stripe cancel request failed: {e}"))?;
+    let status = resp.status();
+    if status.is_success() || status == reqwest::StatusCode::NOT_FOUND {
+        return Ok(());
+    }
+    let text = resp.text().await.unwrap_or_default();
+    if text.contains("No such subscription") || text.contains("already been canceled") {
+        return Ok(());
+    }
+    Err(format!(
+        "stripe cancel HTTP {status}: {}",
+        text.chars().take(200).collect::<String>()
+    ))
+}

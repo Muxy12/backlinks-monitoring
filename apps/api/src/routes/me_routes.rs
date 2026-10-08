@@ -90,6 +90,26 @@ pub async fn delete_account(
             "type your account email to confirm deletion".into(),
         ));
     }
+
+    // Cancel any live Stripe subscriptions on the orgs this user solely owns, so
+    // deleting the account also stops billing. Best-effort and BEFORE the DB
+    // deletion (which drops the Stripe ids): a Stripe hiccup must not block the
+    // user's right to erasure.
+    if let Some(secret) = billing::stripe::secret_key() {
+        match users::sole_owned_subscription_ids(&state.pool, user.id).await {
+            Ok(subs) => {
+                for sub in subs {
+                    if let Err(e) = billing::stripe::cancel_subscription(&secret, &sub).await {
+                        tracing::warn!(error = %e, "stripe subscription not canceled on account deletion");
+                    }
+                }
+            }
+            Err(e) => {
+                tracing::warn!(error = %e, "could not list subscriptions before account deletion")
+            }
+        }
+    }
+
     users::delete_account(&state.pool, user.id).await?;
     Ok((clear_cookies(jar), StatusCode::NO_CONTENT))
 }
