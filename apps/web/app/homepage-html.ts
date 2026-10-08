@@ -1,7 +1,8 @@
 // Marketing homepage (§48). Content/structure from the approved SEO redesign;
 // placeholder copy resolved against the shipped product (check cadence is
-// "on a schedule you set", claims verified) — only product screenshots remain to
-// be dropped into the `.ph` image slots. The
+// "on a schedule you set", claims verified). The six product shots are inline
+// `.shot` UI mockups built from the real design language (status colors, the
+// distribution bar, the anchor-text distribution), each labelled "Example". The
 // LinkPulz charte (dark + purple, #lp-home-scoped CSS), the sticky header and
 // the footer live in ./marketing.ts and are shared with the backlink tool pages;
 // this file supplies only the homepage's own JSON-LD graph and <main> sections.
@@ -384,17 +385,42 @@ const MAIN = `
     </div>
     <div class="steps">
       <div class="step">
-        <div class="ph" role="img" aria-label="Importing backlinks">IMAGE PLACEHOLDER<small>Step 1 screenshot · 640×400</small></div>
+        <div class="shot" role="img" aria-label="Importing backlinks into LinkPulz">
+          <div class="shot-bar"><span class="shot-dots"><i></i><i></i><i></i></span><span class="shot-ttl">Import backlinks</span></div>
+          <div class="shot-body">
+            <span class="ex">Example</span>
+            <div class="srow"><span aria-hidden="true">📄</span><span class="surl">backlinks-q3.xlsx</span><span class="sbadge live">48 rows</span></div>
+            <div class="stiles"><div class="stile"><b>46</b><small>Imported</small></div><div class="stile"><b>2</b><small>Duplicates</small></div><div class="stile"><b>0</b><small>Errors</small></div></div>
+            <div class="stags"><span class="stag">CSV · Excel · GSC</span><span class="stag">Tag: Q3 outreach</span><span class="stag">Client: Acme</span></div>
+          </div>
+        </div>
         <h3>Add your links</h3>
         <p>Paste them, upload a CSV, or import your referring domains from Google Search Console. Tag each one by campaign, client or cost.</p>
       </div>
       <div class="step">
-        <div class="ph" role="img" aria-label="Automatic checks">IMAGE PLACEHOLDER<small>Step 2 screenshot · 640×400</small></div>
+        <div class="shot" role="img" aria-label="Automatic backlink checks on a schedule">
+          <div class="shot-bar"><span class="shot-dots"><i></i><i></i><i></i></span><span class="shot-ttl">Backlinks · Acme</span></div>
+          <div class="shot-body">
+            <span class="ex">Example data</span>
+            <div class="sbar" role="img" aria-label="82% live, 8% changed, 6% lost, 4% redirected"><i style="width:82%;background:var(--accent)"></i><i style="width:8%;background:var(--warn)"></i><i style="width:6%;background:var(--danger)"></i><i style="width:4%;background:#1c7ed6"></i></div>
+            <div class="srow"><span class="surl">forbes.com/…/best-tools</span><span class="sbadge live">Live</span></div>
+            <div class="srow"><span class="surl">blog.example.com/seo</span><span class="sbadge changed">Changed</span></div>
+            <div class="srow"><span class="surl">news.site/review</span><span class="sbadge lost">Lost</span></div>
+            <div class="stags"><span class="stag">⏱ Next check in 2 days</span><span class="stag">Weekly schedule</span></div>
+          </div>
+        </div>
         <h3>We check them automatically</h3>
         <p>LinkPulz backlink monitoring re-crawls each linking page on a schedule and compares it to the last known state.</p>
       </div>
       <div class="step">
-        <div class="ph" role="img" aria-label="Alert notification">IMAGE PLACEHOLDER<small>Step 3 screenshot · 640×400</small></div>
+        <div class="shot" role="img" aria-label="A backlink change alert">
+          <div class="shot-bar"><span class="shot-dots"><i></i><i></i><i></i></span><span class="shot-ttl">Alert</span></div>
+          <div class="shot-body">
+            <span class="ex">Example</span>
+            <div class="alert-mock" style="margin-top:0"><b>Link lost</b> · example.com/best-seo-tools<br><span class="sdiff"><del>dofollow · anchor “backlink monitoring”</del> → <ins>link removed</ins></span><br><span class="smuted">Detected today</span></div>
+            <div class="stags"><span class="stag">✉ Email</span><span class="stag">Slack</span><span class="stag">Webhook</span></div>
+          </div>
+        </div>
         <h3>You get alerted</h3>
         <p>Email, Slack or webhook notifications the moment something changes, with the exact change highlighted.</p>
       </div>
@@ -419,7 +445,29 @@ const MAIN = `
         Detected: today
       </div>
     </div>
-    <div class="ph" role="img" aria-label="Alert and report preview">IMAGE PLACEHOLDER<small>Alert email / Slack message / report preview · 900×700</small></div>
+    <div class="shot" role="img" aria-label="Alert email and full change history">
+      <div class="shot-bar"><span class="shot-dots"><i></i><i></i><i></i></span><span class="shot-ttl">Alert email</span></div>
+      <div class="shot-body">
+        <span class="ex">Example</span>
+        <div class="smail">
+          <div class="smail-h"><b>A backlink was lost</b><br><span class="smuted" style="font-size:.7rem">LinkPulz → you@acme.com</span></div>
+          <div class="smail-b">
+            <div class="sdiff"><b>Source</b> example.com/best-seo-tools<br><b>Target</b> acme.com/pricing<br><b>Change</b> <del>dofollow · anchor “backlink monitoring”</del> → <ins>link removed</ins><br><b>Detected</b> today</div>
+            <div style="margin-top:11px"><span class="sbtn">Open in LinkPulz</span></div>
+          </div>
+        </div>
+        <div>
+          <div class="cap">Full change history</div>
+          <ul class="stl">
+            <li><b>Lost</b> <span class="smuted">· today</span></li>
+            <li>Anchor changed <span class="smuted">· 2 weeks ago</span></li>
+            <li>Verified live <span class="smuted">· Jun 3</span></li>
+            <li><b>Added</b> <span class="smuted">· May 20</span></li>
+          </ul>
+          <span class="sbtn ghost">⤓ Export CSV</span>
+        </div>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -439,7 +487,17 @@ const MAIN = `
 <!-- ============ RECOVERY ============ -->
 <section class="alt" aria-labelledby="rec-h">
   <div class="wrap split rev">
-    <div class="ph" role="img" aria-label="Lost link recovery workflow">IMAGE PLACEHOLDER<small>Recovery workflow screenshot · 900×700</small></div>
+    <div class="shot" role="img" aria-label="Lost link details to help you win it back">
+      <div class="shot-bar"><span class="shot-dots"><i></i><i></i><i></i></span><span class="shot-ttl">Lost link · details</span></div>
+      <div class="shot-body">
+        <span class="ex">Example</span>
+        <div class="srow"><span class="surl">example.com/best-seo-tools</span><span class="sbadge lost">Lost</span></div>
+        <div class="stiles"><div class="stile"><b>3 days</b><small>Since lost</small></div><div class="stile"><b>$120</b><small>Paid placement</small></div><div class="stile"><b>example.com</b><small>Referring site</small></div></div>
+        <div class="sdiff"><b>What changed</b> <del>dofollow · anchor “backlink monitoring”</del> → <ins>link removed</ins></div>
+        <div class="smail"><div class="smail-h"><b>Reach out</b> <span class="smuted" style="font-size:.7rem">· editor@example.com</span></div><div class="smail-b smuted">Hi — I noticed the link to acme.com in your “best SEO tools” post was removed in a recent edit. Would you be open to restoring it?</div></div>
+        <div class="stags"><span class="sbtn">Draft outreach</span><span class="stag">Owner on file</span></div>
+      </div>
+    </div>
     <div>
       <h2 id="rec-h">Found a lost link? Win it back.</h2>
       <p>When LinkPulz flags a lost or changed link, you see who owns the page, when the link disappeared and what changed, so you can contact the site while the request is still fresh.</p>
@@ -455,7 +513,30 @@ const MAIN = `
       <h2 id="ins-h">The data you need, nothing you don't</h2>
       <p>See referring domains, anchor text distribution, link attributes and link age in one view. We show you what's measurable and don't hand you an opaque "toxic score" to guess at, we'd rather point you to <a href="https://developers.google.com/search/docs/essentials/spam-policies" rel="nofollow noopener" target="_blank">Google's own guidance on link spam</a> than make one up.</p>
     </div>
-    <div class="ph" role="img" aria-label="Backlink profile view">IMAGE PLACEHOLDER<small>Backlink profile table / chart · 900×700</small></div>
+    <div class="shot" role="img" aria-label="Backlink profile with anchor text distribution">
+      <div class="shot-bar"><span class="shot-dots"><i></i><i></i><i></i></span><span class="shot-ttl">Backlink profile · Acme</span></div>
+      <div class="shot-body">
+        <span class="ex">Example data</span>
+        <div>
+          <div class="cap">Anchor text distribution</div>
+          <div class="sbar" role="img" aria-label="38% branded, 24% keyword, 18% naked URL, 12% generic, 8% empty"><i style="width:38%;background:var(--brand)"></i><i style="width:24%;background:var(--violet)"></i><i style="width:18%;background:var(--accent)"></i><i style="width:12%;background:var(--muted)"></i><i style="width:8%;background:var(--ph-line)"></i></div>
+          <div class="sleg" style="margin-top:9px">
+            <span><i class="sdot" style="background:var(--brand)"></i>Branded <b>38%</b></span>
+            <span><i class="sdot" style="background:var(--violet)"></i>Keyword <b>24%</b></span>
+            <span><i class="sdot" style="background:var(--accent)"></i>Naked URL <b>18%</b></span>
+            <span><i class="sdot" style="background:var(--muted)"></i>Generic <b>12%</b></span>
+            <span><i class="sdot" style="background:var(--ph-line)"></i>Empty <b>8%</b></span>
+          </div>
+        </div>
+        <div>
+          <div class="srow smuted" style="font-size:.64rem;text-transform:uppercase;letter-spacing:.04em"><span class="surl">Referring page</span><span>Anchor</span><span>Age</span></div>
+          <div class="srow"><span class="surl">forbes.com/…/tools</span><span>LinkPulz</span><span class="smuted">8mo</span></div>
+          <div class="srow"><span class="surl">blog.example.com/seo</span><span>best backlink tool</span><span class="smuted">3mo</span></div>
+          <div class="srow"><span class="surl">news.site/review</span><span>acme.com</span><span class="smuted">6w</span></div>
+        </div>
+        <div class="stags"><span class="stag">42 referring domains</span><span class="stag">No toxic score — just the data</span></div>
+      </div>
+    </div>
   </div>
 </section>
 
