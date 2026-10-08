@@ -51,18 +51,16 @@ pub async fn me(
             role: role.to_string(),
         })
         .collect();
-    // Read the flag before `user` is moved into the view below.
-    let is_platform_admin = user.is_platform_admin;
     Ok(Json(MeResponse {
         user: user.into(),
         organizations,
         features: Features {
             campaigns_beta: state.cfg.campaigns_beta,
-            // Post-Link Impact / GSC is admin-only until the Google OAuth app is
-            // verified for public use (a sensitive scope). Public users see
-            // "coming soon"; the whole Impact UI gates on this flag. Drop the
-            // `&& is_platform_admin` to open it to everyone after verification.
-            gsc: crate::routes::gsc_routes::configured() && is_platform_admin,
+            // Post-Link Impact / GSC is open to everyone: the Google OAuth app is
+            // verified for public use (sensitive scope `webmasters.readonly`),
+            // so the flag now gates only on the integration being configured.
+            // The whole Impact UI keys off this flag.
+            gsc: crate::routes::gsc_routes::configured(),
         },
     }))
 }
