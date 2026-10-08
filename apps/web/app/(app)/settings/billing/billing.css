@@ -109,3 +109,14 @@
 .usage-fill.over {
   background: var(--danger);
 }
+
+/* ── Danger zone: account deletion ──────────────────────────────────────── */
+.danger-zone { border-color: color-mix(in srgb, var(--lost) 35%, var(--border)); }
+.danger-zone .panel-head h2::before { background: var(--lost); }
+.btn.danger {
+  color: var(--lost);
+  border-color: color-mix(in srgb, var(--lost) 42%, var(--border));
+  background: color-mix(in srgb, var(--lost) 8%, transparent);
+}
+.btn.danger:hover { background: var(--lost); color: #fff; border-color: var(--lost); }
+.btn.danger:disabled { opacity: 0.5; cursor: default; background: color-mix(in srgb, var(--lost) 8%, transparent); color: var(--lost); }

@@ -38,7 +38,10 @@ pub fn app(state: AppState) -> Router {
             post(routes::auth_routes::forgot_password),
         )
         .route("/v1/auth/reset", post(routes::auth_routes::reset_password))
-        .route("/v1/me", get(routes::me_routes::me))
+        .route(
+            "/v1/me",
+            get(routes::me_routes::me).delete(routes::me_routes::delete_account),
+        )
         // User feedback: feature requests + bug reports (migration 0033).
         .route("/v1/feedback", post(routes::feedback_routes::submit))
         .route("/v1/feedback/mine", get(routes::feedback_routes::list_mine))

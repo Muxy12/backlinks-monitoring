@@ -128,6 +128,37 @@ pub mod users {
         .await?;
         Ok(res.rows_affected())
     }
+
+    /// Permanently delete a user's account (GDPR erasure). In one transaction:
+    /// first delete every organization this user *solely* owns — cascading to all
+    /// of that org's data (projects, backlinks, campaigns, billing, …) via
+    /// `ON DELETE CASCADE` — then delete the user row, which cascades their
+    /// sessions, auth tokens and remaining memberships in shared orgs. Orgs with
+    /// another owner are kept; only this user's membership there is removed.
+    pub async fn delete_account(pool: &PgPool, user_id: Uuid) -> Result<(), DbError> {
+        let mut tx = pool.begin().await?;
+        sqlx::query(
+            "DELETE FROM organizations o \
+             WHERE EXISTS ( \
+                 SELECT 1 FROM organization_members m \
+                 WHERE m.organization_id = o.id AND m.user_id = $1 AND m.role::text = 'owner') \
+               AND NOT EXISTS ( \
+                 SELECT 1 FROM organization_members m2 \
+                 WHERE m2.organization_id = o.id AND m2.role::text = 'owner' AND m2.user_id <> $1)",
+        )
+        .bind(user_id)
+        .execute(&mut *tx)
+        .await?;
+        let res = sqlx::query("DELETE FROM users WHERE id = $1")
+            .bind(user_id)
+            .execute(&mut *tx)
+            .await?;
+        tx.commit().await?;
+        if res.rows_affected() == 0 {
+            return Err(DbError::NotFound);
+        }
+        Ok(())
+    }
 }
 
 // ─── Auth tokens: single-use email-verify / password-reset (table from 0002) ──

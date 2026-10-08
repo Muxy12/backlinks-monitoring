@@ -3,13 +3,15 @@
 
 use crate::error::ApiError;
 use crate::routes::auth_routes::UserView;
-use crate::session::current;
+use crate::session::{check_csrf, clear_cookies, current};
 use crate::state::AppState;
 use axum::Json;
 use axum::extract::State;
+use axum::http::{HeaderMap, StatusCode};
+use axum::response::IntoResponse;
 use axum_extra::extract::cookie::CookieJar;
-use db::repositories::orgs;
-use serde::Serialize;
+use db::repositories::{orgs, users};
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 #[derive(Debug, Serialize)]
@@ -63,4 +65,31 @@ pub async fn me(
             gsc: crate::routes::gsc_routes::configured(),
         },
     }))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct DeleteAccountBody {
+    /// The user re-types their email to confirm this irreversible action.
+    pub confirm_email: String,
+}
+
+/// DELETE /v1/me — permanently delete the current user's account (GDPR erasure).
+/// Session-authenticated + CSRF-protected, and guarded by an email re-type. Any
+/// organization the user solely owns is deleted with all its data; the session
+/// cookies are cleared on success.
+pub async fn delete_account(
+    State(state): State<AppState>,
+    jar: CookieJar,
+    headers: HeaderMap,
+    Json(body): Json<DeleteAccountBody>,
+) -> Result<impl IntoResponse, ApiError> {
+    let (user, session) = current(&state, &jar).await?;
+    check_csrf(&jar, &headers, &session)?;
+    if !body.confirm_email.trim().eq_ignore_ascii_case(&user.email) {
+        return Err(ApiError::Validation(
+            "type your account email to confirm deletion".into(),
+        ));
+    }
+    users::delete_account(&state.pool, user.id).await?;
+    Ok((clear_cookies(jar), StatusCode::NO_CONTENT))
 }
