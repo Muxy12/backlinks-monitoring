@@ -168,9 +168,15 @@ export interface FeedbackItem {
   user_email: string;
 }
 
+export interface PublicConfig {
+  registration_open: boolean;
+}
+
 export const api = {
   // Public plan catalog for the pricing + billing pages (no auth).
   plans: () => request<PlanView[]>("/v1/plans"),
+  // Public runtime config for pre-login pages (e.g. whether sign-ups are open).
+  config: () => request<PublicConfig>("/v1/config"),
   // Pre-launch waitlist email capture (public, no session).
   joinWaitlist: (email: string, turnstileToken?: string, attribution?: Attribution) =>
     request<{ ok: boolean; already: boolean }>("/v1/waitlist", {

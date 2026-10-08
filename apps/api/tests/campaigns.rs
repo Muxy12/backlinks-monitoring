@@ -28,6 +28,7 @@ async fn state(beta: bool) -> Option<AppState> {
             stripe_webhook_secret: None,
             allow_private_fetch: false,
             campaigns_beta: beta,
+            registration_open: true,
         },
     ))
 }

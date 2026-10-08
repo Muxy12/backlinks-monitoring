@@ -29,6 +29,7 @@ fn checker_cfg() -> ApiConfig {
         stripe_webhook_secret: None,
         allow_private_fetch: true,
         campaigns_beta: false, // reach the wiremock loopback server
+        registration_open: true,
     }
 }
 
@@ -139,6 +140,7 @@ async fn checker_blocks_private_targets_when_not_allowed() {
         stripe_webhook_secret: None,
         allow_private_fetch: false,
         campaigns_beta: false,
+        registration_open: true,
     };
     let app = api::app(AppState::new(pool, cfg));
 

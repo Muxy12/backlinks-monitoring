@@ -35,11 +35,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or(720);
     // Link-building campaigns BETA: inert unless CAMPAIGNS_BETA=true.
     let campaigns_beta = std::env::var("CAMPAIGNS_BETA").as_deref() == Ok("true");
+    // Self-serve sign-ups: open by default, closed only when REGISTRATION_OPEN=false
+    // (soft-launch: public site, registration held until the product is ready).
+    let registration_open = std::env::var("REGISTRATION_OPEN").as_deref() != Ok("false");
     let cfg = ApiConfig {
         secure_cookies,
         stripe_webhook_secret,
         session_ttl_hours,
         campaigns_beta,
+        registration_open,
         ..ApiConfig::default()
     };
     // Bootstrap platform admins from ADMIN_EMAILS (comma-separated). The operator

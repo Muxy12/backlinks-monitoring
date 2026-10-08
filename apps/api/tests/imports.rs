@@ -25,6 +25,7 @@ async fn state() -> Option<AppState> {
             stripe_webhook_secret: None,
             allow_private_fetch: false,
             campaigns_beta: false,
+            registration_open: true,
         },
     ))
 }
