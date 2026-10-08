@@ -255,6 +255,21 @@
 .cell-domain { color: var(--text); font-weight: 500; font-size: 13px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cell-domain.target { color: var(--muted); font-weight: 400; }
 
+/* ── App-wide premium polish (every .dash page, both themes) ────────────── */
+.dash .panel {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--text) 2.5%, transparent), transparent 120px),
+    var(--surface);
+  transition: box-shadow var(--t) var(--ease), border-color var(--t) var(--ease);
+}
+.dash .panel:hover { box-shadow: var(--shadow-md); }
+/* An accent bar before each panel heading ties the whole app together. */
+.dash .panel-head h2 { display: inline-flex; align-items: center; gap: 9px; }
+.dash .panel-head h2::before {
+  content: ""; width: 4px; height: 15px; border-radius: 3px; flex: none;
+  background: var(--grad, var(--primary));
+}
+
 /* Status pill (filled, tinted by the status color set inline via --st). */
 .badge {
   display: inline-flex; align-items: center; gap: 6px;
