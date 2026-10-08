@@ -183,6 +183,12 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ email, turnstile_token: turnstileToken, attribution }),
     }),
+  // Newsletter subscription — separate Resend audience from the waitlist.
+  subscribeNewsletter: (email: string, turnstileToken?: string) =>
+    request<{ ok: boolean }>("/v1/newsletter", {
+      method: "POST",
+      body: JSON.stringify({ email, turnstile_token: turnstileToken }),
+    }),
   waitlistCount: () => request<{ count: number }>("/v1/waitlist/count"),
   unsubscribeWaitlist: (token: string) =>
     request<{ ok: boolean; removed: boolean }>("/v1/waitlist/unsubscribe", {

@@ -214,6 +214,17 @@ pub mod resend {
             .unwrap_or_else(|| "f6725601-5a0f-4add-be5a-208944b518ac".to_string())
     }
 
+    /// The Resend audience newsletter subscribers go into — kept SEPARATE from the
+    /// waitlist so campaigns can target each list on its own. Set
+    /// `RESEND_NEWSLETTER_AUDIENCE_ID`; until it is, newsletter signups fall back
+    /// to the waitlist audience (no email is lost before the list is split).
+    fn newsletter_audience_id() -> String {
+        std::env::var("RESEND_NEWSLETTER_AUDIENCE_ID")
+            .ok()
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(audience_id)
+    }
+
     /// A short reqwest client shared by the audience calls.
     fn http() -> Result<reqwest::Client, String> {
         reqwest::Client::builder()
@@ -231,7 +242,17 @@ pub mod resend {
             Ok((k, _)) => k,
             Err(_) => return Ok(()),
         };
-        add_contact(&api_key, email).await
+        add_contact(&api_key, email, &audience_id()).await
+    }
+
+    /// Add (upsert) a contact to the NEWSLETTER audience — separate from the
+    /// waitlist. Best-effort: a no-op when email isn't configured.
+    pub async fn add_to_newsletter(email: &str) -> Result<(), String> {
+        let api_key = match config() {
+            Ok((k, _)) => k,
+            Err(_) => return Ok(()),
+        };
+        add_contact(&api_key, email, &newsletter_audience_id()).await
     }
 
     /// Like [`add_to_audience`] but surfaces "not configured" as an error instead
@@ -239,7 +260,7 @@ pub mod resend {
     /// actually happened (a no-op must not be reported as a successful sync).
     pub async fn add_to_audience_strict(email: &str) -> Result<(), String> {
         let (api_key, _) = config()?;
-        add_contact(&api_key, email).await
+        add_contact(&api_key, email, &audience_id()).await
     }
 
     /// The audience id contacts are written to, so the admin UI can show which
@@ -250,11 +271,8 @@ pub mod resend {
 
     /// POST one contact to the configured audience. Ok on 2xx or an already
     /// existing contact; Err with the Resend detail otherwise.
-    async fn add_contact(api_key: &str, email: &str) -> Result<(), String> {
-        let url = format!(
-            "https://api.resend.com/audiences/{}/contacts",
-            audience_id()
-        );
+    async fn add_contact(api_key: &str, email: &str, audience_id: &str) -> Result<(), String> {
+        let url = format!("https://api.resend.com/audiences/{audience_id}/contacts");
         let body = serde_json::json!({ "email": email, "unsubscribed": false });
         let resp = http()?
             .post(&url)
