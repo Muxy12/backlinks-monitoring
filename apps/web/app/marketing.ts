@@ -78,6 +78,51 @@ export const MARKETING_STYLE = `
 #lp-home .ph.hero-img{min-height:380px}
 #lp-home .ph.logo-ph{min-height:56px;font-size:.75rem;padding:8px}
 
+/* product shots — inline UI mockups built from the real design language */
+#lp-home .shot{border:1px solid var(--line);border-radius:var(--radius);background:var(--bg);overflow:hidden;box-shadow:0 12px 34px rgba(15,27,45,.10);font-size:.8rem;color:var(--ink)}
+#lp-home .shot-bar{display:flex;align-items:center;gap:9px;height:34px;padding:0 13px;background:var(--bg-alt);border-bottom:1px solid var(--line)}
+#lp-home .shot-dots{display:flex;gap:5px}
+#lp-home .shot-dots i{width:9px;height:9px;border-radius:50%;background:var(--ph-line);display:block}
+#lp-home .shot-ttl{font-size:.72rem;color:var(--muted);font-weight:600}
+#lp-home .shot-body{padding:14px 16px;display:flex;flex-direction:column;gap:11px}
+#lp-home .shot .ex{align-self:flex-start;font-size:.6rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700;background:var(--bg-alt);border:1px solid var(--line);border-radius:99px;padding:2px 8px}
+#lp-home .shot .cap{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:6px}
+#lp-home .srow{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line)}
+#lp-home .srow:last-child{border-bottom:0}
+#lp-home .surl{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.76rem}
+#lp-home .smuted{color:var(--muted)}
+#lp-home .sbadge{font-size:.66rem;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap}
+#lp-home .sbadge.live{color:var(--accent);background:color-mix(in srgb,var(--accent) 15%,transparent)}
+#lp-home .sbadge.lost{color:var(--danger);background:color-mix(in srgb,var(--danger) 13%,transparent)}
+#lp-home .sbadge.changed{color:var(--warn);background:color-mix(in srgb,var(--warn) 18%,transparent)}
+#lp-home .sbar{display:flex;height:12px;border-radius:7px;overflow:hidden;background:var(--bg-alt)}
+#lp-home .sbar i{display:block;height:100%}
+#lp-home .sleg{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.68rem;color:var(--muted)}
+#lp-home .sleg span{display:inline-flex;align-items:center;gap:6px}
+#lp-home .sleg b{color:var(--ink);font-weight:650}
+#lp-home .sdot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none}
+#lp-home .stags{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+#lp-home .stag{font-size:.66rem;border:1px solid var(--line);border-radius:99px;padding:2px 9px;color:var(--muted);background:var(--bg-alt)}
+#lp-home .sbtn{display:inline-block;font-size:.72rem;font-weight:650;padding:7px 12px;border-radius:8px;background:linear-gradient(135deg,var(--brand),var(--violet));color:#fff}
+#lp-home .sbtn.ghost{background:var(--bg-alt);color:var(--ink);border:1px solid var(--line)}
+#lp-home .stiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+#lp-home .stile{border:1px solid var(--line);border-radius:8px;padding:9px 10px;background:var(--bg-alt)}
+#lp-home .stile b{display:block;font-size:1.05rem}
+#lp-home .stile small{color:var(--muted);font-size:.62rem}
+#lp-home .smail{border:1px solid var(--line);border-radius:10px;overflow:hidden}
+#lp-home .smail-h{padding:10px 12px;background:var(--bg-alt);border-bottom:1px solid var(--line)}
+#lp-home .smail-b{padding:11px 12px;font-size:.74rem}
+#lp-home .sdiff{font-size:.73rem;color:var(--muted);line-height:1.6}
+#lp-home .sdiff del{color:var(--danger)}
+#lp-home .sdiff ins{color:var(--ink);text-decoration:none;font-weight:600}
+#lp-home .stl{list-style:none;margin:0;padding:0;font-size:.72rem}
+#lp-home .stl li{position:relative;padding:0 0 9px 15px;border-left:1px solid var(--line);margin-left:4px}
+#lp-home .stl li:last-child{border-left-color:transparent;padding-bottom:0}
+#lp-home .stl li::before{content:"";position:absolute;left:-4px;top:3px;width:7px;height:7px;border-radius:50%;background:var(--brand)}
+#lp-home .step .shot{margin-bottom:16px}
+#lp-home .split.rev .shot{order:2}
+@media(max-width:860px){#lp-home .split.rev .shot{order:0}}
+
 /* hero */
 #lp-home .hero{text-align:left;overflow:visible}
 #lp-home .hero .grid{display:grid;grid-template-columns:1.05fr 1fr;gap:48px;align-items:center}
