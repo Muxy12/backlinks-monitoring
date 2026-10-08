@@ -4,6 +4,7 @@ import { Inter } from "next/font/google";
 import { SITE_URL } from "@/lib/site";
 import { Analytics } from "./analytics";
 import { CookieBanner } from "./cookie-banner";
+import { NewsletterSignup } from "./NewsletterSignup";
 import { ThemeToggle } from "./theme-toggle";
 import "./tokens.css";
 import "./globals.css";
@@ -56,6 +57,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body>
         {children}
+        <NewsletterSignup />
         <CookieBanner />
         <ThemeToggle />
         <Analytics />
