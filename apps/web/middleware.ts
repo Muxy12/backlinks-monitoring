@@ -79,10 +79,8 @@ export function middleware(request: NextRequest) {
 
   const response = NextResponse.next({ request: { headers: requestHeaders } });
   response.headers.set("content-security-policy", csp);
-  // Pre-launch: keep the entire site out of search indexes. An X-Robots-Tag
-  // header is authoritative site-wide and wins over any per-page `index` meta
-  // (the most-restrictive directive applies). Remove this line at launch.
-  response.headers.set("X-Robots-Tag", "noindex, nofollow");
+  // Launched: the site is public and indexable. Per-page `robots` metadata still
+  // governs individual pages (e.g. legal pages stay noindex via their own meta).
   return response;
 }
 

@@ -1,20 +1,20 @@
 import type { Metadata } from "next";
-import { WaitlistLanding } from "./WaitlistLanding";
+import { HOMEPAGE_HTML } from "./homepage-html";
 
-// Pre-launch "coming soon" homepage with waitlist email capture. The full
-// marketing homepage lives at /home during this period. Server component for
-// head SEO + brand JSON-LD; the interactive landing is a client island.
+// The public marketing homepage at the root "/". (Pre-launch this served a
+// waitlist "coming soon"; at launch the full homepage took its place and /home
+// now permanently redirects here, so there is a single canonical homepage URL.)
 export const metadata: Metadata = {
-  title: { absolute: "LinkPulz: Backlink Monitoring, Launching Soon" },
+  title: { absolute: "Backlink Monitoring Tool: Lost Link Alerts | LinkPulz" },
   description:
-    "LinkPulz monitors every backlink you earn or buy, automatic checks on a schedule you set and instant alerts when a link is lost, nofollowed, redirected or broken. Join the waitlist for early access.",
+    "Monitor every backlink you earn or buy. Get instant alerts when a link is lost, nofollowed or deindexed. Start your free trial.",
   alternates: { canonical: "/" },
   robots: { index: true, follow: true, "max-image-preview": "large" },
   openGraph: {
     type: "website",
-    title: "LinkPulz: Backlink Monitoring, Launching Soon",
+    title: "Backlink Monitoring Tool: Lost Link Alerts | LinkPulz",
     description:
-      "Automatic backlink monitoring with instant change alerts. Join the waitlist for early access.",
+      "Monitor every backlink you earn or buy. Get instant alerts when a link is lost, nofollowed or deindexed.",
     url: "/",
     images: ["https://ye8jhaekbbcviws9.public.blob.vercel-storage.com/banniere-dashboard-linkpulz.webp"],
   },
@@ -50,7 +50,7 @@ export default function HomePage() {
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSONLD }} />
-      <WaitlistLanding />
+      <div dangerouslySetInnerHTML={{ __html: HOMEPAGE_HTML }} />
     </>
   );
 }
