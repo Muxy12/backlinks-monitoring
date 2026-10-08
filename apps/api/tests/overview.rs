@@ -31,6 +31,7 @@ async fn build(beta: bool) -> Option<(AppState, PgPool)> {
             stripe_webhook_secret: None,
             allow_private_fetch: false,
             campaigns_beta: beta,
+            registration_open: true,
         },
     );
     Some((state, db.pool))

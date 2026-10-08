@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "../../lib/api";
 import { readAttribution } from "../../lib/attribution";
@@ -15,6 +15,12 @@ export default function RegisterPage() {
   const [token, setToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // null = still checking; true/false = sign-ups open or closed.
+  const [open, setOpen] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    api.config().then((r) => setOpen(r.ok ? r.data.registration_open : true));
+  }, []);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -27,6 +33,8 @@ export default function RegisterPage() {
     const reg = await api.register(email, password, name, token ?? undefined, readAttribution());
     if (!reg.ok) {
       setBusy(false);
+      // The server may have closed sign-ups between page load and submit.
+      if (reg.status === 403) setOpen(false);
       setError(reg.detail);
       return;
     }
@@ -35,6 +43,26 @@ export default function RegisterPage() {
     setBusy(false);
     if (login.ok) router.push("/dashboard");
     else router.push("/login");
+  }
+
+  if (open === false) {
+    return (
+      <div className="auth-wrap">
+        <div className="auth-card">
+          <h1>We&apos;re almost ready</h1>
+          <p className="sub">
+            New sign-ups aren&apos;t open just yet — we&apos;re putting the final touches on LinkPulz.
+            Check back soon.
+          </p>
+          <p className="auth-alt" style={{ marginTop: 8 }}>
+            Already have an account? <a href="/login">Log in</a>
+          </p>
+          <p className="auth-alt">
+            Want to look around first? <a href="/">See what LinkPulz does</a>
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -56,7 +84,7 @@ export default function RegisterPage() {
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} autoComplete="new-password" />
         </label>
         <Turnstile onToken={setToken} />
-        <button className="auth-btn" type="submit" disabled={busy || (TURNSTILE_ENABLED && !token)}>
+        <button className="auth-btn" type="submit" disabled={busy || open === null || (TURNSTILE_ENABLED && !token)}>
           {busy ? "Creating…" : "Create account"}
         </button>
         <p className="auth-alt">

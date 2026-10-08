@@ -26,6 +26,7 @@ async fn state() -> Option<AppState> {
         stripe_webhook_secret: None,
         allow_private_fetch: false,
         campaigns_beta: false,
+        registration_open: true,
     };
     Some(AppState::new(db.pool, cfg))
 }
@@ -222,6 +223,42 @@ async fn register_login_me_and_create_org_flow() {
     let (_, body) = read_json(resp).await;
     assert_eq!(body["organizations"].as_array().unwrap().len(), 1);
     assert_eq!(body["organizations"][0]["role"], "owner");
+}
+
+#[tokio::test]
+async fn register_refused_when_registration_closed() {
+    let Some(base) = state().await else { return };
+    // Rebuild the state with sign-ups closed.
+    let cfg = ApiConfig {
+        registration_open: false,
+        ..base.cfg.clone()
+    };
+    let state = AppState::new(base.pool.clone(), cfg);
+    let app = api::app(state);
+
+    // Register is refused with 403 (and never touches the DB).
+    let resp = app
+        .clone()
+        .oneshot(
+            Request::post("/v1/auth/register")
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(json_body(serde_json::json!({
+                    "email": uniq_email(), "password": "correct horse", "name": "Bob"
+                })))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::FORBIDDEN);
+
+    // And the public config advertises it so the UI can show a closed state.
+    let resp = app
+        .oneshot(Request::get("/v1/config").body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+    let (status, body) = read_json(resp).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["registration_open"], false);
 }
 
 fn collect_cookies(resp: &axum::response::Response) -> Vec<String> {

@@ -20,6 +20,8 @@ pub enum ApiError {
     NotFound,
     #[error("conflict")]
     Conflict(String),
+    #[error("registration closed")]
+    RegistrationClosed,
     #[error("plan limit reached")]
     PlanLimit(String),
     #[error("rate limited")]
@@ -51,6 +53,11 @@ impl ApiError {
             ),
             ApiError::NotFound => (StatusCode::NOT_FOUND, "not_found", "not found".into()),
             ApiError::Conflict(d) => (StatusCode::CONFLICT, "conflict", d.clone()),
+            ApiError::RegistrationClosed => (
+                StatusCode::FORBIDDEN,
+                "registration_closed",
+                "Registration is currently closed while we finish getting ready.".into(),
+            ),
             ApiError::PlanLimit(d) => (StatusCode::PAYMENT_REQUIRED, "plan_limit", d.clone()),
             ApiError::RateLimited { .. } => (
                 StatusCode::TOO_MANY_REQUESTS,

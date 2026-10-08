@@ -28,6 +28,7 @@ async fn app() -> Option<(axum::Router, db::sqlx::PgPool)> {
             stripe_webhook_secret: None,
             allow_private_fetch: false,
             campaigns_beta: false,
+            registration_open: true,
         },
     ));
     Some((router, pool))

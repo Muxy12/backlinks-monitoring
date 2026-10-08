@@ -23,6 +23,7 @@ pub fn app(state: AppState) -> Router {
     Router::new()
         .route("/health", get(health))
         .route("/ready", get(ready))
+        .route("/v1/config", get(routes::auth_routes::public_config))
         .route("/v1/auth/register", post(routes::auth_routes::register))
         .route("/v1/auth/login", post(routes::auth_routes::login))
         .route("/v1/auth/logout", post(routes::auth_routes::logout))

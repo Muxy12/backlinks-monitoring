@@ -50,6 +50,7 @@ async fn bootstrap() -> Option<Session> {
         stripe_webhook_secret: None,
         allow_private_fetch: false,
         campaigns_beta: false,
+        registration_open: true,
     };
     let app = api::app(AppState::new(pool.clone(), cfg));
     let email = format!("ops-{}@example.com", Uuid::now_v7().simple());

@@ -135,6 +135,11 @@ pub async fn register(
     State(state): State<AppState>,
     Json(body): Json<RegisterBody>,
 ) -> Result<(axum::http::StatusCode, Json<UserView>), ApiError> {
+    // Soft-launch gate: refuse new sign-ups while registration is closed. Checked
+    // before anything else so no Turnstile call or DB work happens when closed.
+    if !state.cfg.registration_open {
+        return Err(ApiError::RegistrationClosed);
+    }
     crate::turnstile::verify(body.turnstile_token.as_deref()).await?;
     validate_credentials(&body.email, &body.password)?;
     let name = body.name.trim();
@@ -342,4 +347,18 @@ pub async fn logout(
         let _ = sessions::revoke(&state.pool, session.id).await;
     }
     Ok((clear_cookies(jar), axum::http::StatusCode::NO_CONTENT))
+}
+
+/// Public, unauthenticated runtime config for pages that render before login —
+/// today just whether self-serve sign-ups are open, so `/register` can show a
+/// "closed" state up front. No auth, no secrets.
+#[derive(Serialize)]
+pub struct PublicConfig {
+    pub registration_open: bool,
+}
+
+pub async fn public_config(State(state): State<AppState>) -> Json<PublicConfig> {
+    Json(PublicConfig {
+        registration_open: state.cfg.registration_open,
+    })
 }

@@ -23,6 +23,12 @@ pub struct ApiConfig {
     /// default: when false, the new campaign-workflow routes 404 and the UI
     /// hides the nav entry (surfaced via `me.features.campaigns_beta`).
     pub campaigns_beta: bool,
+    /// Whether new self-serve sign-ups are accepted. Env-gated via
+    /// `REGISTRATION_OPEN`; default `true`. When `false`, `POST /v1/auth/register`
+    /// is refused and the public `/register` page shows a "closed" state
+    /// (surfaced via `GET /v1/config`). Lets us keep the marketing site public
+    /// while the product is not yet open to everyone.
+    pub registration_open: bool,
 }
 
 impl Default for ApiConfig {
@@ -34,6 +40,7 @@ impl Default for ApiConfig {
             stripe_webhook_secret: None,
             allow_private_fetch: false,
             campaigns_beta: false,
+            registration_open: true,
         }
     }
 }
