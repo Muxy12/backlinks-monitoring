@@ -57,7 +57,7 @@ export default function CookiesPage() {
 
       <h2>Contact</h2>
       <p>
-        Questions? Email <a href="mailto:privacy@linkpulz.com">privacy@linkpulz.com</a>.
+        Questions? Email <a href="mailto:contact@linkpulz.com">contact@linkpulz.com</a>.
       </p>
 
       <ProseFooter />

@@ -27,6 +27,30 @@ export default function LegalIndex() {
             <span>The cookies we use and how to control them.</span>
           </a>
         </li>
+        <li>
+          <a href="/legal/subprocessors">
+            <strong>Sub-processors</strong>
+            <span>The providers that process data to run the Service.</span>
+          </a>
+        </li>
+        <li>
+          <a href="/legal/dpa">
+            <strong>Data Processing Agreement</strong>
+            <span>How we process data on behalf of business customers.</span>
+          </a>
+        </li>
+        <li>
+          <a href="/legal/refunds">
+            <strong>Refund &amp; Cancellation</strong>
+            <span>Trials, billing, cancellation and refunds.</span>
+          </a>
+        </li>
+        <li>
+          <a href="/legal/notice">
+            <strong>Legal Notice</strong>
+            <span>Company identity and hosting information.</span>
+          </a>
+        </li>
       </ul>
       <ProseFooter />
     </ProseShell>

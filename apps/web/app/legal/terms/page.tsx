@@ -7,13 +7,16 @@ export default function TermsPage() {
   return (
     <ProseShell>
       <h1>Terms of Service</h1>
-      <p className="prose-updated">Last updated: 26 September 2026</p>
+      <p className="prose-updated">Last updated: 8 October 2026</p>
 
       <p>
         These Terms of Service (&quot;Terms&quot;) govern your access to and use of LinkPulz (the
-        &quot;Service&quot;). By creating an account or using the Service, you agree to these Terms. If
-        you are using LinkPulz on behalf of an organization, you represent that you have authority to
-        bind that organization.
+        &quot;Service&quot;). The Service is operated by <strong>MeedWise</strong>, a SASU with share
+        capital of €1,000, registered with the Paris Trade and Companies Register under RCS Paris 109
+        701 466, with its registered office at 59 rue de Ponthieu, Bureau 326, 75008 Paris, France
+        (&quot;we&quot;, &quot;us&quot;). By creating an account or using the Service, you agree to
+        these Terms. If you are using LinkPulz on behalf of an organization, you represent that you
+        have authority to bind that organization.
       </p>
 
       <h2>The Service</h2>
@@ -40,10 +43,11 @@ export default function TermsPage() {
 
       <h2>Plans and payment</h2>
       <p>
-        Paid plans are billed in advance on a recurring basis through our payment processor. Plan
-        limits (such as the number of monitored backlinks) apply to your subscription. Fees are
-        non-refundable except where required by law. You can cancel at any time; access continues
-        until the end of the current billing period.
+        Paid plans are billed in advance on a recurring basis through our payment processor. Prices
+        include any applicable VAT. Plan limits (such as the number of monitored backlinks) apply to
+        your subscription. Fees are non-refundable except where required by law. You can cancel at any
+        time; access continues until the end of the current billing period. See our{" "}
+        <a href="/legal/refunds">Refund &amp; Cancellation Policy</a> for details.
       </p>
 
       <h2>Your content</h2>
@@ -55,7 +59,7 @@ export default function TermsPage() {
 
       <h2>Intellectual property</h2>
       <p>
-        The Service, including its software and branding, is owned by LinkPulz and its licensors. These
+        The Service, including its software and branding, is owned by MeedWise and its licensors. These
         Terms grant you no rights to our trademarks or source code.
       </p>
 
@@ -79,9 +83,23 @@ export default function TermsPage() {
         date. Continued use after changes take effect constitutes acceptance.
       </p>
 
+      <h2>Governing law &amp; disputes</h2>
+      <p>
+        These Terms are governed by French law. For business customers, any dispute relating to the
+        Service or these Terms will be subject to the exclusive jurisdiction of the competent courts of
+        Paris, France. If you are a consumer, mandatory consumer-protection rules of your country of
+        residence continue to apply and you may bring proceedings before the competent courts of your
+        domicile; you may also use the EU&apos;s{" "}
+        <a href="https://ec.europa.eu/consumers/odr" rel="nofollow noopener" target="_blank">
+          online dispute resolution
+        </a>{" "}
+        platform.
+      </p>
+
       <h2>Contact</h2>
       <p>
-        Questions about these Terms? Email <a href="mailto:legal@linkpulz.com">legal@linkpulz.com</a>.
+        Questions about these Terms? Email{" "}
+        <a href="mailto:contact@linkpulz.com">contact@linkpulz.com</a>.
       </p>
 
       <ProseFooter />

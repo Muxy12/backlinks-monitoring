@@ -7,13 +7,18 @@ export default function PrivacyPage() {
   return (
     <ProseShell>
       <h1>Privacy Policy</h1>
-      <p className="prose-updated">Last updated: 26 September 2026</p>
+      <p className="prose-updated">Last updated: 8 October 2026</p>
 
       <p>
         This Privacy Policy explains how LinkPulz (&quot;we&quot;, &quot;us&quot;) collects, uses and
         protects information when you use our backlink-monitoring service (the &quot;Service&quot;). We
         act as the data controller for your account data and as a data processor for the URLs and
         monitoring data you add on behalf of your own clients.
+      </p>
+      <p>
+        The Service is operated by <strong>MeedWise</strong>, a SASU registered in France (RCS Paris
+        109 701 466), with its registered office at 59 rue de Ponthieu, Bureau 326, 75008 Paris,
+        France. Full company details are in our <a href="/legal/notice">Legal Notice</a>.
       </p>
 
       <h2>Information we collect</h2>
@@ -53,9 +58,13 @@ export default function PrivacyPage() {
 
       <h2>Sub-processors</h2>
       <p>
-        We rely on a small number of infrastructure providers to run the Service, application
-        hosting, database hosting, and (for paid plans) payment processing. These providers process
-        data only on our instructions and under appropriate data-protection terms.
+        We rely on a small number of providers to run the Service: Vercel (website hosting), Render
+        (application hosting), Neon (database hosting), Stripe (payment processing for paid plans),
+        Resend (alert and account emails), Cloudflare (anti-spam) and Google (consent-based analytics
+        and, if you connect it, Search Console data). Each processes data only on our instructions and
+        under appropriate data-protection terms. The current list, with each provider&apos;s role and
+        location, is on our <a href="/legal/subprocessors">sub-processors page</a>. Business customers
+        can also review our <a href="/legal/dpa">Data Processing Agreement</a>.
       </p>
 
       <h2>Data retention</h2>
@@ -69,7 +78,12 @@ export default function PrivacyPage() {
       <p>
         Depending on your location, you may have the right to access, correct, export, restrict or
         delete your personal data, and to object to certain processing. To exercise these rights,
-        contact us at the address below.
+        contact us at the address below. If you are in the EU, you also have the right to lodge a
+        complaint with your supervisory authority — in France, the{" "}
+        <a href="https://www.cnil.fr" rel="nofollow noopener" target="_blank">
+          CNIL
+        </a>
+        .
       </p>
 
       <h2>Security</h2>
@@ -94,7 +108,8 @@ export default function PrivacyPage() {
       <h2>Contact</h2>
       <p>
         Questions about this policy or your data? Email{" "}
-        <a href="mailto:privacy@linkpulz.com">privacy@linkpulz.com</a>.
+        <a href="mailto:contact@linkpulz.com">contact@linkpulz.com</a>, or write to us at MeedWise, 59
+        rue de Ponthieu, Bureau 326, 75008 Paris, France.
       </p>
 
       <ProseFooter />

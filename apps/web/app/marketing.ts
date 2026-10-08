@@ -338,9 +338,9 @@ export const MARKETING_FOOTER = `
     <div><b>Product</b><br><a href="/lost-backlinks">Lost backlinks</a><a href="/broken-backlinks">Broken backlinks</a><a href="/verify-backlinks">Verify a backlink</a><a href="/backlink-health-check">Backlink health check</a></div>
     <div><b>Guides</b><br><a href="/backlink-management">Backlink management</a><a href="/backlink-audit">Backlink audit</a><a href="/backlink-profile">Backlink profile</a><a href="/backlink-reporting">Backlink reporting</a></div>
     <div><b>Tools</b><br><a href="/tools/backlink-checker">Free backlink checker</a><a href="/docs">Documentation</a><a href="/pricing">Pricing</a></div>
-    <div><b>Company</b><br><a href="/register">Start free trial</a><a href="/login">Log in</a><a href="/legal/privacy">Privacy</a><a href="/legal/terms">Terms</a></div>
+    <div><b>Company</b><br><a href="/register">Start free trial</a><a href="/login">Log in</a><a href="/legal">Legal</a><a href="/legal/privacy">Privacy</a><a href="/legal/terms">Terms</a><a href="/legal/notice">Legal notice</a></div>
   </div>
-  <div class="wrap micro" style="margin-top:24px">© <span id="y">2026</span> LinkPulz. All rights reserved.</div>
+  <div class="wrap micro" style="margin-top:24px">© <span id="y">2026</span> LinkPulz — a service of MeedWise (SASU), Paris, France. All rights reserved.</div>
 </footer>`;
 
 /**
