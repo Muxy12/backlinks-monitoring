@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { api } from "@/lib/api";
-import { readAttribution } from "@/lib/attribution";
 import { Turnstile, TURNSTILE_ENABLED } from "./turnstile";
 
 // Newsletter / email capture for the marketing footer. The footer is static HTML
@@ -32,7 +31,7 @@ export function NewsletterSignup() {
     }
     setStatus("busy");
     setError(null);
-    const res = await api.joinWaitlist(email.trim(), token ?? undefined, readAttribution());
+    const res = await api.subscribeNewsletter(email.trim(), token ?? undefined);
     if (!res.ok) {
       setStatus("idle");
       setError(res.detail);
