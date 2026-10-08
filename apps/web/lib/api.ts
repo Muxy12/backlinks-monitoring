@@ -227,6 +227,14 @@ export const api = {
       body: JSON.stringify({ token, password }),
     }),
   me: () => request<MeResponse>("/v1/me"),
+  // Permanently delete the signed-in user's account (GDPR erasure). Re-type the
+  // account email to confirm; CSRF-protected.
+  deleteAccount: (confirmEmail: string) =>
+    request<null>("/v1/me", {
+      method: "DELETE",
+      headers: csrfHeader(),
+      body: JSON.stringify({ confirm_email: confirmEmail }),
+    }),
   // Submit a feature request or bug report (authenticated).
   submitFeedback: (f: {
     kind: string;

@@ -42,6 +42,7 @@ export default function BillingPage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  const [portalMsg, setPortalMsg] = useState<string | null>(null);
 
   const isOwner = !!me?.organizations.find((o) => o.id === orgId && o.role === "owner");
 
@@ -97,10 +98,12 @@ export default function BillingPage() {
     if (!orgId) return;
     setBusy("portal");
     setMsg(null);
+    setPortalMsg(null);
     const res = await orgApi.openBillingPortal(orgId);
     setBusy(null);
     if (!res.ok) {
-      setMsg(res.detail);
+      // Show feedback right at the button (the shared top message is far away).
+      setPortalMsg(res.detail);
       return;
     }
     window.location.href = res.data.url;
@@ -239,8 +242,79 @@ export default function BillingPage() {
         <p className="muted" style={{ fontSize: 12, marginTop: 8 }}>
           Opens Stripe’s secure Customer Portal. Available once you have a subscription.
         </p>
+        {portalMsg && (
+          <p style={{ fontSize: 13, marginTop: 8, color: "var(--lost)" }} role="status">
+            {portalMsg}
+          </p>
+        )}
       </div>
+
+      <DangerZone email={me.user.email} onDeleted={() => router.push("/login")} />
     </main>
+  );
+}
+
+function DangerZone({ email, onDeleted }: { email: string; onDeleted: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [confirm, setConfirm] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function del() {
+    setBusy(true);
+    setErr(null);
+    const res = await api.deleteAccount(confirm.trim());
+    setBusy(false);
+    if (!res.ok) {
+      setErr(res.detail);
+      return;
+    }
+    onDeleted();
+  }
+
+  return (
+    <section className="panel danger-zone" style={{ marginTop: 28 }}>
+      <div className="panel-head">
+        <h2>Delete account</h2>
+      </div>
+      <p className="muted" style={{ marginTop: 0 }}>
+        Permanently delete your account and any workspace you solely own, including all projects,
+        backlinks, campaigns and history. This cannot be undone. If you have an active paid
+        subscription, cancel it first via “Manage billing” above.
+      </p>
+      {!open ? (
+        <button className="btn danger" onClick={() => setOpen(true)}>
+          Delete my account
+        </button>
+      ) : (
+        <div className="dz-confirm">
+          <label className="auth-field" style={{ maxWidth: 360 }}>
+            <span>
+              Type <b className="mono">{email}</b> to confirm
+            </span>
+            <input
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              autoComplete="off"
+              placeholder={email}
+            />
+          </label>
+          {err && <p style={{ color: "var(--lost)", fontSize: 13, margin: "4px 0 0" }}>{err}</p>}
+          <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+            <button
+              className="btn danger"
+              disabled={busy || confirm.trim().toLowerCase() !== email.toLowerCase()}
+              onClick={() => void del()}
+            >
+              {busy ? "Deleting…" : "Permanently delete"}
+            </button>
+            <button className="btn" disabled={busy} onClick={() => { setOpen(false); setConfirm(""); setErr(null); }}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </section>
   );
 }
 
