@@ -23,8 +23,8 @@ export default function RefundsPage() {
       <h2>Billing</h2>
       <p>
         Paid subscriptions are billed in advance on a recurring basis (monthly or annually, depending
-        on the plan you choose) through our payment processor, Stripe. Prices are shown on our{" "}
-        <a href="/pricing">pricing page</a>.
+        on the plan you choose) through our payment processor, Stripe. Prices shown on our{" "}
+        <a href="/pricing">pricing page</a> include any applicable VAT.
       </p>
 
       <h2>Cancellation</h2>

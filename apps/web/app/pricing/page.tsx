@@ -268,7 +268,7 @@ const MAIN = `
       </div>
 
     </div>
-    <p class="price-note">All plans check every backlink on a schedule you set. Prices in USD. Going over a limit never stops monitoring or deletes data, you just can't add new links until you upgrade.</p>
+    <p class="price-note">All plans check every backlink on a schedule you set. Prices in USD, VAT included where applicable. Going over a limit never stops monitoring or deletes data, you just can't add new links until you upgrade.</p>
   </div>
 </section>
 

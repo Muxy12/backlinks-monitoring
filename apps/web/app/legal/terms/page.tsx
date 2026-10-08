@@ -43,10 +43,10 @@ export default function TermsPage() {
 
       <h2>Plans and payment</h2>
       <p>
-        Paid plans are billed in advance on a recurring basis through our payment processor. Plan
-        limits (such as the number of monitored backlinks) apply to your subscription. Fees are
-        non-refundable except where required by law. You can cancel at any time; access continues
-        until the end of the current billing period. See our{" "}
+        Paid plans are billed in advance on a recurring basis through our payment processor. Prices
+        include any applicable VAT. Plan limits (such as the number of monitored backlinks) apply to
+        your subscription. Fees are non-refundable except where required by law. You can cancel at any
+        time; access continues until the end of the current billing period. See our{" "}
         <a href="/legal/refunds">Refund &amp; Cancellation Policy</a> for details.
       </p>
 
