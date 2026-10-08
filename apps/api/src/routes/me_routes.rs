@@ -85,7 +85,7 @@ pub async fn delete_account(
 ) -> Result<impl IntoResponse, ApiError> {
     let (user, session) = current(&state, &jar).await?;
     check_csrf(&jar, &headers, &session)?;
-    if body.confirm_email.trim().to_ascii_lowercase() != user.email.to_ascii_lowercase() {
+    if !body.confirm_email.trim().eq_ignore_ascii_case(&user.email) {
         return Err(ApiError::Validation(
             "type your account email to confirm deletion".into(),
         ));
