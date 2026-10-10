@@ -20,6 +20,13 @@ const nextConfig = {
   reactStrictMode: true,
   // ESLint is not configured yet; `next build` type-checks regardless.
   eslint: { ignoreDuringBuilds: true },
+  // Allow Next's image optimizer to resize/re-encode the brand assets served
+  // from Vercel Blob (used by the homepage hero via /_next/image).
+  images: {
+    remotePatterns: [
+      { protocol: "https", hostname: "ye8jhaekbbcviws9.public.blob.vercel-storage.com" },
+    ],
+  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
