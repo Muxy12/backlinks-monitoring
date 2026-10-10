@@ -138,7 +138,7 @@ const JSONLD = `{
 // full 1448×1086 original. The blob host is allow-listed in next.config images.
 const HERO_BLOB =
   "https://ye8jhaekbbcviws9.public.blob.vercel-storage.com/banniere-dashboard-linkpulz.webp";
-const heroOpt = (w: number) => `/_next/image?url=${encodeURIComponent(HERO_BLOB)}&w=${w}`;
+const heroOpt = (w: number) => `/_next/image?url=${encodeURIComponent(HERO_BLOB)}&w=${w}&q=75`;
 export const HERO_SIZES = "(max-width: 900px) 92vw, 540px";
 export const HERO_SRCSET = [640, 828, 1080, 1200].map((w) => `${heroOpt(w)} ${w}w`).join(", ");
 export const HERO_SRC = heroOpt(1200);
