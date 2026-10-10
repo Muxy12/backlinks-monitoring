@@ -52,6 +52,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en" className={inter.variable} suppressHydrationWarning>
       <head>
+        {/* Blob storage serves the brand assets (logo, hero) — open the
+            connection early so they aren't gated behind DNS+TLS on first paint. */}
+        <link rel="preconnect" href="https://ye8jhaekbbcviws9.public.blob.vercel-storage.com" />
+        <link rel="dns-prefetch" href="https://ye8jhaekbbcviws9.public.blob.vercel-storage.com" />
         <script nonce={nonce} dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
         <script nonce={nonce} dangerouslySetInnerHTML={{ __html: ATTRIBUTION_SCRIPT }} />
       </head>
