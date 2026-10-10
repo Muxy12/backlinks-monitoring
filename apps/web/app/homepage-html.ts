@@ -133,6 +133,16 @@ const JSONLD = `{
   ]
 }`;
 
+// Hero (LCP) image served through Next's image optimizer: Vercel re-encodes and
+// resizes it on the fly, so mobile downloads a right-sized file instead of the
+// full 1448×1086 original. The blob host is allow-listed in next.config images.
+const HERO_BLOB =
+  "https://ye8jhaekbbcviws9.public.blob.vercel-storage.com/banniere-dashboard-linkpulz.webp";
+const heroOpt = (w: number) => `/_next/image?url=${encodeURIComponent(HERO_BLOB)}&w=${w}`;
+export const HERO_SIZES = "(max-width: 900px) 92vw, 540px";
+export const HERO_SRCSET = [640, 828, 1080, 1200].map((w) => `${heroOpt(w)} ${w}w`).join(", ");
+export const HERO_SRC = heroOpt(1200);
+
 const MAIN = `
 <!-- ============ HERO ============ -->
 <section class="hero" aria-labelledby="h1">
@@ -153,7 +163,7 @@ const MAIN = `
       </div>
       <p class="micro">No credit card required · Set up in minutes</p>
     </div>
-    <img class="hero-img" src="https://ye8jhaekbbcviws9.public.blob.vercel-storage.com/banniere-dashboard-linkpulz.webp" alt="LinkPulz backlink monitoring dashboard showing a lost backlink alert" title="LinkPulz backlink monitoring dashboard" width="1448" height="1086" fetchpriority="high" style="width:100%;height:auto;border-radius:var(--radius);border:1px solid var(--line)">
+    <img class="hero-img" src="${HERO_SRC}" srcset="${HERO_SRCSET}" sizes="${HERO_SIZES}" alt="LinkPulz backlink monitoring dashboard showing a lost backlink alert" title="LinkPulz backlink monitoring dashboard" width="1448" height="1086" fetchpriority="high" style="width:100%;height:auto;border-radius:var(--radius);border:1px solid var(--line)">
   </div>
 </section>
 

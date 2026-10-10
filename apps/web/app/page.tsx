@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { HOMEPAGE_HTML } from "./homepage-html";
+import { HERO_SIZES, HERO_SRCSET, HOMEPAGE_HTML } from "./homepage-html";
 
 // The public marketing homepage at the root "/". (Pre-launch this served a
 // waitlist "coming soon"; at launch the full homepage took its place and /home
@@ -49,12 +49,14 @@ const JSONLD = `{
 export default function HomePage() {
   return (
     <>
-      {/* The hero dashboard image is the LCP element — preload it so the
-          download starts before the HTML/CSS is parsed (big win on slow 4G). */}
+      {/* The hero dashboard image is the LCP element — preload the exact
+          responsive variant the browser will pick, so the download starts before
+          the HTML/CSS is parsed (big win on slow 4G). */}
       <link
         rel="preload"
         as="image"
-        href="https://ye8jhaekbbcviws9.public.blob.vercel-storage.com/banniere-dashboard-linkpulz.webp"
+        imageSrcSet={HERO_SRCSET}
+        imageSizes={HERO_SIZES}
         fetchPriority="high"
       />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSONLD }} />
