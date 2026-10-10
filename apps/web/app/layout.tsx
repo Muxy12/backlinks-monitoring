@@ -44,10 +44,13 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  // Reading the per-request nonce (set by middleware.ts) opts every route into
-  // dynamic rendering, so Next stamps that same nonce onto its inline scripts —
-  // which is what makes the strict `script-src 'nonce-…'` CSP work (docs/11 S8).
-  // We reuse that nonce for the no-flash theme script so it passes the CSP too.
+  // The per-request nonce (set by middleware.ts) opts dynamic routes — the app
+  // and auth pages — into dynamic rendering, so Next stamps that nonce onto its
+  // scripts and the strict `script-src 'nonce-…'` CSP works (docs/11 S8). We reuse
+  // it for the inline scripts below. On the public marketing pages (which declare
+  // `export const dynamic = "force-static"`), `headers()` returns empty, the
+  // scripts render without a nonce, and the static marketing CSP allows them via
+  // 'unsafe-inline' — which is what lets those pages be cached at the edge.
   const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     <html lang="en" className={inter.variable} suppressHydrationWarning>

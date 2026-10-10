@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import { HERO_SIZES, HERO_SRCSET, HOMEPAGE_HTML } from "./homepage-html";
 
+// Public, content-only page → render statically so it's served from the edge
+// cache (fast TTFB). Pairs with the static marketing CSP in middleware.ts.
+export const dynamic = "force-static";
+
 // The public marketing homepage at the root "/". (Pre-launch this served a
 // waitlist "coming soon"; at launch the full homepage took its place and /home
 // now permanently redirects here, so there is a single canonical homepage URL.)

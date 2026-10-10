@@ -42,45 +42,89 @@ const GA_SCRIPT = "https://www.googletagmanager.com";
 const GA_CONNECT =
   "https://www.googletagmanager.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com";
 
+// Public marketing pages carry no auth and no reflected user input, so they use a
+// STATIC CSP (no per-request nonce — a nonce can't be cached) and are served from
+// the edge cache. Everything else (the app, auth pages) keeps the strict nonce +
+// strict-dynamic policy.
+const MARKETING_EXACT = new Set([
+  "/",
+  "/home",
+  "/pricing",
+  "/verify-backlinks",
+  "/lost-backlinks",
+  "/broken-backlinks",
+  "/backlink-health-check",
+  "/backlink-management",
+  "/backlink-audit",
+  "/backlink-profile",
+  "/backlink-reporting",
+]);
+function isMarketing(p: string): boolean {
+  return (
+    MARKETING_EXACT.has(p) ||
+    p === "/docs" ||
+    p.startsWith("/docs/") ||
+    p === "/legal" ||
+    p.startsWith("/legal/") ||
+    p.startsWith("/tools/")
+  );
+}
+
 export function middleware(request: NextRequest) {
   const dev = process.env.NODE_ENV !== "production";
-  const nonce = btoa(crypto.randomUUID());
-
   // Dev needs eval + websockets for React Refresh / HMR; prod does not.
   const scriptExtra = dev ? " 'unsafe-eval'" : "";
   const connectSrc = ["'self'", API_ORIGIN, TURNSTILE_ORIGIN, GA_CONNECT, ...(dev ? ["ws:", "http://localhost:*"] : [])]
     .filter(Boolean)
     .join(" ");
+  const frameSrc = ["'self'", TURNSTILE_ORIGIN].filter(Boolean).join(" ");
+
+  const buildCsp = (scriptSrc: string) =>
+    [
+      `default-src 'self'`,
+      `script-src ${scriptSrc}${scriptExtra}`,
+      `style-src 'self' 'unsafe-inline'`,
+      `img-src 'self' data: https:`,
+      `font-src 'self' data:`,
+      `connect-src ${connectSrc}`,
+      `frame-src ${frameSrc}`,
+      `object-src 'none'`,
+      `base-uri 'self'`,
+      `form-action 'self'`,
+      `frame-ancestors 'none'`,
+      `upgrade-insecure-requests`,
+    ].join("; ");
+
+  if (isMarketing(request.nextUrl.pathname)) {
+    // Static + edge-cacheable: no nonce (it would force per-request rendering and
+    // defeat caching). Inline scripts (ours + Next's hydration) are allowed via
+    // 'unsafe-inline' — acceptable on public pages with no secrets and no
+    // reflected input. Script injection here has nothing to steal.
+    const scriptSrc = ["'self'", "'unsafe-inline'", TURNSTILE_ORIGIN, GA_SCRIPT]
+      .filter(Boolean)
+      .join(" ");
+    const response = NextResponse.next();
+    response.headers.set("content-security-policy", buildCsp(scriptSrc));
+    response.headers.set(
+      "Cache-Control",
+      "public, max-age=0, s-maxage=600, stale-while-revalidate=86400",
+    );
+    return response;
+  }
+
+  // App + auth pages: strict nonce + strict-dynamic. These routes render
+  // dynamically (the layout reads the nonce), so Next stamps the nonce onto its
+  // scripts and the inline scripts carry it too.
+  const nonce = btoa(crypto.randomUUID());
   const scriptSrc = ["'self'", `'nonce-${nonce}'`, "'strict-dynamic'", TURNSTILE_ORIGIN, GA_SCRIPT]
     .filter(Boolean)
     .join(" ");
-  const frameSrc = ["'self'", TURNSTILE_ORIGIN].filter(Boolean).join(" ");
-
-  const csp = [
-    `default-src 'self'`,
-    `script-src ${scriptSrc}${scriptExtra}`,
-    `style-src 'self' 'unsafe-inline'`,
-    `img-src 'self' data: https:`,
-    `font-src 'self' data:`,
-    `connect-src ${connectSrc}`,
-    `frame-src ${frameSrc}`,
-    `object-src 'none'`,
-    `base-uri 'self'`,
-    `form-action 'self'`,
-    `frame-ancestors 'none'`,
-    `upgrade-insecure-requests`,
-  ].join("; ");
-
-  // Pass the nonce + CSP to the render on the request, so Next nonces its
-  // scripts; also set the CSP on the response the browser enforces.
+  const csp = buildCsp(scriptSrc);
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", nonce);
   requestHeaders.set("content-security-policy", csp);
-
   const response = NextResponse.next({ request: { headers: requestHeaders } });
   response.headers.set("content-security-policy", csp);
-  // Launched: the site is public and indexable. Per-page `robots` metadata still
-  // governs individual pages (e.g. legal pages stay noindex via their own meta).
   return response;
 }
 

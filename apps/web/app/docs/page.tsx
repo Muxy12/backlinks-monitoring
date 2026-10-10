@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+
+export const dynamic = "force-static"; // public content → prerender + edge cache (pairs with the static marketing CSP in middleware.ts)
 import { ProseShell, ProseFooter } from "../prose-chrome";
 
 export const metadata: Metadata = {

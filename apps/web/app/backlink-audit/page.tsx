@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+
+export const dynamic = "force-static"; // public content → prerender + edge cache (pairs with the static marketing CSP in middleware.ts)
 import { marketingPage } from "../marketing";
 
 // Backlink Audit — SEO guide/tool page on the shared marketing shell. Unique
