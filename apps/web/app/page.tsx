@@ -49,6 +49,14 @@ const JSONLD = `{
 export default function HomePage() {
   return (
     <>
+      {/* The hero dashboard image is the LCP element — preload it so the
+          download starts before the HTML/CSS is parsed (big win on slow 4G). */}
+      <link
+        rel="preload"
+        as="image"
+        href="https://ye8jhaekbbcviws9.public.blob.vercel-storage.com/banniere-dashboard-linkpulz.webp"
+        fetchPriority="high"
+      />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSONLD }} />
       <div dangerouslySetInnerHTML={{ __html: HOMEPAGE_HTML }} />
     </>
