@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+
+export const dynamic = "force-static"; // public content → prerender + edge cache (pairs with the static marketing CSP in middleware.ts)
 import { marketingPage } from "../marketing";
 
 // Lost Backlinks — SEO tool/guide page. Built on the shared marketing shell so
