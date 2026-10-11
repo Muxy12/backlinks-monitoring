@@ -41,7 +41,9 @@ pub use monitoring::{
 };
 pub use net::{SsrfBlock, classify_host, classify_ip, classify_port, classify_scheme};
 pub use observation::{BlockReason, ConnErrorKind, Detected, Observation};
-pub use outreach::{OutreachContext, OutreachDraft, render_draft as outreach_render_draft};
+pub use outreach::{
+    OutreachContext, OutreachDraft, ReclaimPitch, render_draft as outreach_render_draft,
+};
 pub use reclamation::ReclaimAngle;
 pub use scoring::{ProspectScore, ProspectSignals, score_prospect};
 pub use state_machine::{BacklinkState, DetectedFields, Transition, TransitionPolicy, transition};

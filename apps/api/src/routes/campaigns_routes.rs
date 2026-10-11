@@ -15,7 +15,10 @@ use axum::Json;
 use axum::extract::{Path, Query, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum_extra::extract::cookie::CookieJar;
-use backlio_core::{OutreachContext, ProspectSignals, outreach_render_draft, score_prospect};
+use backlio_core::{
+    OutreachContext, ProspectSignals, ReclaimAngle, ReclaimPitch, outreach_render_draft,
+    score_prospect,
+};
 use common::Role;
 use db::authorize_org;
 use db::repositories::{analytics, audit, backlinks, campaign_targets, campaigns, prospects};
@@ -559,12 +562,37 @@ pub async fn prospect_draft(
         .as_deref()
         .map(str::trim)
         .filter(|s| !s.is_empty());
+
+    // Reclamation prospects (R2) pitch the specific lost link: load the origin
+    // backlink and build the receipts. A missing/changed backlink just falls back
+    // to the cold template (reclaim stays None).
+    let reclaim_bl = match (p.source.as_str(), p.origin_backlink_id) {
+        ("reclamation", Some(bl_id)) => backlinks::get(&state.pool, &scope, bl_id).await.ok(),
+        _ => None,
+    };
+    let lost_on = reclaim_bl
+        .as_ref()
+        .and_then(|b| b.lost_at)
+        .map(|d| d.format("%Y-%m-%d").to_string());
+    let reclaim = reclaim_bl.as_ref().and_then(|b| {
+        ReclaimAngle::from_status(&b.status).map(|angle| ReclaimPitch {
+            angle,
+            source_url: b.source_url.as_str(),
+            anchor: b
+                .detected_anchor_text
+                .as_deref()
+                .or(b.expected_anchor_text.as_deref()),
+            lost_on: lost_on.as_deref(),
+        })
+    });
+
     let draft = outreach_render_draft(OutreachContext {
         prospect_domain: &p.domain,
         contact_name: p.contact_name.as_deref(),
         target_url,
         sender_name,
         campaign_name: &campaign.name,
+        reclaim,
     });
     Ok(Json(DraftView {
         subject: draft.subject,

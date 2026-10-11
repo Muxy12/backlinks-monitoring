@@ -225,6 +225,19 @@ pub async fn tick(
         0
     };
 
+    // Close reclamation prospects whose link came back (origin backlink is live
+    // again) — the self-closing half of the loop. Idempotent, DB-only.
+    let reclaimed_won = if state.cfg.campaigns_beta {
+        db::repositories::reclamation::close_restored(&state.pool)
+            .await
+            .unwrap_or_else(|e| {
+                tracing::warn!(error = %e, "tick: reclamation close failed");
+                0
+            })
+    } else {
+        0
+    };
+
     // Reclaim any leases from this or a prior tick that stopped mid-flight.
     let _ = db::repositories::job_queue::reap(&state.pool, 900).await;
 
@@ -239,6 +252,7 @@ pub async fn tick(
         "gsc_synced": gsc_synced,
         "gsc_inspected": gsc_inspected,
         "reclaimed": reclaimed,
+        "reclaimed_won": reclaimed_won,
         "partial": partial,
     })))
 }
