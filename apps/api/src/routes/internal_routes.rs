@@ -210,6 +210,21 @@ pub async fn tick(
     .await
     .unwrap_or(0);
 
+    // Link reclamation (BETA, migration 0041): turn confirmed lost/devalued own
+    // backlinks into prospects in the per-project "Link reclamation" campaign.
+    // DB-only, bounded, idempotent; a 3-day grace avoids acting on transients.
+    // Inert unless CAMPAIGNS_BETA is on.
+    let reclaimed = if state.cfg.campaigns_beta {
+        db::repositories::reclamation::scan(&state.pool, 3, 50)
+            .await
+            .unwrap_or_else(|e| {
+                tracing::warn!(error = %e, "tick: reclamation scan failed");
+                0
+            })
+    } else {
+        0
+    };
+
     // Reclaim any leases from this or a prior tick that stopped mid-flight.
     let _ = db::repositories::job_queue::reap(&state.pool, 900).await;
 
@@ -223,6 +238,7 @@ pub async fn tick(
         "snapshots": snapshots,
         "gsc_synced": gsc_synced,
         "gsc_inspected": gsc_inspected,
+        "reclaimed": reclaimed,
         "partial": partial,
     })))
 }

@@ -6116,3 +6116,194 @@ pub mod feedback {
         Ok(row.is_some())
     }
 }
+
+/// Link reclamation engine (BETA, migration 0041). A cross-tenant tick pass that
+/// turns an owner's lost/devalued **own** backlinks into auto-created prospects
+/// in a per-project "Link reclamation" system campaign, with the full context
+/// (receipts) pre-filled. The reclaim/eligibility rules live in the pure core
+/// (`backlio_core::reclamation`); this module is just the I/O around them.
+///
+/// Tenant-safe by construction: each candidate carries its own `organization_id`
+/// and the prospect is created in *that* org's project — no cross-tenant mixing.
+pub mod reclamation {
+    use super::*;
+    use backlio_core::reclamation as rc;
+
+    /// A lost/devalued own backlink that may deserve a reclamation prospect. The
+    /// SQL applies the coarse filters (own, reclaimable status, value, grace
+    /// window, not-already-a-prospect); the pure core makes the final call.
+    #[derive(sqlx::FromRow)]
+    struct Candidate {
+        organization_id: Uuid,
+        project_id: Uuid,
+        backlink_id: Uuid,
+        source_domain: String,
+        source_url: String,
+        target_url: String,
+        anchor: Option<String>,
+        status: String,
+        subject: String,
+        monitoring_enabled: bool,
+        monitoring_level: String,
+        has_cost: bool,
+        has_campaign: bool,
+        lost_on: Option<String>,
+    }
+
+    /// Fetch up to `limit` candidate backlinks whose loss was confirmed at least
+    /// `grace_days` ago (so a transient outage never triggers outreach) and that
+    /// do not yet have a reclamation prospect.
+    async fn candidates(
+        pool: &PgPool,
+        grace_days: i32,
+        limit: i64,
+    ) -> Result<Vec<Candidate>, DbError> {
+        Ok(sqlx::query_as::<_, Candidate>(
+            "SELECT b.organization_id, b.project_id, b.id AS backlink_id, \
+                    b.source_domain, b.source_url, b.target_url, \
+                    coalesce(b.detected_anchor_text, b.expected_anchor_text) AS anchor, \
+                    b.status::text AS status, b.subject, \
+                    b.monitoring_enabled, b.monitoring_level, \
+                    (b.cost IS NOT NULL) AS has_cost, \
+                    (b.campaign_id IS NOT NULL) AS has_campaign, \
+                    to_char(coalesce(b.lost_at, b.last_checked_at, b.updated_at), 'YYYY-MM-DD') AS lost_on \
+             FROM backlinks b \
+             WHERE b.subject = 'own' \
+               AND b.status::text IN ('lost', 'nofollow', 'source_error') \
+               AND (b.monitoring_enabled OR b.monitoring_level = 'protected' \
+                    OR b.cost IS NOT NULL OR b.campaign_id IS NOT NULL) \
+               AND coalesce(b.lost_at, b.last_checked_at, b.updated_at) \
+                     <= now() - make_interval(days => $1) \
+               AND NOT EXISTS (SELECT 1 FROM prospects p WHERE p.origin_backlink_id = b.id) \
+             ORDER BY coalesce(b.lost_at, b.last_checked_at, b.updated_at) DESC \
+             LIMIT $2",
+        )
+        .bind(grace_days)
+        .bind(limit)
+        .fetch_all(pool)
+        .await?)
+    }
+
+    /// Get (or idempotently create) the per-project "Link reclamation" system
+    /// campaign. Relies on the partial unique index from migration 0041.
+    async fn system_campaign(
+        pool: &PgPool,
+        organization_id: Uuid,
+        project_id: Uuid,
+    ) -> Result<Uuid, DbError> {
+        let inserted: Option<(Uuid,)> = sqlx::query_as(
+            "INSERT INTO campaigns \
+                (id, organization_id, project_id, name, status, system_kind) \
+             VALUES ($1, $2, $3, 'Link reclamation', 'active', 'reclamation') \
+             ON CONFLICT (organization_id, project_id, system_kind) \
+                 WHERE system_kind IS NOT NULL \
+                 DO NOTHING \
+             RETURNING id",
+        )
+        .bind(Uuid::now_v7())
+        .bind(organization_id)
+        .bind(project_id)
+        .fetch_optional(pool)
+        .await
+        .map_err(DbError::from_insert)?;
+        if let Some((id,)) = inserted {
+            return Ok(id);
+        }
+        // Already exists — fetch it.
+        let (id,): (Uuid,) = sqlx::query_as(
+            "SELECT id FROM campaigns \
+             WHERE organization_id = $1 AND project_id = $2 AND system_kind = 'reclamation'",
+        )
+        .bind(organization_id)
+        .bind(project_id)
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_fetch)?;
+        Ok(id)
+    }
+
+    /// Insert a reclamation prospect, deduped on (campaign, domain). Returns
+    /// whether a new row was created (false = this domain is already a prospect).
+    #[allow(clippy::too_many_arguments)]
+    async fn upsert_prospect(
+        pool: &PgPool,
+        organization_id: Uuid,
+        campaign_id: Uuid,
+        domain: &str,
+        target_url: &str,
+        notes: &str,
+        score: i32,
+        score_reason: &str,
+        origin_backlink_id: Uuid,
+    ) -> Result<bool, DbError> {
+        let row: Option<(Uuid,)> = sqlx::query_as(
+            "INSERT INTO prospects \
+                (id, organization_id, campaign_id, domain, normalized_domain, source, \
+                 target_url, notes, score, score_reason, origin_backlink_id) \
+             VALUES ($1, $2, $3, $4, $4, 'reclamation', $5, $6, $7, $8, $9) \
+             ON CONFLICT (campaign_id, normalized_domain) DO NOTHING \
+             RETURNING id",
+        )
+        .bind(Uuid::now_v7())
+        .bind(organization_id)
+        .bind(campaign_id)
+        .bind(domain)
+        .bind(target_url)
+        .bind(notes)
+        .bind(score)
+        .bind(score_reason)
+        .bind(origin_backlink_id)
+        .fetch_optional(pool)
+        .await
+        .map_err(DbError::from_insert)?;
+        Ok(row.is_some())
+    }
+
+    /// Scan for reclaimable lost links and auto-create prospects. Bounded and
+    /// DB-only — safe to run on every tick. Returns the number of prospects
+    /// created this pass.
+    pub async fn scan(pool: &PgPool, grace_days: i32, limit: i64) -> Result<u64, DbError> {
+        let cands = candidates(pool, grace_days, limit).await?;
+        let mut created = 0u64;
+        for c in cands {
+            // The pure core is the source of truth for the two product rules.
+            let Some(angle) = rc::ReclaimAngle::from_status(&c.status) else {
+                continue;
+            };
+            if !rc::is_eligible(
+                &c.subject,
+                c.monitoring_enabled,
+                &c.monitoring_level,
+                c.has_cost,
+                c.has_campaign,
+            ) {
+                continue;
+            }
+            let campaign_id = system_campaign(pool, c.organization_id, c.project_id).await?;
+            let (score, reason) = angle.score();
+            let notes = rc::receipts(
+                angle,
+                &c.source_url,
+                c.anchor.as_deref(),
+                &c.target_url,
+                c.lost_on.as_deref(),
+            );
+            if upsert_prospect(
+                pool,
+                c.organization_id,
+                campaign_id,
+                &c.source_domain,
+                &c.target_url,
+                &notes,
+                score,
+                reason,
+                c.backlink_id,
+            )
+            .await?
+            {
+                created += 1;
+            }
+        }
+        Ok(created)
+    }
+}
