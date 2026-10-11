@@ -6328,3 +6328,213 @@ pub mod reclamation {
         Ok(res.rows_affected())
     }
 }
+
+/// Outreach sending engine (BETA, migration 0042). Enrollment pre-schedules a
+/// prospect's cadence as `outreach_messages`; the tick dispatch sends what is due
+/// and stops anything whose prospect is no longer in `contacted` or is
+/// suppressed. All send/stop decisions honour the per-org suppression list.
+pub mod outreach {
+    use super::*;
+
+    /// Move a prospect into `contacted` (stamping the first-contact time, which
+    /// anchors the cadence) when it is in a non-terminal stage. Re-running keeps
+    /// the original `last_contacted_at`, so re-enrolling never resets the clock.
+    /// Returns the effective enrollment time, or `None` if the prospect is closed
+    /// (`won`/`lost`) or not in the org.
+    pub async fn mark_contacted(
+        pool: &PgPool,
+        organization_id: Uuid,
+        prospect_id: Uuid,
+        now: DateTime<Utc>,
+    ) -> Result<Option<DateTime<Utc>>, DbError> {
+        let row: Option<(DateTime<Utc>,)> = sqlx::query_as(
+            "UPDATE prospects \
+             SET stage = 'contacted', last_contacted_at = coalesce(last_contacted_at, $3), \
+                 updated_at = now() \
+             WHERE id = $1 AND organization_id = $2 \
+               AND stage IN ('identified', 'qualified', 'contacted') \
+             RETURNING last_contacted_at",
+        )
+        .bind(prospect_id)
+        .bind(organization_id)
+        .bind(now)
+        .fetch_optional(pool)
+        .await
+        .map_err(DbError::from_insert)?;
+        Ok(row.map(|(t,)| t))
+    }
+
+    /// Pre-schedule the full cadence for a prospect (idempotent per step). Caller
+    /// has already checked the prospect is in the org and has a contact email.
+    /// Returns how many step rows were newly created.
+    pub async fn enroll(
+        pool: &PgPool,
+        organization_id: Uuid,
+        campaign_id: Uuid,
+        prospect_id: Uuid,
+        to_email: &str,
+        enrolled_at: DateTime<Utc>,
+    ) -> Result<u64, DbError> {
+        let mut created = 0u64;
+        for (step, due) in backlio_core::outreach_schedule::schedule(enrolled_at) {
+            let row: Option<(Uuid,)> = sqlx::query_as(
+                "INSERT INTO outreach_messages \
+                    (id, organization_id, campaign_id, prospect_id, step, scheduled_at, to_email) \
+                 VALUES ($1, $2, $3, $4, $5, $6, $7) \
+                 ON CONFLICT (prospect_id, step) DO NOTHING RETURNING id",
+            )
+            .bind(Uuid::now_v7())
+            .bind(organization_id)
+            .bind(campaign_id)
+            .bind(prospect_id)
+            .bind(step)
+            .bind(due)
+            .bind(to_email)
+            .fetch_optional(pool)
+            .await
+            .map_err(DbError::from_insert)?;
+            if row.is_some() {
+                created += 1;
+            }
+        }
+        Ok(created)
+    }
+
+    /// A queued step that is due to send now, with everything the draft needs.
+    #[derive(sqlx::FromRow)]
+    pub struct DueMessage {
+        pub message_id: Uuid,
+        pub organization_id: Uuid,
+        pub prospect_id: Uuid,
+        pub step: i16,
+        pub to_email: String,
+        pub prospect_domain: String,
+        pub contact_name: Option<String>,
+        pub target_url: Option<String>,
+        pub campaign_name: String,
+        pub source: String,
+        pub owner_email: Option<String>,
+        pub origin_source_url: Option<String>,
+        pub origin_anchor: Option<String>,
+        pub origin_status: Option<String>,
+        pub origin_lost_on: Option<String>,
+    }
+
+    /// Pull up to `limit` due, queued steps whose prospect is still `contacted`
+    /// and whose recipient is not suppressed. Cross-tenant (the tick), oldest
+    /// first. `owner_email` is the org owner's address, used as the reply-to.
+    pub async fn due_messages(pool: &PgPool, limit: i64) -> Result<Vec<DueMessage>, DbError> {
+        Ok(sqlx::query_as::<_, DueMessage>(
+            "SELECT m.id AS message_id, m.organization_id, m.prospect_id, m.step, \
+                    m.to_email::text AS to_email, p.domain AS prospect_domain, p.contact_name, \
+                    coalesce(p.target_url, c.primary_target_url) AS target_url, \
+                    c.name AS campaign_name, p.source, \
+                    (SELECT u.email FROM organization_members om \
+                       JOIN users u ON u.id = om.user_id \
+                       WHERE om.organization_id = m.organization_id AND om.role = 'owner' \
+                       ORDER BY u.created_at LIMIT 1) AS owner_email, \
+                    b.source_url AS origin_source_url, \
+                    coalesce(b.detected_anchor_text, b.expected_anchor_text) AS origin_anchor, \
+                    b.status::text AS origin_status, \
+                    to_char(b.lost_at, 'YYYY-MM-DD') AS origin_lost_on \
+             FROM outreach_messages m \
+             JOIN prospects p ON p.id = m.prospect_id \
+             JOIN campaigns c ON c.id = m.campaign_id \
+             LEFT JOIN backlinks b ON b.id = p.origin_backlink_id \
+             WHERE m.status = 'queued' AND m.scheduled_at <= now() \
+               AND p.stage = 'contacted' \
+               AND NOT EXISTS (SELECT 1 FROM outreach_suppressions s \
+                               WHERE s.organization_id = m.organization_id \
+                                 AND s.email = m.to_email) \
+             ORDER BY m.scheduled_at \
+             LIMIT $1",
+        )
+        .bind(limit)
+        .fetch_all(pool)
+        .await?)
+    }
+
+    /// Mark a step sent with the provider's message id.
+    pub async fn mark_sent(
+        pool: &PgPool,
+        message_id: Uuid,
+        provider_message_id: &str,
+    ) -> Result<(), DbError> {
+        sqlx::query(
+            "UPDATE outreach_messages \
+             SET status = 'sent', sent_at = now(), provider_message_id = $2, updated_at = now() \
+             WHERE id = $1",
+        )
+        .bind(message_id)
+        .bind(provider_message_id)
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    /// Mark a step failed with the provider error (capped).
+    pub async fn mark_failed(pool: &PgPool, message_id: Uuid, err: &str) -> Result<(), DbError> {
+        let capped: String = err.chars().take(500).collect();
+        sqlx::query(
+            "UPDATE outreach_messages \
+             SET status = 'failed', error = $2, updated_at = now() WHERE id = $1",
+        )
+        .bind(message_id)
+        .bind(capped)
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    /// Stop queued steps whose prospect left `contacted` (a reply/advance) or
+    /// whose recipient is now suppressed — the stop-on-reply guard. Returns how
+    /// many were stopped.
+    pub async fn stop_stale(pool: &PgPool) -> Result<u64, DbError> {
+        let res = sqlx::query(
+            "UPDATE outreach_messages m SET status = 'stopped', updated_at = now() \
+             FROM prospects p \
+             WHERE p.id = m.prospect_id AND m.status = 'queued' \
+               AND (p.stage <> 'contacted' \
+                    OR EXISTS (SELECT 1 FROM outreach_suppressions s \
+                               WHERE s.organization_id = m.organization_id \
+                                 AND s.email = m.to_email))",
+        )
+        .execute(pool)
+        .await?;
+        Ok(res.rows_affected())
+    }
+
+    /// Resolve an outreach message id to (org, recipient email, prospect) for the
+    /// public unsubscribe endpoint.
+    pub async fn recipient_for_message(
+        pool: &PgPool,
+        message_id: Uuid,
+    ) -> Result<Option<(Uuid, String, Uuid)>, DbError> {
+        Ok(sqlx::query_as(
+            "SELECT organization_id, to_email::text, prospect_id \
+             FROM outreach_messages WHERE id = $1",
+        )
+        .bind(message_id)
+        .fetch_optional(pool)
+        .await?)
+    }
+
+    /// Add a recipient to the org's do-not-email list (idempotent).
+    pub async fn suppress(
+        pool: &PgPool,
+        organization_id: Uuid,
+        email: &str,
+        reason: &str,
+    ) -> Result<(), DbError> {
+        sqlx::query(
+            "INSERT INTO outreach_suppressions (organization_id, email, reason) \
+             VALUES ($1, $2, $3) ON CONFLICT (organization_id, email) DO NOTHING",
+        )
+        .bind(organization_id)
+        .bind(email)
+        .bind(reason)
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+}

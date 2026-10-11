@@ -238,6 +238,16 @@ pub async fn tick(
         0
     };
 
+    // Send any due outreach steps (BETA, migration 0042): stop-on-reply guard,
+    // then send the due queued steps via the dedicated Resend subdomain. Bounded
+    // per tick to protect the shared sending reputation. Inert unless
+    // CAMPAIGNS_BETA is on AND OUTREACH_FROM is configured.
+    let outreach_sent = if state.cfg.campaigns_beta {
+        crate::outreach_dispatch::dispatch_due(&state.pool, 30).await
+    } else {
+        0
+    };
+
     // Reclaim any leases from this or a prior tick that stopped mid-flight.
     let _ = db::repositories::job_queue::reap(&state.pool, 900).await;
 
@@ -253,6 +263,7 @@ pub async fn tick(
         "gsc_inspected": gsc_inspected,
         "reclaimed": reclaimed,
         "reclaimed_won": reclaimed_won,
+        "outreach_sent": outreach_sent,
         "partial": partial,
     })))
 }
