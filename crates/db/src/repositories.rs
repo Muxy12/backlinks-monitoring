@@ -6306,4 +6306,25 @@ pub mod reclamation {
         }
         Ok(created)
     }
+
+    /// Auto-close reclamation prospects whose origin backlink is live again: the
+    /// monitoring engine confirmed the link came back (a `BacklinkRestored`
+    /// outcome), so the prospect is marked `won` with `won_backlink_id` set to
+    /// the restored link. Idempotent (skips prospects already won/lost); returns
+    /// how many were closed. This is what makes the loop close itself — no manual
+    /// "did it come back?" check.
+    pub async fn close_restored(pool: &PgPool) -> Result<u64, DbError> {
+        let res = sqlx::query(
+            "UPDATE prospects p \
+             SET stage = 'won', won_backlink_id = p.origin_backlink_id, updated_at = now() \
+             FROM backlinks b \
+             WHERE p.origin_backlink_id = b.id \
+               AND p.source = 'reclamation' \
+               AND p.stage NOT IN ('won', 'lost') \
+               AND b.status::text = 'live'",
+        )
+        .execute(pool)
+        .await?;
+        Ok(res.rows_affected())
+    }
 }
