@@ -4512,7 +4512,7 @@ pub mod campaigns {
             "id, organization_id, project_id, name, description, \
              status::text AS status, start_date, end_date, target_backlinks, \
              budget::text AS budget, currency, objective, primary_target_url, \
-             created_at, updated_at"
+             system_kind, created_at, updated_at"
         };
     }
 
@@ -4826,7 +4826,8 @@ pub mod prospects {
             "id, organization_id, campaign_id, domain, normalized_domain, stage, \
              source, score, score_reason, competitor_count, contact_name, \
              contact_email, target_url, estimated_cost::text AS estimated_cost, \
-             currency, notes, last_contacted_at, won_backlink_id, created_at, updated_at"
+             currency, notes, last_contacted_at, won_backlink_id, origin_backlink_id, \
+             created_at, updated_at"
         };
     }
 

@@ -291,6 +291,9 @@ pub struct Campaign {
     /// Link-building objective + headline target page (migration 0036).
     pub objective: Option<String>,
     pub primary_target_url: Option<String>,
+    /// System-managed campaign kind (migration 0041), e.g. "reclamation" for the
+    /// per-project link-reclamation pipeline. `None` for user-created campaigns.
+    pub system_kind: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -329,6 +332,9 @@ pub struct Prospect {
     pub notes: Option<String>,
     pub last_contacted_at: Option<DateTime<Utc>>,
     pub won_backlink_id: Option<Uuid>,
+    /// For reclamation prospects (migration 0041): the backlink this prospect is
+    /// trying to win back. `None` for gap/manual prospects.
+    pub origin_backlink_id: Option<Uuid>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
