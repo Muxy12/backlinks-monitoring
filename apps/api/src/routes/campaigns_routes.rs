@@ -21,7 +21,9 @@ use backlio_core::{
 };
 use common::Role;
 use db::authorize_org;
-use db::repositories::{analytics, audit, backlinks, campaign_targets, campaigns, prospects};
+use db::repositories::{
+    analytics, audit, backlinks, campaign_targets, campaigns, outreach, prospects,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use uuid::Uuid;
@@ -599,6 +601,86 @@ pub async fn prospect_draft(
         body: draft.body,
     }))
 }
+
+// ─── Outreach sequence: enroll ("Start sequence") ─────────────────────────────
+#[derive(Serialize)]
+pub struct StartOutreachResult {
+    pub enrolled: bool,
+    pub steps_created: u64,
+}
+
+/// Enroll a prospect into the automated follow-up sequence: move it to
+/// `contacted` (anchoring the cadence) and pre-schedule the steps. Explicit,
+/// operator-triggered — nothing sends until this is called (and the server has
+/// outreach configured). Idempotent: re-calling never resets the clock or
+/// duplicates steps.
+pub async fn start_outreach(
+    State(state): State<AppState>,
+    Path((org_id, prospect_id)): Path<(Uuid, Uuid)>,
+    jar: CookieJar,
+    headers: HeaderMap,
+) -> Result<Json<StartOutreachResult>, ApiError> {
+    require_beta(&state)?;
+    let (user, session) = current(&state, &jar).await?;
+    check_csrf(&jar, &headers, &session)?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Member)?;
+    if !notifications::resend::outreach_configured() {
+        return Err(ApiError::Validation(
+            "outreach sending is not configured on this server".into(),
+        ));
+    }
+    let p = prospects::get(&state.pool, &scope, prospect_id).await?;
+    let to_email = p
+        .contact_email
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .ok_or_else(|| ApiError::Validation("prospect has no contact email".into()))?;
+    let now = chrono::Utc::now();
+    let enrolled_at =
+        outreach::mark_contacted(&state.pool, scope.organization_id(), prospect_id, now)
+            .await?
+            .ok_or_else(|| ApiError::Validation("prospect is closed (won or lost)".into()))?;
+    let steps_created = outreach::enroll(
+        &state.pool,
+        scope.organization_id(),
+        p.campaign_id,
+        prospect_id,
+        to_email,
+        enrolled_at,
+    )
+    .await?;
+    Ok(Json(StartOutreachResult {
+        enrolled: true,
+        steps_created,
+    }))
+}
+
+// ─── Outreach unsubscribe (public, no auth) ───────────────────────────────────
+#[derive(Deserialize)]
+pub struct UnsubQuery {
+    pub m: Uuid,
+}
+
+/// One-click unsubscribe from an outreach email. Public (the recipient isn't a
+/// user). Looks the message up by id, suppresses that recipient for the org, and
+/// always returns the same confirmation (never leaks whether the id existed).
+pub async fn outreach_unsubscribe(
+    State(state): State<AppState>,
+    Query(q): Query<UnsubQuery>,
+) -> Result<axum::response::Html<&'static str>, ApiError> {
+    if let Some((org, email, _prospect)) = outreach::recipient_for_message(&state.pool, q.m).await?
+    {
+        outreach::suppress(&state.pool, org, &email, "unsubscribe").await?;
+    }
+    Ok(axum::response::Html(UNSUB_HTML))
+}
+
+const UNSUB_HTML: &str = "<!doctype html><meta charset=\"utf-8\"><title>Unsubscribed</title>\
+<div style=\"font:16px/1.6 system-ui,sans-serif;max-width:32rem;margin:4rem auto;padding:0 1rem\">\
+<h1>You're unsubscribed</h1><p>You won't receive any more outreach emails about this. \
+It can take a moment to take effect. Sent in error? You can ignore this page.</p></div>";
 
 // ─── Convert a won prospect to a protected backlink ───────────────────────────
 #[derive(Deserialize)]

@@ -204,6 +204,94 @@ pub mod resend {
         post(&api_key, &body).await
     }
 
+    /// Outreach config: a DEDICATED `from` (its own sending subdomain, set via
+    /// `OUTREACH_FROM`) so cold-ish outreach never rides the transactional
+    /// domain's reputation. Shares the `EMAIL_PROVIDER_API_KEY`. Err when unset.
+    fn outreach_config() -> Result<(String, String), String> {
+        let api_key = std::env::var("EMAIL_PROVIDER_API_KEY")
+            .ok()
+            .filter(|s| !s.is_empty());
+        let from = std::env::var("OUTREACH_FROM")
+            .ok()
+            .filter(|s| !s.is_empty());
+        match (api_key, from) {
+            (Some(k), Some(f)) => Ok((k, f)),
+            _ => Err(
+                "outreach email not configured (set EMAIL_PROVIDER_API_KEY and OUTREACH_FROM)"
+                    .into(),
+            ),
+        }
+    }
+
+    /// Whether outreach sending is configured (used to gate the dispatch so it
+    /// stays inert until an operator sets `OUTREACH_FROM`).
+    pub fn outreach_configured() -> bool {
+        outreach_config().is_ok()
+    }
+
+    /// POST a prepared email and return the provider's message id on 2xx.
+    async fn post_id(api_key: &str, body: &serde_json::Value) -> Result<String, String> {
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(20))
+            .build()
+            .map_err(|e| format!("http client: {e}"))?;
+        let resp = client
+            .post("https://api.resend.com/emails")
+            .bearer_auth(api_key)
+            .json(body)
+            .send()
+            .await
+            .map_err(|e| format!("resend request failed: {e}"))?;
+        let status = resp.status();
+        let detail = resp.text().await.unwrap_or_default();
+        let parsed = serde_json::from_str::<serde_json::Value>(&detail).ok();
+        if status.is_success() {
+            let id = parsed
+                .as_ref()
+                .and_then(|v| v.get("id"))
+                .and_then(|m| m.as_str())
+                .unwrap_or_default()
+                .to_string();
+            Ok(id)
+        } else {
+            let msg = parsed
+                .and_then(|v| {
+                    v.get("message")
+                        .or_else(|| v.get("error"))
+                        .and_then(|m| m.as_str())
+                        .map(str::to_string)
+                })
+                .unwrap_or_else(|| detail.chars().take(200).collect());
+            Err(format!("resend HTTP {status}: {msg}"))
+        }
+    }
+
+    /// Send one outreach email from the dedicated subdomain. `reply_to` routes
+    /// replies to the campaign owner's real inbox; the `List-Unsubscribe` header
+    /// (plus the in-body link) satisfies one-click unsubscribe. Returns the
+    /// provider message id. "outreach email not configured" when env is unset.
+    pub async fn send_outreach(
+        to: &str,
+        subject: &str,
+        text: &str,
+        reply_to: &str,
+        unsubscribe_url: &str,
+    ) -> Result<String, String> {
+        let (api_key, from) = outreach_config()?;
+        let body = serde_json::json!({
+            "from": from,
+            "to": [to],
+            "reply_to": reply_to,
+            "subject": subject,
+            "text": text,
+            "headers": {
+                "List-Unsubscribe": format!("<{unsubscribe_url}>"),
+                "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+            },
+        });
+        post_id(&api_key, &body).await
+    }
+
     /// The Resend audience (mailing list) waitlist signups are stored in.
     /// Overridable with `RESEND_AUDIENCE_ID`; defaults to the LinkPulz waitlist
     /// audience so it works without extra config once the email key is set.

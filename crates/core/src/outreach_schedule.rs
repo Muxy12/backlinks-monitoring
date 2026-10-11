@@ -47,6 +47,18 @@ pub fn step_count() -> usize {
     STEP_OFFSETS_DAYS.len()
 }
 
+/// The full schedule for a prospect enrolled at `enrolled_at`: one `(step,
+/// due_at)` per cadence step, 1-based. Used to pre-create the queued messages at
+/// enrollment so the whole sequence is visible and the dispatch just sends what
+/// is due. Deterministic.
+pub fn schedule(enrolled_at: DateTime<Utc>) -> Vec<(i16, DateTime<Utc>)> {
+    STEP_OFFSETS_DAYS
+        .iter()
+        .enumerate()
+        .map(|(i, &days)| ((i + 1) as i16, enrolled_at + Duration::days(days)))
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -105,5 +117,15 @@ mod tests {
     #[test]
     fn step_count_matches_offsets() {
         assert_eq!(step_count(), 3);
+    }
+
+    #[test]
+    fn schedule_lays_out_all_steps_from_enrollment() {
+        let enrolled = t("2026-10-01T09:00:00Z");
+        let s = schedule(enrolled);
+        assert_eq!(s.len(), 3);
+        assert_eq!(s[0], (1, enrolled));
+        assert_eq!(s[1], (2, t("2026-10-04T09:00:00Z")));
+        assert_eq!(s[2], (3, t("2026-10-08T09:00:00Z")));
     }
 }

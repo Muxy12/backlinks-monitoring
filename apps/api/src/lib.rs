@@ -4,6 +4,7 @@
 pub mod error;
 pub mod gsc_inspect;
 pub mod gsc_sync;
+pub mod outreach_dispatch;
 pub mod routes;
 pub mod security;
 pub mod session;
@@ -143,6 +144,14 @@ pub fn app(state: AppState) -> Router {
         .route(
             "/v1/organizations/{org_id}/prospects/{prospect_id}/draft",
             post(routes::campaigns_routes::prospect_draft),
+        )
+        .route(
+            "/v1/organizations/{org_id}/prospects/{prospect_id}/outreach/start",
+            post(routes::campaigns_routes::start_outreach),
+        )
+        .route(
+            "/v1/outreach/unsubscribe",
+            get(routes::campaigns_routes::outreach_unsubscribe),
         )
         .route(
             "/v1/organizations/{org_id}/prospects/{prospect_id}/convert",
