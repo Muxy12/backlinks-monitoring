@@ -496,6 +496,8 @@ export interface CampaignView {
   primary_target_url?: string | null;
   start_date?: string | null;
   end_date?: string | null;
+  // System-managed campaign kind (migration 0041), e.g. "reclamation".
+  system_kind?: string | null;
 }
 
 // ─── Link-building campaigns (BETA, migration 0036) ──────────────────────────
