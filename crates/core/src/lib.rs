@@ -19,6 +19,7 @@ pub mod monitoring;
 pub mod net;
 pub mod observation;
 pub mod outreach;
+pub mod outreach_schedule;
 pub mod reclamation;
 pub mod scoring;
 pub mod state_machine;
@@ -44,6 +45,7 @@ pub use observation::{BlockReason, ConnErrorKind, Detected, Observation};
 pub use outreach::{
     OutreachContext, OutreachDraft, ReclaimPitch, render_draft as outreach_render_draft,
 };
+pub use outreach_schedule::{DispatchAction, decide as outreach_decide};
 pub use reclamation::ReclaimAngle;
 pub use scoring::{ProspectScore, ProspectSignals, score_prospect};
 pub use state_machine::{BacklinkState, DetectedFields, Transition, TransitionPolicy, transition};
