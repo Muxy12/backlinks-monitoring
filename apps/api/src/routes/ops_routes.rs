@@ -56,6 +56,9 @@ pub struct CampaignView {
     pub primary_target_url: Option<String>,
     pub start_date: Option<String>,
     pub end_date: Option<String>,
+    /// System-managed campaign kind (migration 0041), e.g. "reclamation".
+    /// `None` for ordinary user campaigns.
+    pub system_kind: Option<String>,
 }
 
 impl From<db::entities::Campaign> for CampaignView {
@@ -73,6 +76,7 @@ impl From<db::entities::Campaign> for CampaignView {
             primary_target_url: c.primary_target_url,
             start_date: c.start_date.map(|d| d.to_string()),
             end_date: c.end_date.map(|d| d.to_string()),
+            system_kind: c.system_kind,
         }
     }
 }

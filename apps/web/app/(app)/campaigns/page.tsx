@@ -102,7 +102,21 @@ export default function CampaignsPage() {
                       className="ops-row"
                       onClick={() => router.push(`/campaigns/${c.id}`)}
                     >
-                      <span className="ops-name">{c.name}</span>
+                      <span className="ops-name">
+                        {c.name}
+                        {c.system_kind === "reclamation" && (
+                          <span
+                            className="badge"
+                            style={{
+                              marginLeft: 8,
+                              background: "#e0f2fe",
+                              color: "#075985",
+                            }}
+                          >
+                            ♻ Auto
+                          </span>
+                        )}
+                      </span>
                       <span className="muted">
                         {c.status}
                         {c.objective ? ` · ${c.objective}` : ""}

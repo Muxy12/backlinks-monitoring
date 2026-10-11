@@ -34,7 +34,13 @@ const SOURCE_LABELS: Record<string, string> = {
   manual: "Manual",
   competitor_gap: "Competitor gap",
   discovery: "Discovery",
+  reclamation: "Reclamation",
 };
 export function sourceLabel(slug?: string | null): string {
   return slug ? (SOURCE_LABELS[slug] ?? slug) : "";
+}
+
+/** A prospect auto-created by the link-reclamation engine (migration 0041). */
+export function isReclaim(source?: string | null): boolean {
+  return source === "reclamation";
 }

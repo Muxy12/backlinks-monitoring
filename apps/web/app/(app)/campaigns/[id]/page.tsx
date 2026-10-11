@@ -13,7 +13,14 @@ import {
   type ProspectView,
 } from "@/lib/api";
 import { selectedOrgId } from "@/lib/workspace";
-import { PIPELINE_STAGES, STAGES, STAGE_BADGE, sourceLabel, stageLabel } from "@/lib/campaigns";
+import {
+  PIPELINE_STAGES,
+  STAGES,
+  STAGE_BADGE,
+  isReclaim,
+  sourceLabel,
+  stageLabel,
+} from "@/lib/campaigns";
 import "@/app/auth.css";
 import "../../dashboard/dashboard.css";
 import "../../operations/operations.css";
@@ -824,6 +831,36 @@ function ProspectDrawer({
             </>
           )}
         </div>
+
+        {isReclaim(prospect.source) && (
+          <div
+            className="reclaim-note"
+            style={{
+              margin: "12px 0",
+              padding: "12px 14px",
+              border: "1px solid var(--line)",
+              borderRadius: 10,
+              background: "var(--bg-subtle, rgba(14,165,233,.06))",
+            }}
+          >
+            <span
+              className="badge"
+              style={{ background: "#e0f2fe", color: "#075985" }}
+            >
+              ♻ Reclamation
+            </span>
+            {prospect.notes && (
+              <p className="muted" style={{ margin: "8px 0 0" }}>
+                {prospect.notes}
+              </p>
+            )}
+            {prospect.stage === "won" && prospect.won_backlink_id && (
+              <p style={{ margin: "8px 0 0", color: "#166534", fontWeight: 600 }}>
+                ✓ This link is live again — auto-won by monitoring.
+              </p>
+            )}
+          </div>
+        )}
 
         <div className="drawer-sub">Edit</div>
         {msg && <p className="muted">{msg}</p>}
