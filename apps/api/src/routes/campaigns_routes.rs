@@ -705,24 +705,16 @@ fn extract_prospect_id(payload: &serde_json::Value) -> Option<Uuid> {
 
 /// Best-effort text extraction across common inbound schemas.
 fn extract_str(payload: &serde_json::Value, paths: &[&[&str]]) -> Option<String> {
-    for path in paths {
+    'paths: for path in paths {
         let mut cur = payload;
-        let mut ok = true;
         for key in *path {
             match cur.get(key) {
                 Some(v) => cur = v,
-                None => {
-                    ok = false;
-                    break;
-                }
+                None => continue 'paths,
             }
         }
-        if ok {
-            if let Some(t) = cur.as_str() {
-                if !t.is_empty() {
-                    return Some(t.chars().take(5000).collect());
-                }
-            }
+        if let Some(t) = cur.as_str().filter(|t| !t.is_empty()) {
+            return Some(t.chars().take(5000).collect());
         }
     }
     None
@@ -752,31 +744,35 @@ pub async fn outreach_inbound(
         return StatusCode::OK;
     };
     let _ = outreach::advance_on_reply(&state.pool, prospect_id).await;
-    if let Ok(Some(t)) = outreach::reply_target(&state.pool, prospect_id).await {
-        if let Some(owner) = t.owner_email {
-            let reply_body = extract_str(
-                &payload,
-                &[
-                    &["text"][..],
-                    &["data", "text"][..],
-                    &["plain"][..],
-                    &["html"][..],
-                    &["data", "html"][..],
-                ],
-            )
-            .unwrap_or_default();
-            let from_addr =
-                extract_str(&payload, &[&["from"][..], &["data", "from"][..]]).unwrap_or_default();
-            let subject = format!("Reply from {} to your outreach", t.prospect_domain);
-            let text = format!(
-                "{reply_body}\n\n— Reply from {} ({from_addr}), forwarded by LinkPulz. \
+    // Forward the reply to the owner so they can answer directly. No target or no
+    // owner → nothing to forward, still ack 200.
+    let Ok(Some(t)) = outreach::reply_target(&state.pool, prospect_id).await else {
+        return StatusCode::OK;
+    };
+    let Some(owner) = t.owner_email else {
+        return StatusCode::OK;
+    };
+    let reply_body = extract_str(
+        &payload,
+        &[
+            &["text"][..],
+            &["data", "text"][..],
+            &["plain"][..],
+            &["html"][..],
+            &["data", "html"][..],
+        ],
+    )
+    .unwrap_or_default();
+    let from_addr =
+        extract_str(&payload, &[&["from"][..], &["data", "from"][..]]).unwrap_or_default();
+    let subject = format!("Reply from {} to your outreach", t.prospect_domain);
+    let text = format!(
+        "{reply_body}\n\n— Reply from {} ({from_addr}), forwarded by LinkPulz. \
 Reply to this email to answer them directly.",
-                t.prospect_domain
-            );
-            let reply_to = t.contact_email.unwrap_or(from_addr);
-            let _ = notifications::resend::forward_reply(&owner, &subject, &text, &reply_to).await;
-        }
-    }
+        t.prospect_domain
+    );
+    let reply_to = t.contact_email.unwrap_or(from_addr);
+    let _ = notifications::resend::forward_reply(&owner, &subject, &text, &reply_to).await;
     StatusCode::OK
 }
 
