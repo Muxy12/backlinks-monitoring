@@ -1,0 +1,123 @@
+/* Backlinks page — the "command center" top section (KPI row + evolution +
+   prioritized insights). Builds on the shared dashboard design system
+   (dashboard.css + overview.css: .tile, .panel, .attention-list, .delta-pill);
+   this file only adds the layout grids and the scope affordances specific to
+   this page. Everything uses the app design tokens so light/dark both work. */
+
+/* Section header that states the data's SCOPE, fixing the old mismatch where
+   org-wide aggregates sat above a project-filtered table with no explanation. */
+.bl-agg {
+  margin-bottom: 20px;
+}
+.bl-agg-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 4px 0 12px;
+  flex-wrap: wrap;
+}
+.bl-agg-head h2 {
+  font-size: 1.05rem;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+.bl-scope {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--muted) 10%, transparent);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 3px 11px;
+  white-space: nowrap;
+}
+.bl-scope::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--violet);
+}
+
+/* KPI row — responsive, dense but breathable. Cards reuse .tile/.kpi-accent. */
+.bl-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
+}
+
+/* Evolution + insights live side by side on wide screens, stack on narrow. */
+.bl-two {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 16px;
+  margin-top: 16px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .bl-two {
+    grid-template-columns: 1fr;
+  }
+}
+.bl-two .panel {
+  margin: 0;
+  height: 100%;
+}
+
+/* Growth footer (new / lost / net), mirrors the Overview chart legend. */
+.bl-evo-foot {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.bl-evo-foot b {
+  margin-right: 5px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Insights: empty state + the action buttons sit flush-right per row. */
+.bl-insights-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  padding: 22px 12px;
+  color: var(--muted);
+}
+.bl-insights-empty .bl-insights-ok {
+  color: var(--live);
+  font-weight: 700;
+}
+.attn-item .btn.sm {
+  flex: none;
+  align-self: center;
+}
+
+/* Next-best-action banner above the insight list. */
+.bl-nba {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  border: 1px solid color-mix(in srgb, var(--violet) 35%, var(--line));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--violet) 8%, transparent);
+}
+.bl-nba .attn-title {
+  font-weight: 650;
+}
+.bl-nba .attn-sub {
+  font-size: 0.82rem;
+  color: var(--muted);
+  margin-top: 2px;
+}

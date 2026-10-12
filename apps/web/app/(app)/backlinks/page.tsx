@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useState, type CSSProperties, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { api, orgApi, backlinksExportUrl, type AnchorsView, type BacklinkView, type ClientView, type DashboardResponse, type EventView, type ImpactView, type MeResponse, type NotificationsResponse, type OccurrenceView, type ProjectView, type TagView } from "@/lib/api";
+import { api, orgApi, backlinksExportUrl, type AnchorsView, type AttentionItemView, type BacklinkView, type ClientView, type DashboardResponse, type EventView, type ImpactView, type MeResponse, type NotificationsResponse, type OccurrenceView, type OverviewResponse, type ProjectView, type TagView } from "@/lib/api";
 import { BeforeAfterChart } from "@/components/BeforeAfterChart";
+import { GrowthChart } from "@/components/GrowthChart";
 import { AnchorDistribution } from "@/components/AnchorDistribution";
 import { selectedOrg, selectedOrgId } from "@/lib/workspace";
 import { statusColor, statusLabel } from "@/lib/status";
@@ -19,7 +20,9 @@ import { toast } from "../toast";
 import { Icon } from "../icons";
 import "@/app/auth.css";
 import "../dashboard/dashboard.css";
+import "../dashboard/overview.css";
 import "./impact.css";
+import "./backlinks.css";
 
 export default function BacklinksPage() {
   const router = useRouter();
@@ -62,6 +65,10 @@ export default function BacklinksPage() {
   const [bulkBusy, setBulkBusy] = useState(false);
   const [reloadTick, setReloadTick] = useState(0);
   const [anchors, setAnchors] = useState<AnchorsView | null>(null);
+  // Org-wide command-center data (real series + pre-prioritized attention), the
+  // same source the /dashboard uses. Powers the KPI row, the evolution chart and
+  // the actionable insights at the top of this page.
+  const [overview, setOverview] = useState<OverviewResponse | null>(null);
   const [periodDays, setPeriodDays] = useState(0); // 0 = all time
 
   // Preset the view from an Overview/nav deep-link: ?filter=protected|lost.
@@ -119,12 +126,14 @@ export default function BacklinksPage() {
 
   const loadOrg = useCallback(
     async (org: string) => {
-      const [dash, projs, warr] = await Promise.all([
+      const [dash, projs, warr, ov] = await Promise.all([
         orgApi.dashboard(org),
         orgApi.projects(org),
         orgApi.expiringWarranties(org),
+        orgApi.overview(org),
       ]);
       if (dash.ok) setSummary(dash.data);
+      if (ov.ok) setOverview(ov.data);
       if (projs.ok) {
         setProjects(projs.data);
         const p = projs.data[0]?.id ?? null;
@@ -650,6 +659,12 @@ export default function BacklinksPage() {
     .filter((s) => s.n > 0);
   const typeTotal = typeSegments.reduce((acc, s) => acc + s.n, 0);
 
+  // Helpers for the command-center top section.
+  const num = (n: number) => (n ?? 0).toLocaleString();
+  const go = (route: string) => router.push(route);
+  const scrollToList = () =>
+    document.getElementById("bl-list")?.scrollIntoView({ behavior: "smooth", block: "start" });
+
   return (
     <main className="dash">
       <header className="dash-head">
@@ -690,6 +705,151 @@ export default function BacklinksPage() {
         </section>
       ) : (
         <>
+          {overview && (
+            <section className="bl-agg">
+              <div className="bl-agg-head">
+                <h2>Overview</h2>
+                <span
+                  className="bl-scope"
+                  title="These aggregates cover every project in this workspace. The backlinks table below is filtered to the selected project."
+                >
+                  Across all projects
+                </span>
+              </div>
+
+              <div className="bl-kpis">
+                <BlKpi
+                  label="Active backlinks"
+                  icon="link"
+                  accent="var(--live)"
+                  value={num(summary?.counts?.live ?? 0)}
+                  hint="live now"
+                  onClick={() => {
+                    setStatusFilter("live");
+                    scrollToList();
+                  }}
+                />
+                <BlKpi
+                  label="New"
+                  icon="signal"
+                  accent="var(--live)"
+                  value={`+${num(overview.backlink_growth.new_count)}`}
+                  hint="recently added"
+                  onClick={() => {
+                    setStatusFilter("");
+                    scrollToList();
+                  }}
+                />
+                <BlKpi
+                  label="Lost"
+                  icon="warn"
+                  accent="var(--lost)"
+                  value={num(overview.backlink_growth.lost_count)}
+                  hint="recently lost"
+                  onClick={() => {
+                    setStatusFilter("lost");
+                    scrollToList();
+                  }}
+                />
+                <BlKpi
+                  label="Link health"
+                  icon="check"
+                  value={
+                    overview.summary.link_health.percentage != null
+                      ? `${Math.round(overview.summary.link_health.percentage)}%`
+                      : "—"
+                  }
+                  delta={overview.summary.link_health.change}
+                  hint={`${num(overview.summary.link_health.healthy)}/${num(overview.summary.link_health.eligible)} healthy`}
+                  onClick={() => {
+                    setMonitorFilter("protected");
+                    scrollToList();
+                  }}
+                />
+              </div>
+
+              <div className="bl-two">
+                <section className="panel">
+                  <div className="panel-head">
+                    <h2>Backlink evolution</h2>
+                  </div>
+                  <GrowthChart series={overview.backlink_growth.series} />
+                  <div className="bl-evo-foot">
+                    <span>
+                      <b style={{ color: "var(--live)" }}>+{num(overview.backlink_growth.new_count)}</b>New
+                    </span>
+                    <span>
+                      <b style={{ color: "var(--lost)" }}>-{num(overview.backlink_growth.lost_count)}</b>Lost
+                    </span>
+                    <span>
+                      <b
+                        style={{
+                          color: overview.backlink_growth.net_count >= 0 ? "var(--live)" : "var(--lost)",
+                        }}
+                      >
+                        {overview.backlink_growth.net_count >= 0 ? "+" : ""}
+                        {num(overview.backlink_growth.net_count)}
+                      </b>
+                      Net
+                    </span>
+                  </div>
+                </section>
+
+                <section className="panel">
+                  <div className="panel-head">
+                    <h2>Insights</h2>
+                    {overview.attention.length > 0 && (
+                      <span className="badge">{overview.attention.length}</span>
+                    )}
+                  </div>
+                  {overview.next_best_action && (
+                    <div className="bl-nba">
+                      <div>
+                        <div className="attn-title">{overview.next_best_action.title}</div>
+                        {overview.next_best_action.subtitle && (
+                          <div className="attn-sub">{overview.next_best_action.subtitle}</div>
+                        )}
+                      </div>
+                      <button
+                        className="btn sm primary"
+                        onClick={() => go(overview.next_best_action!.route)}
+                      >
+                        {overview.next_best_action.action}
+                      </button>
+                    </div>
+                  )}
+                  {overview.attention.length === 0 ? (
+                    <div className="bl-insights-empty">
+                      <Icon name="check" size={22} />
+                      <span className="bl-insights-ok">All clear</span>
+                      <span>No backlinks need your attention right now.</span>
+                    </div>
+                  ) : (
+                    <div className="attention-list">
+                      {overview.attention.slice(0, 5).map((a: AttentionItemView, i: number) => (
+                        <div className="attn-item" key={i}>
+                          <span className={`attn-dot ${a.priority}`} />
+                          <div className="attn-main">
+                            <div className="attn-title">{a.title}</div>
+                            {a.subtitle && <div className="attn-sub">{a.subtitle}</div>}
+                          </div>
+                          {a.value_at_risk && (
+                            <span className="attn-value">
+                              {a.value_at_risk.amount} {a.value_at_risk.currency}
+                            </span>
+                          )}
+                          <button className="btn sm" onClick={() => go(a.route)}>
+                            {a.action}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </section>
+              </div>
+            </section>
+          )}
+
           {distTotal > 0 && (
             <section className="dist">
               <div className="dist-head">
@@ -772,7 +932,7 @@ export default function BacklinksPage() {
 
           {anchors && <AnchorDistribution data={anchors} />}
 
-          <section className="panel">
+          <section className="panel" id="bl-list">
             <div className="panel-head">
               <h2>
                 Backlinks
@@ -1710,3 +1870,47 @@ function RelChips({ b }: { b: BacklinkView }) {
   );
 }
 
+
+// A KPI tile for the command-center row. Reuses the shared dashboard tile design
+// (.tile / .kpi-accent / .delta-pill from overview.css) so it matches /dashboard.
+function BlKpi({
+  label,
+  value,
+  hint,
+  icon,
+  accent,
+  delta,
+  onClick,
+}: {
+  label: string;
+  value: string;
+  hint: string;
+  icon: string;
+  accent?: string;
+  delta?: number | null;
+  onClick?: () => void;
+}) {
+  const dir = delta == null ? null : delta > 0 ? "up" : delta < 0 ? "down" : "flat";
+  const style = accent ? ({ "--tile-accent": accent } as CSSProperties) : undefined;
+  return (
+    <button type="button" className="tile kpi-accent kpi-link" onClick={onClick} style={style}>
+      <div className="tile-top">
+        <span className="tile-label">{label}</span>
+        <span className="tile-icon">
+          <Icon name={icon} size={16} />
+        </span>
+      </div>
+      <div className="tile-value" style={accent ? { color: accent } : undefined}>
+        {value}
+      </div>
+      <div className="tile-foot">
+        {dir && (
+          <span className={`delta-pill ${dir}`}>
+            {dir === "up" ? "↑" : dir === "down" ? "↓" : "→"} {Math.abs(delta!).toFixed(1)}%
+          </span>
+        )}
+        <span className="tile-hint">{hint}</span>
+      </div>
+    </button>
+  );
+}
