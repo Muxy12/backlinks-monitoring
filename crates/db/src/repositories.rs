@@ -6537,4 +6537,29 @@ pub mod outreach {
         .await?;
         Ok(())
     }
+
+    /// One scheduled/sent step, for the prospect drawer's sequence status.
+    #[derive(sqlx::FromRow)]
+    pub struct OutreachStep {
+        pub step: i16,
+        pub status: String,
+        pub scheduled_at: DateTime<Utc>,
+        pub sent_at: Option<DateTime<Utc>>,
+    }
+
+    /// The outreach steps for one prospect (org-scoped), ordered by step.
+    pub async fn list_for_prospect(
+        pool: &PgPool,
+        organization_id: Uuid,
+        prospect_id: Uuid,
+    ) -> Result<Vec<OutreachStep>, DbError> {
+        Ok(sqlx::query_as::<_, OutreachStep>(
+            "SELECT step, status, scheduled_at, sent_at FROM outreach_messages \
+             WHERE organization_id = $1 AND prospect_id = $2 ORDER BY step",
+        )
+        .bind(organization_id)
+        .bind(prospect_id)
+        .fetch_all(pool)
+        .await?)
+    }
 }

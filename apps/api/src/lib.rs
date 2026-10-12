@@ -146,6 +146,10 @@ pub fn app(state: AppState) -> Router {
             post(routes::campaigns_routes::prospect_draft),
         )
         .route(
+            "/v1/organizations/{org_id}/prospects/{prospect_id}/outreach",
+            get(routes::campaigns_routes::prospect_outreach_status),
+        )
+        .route(
             "/v1/organizations/{org_id}/prospects/{prospect_id}/outreach/start",
             post(routes::campaigns_routes::start_outreach),
         )

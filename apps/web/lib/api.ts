@@ -525,6 +525,17 @@ export interface ProspectView {
   last_contacted_at: string | null;
   won_backlink_id: string | null;
 }
+// Outreach sending sequence status (migration 0042).
+export interface OutreachStepView {
+  step: number;
+  status: string; // queued | sent | skipped | bounced | failed | stopped
+  scheduled_at: string;
+  sent_at: string | null;
+}
+export interface OutreachStatusView {
+  configured: boolean;
+  messages: OutreachStepView[];
+}
 export interface StageCount {
   stage: string;
   count: number;
@@ -1073,6 +1084,13 @@ export const orgApi = {
     request<{ prospect: ProspectView; backlink_id: string }>(
       `/v1/organizations/${org}/prospects/${prospectId}/convert`,
       { method: "POST", headers: csrfHeader(), body: JSON.stringify(body) },
+    ),
+  outreachStatus: (org: string, prospectId: string) =>
+    request<OutreachStatusView>(`/v1/organizations/${org}/prospects/${prospectId}/outreach`),
+  startOutreach: (org: string, prospectId: string) =>
+    request<{ enrolled: boolean; steps_created: number }>(
+      `/v1/organizations/${org}/prospects/${prospectId}/outreach/start`,
+      { method: "POST", headers: csrfHeader() },
     ),
   publishers: (org: string) => request<PublisherView[]>(`/v1/organizations/${org}/publishers`),
   createPublisher: (org: string, body: NewPublisher) =>

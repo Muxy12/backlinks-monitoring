@@ -10,6 +10,7 @@ import {
   type CampaignTargetView,
   type CampaignView,
   type MeResponse,
+  type OutreachStatusView,
   type ProspectView,
 } from "@/lib/api";
 import { selectedOrgId } from "@/lib/workspace";
@@ -742,6 +743,28 @@ function ProspectDrawer({
   const [srcUrl, setSrcUrl] = useState("");
   const [converted, setConverted] = useState<string | null>(prospect.won_backlink_id ?? null);
 
+  const [outreach, setOutreach] = useState<OutreachStatusView | null>(null);
+  useEffect(() => {
+    void orgApi.outreachStatus(org, prospect.id).then((r) => {
+      if (r.ok) setOutreach(r.data);
+    });
+  }, [org, prospect.id]);
+
+  async function startSequence() {
+    setBusy(true);
+    setMsg(null);
+    const res = await orgApi.startOutreach(org, prospect.id);
+    setBusy(false);
+    if (!res.ok) {
+      setMsg(res.detail);
+      return;
+    }
+    setMsg("Sequence started.");
+    const r = await orgApi.outreachStatus(org, prospect.id);
+    if (r.ok) setOutreach(r.data);
+    await onChanged();
+  }
+
   async function save() {
     setBusy(true);
     setMsg(null);
@@ -930,6 +953,46 @@ function ProspectDrawer({
               {copied ? "Copied!" : "Copy"}
             </button>
           </div>
+        )}
+
+        <div className="drawer-sub">Outreach sequence</div>
+        {outreach && outreach.messages.length > 0 ? (
+          <ul style={{ listStyle: "none", padding: 0, margin: 0, fontSize: ".9rem" }}>
+            {outreach.messages.map((m) => {
+              const when = m.status === "sent" && m.sent_at ? m.sent_at : m.scheduled_at;
+              const verb = m.status === "sent" ? "sent" : m.status === "queued" ? "due" : m.status;
+              return (
+                <li
+                  key={m.step}
+                  style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}
+                >
+                  <span>Step {m.step}</span>
+                  <span className="muted">
+                    {verb} · {new Date(when).toLocaleDateString()}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <>
+            <p className="muted" style={{ margin: "0 0 8px" }}>
+              Send an automatic 3-step follow-up (day 0, +3, +7) from LinkPulz. Replies stop it
+              automatically; every email has an unsubscribe link.
+            </p>
+            {outreach && !outreach.configured && (
+              <p className="muted" style={{ margin: "0 0 8px", color: "#9a3412" }}>
+                Automated sending isn’t enabled on this server yet.
+              </p>
+            )}
+            <button
+              className="btn sm"
+              onClick={() => void startSequence()}
+              disabled={busy || !outreach || !outreach.configured || !contactEmail.trim()}
+            >
+              Start sequence
+            </button>
+          </>
         )}
 
         <div className="drawer-sub">Convert to backlink</div>
