@@ -682,6 +682,100 @@ const UNSUB_HTML: &str = "<!doctype html><meta charset=\"utf-8\"><title>Unsubscr
 <h1>You're unsubscribed</h1><p>You won't receive any more outreach emails about this. \
 It can take a moment to take effect. Sent in error? You can ignore this page.</p></div>";
 
+// ─── Outreach inbound: a prospect replied (S4) ────────────────────────────────
+#[derive(Deserialize)]
+pub struct InboundQuery {
+    pub s: Option<String>,
+}
+
+/// Constant-time byte compare (webhook secret).
+fn ct_eq(a: &[u8], b: &[u8]) -> bool {
+    a.len() == b.len() && a.iter().zip(b).fold(0u8, |acc, (x, y)| acc | (x ^ y)) == 0
+}
+
+/// Find the `reply+<prospect_uuid>@…` recipient token anywhere in the inbound
+/// payload (robust to the provider's exact field layout).
+fn extract_prospect_id(payload: &serde_json::Value) -> Option<Uuid> {
+    let s = payload.to_string();
+    let start = s.find("reply+")? + "reply+".len();
+    let rest = &s[start..];
+    let end = rest.find('@')?;
+    Uuid::parse_str(rest[..end].trim()).ok()
+}
+
+/// Best-effort text extraction across common inbound schemas.
+fn extract_str(payload: &serde_json::Value, paths: &[&[&str]]) -> Option<String> {
+    'paths: for path in paths {
+        let mut cur = payload;
+        for key in *path {
+            match cur.get(key) {
+                Some(v) => cur = v,
+                None => continue 'paths,
+            }
+        }
+        if let Some(t) = cur.as_str().filter(|t| !t.is_empty()) {
+            return Some(t.chars().take(5000).collect());
+        }
+    }
+    None
+}
+
+/// Inbound webhook for prospect replies (S4). Public, gated by a shared secret
+/// in the `?s=` query (disabled → 404 when `OUTREACH_INBOUND_SECRET` is unset).
+/// Matches the reply token → stops the sequence and forwards the reply to the
+/// campaign owner. Always acks 200 on a matched/unmatched payload to avoid
+/// provider retries; only auth failures are rejected.
+pub async fn outreach_inbound(
+    State(state): State<AppState>,
+    Query(q): Query<InboundQuery>,
+    Json(payload): Json<serde_json::Value>,
+) -> StatusCode {
+    let Some(secret) = std::env::var("OUTREACH_INBOUND_SECRET")
+        .ok()
+        .filter(|s| !s.is_empty())
+    else {
+        return StatusCode::NOT_FOUND;
+    };
+    if !ct_eq(q.s.unwrap_or_default().as_bytes(), secret.as_bytes()) {
+        return StatusCode::UNAUTHORIZED;
+    }
+    let Some(prospect_id) = extract_prospect_id(&payload) else {
+        tracing::warn!("outreach inbound: no reply token in payload");
+        return StatusCode::OK;
+    };
+    let _ = outreach::advance_on_reply(&state.pool, prospect_id).await;
+    // Forward the reply to the owner so they can answer directly. No target or no
+    // owner → nothing to forward, still ack 200.
+    let Ok(Some(t)) = outreach::reply_target(&state.pool, prospect_id).await else {
+        return StatusCode::OK;
+    };
+    let Some(owner) = t.owner_email else {
+        return StatusCode::OK;
+    };
+    let reply_body = extract_str(
+        &payload,
+        &[
+            &["text"][..],
+            &["data", "text"][..],
+            &["plain"][..],
+            &["html"][..],
+            &["data", "html"][..],
+        ],
+    )
+    .unwrap_or_default();
+    let from_addr =
+        extract_str(&payload, &[&["from"][..], &["data", "from"][..]]).unwrap_or_default();
+    let subject = format!("Reply from {} to your outreach", t.prospect_domain);
+    let text = format!(
+        "{reply_body}\n\n— Reply from {} ({from_addr}), forwarded by LinkPulz. \
+Reply to this email to answer them directly.",
+        t.prospect_domain
+    );
+    let reply_to = t.contact_email.unwrap_or(from_addr);
+    let _ = notifications::resend::forward_reply(&owner, &subject, &text, &reply_to).await;
+    StatusCode::OK
+}
+
 // ─── Outreach sequence: status (for the drawer) ───────────────────────────────
 #[derive(Serialize)]
 pub struct OutreachStepView {

@@ -266,6 +266,24 @@ pub mod resend {
         }
     }
 
+    /// Forward a prospect's reply to the campaign owner's inbox, from the
+    /// outreach subdomain, with `reply_to` set to the prospect so the owner can
+    /// answer directly. No unsubscribe header (it's a 1:1 forward, not outreach).
+    pub async fn forward_reply(
+        to: &str,
+        subject: &str,
+        text: &str,
+        reply_to: &str,
+    ) -> Result<(), String> {
+        let (api_key, from) = outreach_config()?;
+        let mut body =
+            serde_json::json!({ "from": from, "to": [to], "subject": subject, "text": text });
+        if !reply_to.is_empty() {
+            body["reply_to"] = serde_json::json!(reply_to);
+        }
+        post(&api_key, &body).await
+    }
+
     /// Send one outreach email from the dedicated subdomain. `reply_to` routes
     /// replies to the campaign owner's real inbox; the `List-Unsubscribe` header
     /// (plus the in-body link) satisfies one-click unsubscribe. Returns the

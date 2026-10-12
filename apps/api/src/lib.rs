@@ -158,6 +158,10 @@ pub fn app(state: AppState) -> Router {
             get(routes::campaigns_routes::outreach_unsubscribe),
         )
         .route(
+            "/v1/outreach/inbound",
+            post(routes::campaigns_routes::outreach_inbound),
+        )
+        .route(
             "/v1/organizations/{org_id}/prospects/{prospect_id}/convert",
             post(routes::campaigns_routes::convert_prospect),
         )
