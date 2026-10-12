@@ -6562,4 +6562,46 @@ pub mod outreach {
         .fetch_all(pool)
         .await?)
     }
+
+    /// A prospect replied (S4 inbound): advance `contacted` → `negotiating`,
+    /// which halts the sequence (dispatch only sends while `contacted`). No-op if
+    /// the prospect already moved on. Best-effort.
+    pub async fn advance_on_reply(pool: &PgPool, prospect_id: Uuid) -> Result<(), DbError> {
+        sqlx::query(
+            "UPDATE prospects SET stage = 'negotiating', updated_at = now() \
+             WHERE id = $1 AND stage = 'contacted'",
+        )
+        .bind(prospect_id)
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    /// Who to forward a reply to: the org owner's inbox + the prospect address to
+    /// set as reply-to, so the owner can answer directly. Found by prospect id.
+    #[derive(sqlx::FromRow)]
+    pub struct ReplyTarget {
+        pub organization_id: Uuid,
+        pub prospect_domain: String,
+        pub contact_email: Option<String>,
+        pub owner_email: Option<String>,
+    }
+
+    pub async fn reply_target(
+        pool: &PgPool,
+        prospect_id: Uuid,
+    ) -> Result<Option<ReplyTarget>, DbError> {
+        Ok(sqlx::query_as::<_, ReplyTarget>(
+            "SELECT p.organization_id, p.domain AS prospect_domain, \
+                    p.contact_email::text AS contact_email, \
+                    (SELECT u.email FROM organization_members om \
+                       JOIN users u ON u.id = om.user_id \
+                       WHERE om.organization_id = p.organization_id AND om.role = 'owner' \
+                       ORDER BY u.created_at LIMIT 1) AS owner_email \
+             FROM prospects p WHERE p.id = $1",
+        )
+        .bind(prospect_id)
+        .fetch_optional(pool)
+        .await?)
+    }
 }

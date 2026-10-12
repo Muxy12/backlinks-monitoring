@@ -47,6 +47,12 @@ pub async fn dispatch_due(pool: &PgPool, limit: i64) -> u64 {
     };
 
     let base = app_url();
+    // When reply-routing is configured (S4), replies go to a per-prospect
+    // LinkPulz address the inbound webhook can match; otherwise straight to the
+    // owner's inbox (manual stop).
+    let reply_domain = std::env::var("OUTREACH_REPLY_DOMAIN")
+        .ok()
+        .filter(|s| !s.is_empty());
     let mut sent = 0u64;
     for m in due {
         let reclaim = match (m.source.as_str(), m.origin_status.as_deref()) {
@@ -69,14 +75,17 @@ pub async fn dispatch_due(pool: &PgPool, limit: i64) -> u64 {
             reclaim,
         });
         let unsub = format!("{base}/api/v1/outreach/unsubscribe?m={}", m.message_id);
-        let reply_to = m.owner_email.as_deref().unwrap_or("");
+        let reply_to = match &reply_domain {
+            Some(d) => format!("reply+{}@{}", m.prospect_id, d),
+            None => m.owner_email.clone().unwrap_or_default(),
+        };
         let body = format!("{}{}", draft.body, footer(&unsub));
 
         match notifications::resend::send_outreach(
             &m.to_email,
             &draft.subject,
             &body,
-            reply_to,
+            &reply_to,
             &unsub,
         )
         .await
