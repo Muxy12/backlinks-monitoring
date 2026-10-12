@@ -72,10 +72,17 @@ export default function BacklinksPage() {
   const [periodDays, setPeriodDays] = useState(0); // 0 = all time
 
   // Preset the view from an Overview/nav deep-link: ?filter=protected|lost.
+  // Deep-link drill-down: KPI tiles, Overview insights and external links can
+  // land straight on a filtered view via ?filter= / ?status= / ?monitoring=.
   useEffect(() => {
     const f = searchParams.get("filter");
     if (f === "protected") setMonitorFilter("protected");
     else if (f === "lost") setStatusFilter("lost");
+    else if (f && STATUSES.includes(f)) setStatusFilter(f);
+    const st = searchParams.get("status");
+    if (st && STATUSES.includes(st)) setStatusFilter(st);
+    const mon = searchParams.get("monitoring");
+    if (mon && ["protected", "tracked", "inventory_only"].includes(mon)) setMonitorFilter(mon);
   }, [searchParams]);
   const [page, setPage] = useState(0);
   const [hasNext, setHasNext] = useState(false);
@@ -665,6 +672,46 @@ export default function BacklinksPage() {
   const scrollToList = () =>
     document.getElementById("bl-list")?.scrollIntoView({ behavior: "smooth", block: "start" });
 
+  // Active-filter chips: a legible, reversible summary of the table drill-down.
+  const labelOf = (pairs: readonly (readonly [string, string])[], v: string) =>
+    pairs.find(([val]) => val === v)?.[1] ?? v;
+  const activeFilters: { key: string; label: string; clear: () => void }[] = [];
+  if (statusFilter)
+    activeFilters.push({ key: "status", label: `Status: ${statusLabel(statusFilter)}`, clear: () => setStatusFilter("") });
+  if (monitorFilter)
+    activeFilters.push({ key: "monitor", label: `Monitoring: ${({ protected: "Protected", tracked: "Tracked", inventory_only: "Inventory" } as Record<string, string>)[monitorFilter] ?? monitorFilter}`, clear: () => setMonitorFilter("") });
+  if (searchQ.trim())
+    activeFilters.push({ key: "q", label: `“${searchQ.trim()}”`, clear: () => setSearchQ("") });
+  if (clientFilter)
+    activeFilters.push({ key: "client", label: `Client: ${clients.find((c) => c.id === clientFilter)?.name ?? "—"}`, clear: () => setClientFilter("") });
+  if (tagFilter)
+    activeFilters.push({ key: "tag", label: `Tag: ${orgTags.find((t) => t.id === tagFilter)?.name ?? "—"}`, clear: () => setTagFilter("") });
+  if (domainFilter)
+    activeFilters.push({ key: "domain", label: `Domain: ${domainFilter}`, clear: () => setDomainFilter("") });
+  if (acqFilter)
+    activeFilters.push({ key: "acq", label: `Acquisition: ${labelOf(ACQUISITION, acqFilter)}`, clear: () => setAcqFilter("") });
+  if (attrFilter)
+    activeFilters.push({ key: "attr", label: `Attribute: ${labelOf(ATTRIBUTE, attrFilter)}`, clear: () => setAttrFilter("") });
+  if (placeFilter)
+    activeFilters.push({ key: "place", label: `Placement: ${labelOf(PLACEMENT, placeFilter)}`, clear: () => setPlaceFilter("") });
+  if (fmtFilter)
+    activeFilters.push({ key: "fmt", label: `Format: ${labelOf(FORMAT, fmtFilter)}`, clear: () => setFmtFilter("") });
+  if (periodDays)
+    activeFilters.push({ key: "period", label: `Last ${periodDays} days`, clear: () => setPeriodDays(0) });
+  const clearAllFilters = () => {
+    setStatusFilter("");
+    setMonitorFilter("");
+    setSearchQ("");
+    setClientFilter("");
+    setTagFilter("");
+    setDomainFilter("");
+    setAcqFilter("");
+    setAttrFilter("");
+    setPlaceFilter("");
+    setFmtFilter("");
+    setPeriodDays(0);
+  };
+
   return (
     <main className="dash">
       <header className="dash-head">
@@ -1069,6 +1116,23 @@ export default function BacklinksPage() {
                 ),
               )}
             </div>
+            {/* Active-filter chips: see what's applied, remove one or clear all */}
+            {activeFilters.length > 0 && (
+              <div className="bl-chips">
+                <span className="bl-chips-count">
+                  {backlinks.length}
+                  {hasNext ? "+" : ""} shown
+                </span>
+                {activeFilters.map((f) => (
+                  <button key={f.key} className="bl-chip" onClick={f.clear} title="Remove this filter">
+                    {f.label} <span aria-hidden>×</span>
+                  </button>
+                ))}
+                <button className="bl-chip-clear" onClick={clearAllFilters}>
+                  Clear all
+                </button>
+              </div>
+            )}
             {/* Bulk action bar (shown when rows are selected) */}
             {selectedIds.size > 0 && (
               <div

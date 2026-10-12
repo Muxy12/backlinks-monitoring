@@ -121,3 +121,54 @@
   color: var(--muted);
   margin-top: 2px;
 }
+
+/* Active-filter chips: a legible, reversible summary of the drill-down state
+   so users always see what's applied and can remove one or clear all. */
+.bl-chips {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 2px 0 12px;
+}
+.bl-chips-count {
+  font-size: 0.82rem;
+  font-weight: 650;
+  color: var(--muted);
+  margin-right: 2px;
+  font-variant-numeric: tabular-nums;
+}
+.bl-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  font-weight: 550;
+  color: var(--text);
+  background: color-mix(in srgb, var(--primary) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary) 30%, var(--line));
+  border-radius: 999px;
+  padding: 3px 10px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.bl-chip:hover {
+  background: color-mix(in srgb, var(--primary) 16%, transparent);
+}
+.bl-chip span {
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--muted);
+}
+.bl-chip-clear {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--lost);
+  background: none;
+  border: 0;
+  cursor: pointer;
+  padding: 3px 6px;
+}
+.bl-chip-clear:hover {
+  text-decoration: underline;
+}
