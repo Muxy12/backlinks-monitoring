@@ -682,6 +682,48 @@ const UNSUB_HTML: &str = "<!doctype html><meta charset=\"utf-8\"><title>Unsubscr
 <h1>You're unsubscribed</h1><p>You won't receive any more outreach emails about this. \
 It can take a moment to take effect. Sent in error? You can ignore this page.</p></div>";
 
+// ─── Outreach sequence: status (for the drawer) ───────────────────────────────
+#[derive(Serialize)]
+pub struct OutreachStepView {
+    pub step: i16,
+    pub status: String,
+    pub scheduled_at: String,
+    pub sent_at: Option<String>,
+}
+
+#[derive(Serialize)]
+pub struct OutreachStatusView {
+    /// Whether the server has outreach sending configured (gates the UI button).
+    pub configured: bool,
+    pub messages: Vec<OutreachStepView>,
+}
+
+/// Read a prospect's outreach sequence status (steps + whether sending is
+/// configured). Used by the drawer to show "Start sequence" vs. progress.
+pub async fn prospect_outreach_status(
+    State(state): State<AppState>,
+    Path((org_id, prospect_id)): Path<(Uuid, Uuid)>,
+    jar: CookieJar,
+) -> Result<Json<OutreachStatusView>, ApiError> {
+    require_beta(&state)?;
+    let (user, _s) = current(&state, &jar).await?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    let rows =
+        outreach::list_for_prospect(&state.pool, scope.organization_id(), prospect_id).await?;
+    Ok(Json(OutreachStatusView {
+        configured: notifications::resend::outreach_configured(),
+        messages: rows
+            .into_iter()
+            .map(|r| OutreachStepView {
+                step: r.step,
+                status: r.status,
+                scheduled_at: r.scheduled_at.to_rfc3339(),
+                sent_at: r.sent_at.map(|d| d.to_rfc3339()),
+            })
+            .collect(),
+    }))
+}
+
 // ─── Convert a won prospect to a protected backlink ───────────────────────────
 #[derive(Deserialize)]
 pub struct ConvertBody {
