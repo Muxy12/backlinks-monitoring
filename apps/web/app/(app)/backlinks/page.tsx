@@ -752,7 +752,7 @@ export default function BacklinksPage() {
         </section>
       ) : (
         <>
-          {overview && (
+          {summary && (
             <section className="bl-agg">
               <div className="bl-agg-head">
                 <h2>Overview</h2>
@@ -780,7 +780,7 @@ export default function BacklinksPage() {
                   label="New"
                   icon="signal"
                   accent="var(--live)"
-                  value={`+${num(overview.backlink_growth.new_count)}`}
+                  value={overview ? `+${num(overview.backlink_growth.new_count)}` : "—"}
                   hint="recently added"
                   onClick={() => {
                     setStatusFilter("");
@@ -791,8 +791,8 @@ export default function BacklinksPage() {
                   label="Lost"
                   icon="warn"
                   accent="var(--lost)"
-                  value={num(overview.backlink_growth.lost_count)}
-                  hint="recently lost"
+                  value={num(summary?.counts?.lost ?? 0)}
+                  hint="currently lost"
                   onClick={() => {
                     setStatusFilter("lost");
                     scrollToList();
@@ -802,12 +802,16 @@ export default function BacklinksPage() {
                   label="Link health"
                   icon="check"
                   value={
-                    overview.summary.link_health.percentage != null
+                    overview && overview.summary.link_health.percentage != null
                       ? `${Math.round(overview.summary.link_health.percentage)}%`
                       : "—"
                   }
-                  delta={overview.summary.link_health.change}
-                  hint={`${num(overview.summary.link_health.healthy)}/${num(overview.summary.link_health.eligible)} healthy`}
+                  delta={overview?.summary.link_health.change ?? null}
+                  hint={
+                    overview
+                      ? `${num(overview.summary.link_health.healthy)}/${num(overview.summary.link_health.eligible)} healthy`
+                      : "monitored links"
+                  }
                   onClick={() => {
                     setMonitorFilter("protected");
                     scrollToList();
@@ -815,6 +819,7 @@ export default function BacklinksPage() {
                 />
               </div>
 
+              {overview && (
               <div className="bl-two">
                 <section className="panel">
                   <div className="panel-head">
@@ -894,6 +899,7 @@ export default function BacklinksPage() {
                   )}
                 </section>
               </div>
+              )}
             </section>
           )}
 
