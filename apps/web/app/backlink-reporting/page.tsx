@@ -15,6 +15,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/backlink-reporting", languages: { en: "/backlink-reporting", "x-default": "/backlink-reporting" } },
   robots: { index: true, follow: true, "max-image-preview": "large" },
   openGraph: {
+    siteName: "LinkPulz",
     type: "website",
     title: "Backlink Reporting: Reports for Clients & Teams | LinkPulz",
     description:

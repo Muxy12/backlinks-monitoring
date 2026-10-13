@@ -15,6 +15,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/backlink-management", languages: { en: "/backlink-management", "x-default": "/backlink-management" } },
   robots: { index: true, follow: true, "max-image-preview": "large" },
   openGraph: {
+    siteName: "LinkPulz",
     type: "website",
     title: "Backlink Management: Track & Monitor Your Links | LinkPulz",
     description:

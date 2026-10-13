@@ -13,6 +13,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/broken-backlinks", languages: { en: "/broken-backlinks", "x-default": "/broken-backlinks" } },
   robots: { index: true, follow: true, "max-image-preview": "large" },
   openGraph: {
+    siteName: "LinkPulz",
     type: "website",
     title: "Broken Backlinks: Find & Fix Broken Links | LinkPulz",
     description:

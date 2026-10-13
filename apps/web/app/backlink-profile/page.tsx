@@ -15,6 +15,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/backlink-profile", languages: { en: "/backlink-profile", "x-default": "/backlink-profile" } },
   robots: { index: true, follow: true, "max-image-preview": "large" },
   openGraph: {
+    siteName: "LinkPulz",
     type: "website",
     title: "Backlink Profile: What It Is & How to Analyze It | LinkPulz",
     description:

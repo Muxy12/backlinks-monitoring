@@ -14,6 +14,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/verify-backlinks", languages: { en: "/verify-backlinks", "x-default": "/verify-backlinks" } },
   robots: { index: true, follow: true, "max-image-preview": "large" },
   openGraph: {
+    siteName: "LinkPulz",
     type: "website",
     title: "Verify Backlinks: Backlink Verification Tool | LinkPulz",
     description:

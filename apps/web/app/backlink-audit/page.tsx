@@ -15,6 +15,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/backlink-audit", languages: { en: "/backlink-audit", "x-default": "/backlink-audit" } },
   robots: { index: true, follow: true, "max-image-preview": "large" },
   openGraph: {
+    siteName: "LinkPulz",
     type: "website",
     title: "Backlink Audit: How to Audit Your Backlinks | LinkPulz",
     description:

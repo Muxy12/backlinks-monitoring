@@ -14,6 +14,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/lost-backlinks", languages: { en: "/lost-backlinks", "x-default": "/lost-backlinks" } },
   robots: { index: true, follow: true, "max-image-preview": "large" },
   openGraph: {
+    siteName: "LinkPulz",
     type: "website",
     title: "Lost Backlinks: Find & Recover Lost Links | LinkPulz",
     description:
