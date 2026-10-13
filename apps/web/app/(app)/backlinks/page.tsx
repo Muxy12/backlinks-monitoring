@@ -1424,9 +1424,16 @@ export default function BacklinksPage() {
                     <label>
                       <span>Currency</span>
                       <input
-                        placeholder="USD"
+                        placeholder="EUR"
+                        maxLength={3}
+                        title="3-letter code, e.g. EUR, USD, GBP"
                         value={addForm.currency}
-                        onChange={(e) => setAddForm((f) => ({ ...f, currency: e.target.value }))}
+                        onChange={(e) =>
+                          setAddForm((f) => ({
+                            ...f,
+                            currency: e.target.value.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 3),
+                          }))
+                        }
                       />
                     </label>
                   </div>
@@ -1477,8 +1484,23 @@ export default function BacklinksPage() {
                 <button className="btn" onClick={() => setSelected(null)}>Close</button>
               </div>
             </div>
-            <p style={{ margin: "6px 0 14px" }}>
+            <p style={{ margin: "6px 0 10px" }}>
               <span className="badge" style={{ "--st": statusColor(selected.status) } as CSSProperties}><span className="dot" />{statusLabel(selected.status)}</span>
+            </p>
+            <p
+              className="muted"
+              style={{ margin: "0 0 12px", fontSize: ".86rem", display: "flex", gap: 6, alignItems: "flex-start" }}
+            >
+              <Icon name="signal" size={14} />
+              <span>
+                The values below (found anchor, rel, URLs, HTTP status, dates…) are{" "}
+                <b>detected automatically</b> each time LinkPulz checks this backlink — they aren’t
+                entered by hand.
+                {selected.status === "pending" &&
+                  " This link hasn’t been checked yet, so they show “-”; they fill in after the first check (within ~10 min for monitored links)."}{" "}
+                To change the <b>expected</b> anchor, the cost/currency or the classification, use the
+                sections further down.
+              </span>
             </p>
             <dl className="detail-grid">
               <div><dt>Source</dt><dd className="mono br">{selected.source_url}</dd></div>

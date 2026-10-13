@@ -835,6 +835,24 @@ fn is_http_url(s: &str) -> bool {
     s.starts_with("http://") || s.starts_with("https://")
 }
 
+/// Normalize + validate a currency to a 3-letter upper code (ISO-4217 style).
+/// `None`/blank → `Ok(None)`. A bad value (e.g. "EURO") returns `Err(msg)` so
+/// callers answer a clean 422 instead of letting it hit the DB `char(3)` column
+/// / `^[A-Z]{3}$` CHECK and surface as a 500 "internal error".
+fn normalize_currency(input: Option<&str>) -> Result<Option<String>, String> {
+    match input.map(str::trim).filter(|s| !s.is_empty()) {
+        None => Ok(None),
+        Some(c) => {
+            let up = c.to_ascii_uppercase();
+            if up.len() == 3 && up.bytes().all(|b| b.is_ascii_uppercase()) {
+                Ok(Some(up))
+            } else {
+                Err("currency must be a 3-letter code, e.g. EUR, USD, GBP".into())
+            }
+        }
+    }
+}
+
 pub async fn create_backlink(
     State(state): State<AppState>,
     Path(org_id): Path<Uuid>,
@@ -858,7 +876,8 @@ pub async fn create_backlink(
             "expected_rel_type must be dofollow/nofollow/sponsored/ugc".into(),
         ));
     }
-    let cost_str = match (body.cost, body.currency.as_deref()) {
+    let currency = normalize_currency(body.currency.as_deref()).map_err(ApiError::Validation)?;
+    let cost_str = match (body.cost, currency.as_deref()) {
         (Some(_), None) => {
             return Err(ApiError::Validation(
                 "currency is required when cost is set".into(),
@@ -933,7 +952,7 @@ pub async fn create_backlink(
         expected_anchor_text: anchor,
         expected_rel_type: rel,
         cost: cost_str.as_deref(),
-        currency: body.currency.as_deref(),
+        currency: currency.as_deref(),
         warranty_type,
         warranty_value,
         warranty_expiration,
@@ -1055,7 +1074,7 @@ pub async fn update_backlink(
         None => current.cost.as_deref().and_then(|c| c.parse::<f64>().ok()),
     };
     let new_currency: Option<String> = match body.currency {
-        Some(v) => v.map(|s| s.trim().to_string()).filter(|s| !s.is_empty()),
+        Some(v) => normalize_currency(v.as_deref()).map_err(ApiError::Validation)?,
         None => current.currency,
     };
     if let Some(c) = new_cost
@@ -1398,7 +1417,8 @@ fn validate_bulk_row(row: &BulkBacklinkRow) -> Result<PreparedRow, String> {
     if !matches!(rel, "dofollow" | "nofollow" | "sponsored" | "ugc") {
         return Err("expected_rel_type must be dofollow/nofollow/sponsored/ugc".into());
     }
-    let cost = match (row.cost, row.currency.as_deref()) {
+    let currency = normalize_currency(row.currency.as_deref())?;
+    let cost = match (row.cost, currency.as_deref()) {
         (Some(_), None) => return Err("currency is required when cost is set".into()),
         (Some(c), Some(_)) if c < 0.0 => return Err("cost cannot be negative".into()),
         (Some(c), Some(_)) => Some(format!("{c:.2}")),
@@ -1416,7 +1436,7 @@ fn validate_bulk_row(row: &BulkBacklinkRow) -> Result<PreparedRow, String> {
         anchor,
         rel: rel.to_string(),
         cost,
-        currency: row.currency.clone(),
+        currency,
     })
 }
 
