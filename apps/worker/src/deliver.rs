@@ -33,9 +33,86 @@ fn payload(kind: &str, n: &PendingNotification) -> serde_json::Value {
     }
 }
 
+/// Public base URL for links in emails (the web app). Falls back to prod.
+fn app_url() -> String {
+    std::env::var("APP_URL")
+        .ok()
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| "https://linkpulz.com".to_string())
+        .trim_end_matches('/')
+        .to_string()
+}
+
+/// Minimal HTML escaping for values interpolated into the email body (titles and
+/// bodies carry user data: domains, anchor text).
+fn esc(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+}
+
+/// (accent, accent-background, badge label) for an alert, by notification kind.
+/// `kind` is the event type for change alerts (`backlink_lost`, …) or a fixed
+/// kind for warranty/competitor alerts.
+fn alert_style(kind: &str) -> (&'static str, &'static str, &'static str) {
+    match kind {
+        "backlink_lost" | "source_error" | "target_error" => {
+            ("#e11d48", "#fdeaef", "Backlink lost")
+        }
+        "backlink_restored" => ("#16a34a", "#e7f6ed", "Restored"),
+        "dofollow_to_nofollow" | "noindex_detected" => ("#f59e0b", "#fef3e2", "Link devalued"),
+        "anchor_changed" | "target_changed" | "source_redirected" | "target_redirected" => {
+            ("#f59e0b", "#fef3e2", "Link changed")
+        }
+        "warranty_expiring" => ("#f59e0b", "#fef3e2", "Warranty"),
+        k if k.starts_with("competitor_") => ("#2f6bff", "#e8f0ff", "Competitor"),
+        _ => ("#2f6bff", "#e8f0ff", "Alert"),
+    }
+}
+
+/// A branded, responsive HTML alert email (inline styles; a text wordmark avoids
+/// webp/logo rendering issues across clients). Mirrors the plain-text fallback.
+fn alert_email_html(n: &PendingNotification, base: &str) -> String {
+    let (accent, accent_bg, badge) = alert_style(&n.kind);
+    let title = esc(&n.title);
+    let body_block = match &n.body {
+        Some(b) if !b.is_empty() => format!(
+            "<div style=\"margin:14px 0 0;padding:12px 16px;background:#f6f8fc;border:1px solid #eef2f8;\
+border-radius:10px;font-size:15px;line-height:1.6;color:#334155;word-break:break-word;\">{}</div>",
+            esc(b)
+        ),
+        _ => String::new(),
+    };
+    format!(
+        "<div style=\"background:#f4f7fb;padding:28px 12px;font-family:-apple-system,BlinkMacSystemFont,\
+'Segoe UI',Roboto,Helvetica,Arial,sans-serif;\">\
+<div style=\"max-width:520px;margin:0 auto;background:#ffffff;border:1px solid #e5eaf2;border-radius:14px;overflow:hidden;\">\
+<div style=\"padding:20px 28px;border-bottom:1px solid #eef2f8;\">\
+<span style=\"font-size:20px;font-weight:800;letter-spacing:-.02em;color:#0f1b2d;\">Link<span style=\"color:#2f6bff;\">Pulz</span></span>\
+</div>\
+<div style=\"height:4px;background:{accent};\"></div>\
+<div style=\"padding:28px;\">\
+<span style=\"display:inline-block;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;\
+color:{accent};background:{accent_bg};border-radius:999px;padding:4px 12px;margin-bottom:14px;\">{badge}</span>\
+<h1 style=\"margin:0;font-size:20px;line-height:1.3;color:#0f1b2d;\">{title}</h1>\
+{body_block}\
+<a href=\"{base}/backlinks\" style=\"display:inline-block;margin-top:22px;background:#2f6bff;color:#ffffff;\
+text-decoration:none;font-weight:600;font-size:15px;padding:12px 24px;border-radius:10px;\">View in LinkPulz &rarr;</a>\
+</div>\
+<div style=\"padding:18px 28px;border-top:1px solid #eef2f8;font-size:12px;color:#8a94a6;line-height:1.6;\">\
+You're receiving this because backlink-monitoring alerts are enabled for your workspace. \
+Manage them in <a href=\"{base}/settings/notifications\" style=\"color:#2f6bff;text-decoration:none;\">notification settings</a>.<br>\
+LinkPulz — a service of MeedWise (SASU), Paris, France.\
+</div>\
+</div>\
+</div>"
+    )
+}
+
 /// Deliver one notification to one destination. Webhook/Slack go through the
-/// SSRF-safe POST; email goes through Resend. Returns Ok(http_status) or an
-/// error string.
+/// SSRF-safe POST; email goes through Resend (branded HTML + text fallback).
+/// Returns Ok(http_status) or an error string.
 async fn deliver_one(
     cfg: &CrawlerConfig,
     dest: &AlertDestination,
@@ -47,7 +124,8 @@ async fn deliver_one(
             Some(b) if !b.is_empty() => format!("{}\n\n{}\n\n— LinkPulz", n.title, b),
             _ => format!("{}\n\n— LinkPulz", n.title),
         };
-        return notifications::resend::send_email(&dest.target, &subject, &text)
+        let html = alert_email_html(n, &app_url());
+        return notifications::resend::send_html_email(&dest.target, &subject, &html, &text)
             .await
             .map(|_| 200u16);
     }
