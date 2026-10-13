@@ -172,3 +172,22 @@
 .bl-chip-clear:hover {
   text-decoration: underline;
 }
+
+/* Backlink-history timeline diff: the before→after of a detected change. */
+.tl-diff {
+  font-size: 0.86rem;
+  margin: 2px 0;
+  word-break: break-word;
+}
+.tl-before {
+  color: var(--lost);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+.tl-arrow {
+  color: var(--muted);
+}
+.tl-after {
+  color: var(--live);
+  font-weight: 600;
+}

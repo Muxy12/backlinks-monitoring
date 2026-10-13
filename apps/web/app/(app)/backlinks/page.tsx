@@ -1884,15 +1884,26 @@ export default function BacklinksPage() {
               <p className="muted">No changes recorded yet.</p>
             ) : (
               <ul className="timeline">
-                {events.map((e, i) => (
-                  <li key={i}>
-                    <span className="tl-dot" />
-                    <div>
-                      <div className="tl-type">{statusLabel(e.event_type)}</div>
-                      <div className="muted mono">{new Date(e.detected_at).toLocaleString()}</div>
-                    </div>
-                  </li>
-                ))}
+                {events.map((e, i) => {
+                  const prev = typeof e.previous_data === "string" ? e.previous_data : null;
+                  const curr = typeof e.current_data === "string" ? e.current_data : null;
+                  return (
+                    <li key={i}>
+                      <span className="tl-dot" />
+                      <div>
+                        <div className="tl-type">{eventLabel(e.event_type)}</div>
+                        {(prev || curr) && (
+                          <div className="tl-diff">
+                            {prev && <span className="tl-before">{prev}</span>}
+                            {prev && curr && <span className="tl-arrow"> → </span>}
+                            {curr && <span className="tl-after">{curr}</span>}
+                          </div>
+                        )}
+                        <div className="muted mono">{new Date(e.detected_at).toLocaleString()}</div>
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </aside>
@@ -2009,4 +2020,35 @@ function BlKpi({
       </div>
     </button>
   );
+}
+
+// Human labels for backlink_events timeline entries (clearer than the raw
+// slugs). Keep in sync with EventType in crates/core/src/event.rs.
+const EVENT_LABELS: Record<string, string> = {
+  backlink_found: "Backlink found",
+  backlink_lost: "Backlink lost",
+  backlink_restored: "Backlink restored",
+  anchor_changed: "Anchor changed",
+  target_changed: "Target URL changed",
+  dofollow_to_nofollow: "Became nofollow",
+  nofollow_to_dofollow: "Became dofollow",
+  rel_changed: "Rel attribute changed",
+  sponsored_added: "Marked sponsored",
+  sponsored_removed: "Sponsored removed",
+  ugc_added: "Marked UGC",
+  ugc_removed: "UGC removed",
+  link_moved: "Link moved on the page",
+  source_redirected: "Source page redirected",
+  source_error: "Source page error",
+  target_redirected: "Target URL redirected",
+  target_error: "Target URL error",
+  noindex_detected: "Source page noindexed",
+  canonical_changed: "Canonical changed",
+  competitor_new_backlink: "Competitor: new backlink",
+  competitor_new_referring_domain: "Competitor: new referring domain",
+  competitor_new_referring_page: "Competitor: new referring page",
+};
+
+function eventLabel(eventType: string): string {
+  return EVENT_LABELS[eventType] ?? eventType.replace(/_/g, " ");
 }
