@@ -1424,9 +1424,10 @@ export default function BacklinksPage() {
                     <label>
                       <span>Currency</span>
                       <input
+                        list="bl-currencies"
                         placeholder="EUR"
                         maxLength={3}
-                        title="3-letter code, e.g. EUR, USD, GBP"
+                        title="Pick one or type another 3-letter code (e.g. EUR, USD, GBP)"
                         value={addForm.currency}
                         onChange={(e) =>
                           setAddForm((f) => ({
@@ -1435,6 +1436,15 @@ export default function BacklinksPage() {
                           }))
                         }
                       />
+                      <datalist id="bl-currencies">
+                        <option value="EUR">Euro</option>
+                        <option value="USD">US Dollar</option>
+                        <option value="GBP">British Pound</option>
+                        <option value="CAD">Canadian Dollar</option>
+                        <option value="AUD">Australian Dollar</option>
+                        <option value="CHF">Swiss Franc</option>
+                        <option value="JPY">Japanese Yen</option>
+                      </datalist>
                     </label>
                   </div>
                   <button className="btn primary" type="submit" disabled={addBusy}>
