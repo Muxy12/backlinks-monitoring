@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, type CSSProperties, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api, orgApi, backlinksExportUrl, type AnchorsView, type AttentionItemView, type BacklinkView, type ClientView, type DashboardResponse, type EventView, type ImpactView, type MeResponse, type NotificationsResponse, type OccurrenceView, type OverviewResponse, type ProjectView, type TagView } from "@/lib/api";
 import { BeforeAfterChart } from "@/components/BeforeAfterChart";
@@ -302,6 +302,25 @@ export default function BacklinksPage() {
     }
     setSelected(res.data);
     setBacklinks((bs) => bs.map((x) => (x.id === res.data.id ? res.data : x)));
+  }
+
+  // Cost + currency are edited together (currency is required when a cost is
+  // set) via these refs, saved on blur of either field.
+  const costRef = useRef<HTMLInputElement>(null);
+  const currencyRef = useRef<HTMLInputElement>(null);
+  function saveCostCurrency() {
+    if (!selected) return;
+    const costV = costRef.current?.value.trim() ?? "";
+    const curV = (currencyRef.current?.value.trim() ?? "").toUpperCase();
+    const costNum = costV ? Number(costV) : null;
+    if (costNum != null && (Number.isNaN(costNum) || costNum < 0)) return;
+    const origCost = selected.cost != null ? Number(selected.cost) : null;
+    if (costNum === origCost && curV === (selected.currency ?? "")) return; // unchanged
+    if (costNum != null && !curV) {
+      toast("Add a 3-letter currency (e.g. EUR) for the cost.", "error");
+      return;
+    }
+    void patchBacklink({ cost: costNum, currency: costNum != null ? curV : null });
   }
 
   function toggleSelect(id: string) {
@@ -1612,6 +1631,41 @@ export default function BacklinksPage() {
             </div>
             <h3 className="drawer-sub">Economic</h3>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
+              <label className="auth-field" style={{ margin: 0, fontSize: 12 }}>
+                <span className="muted">Cost</span>
+                <input
+                  key={`cost-${selected.id}`}
+                  ref={costRef}
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  defaultValue={selected.cost ?? ""}
+                  placeholder="e.g. 50"
+                  onBlur={saveCostCurrency}
+                />
+              </label>
+              <label className="auth-field" style={{ margin: 0, fontSize: 12 }}>
+                <span className="muted">Currency</span>
+                <input
+                  key={`cur-${selected.id}`}
+                  ref={currencyRef}
+                  list="bl-currencies-edit"
+                  maxLength={3}
+                  defaultValue={selected.currency ?? ""}
+                  placeholder="EUR"
+                  title="3-letter code, e.g. EUR, USD, GBP"
+                  onBlur={saveCostCurrency}
+                />
+                <datalist id="bl-currencies-edit">
+                  <option value="EUR">Euro</option>
+                  <option value="USD">US Dollar</option>
+                  <option value="GBP">British Pound</option>
+                  <option value="CAD">Canadian Dollar</option>
+                  <option value="AUD">Australian Dollar</option>
+                  <option value="CHF">Swiss Franc</option>
+                  <option value="JPY">Japanese Yen</option>
+                </datalist>
+              </label>
               <label className="auth-field" style={{ margin: 0, fontSize: 12 }}>
                 <span className="muted">Commercial model</span>
                 <select
