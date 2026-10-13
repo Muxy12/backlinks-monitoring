@@ -89,7 +89,8 @@ border-radius:10px;font-size:15px;line-height:1.6;color:#334155;word-break:break
 'Segoe UI',Roboto,Helvetica,Arial,sans-serif;\">\
 <div style=\"max-width:520px;margin:0 auto;background:#ffffff;border:1px solid #e5eaf2;border-radius:14px;overflow:hidden;\">\
 <div style=\"padding:20px 28px;border-bottom:1px solid #eef2f8;\">\
-<span style=\"font-size:20px;font-weight:800;letter-spacing:-.02em;color:#0f1b2d;\">Link<span style=\"color:#2f6bff;\">Pulz</span></span>\
+<img src=\"https://ye8jhaekbbcviws9.public.blob.vercel-storage.com/logo-linkpulz.webp\" alt=\"\" width=\"28\" height=\"28\" style=\"height:28px;width:28px;vertical-align:middle;margin-right:8px;border:0;\">\
+<span style=\"font-size:20px;font-weight:800;letter-spacing:-.02em;color:#0f1b2d;vertical-align:middle;\">Link<span style=\"color:#2f6bff;\">Pulz</span></span>\
 </div>\
 <div style=\"height:4px;background:{accent};\"></div>\
 <div style=\"padding:28px;\">\
