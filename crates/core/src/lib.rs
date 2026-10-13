@@ -34,7 +34,7 @@ pub use anchors::{
 pub use attention::{
     AttentionKind, Priority, priority as attention_priority, sort_key as attention_sort_key,
 };
-pub use event::{BacklinkEvent, EventType};
+pub use event::{BacklinkEvent, EventType, change_alert_label};
 pub use impact::{Confidence, SignalState};
 pub use monitoring::{
     MonitoringDecision, MonitoringInputs, MonitoringLevel, MonitoringReason,
