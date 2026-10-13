@@ -139,7 +139,7 @@ pub async fn tick(
     const TICK_BUDGET: Duration = Duration::from_secs(30);
     let work = async {
         if !guards.may_process_jobs() {
-            return (0usize, 0usize, 0usize, 0usize);
+            return (0usize, 0usize, 0usize, 0usize, 0u64);
         }
         let processed = worker::tick(&ctx, 8).await.unwrap_or_else(|e| {
             tracing::error!(error = %e, "tick: process failed");
@@ -150,6 +150,15 @@ pub async fn tick(
             .await
             .unwrap_or_else(|e| {
                 tracing::error!(error = %e, "tick: warranty sweep failed");
+                0
+            });
+        // Turn this round's significant own-link changes (lost/nofollow/redirect/
+        // error/anchor…) into notifications BEFORE delivery, so a change the crawl
+        // just detected is emailed/webhooked in the same tick.
+        let change_alerts = db::repositories::notifications::create_from_events(&state.pool, 100)
+            .await
+            .unwrap_or_else(|e| {
+                tracing::warn!(error = %e, "tick: change alerts failed");
                 0
             });
         // Expansion discovery: a tiny bounded slice per tick (seeds reschedule).
@@ -167,15 +176,21 @@ pub async fn tick(
                 tracing::warn!(error = %e, "tick: alert delivery failed");
                 0
             });
-        (processed, warranty_alerts, discovered, delivered)
+        (
+            processed,
+            warranty_alerts,
+            discovered,
+            delivered,
+            change_alerts,
+        )
     };
 
-    let (partial, (processed, warranty_alerts, discovered, delivered)) =
+    let (partial, (processed, warranty_alerts, discovered, delivered, change_alerts)) =
         match tokio::time::timeout(TICK_BUDGET, work).await {
             Ok(counts) => (false, counts),
             Err(_) => {
                 tracing::warn!("tick: budget exceeded; returning partial (continues next tick)");
-                (true, (0, 0, 0, 0))
+                (true, (0, 0, 0, 0, 0))
             }
         };
 
@@ -264,6 +279,7 @@ pub async fn tick(
         "reclaimed": reclaimed,
         "reclaimed_won": reclaimed_won,
         "outreach_sent": outreach_sent,
+        "change_alerts": change_alerts,
         "partial": partial,
     })))
 }

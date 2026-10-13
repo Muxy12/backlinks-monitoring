@@ -5349,6 +5349,83 @@ pub mod notifications {
         Ok(row.is_some())
     }
 
+    /// Turn significant own-backlink change events into notifications so they
+    /// reach the owner (in-app + email/webhook/Slack via the delivery pipeline).
+    /// Cross-tenant tick pass, idempotent: one notification per event
+    /// (`dedupe_key = change:<event_id>`). The notifiable set + labels live in
+    /// `backlio_core::change_alert_label`. Returns how many were created.
+    pub async fn create_from_events(pool: &PgPool, limit: i64) -> Result<u64, DbError> {
+        #[derive(sqlx::FromRow)]
+        struct ChangeEvent {
+            event_id: Uuid,
+            organization_id: Uuid,
+            backlink_id: Uuid,
+            event_type: String,
+            previous_data: Option<String>,
+            current_data: Option<String>,
+            source_domain: String,
+        }
+        let candidates = sqlx::query_as::<_, ChangeEvent>(
+            "SELECT e.id AS event_id, e.organization_id, e.backlink_id, \
+                    e.event_type::text AS event_type, \
+                    e.previous_data #>> '{}' AS previous_data, \
+                    e.current_data  #>> '{}' AS current_data, \
+                    b.source_domain \
+             FROM backlink_events e \
+             JOIN backlinks b ON b.id = e.backlink_id \
+             WHERE b.subject = 'own' \
+               AND e.detected_at >= now() - interval '7 days' \
+               AND e.event_type::text IN ('backlink_lost', 'backlink_restored', \
+                   'dofollow_to_nofollow', 'source_redirected', 'target_redirected', \
+                   'source_error', 'target_error', 'anchor_changed', 'target_changed', \
+                   'noindex_detected') \
+               AND NOT EXISTS (SELECT 1 FROM notifications n \
+                               WHERE n.dedupe_key = 'change:' || e.id::text) \
+             ORDER BY e.detected_at DESC \
+             LIMIT $1",
+        )
+        .bind(limit)
+        .fetch_all(pool)
+        .await?;
+
+        let mut created = 0u64;
+        for c in candidates {
+            // The pure core is the source of truth for what's notifiable.
+            let Some(label) = backlio_core::change_alert_label(&c.event_type) else {
+                continue;
+            };
+            let title = format!("{label}: {}", c.source_domain);
+            let body = match (c.previous_data.as_deref(), c.current_data.as_deref()) {
+                (Some(p), Some(n)) => format!("{p} → {n}"),
+                (None, Some(n)) => n.to_string(),
+                (Some(p), None) => p.to_string(),
+                (None, None) => label.to_string(),
+            };
+            let dedupe = format!("change:{}", c.event_id);
+            let row: Option<(Uuid,)> = sqlx::query_as(
+                "INSERT INTO notifications \
+                    (id, organization_id, backlink_id, kind, title, body, dedupe_key) \
+                 VALUES ($1, $2, $3, $4, $5, $6, $7) \
+                 ON CONFLICT (dedupe_key) WHERE dedupe_key IS NOT NULL DO NOTHING \
+                 RETURNING id",
+            )
+            .bind(Uuid::now_v7())
+            .bind(c.organization_id)
+            .bind(c.backlink_id)
+            .bind(&c.event_type)
+            .bind(&title)
+            .bind(&body)
+            .bind(&dedupe)
+            .fetch_optional(pool)
+            .await
+            .map_err(DbError::from_insert)?;
+            if row.is_some() {
+                created += 1;
+            }
+        }
+        Ok(created)
+    }
+
     /// Count of unread notifications for an org — the alerts badge.
     pub async fn unread_count(pool: &PgPool, scope: &OrgScope) -> Result<i64, DbError> {
         let (n,): (i64,) = sqlx::query_as(

@@ -84,3 +84,56 @@ impl BacklinkEvent {
         }
     }
 }
+
+/// Human label for a backlink-change event worth alerting the owner about, or
+/// `None` for events that are NOT turned into an alert — `backlink_found` (not a
+/// loss/change), `link_moved`/`canonical_changed`/`rel_changed` (low signal;
+/// dofollow/nofollow transitions carry the meaningful rel change), and the
+/// `competitor_*` family (handled by their own in-app alert). Single source of
+/// truth for the notification pass in db::repositories::notifications.
+pub fn change_alert_label(event_type: &str) -> Option<&'static str> {
+    Some(match event_type {
+        "backlink_lost" => "Backlink lost",
+        "backlink_restored" => "Backlink restored",
+        "dofollow_to_nofollow" => "Link became nofollow",
+        "source_redirected" => "Source page redirected",
+        "target_redirected" => "Target URL redirected",
+        "source_error" => "Source page error",
+        "target_error" => "Target URL error",
+        "anchor_changed" => "Anchor changed",
+        "target_changed" => "Target URL changed",
+        "noindex_detected" => "Source page noindexed",
+        _ => return None,
+    })
+}
+
+#[cfg(test)]
+mod change_alert_tests {
+    use super::change_alert_label;
+
+    #[test]
+    fn notifies_significant_changes_only() {
+        for t in [
+            "backlink_lost",
+            "backlink_restored",
+            "dofollow_to_nofollow",
+            "source_error",
+            "target_error",
+            "anchor_changed",
+            "noindex_detected",
+        ] {
+            assert!(change_alert_label(t).is_some(), "{t} should alert");
+        }
+        // Not alerted: not a loss/change, low signal, or competitor-owned.
+        for t in [
+            "backlink_found",
+            "link_moved",
+            "canonical_changed",
+            "rel_changed",
+            "competitor_new_backlink",
+            "competitor_new_referring_domain",
+        ] {
+            assert!(change_alert_label(t).is_none(), "{t} should NOT alert");
+        }
+    }
+}
