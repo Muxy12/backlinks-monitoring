@@ -1,11 +1,17 @@
-// Marketing homepage (§48). Content/structure from the approved SEO redesign;
-// placeholder copy resolved against the shipped product (check cadence is
-// "on a schedule you set", claims verified). The six product shots are inline
-// `.shot` UI mockups built from the real design language (status colors, the
-// distribution bar, the anchor-text distribution), each labelled "Example". The
-// LinkPulz charte (dark + purple, #lp-home-scoped CSS), the sticky header and
-// the footer live in ./marketing.ts and are shared with the backlink tool pages;
-// this file supplies only the homepage's own JSON-LD graph and <main> sections.
+// Marketing homepage (§48). Content/structure follow the approved SEO content
+// brief (full "backlink monitoring" narrative: what/why/how, feature deep-dives,
+// a self-assessment, checker-vs-monitor + competitor comparisons, transparency,
+// pricing and FAQ). Every placeholder in the brief is resolved against the
+// shipped product — 10-day free trial, no card; checks on a schedule you set
+// (daily/weekly/bi-weekly/monthly); email/Slack/webhook alerts; CSV import and
+// export; competitor gap analysis; plans $29–$199. No invented testimonials or
+// case studies. The six+ product shots are inline `.shot` UI mockups built from
+// the real design language (status colors, distribution bars), each labelled
+// "Example". The LinkPulz charte (dark + purple, #lp-home-scoped CSS), the sticky
+// header and the footer live in ./marketing.ts and are shared with the backlink
+// tool pages; this file supplies only the homepage's own JSON-LD graph, its small
+// quiz-only <style> block and its <main> sections. The visible FAQ is kept in
+// lockstep with the FAQPage JSON-LD below.
 import { marketingPage } from "./marketing";
 
 const JSONLD = `{
@@ -21,7 +27,7 @@ const JSONLD = `{
         "url": "https://ye8jhaekbbcviws9.public.blob.vercel-storage.com/logo-linkpulz.webp"
       },
       "sameAs": [
-        "https://www.linkedin.com/company/linkpulz",
+        "https://www.linkedin.com/showcase/linkpulz",
         "https://x.com/linkpulz"
       ]
     },
@@ -37,8 +43,8 @@ const JSONLD = `{
       "@type": "WebPage",
       "@id": "https://www.linkpulz.com/#webpage",
       "url": "https://www.linkpulz.com/",
-      "name": "Backlink Monitoring Tool: Lost Link Alerts | LinkPulz",
-      "description": "Monitor every backlink you earn or buy. Get instant alerts when a link is lost, nofollowed or deindexed.",
+      "name": "Backlink Monitoring Tool with Automated Alerts | LinkPulz",
+      "description": "Monitor new and lost backlinks, track dofollow and nofollow changes, analyze competitor backlinks and get automated alerts when your links change.",
       "isPartOf": { "@id": "https://www.linkpulz.com/#website" },
       "about": { "@id": "https://www.linkpulz.com/#software" },
       "primaryImageOfPage": { "@type": "ImageObject", "url": "https://ye8jhaekbbcviws9.public.blob.vercel-storage.com/banniere-dashboard-linkpulz.webp" },
@@ -59,18 +65,20 @@ const JSONLD = `{
       "applicationCategory": "BusinessApplication",
       "applicationSubCategory": "SEO software",
       "operatingSystem": "Web",
-      "description": "Backlink monitoring software that checks your earned and paid backlinks on a schedule and alerts you when a link is lost, redirected, nofollowed, noindexed or deindexed.",
+      "description": "Backlink monitoring software that tracks new and lost backlinks, checks your earned and paid links on a schedule, detects dofollow/nofollow and anchor changes, analyzes competitor backlinks and sends automated alerts.",
       "url": "https://www.linkpulz.com/",
       "image": "https://ye8jhaekbbcviws9.public.blob.vercel-storage.com/banniere-dashboard-linkpulz.webp",
       "publisher": { "@id": "https://www.linkpulz.com/#organization" },
       "featureList": [
-        "Verify your backlinks",
+        "Track new backlinks",
         "Detect lost backlinks",
         "Find broken backlinks",
         "Monitor backlink health",
         "Dofollow, nofollow, sponsored and UGC attribute tracking",
         "Noindex and deindexation detection",
         "Anchor text change detection",
+        "Competitor backlink gap analysis",
+        "CSV import and export",
         "Email, Slack and webhook notifications",
         "Client-ready backlink reports"
       ],
@@ -90,13 +98,13 @@ const JSONLD = `{
       "mainEntity": [
         {
           "@type": "Question",
-          "name": "What is backlink monitoring and why do I need it?",
-          "acceptedAnswer": { "@type": "Answer", "text": "Backlink monitoring is the automatic, recurring check of the links pointing to your site. Links get removed, redirected, set to nofollow or deindexed all the time, and without monitoring you usually find out long after the damage. Monitoring tells you quickly so you can act." }
+          "name": "What is backlink monitoring?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Backlink monitoring is the ongoing process of tracking the links pointing to your site to identify new backlinks, lost links and changes to existing links. Unlike a one-time check, it keeps a history and alerts you when a relevant change is detected, so you can investigate it." }
         },
         {
           "@type": "Question",
-          "name": "How do I know if a backlink has been removed or changed?",
-          "acceptedAnswer": { "@type": "Answer", "text": "Add the link to LinkPulz. We re-check the linking page on a schedule and alert you if the link is gone, the page errors or redirects, or the attributes and anchor text change." }
+          "name": "How do I monitor my backlinks?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Add the links or website you want to track to LinkPulz by pasting them, uploading a CSV or importing referring domains from Google Search Console. Set your check schedule and alert preferences, then review detected changes from the dashboard. Automated alerts keep you informed without checking each link by hand." }
         },
         {
           "@type": "Question",
@@ -105,28 +113,43 @@ const JSONLD = `{
         },
         {
           "@type": "Question",
+          "name": "Can I receive alerts when a backlink disappears?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes. LinkPulz sends automated alerts by email, Slack or webhook when a monitored link is lost, redirected, nofollowed, deindexed or has its anchor changed. Each alert shows the source URL, your target URL, what changed and when it was detected." }
+        },
+        {
+          "@type": "Question",
+          "name": "How can I detect lost backlinks?",
+          "acceptedAnswer": { "@type": "Answer", "text": "LinkPulz compares the current observed state of each linking page with what it recorded before. When a previously monitored link is no longer found, it flags the change with the likely cause so you can investigate and decide whether to win it back." }
+        },
+        {
+          "@type": "Question",
           "name": "Can LinkPulz detect when a link changes from dofollow to nofollow?",
           "acceptedAnswer": { "@type": "Answer", "text": "Yes. We track rel attributes (nofollow, sponsored, UGC) on every check and alert you when they change." }
         },
         {
           "@type": "Question",
-          "name": "Can I monitor paid or guest-post links?",
-          "acceptedAnswer": { "@type": "Answer", "text": "Yes. Tag links as guest post, sponsored or PR, then verify that each one stays live and keeps the attributes you agreed on." }
+          "name": "Can I analyze competitor backlinks?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes. LinkPulz includes competitor backlink gap analysis, which surfaces referring domains that link to competing sites but not yet to yours, so you can turn them into outreach prospects." }
         },
         {
           "@type": "Question",
-          "name": "What's the difference between a backlink checker and a backlink monitoring tool?",
-          "acceptedAnswer": { "@type": "Answer", "text": "A checker gives you a one-time snapshot. A monitoring tool checks the same links again and again, keeps the history and alerts you when something changes." }
+          "name": "What is the difference between a backlink checker and a backlink monitor?",
+          "acceptedAnswer": { "@type": "Answer", "text": "A backlink checker gives you a one-time snapshot of links at a given moment. A backlink monitor tracks the same links over time, keeps their history and alerts you when something changes." }
         },
         {
           "@type": "Question",
-          "name": "Do backlinks affect visibility in AI search results?",
-          "acceptedAnswer": { "@type": "Answer", "text": "Research has found correlations between strong link profiles and visibility in AI-generated answers, but there is no proven causal link. Backlinks remain valuable for classic search rankings and referral traffic." }
+          "name": "Does losing a backlink hurt SEO?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Losing a backlink does not automatically cause a ranking decline. Its impact depends on the link's relevance, the source page and your broader backlink profile. Monitoring helps you spot the change and decide whether it needs follow-up." }
         },
         {
           "@type": "Question",
-          "name": "How many links can I monitor on my plan?",
-          "acceptedAnswer": { "@type": "Answer", "text": "Monitored-link limits range from 500 on Starter to 15,000 on Agency. You can upgrade at any time as your link portfolio grows." }
+          "name": "Is backlink monitoring free?",
+          "acceptedAnswer": { "@type": "Answer", "text": "LinkPulz offers a 10-day free trial, with no credit card required, so you can evaluate its monitoring before choosing a paid plan. Paid plans start at $29/mo based on the number of backlinks monitored. See the pricing page for current details." }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I manage backlinks using CSV files?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes. You can import backlinks from a CSV or Excel file and export every monitored link with its full change history to CSV at any time." }
         }
       ]
     }
@@ -143,35 +166,100 @@ export const HERO_SIZES = "(max-width: 900px) 92vw, 540px";
 export const HERO_SRCSET = [640, 828, 1080, 1200].map((w) => `${heroOpt(w)} ${w}w`).join(", ");
 export const HERO_SRC = heroOpt(1200);
 
-const MAIN = `
+// Quiz-only styles live here (not in the shared marketing.ts) so this rewrite
+// doesn't collide with other open PRs that touch marketing.ts. A <style> injected
+// via dangerouslySetInnerHTML is parsed and applied by the browser (a <script>
+// would not execute). Scoped under #lp-home like the rest of the charte.
+const QUIZ_STYLE = `<style>
+#lp-home .quiz{max-width:880px;margin:36px auto 0}
+#lp-home .quiz-q{list-style:none;padding:0;margin:0;display:grid;gap:16px}
+#lp-home .quiz-q>li{border:1px solid var(--line);border-radius:var(--radius);background:var(--bg);padding:18px 20px}
+#lp-home .quiz-ttl{font-weight:650;margin:0 0 12px}
+#lp-home .quiz-opts{display:grid;gap:8px}
+#lp-home .quiz-opts label{display:flex;align-items:center;gap:10px;padding:10px 13px;border:1px solid var(--line);border-radius:10px;cursor:pointer;font-size:.95rem;transition:border-color .12s,background .12s}
+#lp-home .quiz-opts label:hover{border-color:var(--brand)}
+#lp-home .quiz-opts input{accent-color:var(--brand);width:16px;height:16px;flex:none;margin:0}
+#lp-home .quiz-opts label:has(input:checked){border-color:var(--brand);background:color-mix(in srgb,var(--brand) 9%,transparent)}
+#lp-home .quiz-opts label:has(input:checked) span{font-weight:600}
+#lp-home .quiz-res{margin-top:30px}
+#lp-home .quiz-res .cap{text-align:center;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:4px}
+#lp-home .quiz-res .card h3{display:flex;align-items:center;gap:9px}
+#lp-home .quiz-res .tier{width:10px;height:10px;border-radius:50%;flex:none;display:inline-block}
+#lp-home .quiz-res .next{color:var(--ink);font-size:.9rem;margin:10px 0 0}
+#lp-home .quiz-res .next b{color:var(--brand)}
+</style>`;
+
+const MAIN = `${QUIZ_STYLE}
 <!-- ============ HERO ============ -->
 <section class="hero" aria-labelledby="h1">
   <div class="wrap grid">
     <div>
-      <span class="badge">Backlink monitoring software</span>
-      <h1 id="h1">Backlink Monitoring: Protect the Links You Worked Hard to Earn</h1>
-      <p class="lead">LinkPulz checks every backlink you've earned or paid for, and tells you the moment one disappears, turns nofollow, redirects or gets deindexed. Stop finding out three months too late.</p>
+      <span class="badge">Backlink monitoring software with automated alerts</span>
+      <h1 id="h1">Backlink Monitoring Tool with Automated Alerts</h1>
+      <p class="lead">Track your backlinks. Detect changes. Stay in control of your SEO. LinkPulz monitors new and lost backlinks, tracks dofollow and nofollow changes, analyzes competitor backlinks, and alerts you the moment something important changes.</p>
       <ul class="check">
-        <li>Verify your backlinks</li>
-        <li>Detect lost backlinks</li>
-        <li>Find broken backlinks</li>
-        <li>Monitor backlink health</li>
+        <li>Track new and lost backlinks</li>
+        <li>Monitor dofollow and nofollow changes</li>
+        <li>Analyze competitor backlinks</li>
+        <li>Get automated email, Slack and webhook alerts</li>
       </ul>
       <div class="cta-row">
-        <a class="btn" href="/register">Start free trial</a>
-        <a class="btn ghost" href="#how-it-works">See how it works</a>
+        <a class="btn" href="/register">Start your free trial</a>
+        <a class="btn ghost" href="#how-it-works">Explore how it works</a>
       </div>
-      <p class="micro">No credit card required · Set up in minutes</p>
+      <p class="micro">10-day free trial · No credit card required · Set up in minutes</p>
     </div>
     <img class="hero-img" src="${HERO_SRC}" srcset="${HERO_SRCSET}" sizes="${HERO_SIZES}" alt="LinkPulz backlink monitoring dashboard showing a lost backlink alert" title="LinkPulz backlink monitoring dashboard" width="1448" height="1086" fetchpriority="high" style="width:100%;height:auto;border-radius:var(--radius);border:1px solid var(--line)">
   </div>
 </section>
 
-<!-- ============ VERIFY BACKLINKS ============ -->
+<!-- ============ SEE WHAT'S HAPPENING ============ -->
+<section class="alt" aria-labelledby="see-h">
+  <div class="wrap">
+    <div class="center">
+      <h2 id="see-h">See what's happening to your backlinks</h2>
+      <p class="lead">A backlink that exists today might disappear tomorrow. A dofollow link might become nofollow. A competitor might earn links from sites you haven't explored yet. Without consistent monitoring, these changes go unnoticed.</p>
+    </div>
+
+    <div class="split" style="margin-top:36px">
+      <div>
+        <h3>With LinkPulz you can</h3>
+        <ul class="check">
+          <li><b>Track new backlinks</b> — identify newly discovered links pointing to your site.</li>
+          <li><b>Detect lost backlinks</b> — find out when a previously monitored link disappears.</li>
+          <li><b>Monitor link attributes</b> — keep track of dofollow and nofollow changes.</li>
+          <li><b>Receive automated alerts</b> — stay informed when a monitored change is detected.</li>
+          <li><b>Analyze competitor backlinks</b> — explore the referring domains behind competing sites.</li>
+          <li><b>Manage data with CSV</b> — import and export your backlink data for clean records.</li>
+        </ul>
+        <div class="cta-row"><a class="btn" href="/register">Start monitoring your backlinks</a></div>
+      </div>
+
+      <!-- Interactive demo scenarios (illustrative, not live data) -->
+      <div class="cards" style="margin-top:0;grid-template-columns:1fr">
+        <div class="card broken-case" style="padding:18px 20px">
+          <div class="srow" style="border-bottom:0;padding:0 0 6px"><span class="surl"><b>Scenario 1 — New backlink detected</b></span><span class="sbadge live">New</span></div>
+          <p class="micro" style="margin:0">A new link to your site is discovered. Review the source, target page and attributes, then decide whether to protect it.</p>
+        </div>
+        <div class="card broken-case" style="padding:18px 20px">
+          <div class="srow" style="border-bottom:0;padding:0 0 6px"><span class="surl"><b>Scenario 2 — Backlink lost</b></span><span class="sbadge lost">Lost</span></div>
+          <p class="micro" style="margin:0">A monitored link is no longer detected at its expected location. Investigate the change and decide whether it can be recovered.</p>
+        </div>
+        <div class="card broken-case" style="padding:18px 20px">
+          <div class="srow" style="border-bottom:0;padding:0 0 6px"><span class="surl"><b>Scenario 3 — Dofollow → nofollow</b></span><span class="sbadge changed">Changed</span></div>
+          <p class="micro" style="margin:0">A monitored link changes its attributes. Review the updated link and decide whether further action is needed.</p>
+        </div>
+        <p class="micro" style="margin:2px 0 0">Example events are illustrative. Actual detection depends on the monitoring methodology.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ VERIFY BACKLINKS (try it) ============ -->
 <section id="verify-backlinks" aria-labelledby="verify-h">
   <div class="wrap center">
-    <h2 id="verify-h">Verify a Backlink</h2>
-    <p class="lead">Check if a backlink exists, whether it's live, and how it's set up. Paste the page that links to you and your URL. Our backlink verification tool does the rest.</p>
+    <h2 id="verify-h">Experience backlink monitoring in action</h2>
+    <p class="lead">Check if a backlink exists, whether it's live, and how it's set up. Paste the page that links to you and your URL — our backlink verification tool does the rest.</p>
 
     <div class="tool verify">
       <form action="/verify-backlinks" method="get">
@@ -205,28 +293,28 @@ const MAIN = `
   </div>
 </section>
 
-<!-- ============ LOST BACKLINKS ============ -->
-<section class="alt" id="lost-backlinks" aria-labelledby="lost-h">
+<!-- ============ WHAT IS BACKLINK MONITORING? (explainer) ============ -->
+<section class="alt" id="what-is" aria-labelledby="what-h">
   <div class="wrap">
     <div class="center">
-      <h2 id="lost-h">Lost Backlinks: Find Them Before They Cost You Rankings</h2>
-      <p class="lead">You had a backlink, and now it's gone. A lost backlink checker tells you which links disappeared, when, and why, so you can win them back.</p>
+      <h2 id="what-h">What is backlink monitoring?</h2>
+      <p class="lead">Backlink monitoring is the process of tracking the links pointing to your website over time to identify new links, lost links and changes to existing backlinks.</p>
+    </div>
+    <div class="prose center" style="margin-top:8px">
+      <p>Unlike a one-time backlink check, ongoing monitoring helps you understand how your backlink profile changes and alerts you when relevant events are detected. For SEO professionals, it provides visibility into link-building campaigns, acquired placements, and opportunities to recover lost links.</p>
     </div>
 
-    <div class="split" style="margin-top:36px">
+    <div class="split" style="margin-top:40px">
       <div>
-        <h3>Why backlinks disappear</h3>
-        <ul class="check">
-          <li>The publisher removes the link</li>
-          <li>The page is deleted or returns a 404</li>
-          <li>The article is edited or rewritten</li>
-          <li>A site migration breaks the URL</li>
-          <li>A bad redirect sends the link elsewhere</li>
-          <li>The link switches to nofollow or the page goes noindex</li>
-        </ul>
-        <h3 style="margin-top:24px">How to find lost backlinks</h3>
-        <p>Add your links to LinkPulz. We re-check each linking page on a schedule and flag any link that is no longer there, with the likely cause.</p>
-        <p>Then contact the site owner while the change is recent. <a href="/lost-backlinks">Read our guide on how to regain lost backlinks</a>.</p>
+        <h3>How does backlink monitoring work?</h3>
+        <ol>
+          <li><b>Track backlinks</b> — add or identify the links you want to monitor.</li>
+          <li><b>Check their status</b> — the software examines each monitored link and its attributes.</li>
+          <li><b>Detect changes</b> — new links, missing backlinks or modified attributes are identified.</li>
+          <li><b>Send alerts</b> — automated notifications help you stay informed.</li>
+          <li><b>Take action</b> — review the change and decide whether follow-up is needed.</li>
+        </ol>
+        <p>The result is a more structured approach to backlink management.</p>
       </div>
 
       <!-- Example timeline (illustrative, not live data) -->
@@ -248,25 +336,88 @@ const MAIN = `
         </div>
       </div>
     </div>
+  </div>
+</section>
 
-    <div class="center" style="margin-top:36px">
-      <a class="btn" href="/register">Get Alerted When a Backlink Disappears</a>
+<!-- ============ WHY IT MATTERS ============ -->
+<section aria-labelledby="why-h">
+  <div class="wrap">
+    <div class="center">
+      <h2 id="why-h">Why is backlink monitoring important for SEO?</h2>
+      <p class="lead">Building backlinks is only part of a successful link-building strategy. Once links are acquired, you need to know whether they stay in place and whether their attributes change.</p>
+    </div>
+    <div class="cards">
+      <div class="card"><div class="ic">1</div><h3>Detect lost backlinks before they go unnoticed</h3><p>Publishers remove links, update articles, delete pages or restructure sites. Monitoring tells you when a tracked link is no longer found, so you can investigate and reach out while it's recent.</p></div>
+      <div class="card"><div class="ic">2</div><h3>Protect your link-building efforts</h3><p>Outreach, digital PR and partnerships take time and budget. Monitoring verifies that the placements you earned or paid for are still live.</p></div>
+      <div class="card"><div class="ic">3</div><h3>Track dofollow and nofollow changes</h3><p>A publisher can change a link's attributes after publication. Monitoring surfaces the change so you can check the backlink still meets your expectations.</p></div>
+      <div class="card"><div class="ic">4</div><h3>Reduce manual backlink checks</h3><p>Checking links one by one gets harder as your portfolio grows. Automation brings detected changes into a single workflow instead of repeated manual visits.</p></div>
+      <div class="card"><div class="ic">5</div><h3>Understand competitor backlink activity</h3><p>Competitors' backlinks reveal outreach opportunities and relevant publications. Competitor analysis helps you explore those signals to inform your strategy.</p></div>
+    </div>
+    <div class="center" style="margin-top:36px"><a class="btn" href="/register">Start your free trial</a></div>
+  </div>
+</section>
+
+<!-- ============ EVERYTHING YOU NEED (feature deep-dives) ============ -->
+<section class="alt" id="features" aria-labelledby="feat-h">
+  <div class="wrap">
+    <div class="center">
+      <h2 id="feat-h">Everything you need in a backlink monitoring tool</h2>
+      <p class="lead">A link isn't just "there" or "gone". LinkPulz tracks every way a link can quietly stop working — and the opportunities around it.</p>
+    </div>
+    <div class="cards">
+      <div class="card"><div class="ic">+</div><h3>Monitor new backlinks</h3><p>Keep track of newly identified links and watch how your backlink portfolio evolves.</p></div>
+      <div class="card"><div class="ic">✕</div><h3>Detect lost backlinks</h3><p>Know when a monitored link disappears so you can investigate and decide whether recovery is possible.</p></div>
+      <div class="card"><div class="ic">404</div><h3>Find broken backlinks</h3><p>Spot linking pages that return a 404 or 5xx, and links that now redirect elsewhere — on both source and destination.</p></div>
+      <div class="card"><div class="ic">♥</div><h3>Monitor backlink health</h3><p>Track status, attributes and indexation for every link in one view.</p></div>
+      <div class="card"><div class="ic">rel</div><h3>Dofollow &amp; nofollow</h3><p>Dofollow switches to nofollow, sponsored or UGC — flagged on every check.</p></div>
+      <div class="card"><div class="ic">vs</div><h3>Competitor backlinks</h3><p>Explore the referring domains behind competing sites and surface gap opportunities.</p></div>
+      <div class="card"><div class="ic">Aa</div><h3>Anchor text changes</h3><p>Your agreed anchor is edited or replaced — detected and logged.</p></div>
+      <div class="card"><div class="ic">⤓</div><h3>CSV import &amp; export</h3><p>Bring links in from a CSV or Excel file, and export every link with its history.</p></div>
     </div>
   </div>
 </section>
 
-<!-- ============ BROKEN BACKLINKS ============ -->
-<section id="broken-backlinks" aria-labelledby="broken-h">
+<!-- ============ DETECT LOST BACKLINKS ============ -->
+<section id="lost-backlinks" aria-labelledby="lost-h">
   <div class="wrap">
     <div class="center">
-      <h2 id="broken-h">Broken Backlinks: Find Them Before They Waste Your Link Equity</h2>
-      <p class="lead">A broken backlink isn't always a lost one. The link can still be there while the page it points to, or the page it sits on, is returning an error. A broken backlink checker catches both.</p>
+      <h2 id="lost-h">Detect lost backlinks before they cost you rankings</h2>
+      <p class="lead">You had a backlink, and now it's gone. LinkPulz tells you which links disappeared, when, and the likely cause — so you can win them back.</p>
     </div>
+    <div class="split" style="margin-top:36px">
+      <div>
+        <h3>Why backlinks disappear</h3>
+        <ul class="check">
+          <li>The publisher removes the link</li>
+          <li>The page is deleted or returns a 404</li>
+          <li>The article is edited or rewritten</li>
+          <li>A site migration breaks the URL</li>
+          <li>A bad redirect sends the link elsewhere</li>
+          <li>The link switches to nofollow or the page goes noindex</li>
+        </ul>
+        <p style="margin-top:16px">Add your links to LinkPulz. We re-check each linking page on a schedule and flag any link that is no longer there, with the likely cause. Then contact the site owner while the change is recent. <a href="/lost-backlinks">Read our guide on regaining lost backlinks</a>.</p>
+      </div>
+      <div class="lost-demo" role="img" aria-label="Example: a backlink goes from live yesterday to lost today, with details to win it back">
+        <p class="micro verify-label">Example</p>
+        <div class="srow"><span class="surl">example.com/best-seo-tools</span><span class="sbadge lost">Lost</span></div>
+        <div class="stiles" style="margin-top:10px"><div class="stile"><b>3 days</b><small>Since lost</small></div><div class="stile"><b>$120</b><small>Paid placement</small></div><div class="stile"><b>example.com</b><small>Referring site</small></div></div>
+        <div class="sdiff" style="margin-top:12px"><b>What changed</b> <del>dofollow · anchor “backlink monitoring”</del> → <ins>link removed</ins></div>
+      </div>
+    </div>
+    <div class="center" style="margin-top:36px"><a class="btn" href="/register">Get alerted when a backlink disappears</a></div>
+  </div>
+</section>
 
+<!-- ============ BROKEN BACKLINKS ============ -->
+<section class="alt" id="broken-backlinks" aria-labelledby="broken-h">
+  <div class="wrap">
+    <div class="center">
+      <h2 id="broken-h">Find broken backlinks before they waste your link equity</h2>
+      <p class="lead">A broken backlink isn't always a lost one. The link can still be there while the page it points to — or the page it sits on — returns an error. LinkPulz catches both.</p>
+    </div>
     <div class="cards">
-      <!-- Case 1 -->
       <div class="card broken-case">
-        <h3>Case 1: Your link works, but the destination is broken</h3>
+        <h3>Case 1: your link works, but the destination is broken</h3>
         <p>Another site still links to you, but the URL it points to no longer exists.</p>
         <div class="flow" role="img" aria-label="Example: a backlink points to example.com/my-old-page, which returns a 404 error">
           <span class="url">example.com/my-old-page</span>
@@ -275,10 +426,8 @@ const MAIN = `
         </div>
         <p class="micro">Typical causes: a deleted page, a changed URL, a missing redirect after a migration.</p>
       </div>
-
-      <!-- Case 2 -->
       <div class="card broken-case">
-        <h3>Case 2: The page holding your link is broken</h3>
+        <h3>Case 2: the page holding your link is broken</h3>
         <p>Your backlink is on a page that now returns an error, so the link is no longer reachable.</p>
         <div class="flow" role="img" aria-label="Example: the page that contains your backlink returns a 404 or 5xx error">
           <span class="url">othersite.com/article-with-your-link</span>
@@ -288,46 +437,27 @@ const MAIN = `
         <p class="micro">Typical causes: the publisher deleted the article, a server error, or the site went offline.</p>
       </div>
     </div>
-
-    <div class="split" style="margin-top:48px">
-      <div>
-        <h3>How to find broken backlinks</h3>
-        <ul class="check">
-          <li>Check the HTTP status of the page that links to you</li>
-          <li>Check the HTTP status of the URL it points to</li>
-          <li>Spot redirects that send visitors somewhere else</li>
-          <li>Fix your own broken pages with a 301 redirect, or ask the site to update the link</li>
-        </ul>
-      </div>
-      <div class="alt-box">
-        <p><b>LinkPulz monitors the status of your backlinks and their destinations.</b> It checks both the page your link sits on and the page it points to.</p>
-        <p>You get an alert when either side starts returning an error, so you can fix it while it still matters.</p>
-        <a class="btn" href="/register">Find Broken Backlinks Automatically</a>
-        <p class="micro" style="margin-top:12px">Learn more: <a href="/broken-backlinks">how to find and fix broken backlinks</a>.</p>
-      </div>
+    <div class="center" style="margin-top:36px"><a class="btn" href="/register">Find broken backlinks automatically</a>
+      <p class="micro" style="margin-top:12px">Learn more: <a href="/broken-backlinks">how to find and fix broken backlinks</a>.</p>
     </div>
   </div>
 </section>
 
 <!-- ============ BACKLINK HEALTH CHECK ============ -->
-<section class="alt" id="backlink-health-check" aria-labelledby="health-h">
+<section id="backlink-health-check" aria-labelledby="health-h">
   <div class="wrap">
     <div class="center">
-      <h2 id="health-h">Backlink Health Check: See the State of Your Entire Backlink Profile</h2>
-      <p class="lead">It's not just "does this link exist?" Know how healthy your whole backlink portfolio is, and which links need attention first.</p>
+      <h2 id="health-h">See the health of your entire backlink profile</h2>
+      <p class="lead">It's not just "does this link exist?" Know how healthy your whole portfolio is, and which links need attention first.</p>
     </div>
-
-    <!-- Example dashboard (illustrative data, not live) -->
     <div class="health" role="group" aria-label="Example backlink health dashboard">
       <p class="micro verify-label">Example data</p>
-
       <div class="health-top">
         <div class="health-score">
           <small>Overall Health</small>
           <b>93%</b>
           <span>1,284 monitored backlinks</span>
         </div>
-
         <div class="health-main">
           <div class="health-bar" role="img" aria-label="1,198 healthy, 43 lost, 17 changed, 12 redirected, 8 nofollow, 6 broken">
             <i style="width:93.3%;background:var(--accent)"></i>
@@ -337,7 +467,6 @@ const MAIN = `
             <i style="width:.62%;background:#9c36b5"></i>
             <i style="width:.47%;background:#495057"></i>
           </div>
-
           <table class="health-table">
             <caption class="sr-only">Backlinks by status</caption>
             <tbody>
@@ -352,108 +481,23 @@ const MAIN = `
         </div>
       </div>
     </div>
-
-    <div class="cards">
-      <div class="card"><h3>One score for your whole profile</h3><p>Get a single health percentage, calculated from the live status of every link you track.</p></div>
-      <div class="card"><h3>Every problem, sorted</h3><p>Lost, changed, redirected, nofollow and broken links are grouped so you see what to fix first.</p></div>
-      <div class="card"><h3>Track it over time</h3><p>Watch your backlink health improve or drop, and catch trends before they hurt rankings.</p></div>
-    </div>
-
-    <div class="center" style="margin-top:36px">
-      <a class="btn" href="/register">Check Your Backlink Health</a>
+    <div class="center" style="margin-top:28px"><a class="btn" href="/register">Check your backlink health</a>
       <p class="micro" style="margin-top:12px">Learn more: <a href="/backlink-health-check">how to run a backlink health check</a>.</p>
     </div>
   </div>
 </section>
 
-
-<!-- ============ WHAT WE MONITOR ============ -->
-<section class="alt" id="features" aria-labelledby="monitor-h">
-  <div class="wrap">
-    <div class="center">
-      <h2 id="monitor-h">Backlink monitoring: every way a link can quietly stop working</h2>
-      <p class="lead">A link isn't just "there" or "gone". LinkPulz backlink monitoring tracks the changes that cost you rankings and referral traffic.</p>
-    </div>
-    <div class="cards">
-      <div class="card"><div class="ic">✓</div><h3>Verify your backlinks</h3><p>Confirm that each link is still on the page, with the right anchor text and target URL.</p></div>
-      <div class="card"><div class="ic">✕</div><h3>Detect lost backlinks</h3><p>Get alerted when the page removes your link or disappears altogether.</p></div>
-      <div class="card"><div class="ic">404</div><h3>Find broken backlinks</h3><p>Spot linking pages that return a 404 or 5xx error, and links that now redirect elsewhere.</p></div>
-      <div class="card"><div class="ic">♥</div><h3>Monitor backlink health</h3><p>Track status, attributes and indexation for every link in one view.</p></div>
-      <div class="card"><div class="ic">rel</div><h3>Attribute changes</h3><p>Dofollow switches to nofollow, sponsored or UGC.</p></div>
-      <div class="card"><div class="ic">NI</div><h3>Noindex</h3><p>The linking page is set to noindex and passes little value.</p></div>
-      <div class="card"><div class="ic">G</div><h3>Deindexation</h3><p>The linking page drops out of Google's index.</p></div>
-      <div class="card"><div class="ic">Aa</div><h3>Anchor text changes</h3><p>Your agreed anchor is edited or replaced.</p></div>
-    </div>
-  </div>
-</section>
-
-<!-- ============ HOW IT WORKS ============ -->
-<section id="how-it-works" aria-labelledby="how-h">
-  <div class="wrap">
-    <div class="center">
-      <h2 id="how-h">Start backlink monitoring in three steps</h2>
-    </div>
-    <div class="steps">
-      <div class="step">
-        <div class="shot" role="img" aria-label="Importing backlinks into LinkPulz">
-          <div class="shot-bar"><span class="shot-dots"><i></i><i></i><i></i></span><span class="shot-ttl">Import backlinks</span></div>
-          <div class="shot-body">
-            <span class="ex">Example</span>
-            <div class="srow"><span aria-hidden="true">📄</span><span class="surl">backlinks-q3.xlsx</span><span class="sbadge live">48 rows</span></div>
-            <div class="stiles"><div class="stile"><b>46</b><small>Imported</small></div><div class="stile"><b>2</b><small>Duplicates</small></div><div class="stile"><b>0</b><small>Errors</small></div></div>
-            <div class="stags"><span class="stag">CSV · Excel · GSC</span><span class="stag">Tag: Q3 outreach</span><span class="stag">Client: Acme</span></div>
-          </div>
-        </div>
-        <h3>Add your links</h3>
-        <p>Paste them, upload a CSV, or import your referring domains from Google Search Console. Tag each one by campaign, client or cost.</p>
-      </div>
-      <div class="step">
-        <div class="shot" role="img" aria-label="Automatic backlink checks on a schedule">
-          <div class="shot-bar"><span class="shot-dots"><i></i><i></i><i></i></span><span class="shot-ttl">Backlinks · Acme</span></div>
-          <div class="shot-body">
-            <span class="ex">Example data</span>
-            <div class="sbar" role="img" aria-label="82% live, 8% changed, 6% lost, 4% redirected"><i style="width:82%;background:var(--accent)"></i><i style="width:8%;background:var(--warn)"></i><i style="width:6%;background:var(--danger)"></i><i style="width:4%;background:#1c7ed6"></i></div>
-            <div class="srow"><span class="surl">forbes.com/…/best-tools</span><span class="sbadge live">Live</span></div>
-            <div class="srow"><span class="surl">blog.example.com/seo</span><span class="sbadge changed">Changed</span></div>
-            <div class="srow"><span class="surl">news.site/review</span><span class="sbadge lost">Lost</span></div>
-            <div class="stags"><span class="stag">⏱ Next check in 2 days</span><span class="stag">Weekly schedule</span></div>
-          </div>
-        </div>
-        <h3>We check them automatically</h3>
-        <p>LinkPulz backlink monitoring re-crawls each linking page on a schedule and compares it to the last known state.</p>
-      </div>
-      <div class="step">
-        <div class="shot" role="img" aria-label="A backlink change alert">
-          <div class="shot-bar"><span class="shot-dots"><i></i><i></i><i></i></span><span class="shot-ttl">Alert</span></div>
-          <div class="shot-body">
-            <span class="ex">Example</span>
-            <div class="alert-mock" style="margin-top:0"><b>Link lost</b> · example.com/best-seo-tools<br><span class="sdiff"><del>dofollow · anchor “backlink monitoring”</del> → <ins>link removed</ins></span><br><span class="smuted">Detected today</span></div>
-            <div class="stags"><span class="stag">✉ Email</span><span class="stag">Slack</span><span class="stag">Webhook</span></div>
-          </div>
-        </div>
-        <h3>You get alerted</h3>
-        <p>Email, Slack or webhook notifications the moment something changes, with the exact change highlighted.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ============ ALERTS & REPORTING ============ -->
+<!-- ============ AUTOMATED ALERTS ============ -->
 <section class="alt" aria-labelledby="alerts-h">
   <div class="wrap split">
     <div>
-      <h2 id="alerts-h">Alerts that tell you what changed, not just that something did</h2>
-      <p>Backlink monitoring is only useful when the alert is specific. Every alert includes the source URL, your target URL, what changed (before and after), and the date it was detected. Route alerts to the right person by client or campaign, or get a weekly digest instead of real-time pings.</p>
+      <h2 id="alerts-h">Automated alerts that tell you what changed</h2>
+      <p>Backlink changes don't happen when you're reading your SEO reports. Automated alerts keep you informed the moment a monitored event is detected — and every alert is specific: the source URL, your target URL, what changed (before and after), and the date detected. Route alerts by client or campaign, or get a weekly digest instead of real-time pings.</p>
       <ul class="check">
         <li>Email, Slack and webhook alerts</li>
-        <li>CSV export of every link and its full change history</li>
         <li>Full change history for every link</li>
+        <li>CSV export of every link and its history</li>
       </ul>
-      <div class="alert-mock" aria-hidden="true">
-        <b>Link lost</b> · example.com/best-seo-tools<br>
-        Before: <i>dofollow, anchor "backlink monitoring"</i> → After: <i>link removed</i><br>
-        Detected: today
-      </div>
     </div>
     <div class="shot" role="img" aria-label="Alert email and full change history">
       <div class="shot-bar"><span class="shot-dots"><i></i><i></i><i></i></span><span class="shot-ttl">Alert email</span></div>
@@ -481,83 +525,202 @@ const MAIN = `
   </div>
 </section>
 
-<!-- ============ USE CASES ============ -->
-<section aria-labelledby="use-h">
-  <div class="wrap">
-    <div class="center"><h2 id="use-h">Built for people who build links for a living</h2></div>
-    <div class="cards">
-      <div class="card"><h3>Agencies</h3><p>Prove the links you delivered are still live, and send client-ready reports.</p></div>
-      <div class="card"><h3>Digital PR teams</h3><p>Track coverage links after the campaign ends and catch silent removals.</p></div>
-      <div class="card"><h3>In-house SEOs</h3><p>Protect the links behind your most important pages.</p></div>
-      <div class="card"><h3>Guest post & sponsored buyers</h3><p>Verify you're getting what you paid for, for as long as you paid for it.</p></div>
-    </div>
-  </div>
-</section>
-
-<!-- ============ RECOVERY ============ -->
-<section class="alt" aria-labelledby="rec-h">
+<!-- ============ COMPETITOR BACKLINKS ============ -->
+<section aria-labelledby="comp-h">
   <div class="wrap split rev">
-    <div class="shot" role="img" aria-label="Lost link details to help you win it back">
-      <div class="shot-bar"><span class="shot-dots"><i></i><i></i><i></i></span><span class="shot-ttl">Lost link · details</span></div>
-      <div class="shot-body">
-        <span class="ex">Example</span>
-        <div class="srow"><span class="surl">example.com/best-seo-tools</span><span class="sbadge lost">Lost</span></div>
-        <div class="stiles"><div class="stile"><b>3 days</b><small>Since lost</small></div><div class="stile"><b>$120</b><small>Paid placement</small></div><div class="stile"><b>example.com</b><small>Referring site</small></div></div>
-        <div class="sdiff"><b>What changed</b> <del>dofollow · anchor “backlink monitoring”</del> → <ins>link removed</ins></div>
-        <div class="smail"><div class="smail-h"><b>Reach out</b> <span class="smuted" style="font-size:.7rem">· editor@example.com</span></div><div class="smail-b smuted">Hi — I noticed the link to acme.com in your “best SEO tools” post was removed in a recent edit. Would you be open to restoring it?</div></div>
-        <div class="stags"><span class="sbtn">Draft outreach</span><span class="stag">Owner on file</span></div>
-      </div>
-    </div>
-    <div>
-      <h2 id="rec-h">Found a lost link? Win it back.</h2>
-      <p>When LinkPulz flags a lost or changed link, you see who owns the page, when the link disappeared and what changed, so you can contact the site while the request is still fresh.</p>
-      <p>See our guide to <a href="/lost-backlinks">recovering lost backlinks</a>.</p>
-    </div>
-  </div>
-</section>
-
-<!-- ============ INSIGHTS ============ -->
-<section aria-labelledby="ins-h">
-  <div class="wrap split">
-    <div>
-      <h2 id="ins-h">The data you need, nothing you don't</h2>
-      <p>See referring domains, anchor text distribution, link attributes and link age in one view. We show you what's measurable and don't hand you an opaque "toxic score" to guess at, we'd rather point you to <a href="https://developers.google.com/search/docs/essentials/spam-policies" rel="nofollow noopener" target="_blank">Google's own guidance on link spam</a> than make one up.</p>
-    </div>
-    <div class="shot" role="img" aria-label="Backlink profile with anchor text distribution">
-      <div class="shot-bar"><span class="shot-dots"><i></i><i></i><i></i></span><span class="shot-ttl">Backlink profile · Acme</span></div>
+    <div class="shot" role="img" aria-label="Competitor backlink gap: domains linking to a competitor but not to you">
+      <div class="shot-bar"><span class="shot-dots"><i></i><i></i><i></i></span><span class="shot-ttl">Competitor gap · Acme</span></div>
       <div class="shot-body">
         <span class="ex">Example data</span>
-        <div>
-          <div class="cap">Anchor text distribution</div>
-          <div class="sbar" role="img" aria-label="38% branded, 24% keyword, 18% naked URL, 12% generic, 8% empty"><i style="width:38%;background:var(--brand)"></i><i style="width:24%;background:var(--violet)"></i><i style="width:18%;background:var(--accent)"></i><i style="width:12%;background:var(--muted)"></i><i style="width:8%;background:var(--ph-line)"></i></div>
-          <div class="sleg" style="margin-top:9px">
-            <span><i class="sdot" style="background:var(--brand)"></i>Branded <b>38%</b></span>
-            <span><i class="sdot" style="background:var(--violet)"></i>Keyword <b>24%</b></span>
-            <span><i class="sdot" style="background:var(--accent)"></i>Naked URL <b>18%</b></span>
-            <span><i class="sdot" style="background:var(--muted)"></i>Generic <b>12%</b></span>
-            <span><i class="sdot" style="background:var(--ph-line)"></i>Empty <b>8%</b></span>
-          </div>
-        </div>
-        <div>
-          <div class="srow smuted" style="font-size:.64rem;text-transform:uppercase;letter-spacing:.04em"><span class="surl">Referring page</span><span>Anchor</span><span>Age</span></div>
-          <div class="srow"><span class="surl">forbes.com/…/tools</span><span>LinkPulz</span><span class="smuted">8mo</span></div>
-          <div class="srow"><span class="surl">blog.example.com/seo</span><span>best backlink tool</span><span class="smuted">3mo</span></div>
-          <div class="srow"><span class="surl">news.site/review</span><span>acme.com</span><span class="smuted">6w</span></div>
-        </div>
-        <div class="stags"><span class="stag">42 referring domains</span><span class="stag">No toxic score — just the data</span></div>
+        <div class="srow smuted" style="font-size:.64rem;text-transform:uppercase;letter-spacing:.04em"><span class="surl">Referring domain</span><span>Links to</span><span>You</span></div>
+        <div class="srow"><span class="surl">editor.news-site.com</span><span class="smuted">competitor.com</span><span class="sbadge lost">Gap</span></div>
+        <div class="srow"><span class="surl">roundup.blog</span><span class="smuted">competitor.com</span><span class="sbadge lost">Gap</span></div>
+        <div class="srow"><span class="surl">industry-review.io</span><span class="smuted">competitor.com</span><span class="sbadge lost">Gap</span></div>
+        <div class="stags"><span class="stag">37 gap domains</span><span class="stag">→ Turn into outreach prospects</span></div>
+      </div>
+    </div>
+    <div>
+      <h2 id="comp-h">Analyze competitor backlinks</h2>
+      <p>Your competitors' backlinks reveal outreach opportunities, relevant publications and link-building patterns. LinkPulz competitor gap analysis surfaces the referring domains that link to competing sites but not yet to yours — the clearest shortlist for your next campaign.</p>
+      <ul class="check">
+        <li>Explore competitor backlink profiles</li>
+        <li>Identify domains linking to rivals but not you</li>
+        <li>Turn gap domains into outreach prospects</li>
+        <li>Support competitor-focused SEO research</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CSV / DATA ============ -->
+<section class="alt" aria-labelledby="csv-h">
+  <div class="wrap split">
+    <div>
+      <h2 id="csv-h">Organize your backlink data with CSV</h2>
+      <p>Keep backlink information easy to manage. Import links from a CSV or Excel file to get started in minutes, and export every monitored link — with its full change history — whenever you need clean records for a campaign, a client report or your own archive.</p>
+      <ul class="check">
+        <li>Import backlinks from CSV or Excel</li>
+        <li>Import referring domains from Google Search Console</li>
+        <li>Export every link and its change history to CSV</li>
+      </ul>
+    </div>
+    <div class="shot" role="img" aria-label="Importing backlinks from a file">
+      <div class="shot-bar"><span class="shot-dots"><i></i><i></i><i></i></span><span class="shot-ttl">Import backlinks</span></div>
+      <div class="shot-body">
+        <span class="ex">Example</span>
+        <div class="srow"><span aria-hidden="true">📄</span><span class="surl">backlinks-q3.xlsx</span><span class="sbadge live">48 rows</span></div>
+        <div class="stiles"><div class="stile"><b>46</b><small>Imported</small></div><div class="stile"><b>2</b><small>Duplicates</small></div><div class="stile"><b>0</b><small>Errors</small></div></div>
+        <div class="stags"><span class="stag">CSV · Excel · GSC</span><span class="stag">Tag: Q3 outreach</span><span class="stag">Client: Acme</span></div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ============ COMPARISON ============ -->
+<!-- ============ HOW IT WORKS (4 steps) ============ -->
+<section id="how-it-works" aria-labelledby="how-h">
+  <div class="wrap">
+    <div class="center">
+      <h2 id="how-h">How to monitor backlinks in 4 simple steps</h2>
+      <p class="lead">You don't need to revisit every backlink by hand to stay informed. Here's a more efficient workflow.</p>
+    </div>
+    <div class="steps" style="grid-template-columns:repeat(4,1fr)">
+      <div class="step">
+        <h3>Add the backlinks to monitor</h3>
+        <p>Paste them, upload a CSV or Excel file, or import referring domains from Google Search Console. Tag each one by campaign, client or cost.</p>
+      </div>
+      <div class="step">
+        <h3>Configure your monitoring</h3>
+        <p>Set your check schedule (daily to monthly) and alert preferences. Choose the changes you want to follow, such as lost links or attribute changes.</p>
+      </div>
+      <div class="step">
+        <h3>Review changes and alerts</h3>
+        <p>Use the dashboard to examine detected changes — new backlinks, lost links and attribute updates — as they become available.</p>
+      </div>
+      <div class="step">
+        <h3>Investigate and take action</h3>
+        <p>Not every change needs the same response. Some are temporary; others call for contacting a publisher or updating your records.</p>
+      </div>
+    </div>
+    <div class="center" style="margin-top:36px"><a class="btn" href="/register">Start monitoring backlinks free</a></div>
+  </div>
+</section>
+
+<!-- ============ QUIZ (self-assessment) ============ -->
+<section class="alt" id="quiz" aria-labelledby="quiz-h">
+  <div class="wrap">
+    <div class="center">
+      <h2 id="quiz-h">How strong is your backlink monitoring strategy?</h2>
+      <p class="lead">Answer five quick questions, then see which profile fits — and the next step for each.</p>
+    </div>
+    <div class="quiz">
+      <ol class="quiz-q">
+        <li>
+          <p class="quiz-ttl">1. How do you currently track your backlinks?</p>
+          <div class="quiz-opts">
+            <label><input type="radio" name="q1"><span>I don't track them</span></label>
+            <label><input type="radio" name="q1"><span>Spreadsheets or manual checks</span></label>
+            <label><input type="radio" name="q1"><span>Automated monitoring software</span></label>
+          </div>
+        </li>
+        <li>
+          <p class="quiz-ttl">2. How quickly do you notice a lost backlink?</p>
+          <div class="quiz-opts">
+            <label><input type="radio" name="q2"><span>Usually I don't notice</span></label>
+            <label><input type="radio" name="q2"><span>During my next manual SEO audit</span></label>
+            <label><input type="radio" name="q2"><span>Through an automated alert</span></label>
+          </div>
+        </li>
+        <li>
+          <p class="quiz-ttl">3. Do you monitor dofollow and nofollow changes?</p>
+          <div class="quiz-opts">
+            <label><input type="radio" name="q3"><span>No</span></label>
+            <label><input type="radio" name="q3"><span>Occasionally</span></label>
+            <label><input type="radio" name="q3"><span>Yes, consistently</span></label>
+          </div>
+        </li>
+        <li>
+          <p class="quiz-ttl">4. How do you analyze competitor backlinks?</p>
+          <div class="quiz-opts">
+            <label><input type="radio" name="q4"><span>I don't analyze them</span></label>
+            <label><input type="radio" name="q4"><span>I research them occasionally</span></label>
+            <label><input type="radio" name="q4"><span>I use a dedicated tool</span></label>
+          </div>
+        </li>
+        <li>
+          <p class="quiz-ttl">5. How do you organize your backlink data?</p>
+          <div class="quiz-opts">
+            <label><input type="radio" name="q5"><span>No structured process</span></label>
+            <label><input type="radio" name="q5"><span>Spreadsheets or CSV files</span></label>
+            <label><input type="radio" name="q5"><span>A dedicated management workflow</span></label>
+          </div>
+        </li>
+      </ol>
+
+      <div class="quiz-res">
+        <p class="cap">Mostly first answers, middle answers, or last answers? Find where you fit.</p>
+        <div class="cards">
+          <div class="card">
+            <h3><span class="tier" style="background:var(--danger)"></span>Reactive monitoring</h3>
+            <p>Important backlink changes may be going unnoticed.</p>
+            <p class="next"><b>Next step:</b> start monitoring your most important backlinks and enable automated alerts.</p>
+          </div>
+          <div class="card">
+            <h3><span class="tier" style="background:var(--warn)"></span>Developing monitoring</h3>
+            <p>You have some practices, but there's room to cut manual work and improve consistency.</p>
+            <p class="next"><b>Next step:</b> organize your backlink data and automate change notifications.</p>
+          </div>
+          <div class="card">
+            <h3><span class="tier" style="background:var(--accent)"></span>Proactive monitoring</h3>
+            <p>You have an established monitoring workflow.</p>
+            <p class="next"><b>Next step:</b> explore competitor analysis and manage monitoring across larger campaigns.</p>
+          </div>
+        </div>
+      </div>
+
+      <p class="micro" style="margin-top:18px">This assessment reflects your self-reported habits. It is not a technical audit of your backlink profile.</p>
+      <div class="center" style="margin-top:12px"><a class="btn" href="/register">Start your monitoring setup</a></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CHECKER vs MONITOR ============ -->
+<section aria-labelledby="cm-h">
+  <div class="wrap">
+    <div class="center">
+      <h2 id="cm-h">Backlink monitoring vs. backlink checking</h2>
+      <p class="lead">A backlink checker helps you inspect links at a particular moment. Backlink monitoring focuses on tracking selected links over time and identifying relevant changes.</p>
+    </div>
+    <div class="tablewrap">
+      <table class="compare">
+        <caption class="sr-only">Backlink checker compared with a backlink monitoring tool</caption>
+        <thead>
+          <tr>
+            <th scope="col">Feature</th>
+            <th scope="col">Backlink checker</th>
+            <th scope="col" class="us">Backlink monitoring tool</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><th scope="row">Inspect existing backlinks</th><td>Yes</td><td class="us">Yes</td></tr>
+          <tr><th scope="row">Track changes over time</th><td>Not always</td><td class="us">Core purpose</td></tr>
+          <tr><th scope="row">Detect lost backlinks</th><td>Depends on tool</td><td class="us">Yes</td></tr>
+          <tr><th scope="row">Monitor link attributes</th><td>Depends on tool</td><td class="us">Yes</td></tr>
+          <tr><th scope="row">Automated change alerts</th><td>Not always</td><td class="us">Yes</td></tr>
+          <tr><th scope="row">Ongoing backlink management</th><td>Limited</td><td class="us">Core use case</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="micro center" style="margin-top:14px">If you only need to inspect a link once, a checker may be enough. For ongoing visibility into changes, dedicated monitoring software is more appropriate.</p>
+  </div>
+</section>
+
+<!-- ============ COMPETITOR TOOLS COMPARISON ============ -->
 <section class="alt" id="compare" aria-labelledby="cmp-h">
   <div class="wrap">
     <div class="center">
       <h2 id="cmp-h">LinkPulz vs. other backlink monitoring tools</h2>
       <p class="lead">Some tools monitor links, some verify them once, and some bundle monitoring inside a full SEO suite. Here is how they compare.</p>
     </div>
-
     <div class="tablewrap">
       <table class="compare">
         <caption class="sr-only">Comparison of LinkPulz with other backlink tools</caption>
@@ -623,11 +786,78 @@ const MAIN = `
         </tbody>
       </table>
     </div>
-
     <p class="micro center" style="margin-top:16px">Competitor information comes from their public websites and independent comparison articles, last checked October 2026. Features and prices change, so check each vendor for current details.</p>
+    <div class="center" style="margin-top:24px"><a class="btn" href="/register">Try LinkPulz free</a></div>
+  </div>
+</section>
 
-    <div class="center" style="margin-top:24px">
-      <a class="btn" href="/register">Try LinkPulz free</a>
+<!-- ============ WHO SHOULD USE ============ -->
+<section aria-labelledby="use-h">
+  <div class="wrap">
+    <div class="center"><h2 id="use-h">Who should use backlink monitoring software?</h2></div>
+    <div class="cards">
+      <div class="card"><h3>SEO professionals</h3><p>Keep visibility into important backlinks, review attribute changes and investigate lost links as part of your workflow.</p></div>
+      <div class="card"><h3>SEO agencies</h3><p>Organize monitoring across client campaigns and support reporting with structured backlink data.</p></div>
+      <div class="card"><h3>Link-building teams</h3><p>Track acquired placements, catch lost links and stay aware of changes affecting outreach campaigns.</p></div>
+      <div class="card"><h3>Digital PR professionals</h3><p>Monitor links from media outreach and editorial coverage to see whether key placements remain live.</p></div>
+      <div class="card"><h3>In-house marketing teams</h3><p>Keep oversight of backlink activity without relying entirely on manual checks or periodic audits.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ DATA, ACCURACY & TRANSPARENCY ============ -->
+<section class="alt" id="transparency" aria-labelledby="trust-h">
+  <div class="wrap">
+    <div class="center">
+      <h2 id="trust-h">How our monitoring works: data, accuracy &amp; transparency</h2>
+      <p class="lead">Reliable monitoring starts with understanding what your data actually means. A detected change should be interpreted in context — monitoring should support investigation, not replace it.</p>
+    </div>
+    <div class="faq">
+      <details>
+        <summary>What does a lost backlink alert mean?</summary>
+        <p>It means a previously monitored link is no longer detected according to the verification process. It does not automatically mean the link was intentionally removed, or that your rankings will decline. The next step is to review the source page and determine what changed — it may have been edited, temporarily inaccessible, or genuinely removed.</p>
+      </details>
+      <details>
+        <summary>How often are backlinks checked?</summary>
+        <p>On a schedule you set — daily, weekly, bi-weekly or monthly — available on every plan. Every check is recorded in the link's history, so you can see exactly when a change was first observed.</p>
+      </details>
+      <details>
+        <summary>How are link changes detected?</summary>
+        <p>LinkPulz re-fetches each linking page on its schedule and compares it with the last recorded state — the presence of your link, the HTTP status of the page and its destination, the rel attributes (dofollow, nofollow, sponsored, UGC), the anchor text and the indexation signals. When any of these differ, the change is logged and an alert is raised.</p>
+      </details>
+      <details>
+        <summary>What are the limitations of backlink monitoring?</summary>
+        <p>Results can be affected by inaccessible pages, temporary server errors, redirects and crawl restrictions. A page that errors once may simply be down for a moment, so a single failed check is treated with caution before a link is confirmed lost. When a status is uncertain, LinkPulz shows it as such rather than overstating a removal.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- ============ REAL WORKFLOW ============ -->
+<section aria-labelledby="work-h">
+  <div class="wrap split rev">
+    <div class="shot" role="img" aria-label="Lost link details to help you win it back">
+      <div class="shot-bar"><span class="shot-dots"><i></i><i></i><i></i></span><span class="shot-ttl">Lost link · details</span></div>
+      <div class="shot-body">
+        <span class="ex">Example</span>
+        <div class="srow"><span class="surl">example.com/best-seo-tools</span><span class="sbadge lost">Lost</span></div>
+        <div class="sdiff"><b>What changed</b> <del>dofollow · anchor “backlink monitoring”</del> → <ins>link removed</ins></div>
+        <div class="smail"><div class="smail-h"><b>Reach out</b> <span class="smuted" style="font-size:.7rem">· editor@example.com</span></div><div class="smail-b smuted">Hi — I noticed the link to acme.com in your “best SEO tools” post was removed in a recent edit. Would you be open to restoring it?</div></div>
+        <div class="stags"><span class="sbtn">Draft outreach</span><span class="stag">Owner on file</span></div>
+      </div>
+    </div>
+    <div>
+      <h2 id="work-h">Built around real SEO workflows</h2>
+      <p>Whether you monitor a handful of important backlinks or manage ongoing campaigns, the goal is the same: understand what changed and decide what needs attention.</p>
+      <p><b>Investigating a lost backlink.</b> Say your team earned a link from an industry publication, and a later check no longer detects it. You can:</p>
+      <ol>
+        <li>Review the detected change.</li>
+        <li>Visit the source page to investigate.</li>
+        <li>Determine whether the link was removed, changed or temporarily inaccessible.</li>
+        <li>Contact the publisher if appropriate.</li>
+        <li>Update your link-building records.</li>
+      </ol>
+      <p class="micro">Illustrative example, not a customer case study.</p>
     </div>
   </div>
 </section>
@@ -636,7 +866,7 @@ const MAIN = `
 <section id="pricing" aria-labelledby="price-h">
   <div class="wrap">
     <div class="center">
-      <h2 id="price-h">Simple pricing, based on links monitored</h2>
+      <h2 id="price-h">Start with a free trial</h2>
       <p class="lead">Every plan includes a 10-day free trial, no credit card, and checks every backlink on the schedule you set (daily to monthly).</p>
     </div>
     <div class="plans">
@@ -645,24 +875,29 @@ const MAIN = `
       <div class="plan"><h3>Business</h3><div class="price-block price-monthly"><div class="price">$99<small>/mo</small></div><div class="per">billed monthly</div></div><div class="limits"><span><b>5,000</b> backlinks</span><span><b>25</b> projects</span><span><b>5</b> users</span></div><a class="btn ghost" href="/register">Start free trial</a></div>
       <div class="plan"><h3>Agency</h3><div class="price-block price-monthly"><div class="price">$199<small>/mo</small></div><div class="per">billed monthly</div></div><div class="limits"><span><b>15,000</b> backlinks</span><span><b>75</b> projects</span><span><b>15</b> users</span></div><a class="btn ghost" href="/register">Start free trial</a></div>
     </div>
-    <div class="center" style="margin-top:28px"><a class="btn ghost" href="/pricing">See full pricing &amp; annual plans →</a></div>
+    <div class="prose center" style="margin-top:24px">
+      <p class="micro">Your free trial includes 10 days of full access with every monitoring feature, the backlink and project limits of the plan you pick, and all alert channels (email, Slack, webhook). No credit card required. After the trial, continue on a plan from $29/mo — or stop, no charge.</p>
+    </div>
+    <div class="center" style="margin-top:20px"><a class="btn ghost" href="/pricing">Compare plans &amp; annual pricing →</a></div>
   </div>
 </section>
 
-
 <!-- ============ FAQ (must match FAQPage JSON-LD) ============ -->
-<section id="faq" aria-labelledby="faq-h">
+<section class="alt" id="faq" aria-labelledby="faq-h">
   <div class="wrap">
-    <div class="center"><h2 id="faq-h">Backlink monitoring: frequently asked questions</h2></div>
+    <div class="center"><h2 id="faq-h">Frequently asked questions about backlink monitoring</h2></div>
     <div class="faq">
-      <details><summary>What is backlink monitoring and why do I need it?</summary><p>Backlink monitoring is the automatic, recurring check of the links pointing to your site. Links get removed, redirected, set to nofollow or deindexed all the time, and without monitoring you usually find out long after the damage. Monitoring tells you quickly so you can act.</p></details>
-      <details><summary>How do I know if a backlink has been removed or changed?</summary><p>Add the link to LinkPulz. We re-check the linking page on a schedule and alert you if the link is gone, the page errors or redirects, or the attributes and anchor text change.</p></details>
+      <details><summary>What is backlink monitoring?</summary><p>Backlink monitoring is the ongoing process of tracking the links pointing to your site to identify new backlinks, lost links and changes to existing links. Unlike a one-time check, it keeps a history and alerts you when a relevant change is detected, so you can investigate it.</p></details>
+      <details><summary>How do I monitor my backlinks?</summary><p>Add the links or website you want to track to LinkPulz by pasting them, uploading a CSV or importing referring domains from Google Search Console. Set your check schedule and alert preferences, then review detected changes from the dashboard. Automated alerts keep you informed without checking each link by hand.</p></details>
       <details><summary>How often does LinkPulz check my backlinks?</summary><p>On a schedule you set: daily, weekly, bi-weekly or monthly, on every plan. Every check is logged in the link's history.</p></details>
+      <details><summary>Can I receive alerts when a backlink disappears?</summary><p>Yes. LinkPulz sends automated alerts by email, Slack or webhook when a monitored link is lost, redirected, nofollowed, deindexed or has its anchor changed. Each alert shows the source URL, your target URL, what changed and when it was detected.</p></details>
+      <details><summary>How can I detect lost backlinks?</summary><p>LinkPulz compares the current observed state of each linking page with what it recorded before. When a previously monitored link is no longer found, it flags the change with the likely cause so you can investigate and decide whether to win it back.</p></details>
       <details><summary>Can LinkPulz detect when a link changes from dofollow to nofollow?</summary><p>Yes. We track rel attributes (nofollow, sponsored, UGC) on every check and alert you when they change.</p></details>
-      <details><summary>Can I monitor paid or guest-post links?</summary><p>Yes. Tag links as guest post, sponsored or PR, then verify that each one stays live and keeps the attributes you agreed on.</p></details>
-      <details><summary>What's the difference between a backlink checker and a backlink monitoring tool?</summary><p>A checker gives you a one-time snapshot. A monitoring tool checks the same links again and again, keeps the history and alerts you when something changes.</p></details>
-      <details><summary>Do backlinks affect visibility in AI search results?</summary><p>Research has found correlations between strong link profiles and visibility in AI-generated answers, but there is no proven causal link. Backlinks remain valuable for classic search rankings and referral traffic.</p></details>
-      <details><summary>How many links can I monitor on my plan?</summary><p>Monitored-link limits range from 500 on Starter to 15,000 on Agency. You can upgrade at any time as your link portfolio grows.</p></details>
+      <details><summary>Can I analyze competitor backlinks?</summary><p>Yes. LinkPulz includes competitor backlink gap analysis, which surfaces referring domains that link to competing sites but not yet to yours, so you can turn them into outreach prospects.</p></details>
+      <details><summary>What is the difference between a backlink checker and a backlink monitor?</summary><p>A backlink checker gives you a one-time snapshot of links at a given moment. A backlink monitor tracks the same links over time, keeps their history and alerts you when something changes.</p></details>
+      <details><summary>Does losing a backlink hurt SEO?</summary><p>Losing a backlink does not automatically cause a ranking decline. Its impact depends on the link's relevance, the source page and your broader backlink profile. Monitoring helps you spot the change and decide whether it needs follow-up.</p></details>
+      <details><summary>Is backlink monitoring free?</summary><p>LinkPulz offers a 10-day free trial, with no credit card required, so you can evaluate its monitoring before choosing a paid plan. Paid plans start at $29/mo based on the number of backlinks monitored. See the pricing page for current details.</p></details>
+      <details><summary>Can I manage backlinks using CSV files?</summary><p>Yes. You can import backlinks from a CSV or Excel file and export every monitored link with its full change history to CSV at any time.</p></details>
     </div>
   </div>
 </section>
@@ -670,9 +905,10 @@ const MAIN = `
 <!-- ============ FINAL CTA ============ -->
 <section class="final" aria-labelledby="final-h">
   <div class="wrap">
-    <h2 id="final-h">Don't let your best links disappear unnoticed</h2>
-    <p class="lead">Every lost backlink is lost authority and lost traffic. Start monitoring your links today and get alerted the moment something changes.</p>
-    <div class="cta-row" style="justify-content:center"><a class="btn" href="/register">Start free trial</a></div>
+    <h2 id="final-h">Stop guessing what happens to your backlinks</h2>
+    <p class="lead">Monitor new and lost backlinks, track attribute changes, analyze competitor backlinks and stay informed with automated alerts. Spend less time checking links and more time making informed SEO decisions.</p>
+    <div class="cta-row" style="justify-content:center"><a class="btn" href="/register">Start your free trial</a></div>
+    <p class="micro" style="margin-top:14px;color:#8b98b4">Backlink monitoring helps you detect and investigate changes. It does not guarantee backlink retention, recovery, or improvements in search rankings.</p>
   </div>
 </section>
 `;

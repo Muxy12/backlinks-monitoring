@@ -9,16 +9,16 @@ export const dynamic = "force-static";
 // waitlist "coming soon"; at launch the full homepage took its place and /home
 // now permanently redirects here, so there is a single canonical homepage URL.)
 export const metadata: Metadata = {
-  title: { absolute: "Backlink Monitoring Tool: Lost Link Alerts | LinkPulz" },
+  title: { absolute: "Backlink Monitoring Tool with Automated Alerts | LinkPulz" },
   description:
-    "Monitor every backlink you earn or buy. Get instant alerts when a link is lost, nofollowed or deindexed. Start your free trial.",
+    "Monitor new and lost backlinks, track dofollow and nofollow changes, analyze competitor backlinks, and get automated alerts the moment a link changes. Start your free trial.",
   alternates: { canonical: "/", languages: { en: "/", "x-default": "/" } },
   robots: { index: true, follow: true, "max-image-preview": "large" },
   openGraph: {
     type: "website",
-    title: "Backlink Monitoring Tool: Lost Link Alerts | LinkPulz",
+    title: "Backlink Monitoring Tool with Automated Alerts | LinkPulz",
     description:
-      "Monitor every backlink you earn or buy. Get instant alerts when a link is lost, nofollowed or deindexed.",
+      "Monitor new and lost backlinks, track dofollow and nofollow changes, analyze competitor backlinks, and get automated alerts when a link changes.",
     url: "/",
     images: ["https://ye8jhaekbbcviws9.public.blob.vercel-storage.com/banniere-dashboard-linkpulz.webp"],
   },
@@ -37,7 +37,7 @@ const JSONLD = `{
         "@type": "ImageObject",
         "url": "https://ye8jhaekbbcviws9.public.blob.vercel-storage.com/logo-linkpulz.webp"
       },
-      "sameAs": ["https://www.linkedin.com/company/linkpulz", "https://x.com/linkpulz"]
+      "sameAs": ["https://www.linkedin.com/showcase/linkpulz", "https://x.com/linkpulz"]
     },
     {
       "@type": "WebSite",
