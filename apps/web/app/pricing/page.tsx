@@ -21,6 +21,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/pricing", languages: { en: "/pricing", "x-default": "/pricing" } },
   robots: { index: true, follow: true, "max-image-preview": "large" },
   openGraph: {
+    siteName: "LinkPulz",
     type: "website",
     title: "Pricing: Backlink Monitoring Plans & Free Trial | LinkPulz",
     description:

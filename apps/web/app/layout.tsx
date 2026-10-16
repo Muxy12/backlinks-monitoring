@@ -39,6 +39,10 @@ export const metadata: Metadata = {
   },
   description:
     "Monitor every backlink you build. Track lost links, nofollow changes, anchors, campaigns, costs and warranties from one dashboard.",
+  // Site-wide Open Graph defaults. A page that sets its own `openGraph` replaces
+  // this object (Next doesn't deep-merge), so `siteName` is also set on each of
+  // those pages; this covers everything else (app, docs, legal, tools, auth).
+  openGraph: { siteName: "LinkPulz", type: "website" },
   // No default canonical here: each page declares its own `alternates.canonical`.
   // A blanket "/" would wrongly canonicalize every page that doesn't override it.
 };

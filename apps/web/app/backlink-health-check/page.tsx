@@ -14,6 +14,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/backlink-health-check", languages: { en: "/backlink-health-check", "x-default": "/backlink-health-check" } },
   robots: { index: true, follow: true, "max-image-preview": "large" },
   openGraph: {
+    siteName: "LinkPulz",
     type: "website",
     title: "Backlink Health Check: Audit Your Link Profile | LinkPulz",
     description:
