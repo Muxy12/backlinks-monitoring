@@ -41,3 +41,6 @@ next-env.d.ts
 .claude/skills/grill-with-docs/
 .claude/skills/frontend-design/
 skills-lock.json
+
+# design-taste-frontend skill output
+.taste-skill/

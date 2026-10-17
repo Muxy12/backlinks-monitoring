@@ -13,7 +13,7 @@ export const MARKETING_STYLE = `
 #lp-home{
   --bg:#07090d; --bg-alt:#0d1117; --ink:#f7f8fa; --muted:#8b949e; --line:rgba(255,255,255,.08);
   --brand:#4c82ff; --brand-dark:#2f6bff; --violet:#9b7cff; --accent:#36d399; --danger:#fb7185; --warn:#fbbf24;
-  --ph:#111720; --ph-line:rgba(255,255,255,.15); --radius:14px; --max:1120px;
+  --ph-line:rgba(255,255,255,.15); --radius:14px; --max:1120px;
   font:17px/1.6 var(--font-sans);
   color:var(--ink);
   background:radial-gradient(circle at 50% -10%,color-mix(in srgb,var(--brand) 18%,transparent),transparent 36%),var(--bg);
@@ -22,7 +22,7 @@ export const MARKETING_STYLE = `
 :root[data-theme="light"] #lp-home{
   --bg:#ffffff; --bg-alt:#f4f7fb; --ink:#0f1b2d; --muted:#51607a; --line:#dbe3ee;
   --brand:#2f6bff; --brand-dark:#1e54e6; --violet:#7c5cff; --accent:#12b886; --danger:#e03131; --warn:#f08c00;
-  --ph:#e8eef7; --ph-line:#b7c4d9;
+  --ph-line:#b7c4d9;
 }
 #lp-home,#lp-home *{box-sizing:border-box}
 #lp-home img{max-width:100%;display:block}
@@ -37,8 +37,6 @@ export const MARKETING_STYLE = `
 #lp-home p{margin:0 0 1em}
 #lp-home .lead{font-size:1.2rem;color:var(--muted);max-width:640px}
 #lp-home .center{text-align:center}#lp-home .center .lead{margin-left:auto;margin-right:auto}
-#lp-home .tc{background:#4a3b00;color:#ffe066;border-radius:4px;padding:0 4px;font-size:.85em;font-weight:600}
-:root[data-theme="light"] #lp-home .tc{background:#fff3bf;color:#5c4400}
 #lp-home ol{padding-left:22px;margin:16px 0}
 #lp-home ol li{margin-bottom:10px}
 #lp-home .prose{max-width:760px}
@@ -86,13 +84,6 @@ export const MARKETING_STYLE = `
 #lp-home .cta-row{display:flex;gap:12px;flex-wrap:wrap;margin:24px 0 10px}
 #lp-home .micro{font-size:.88rem;color:var(--muted)}
 
-/* image placeholders */
-#lp-home .ph{background:repeating-linear-gradient(45deg,var(--ph),var(--ph) 12px,color-mix(in srgb,var(--ph) 70%,var(--bg)) 12px,color-mix(in srgb,var(--ph) 70%,var(--bg)) 24px);
-  border:2px dashed var(--ph-line);border-radius:var(--radius);display:flex;align-items:center;justify-content:center;text-align:center;
-  color:var(--muted);font-size:.85rem;padding:16px;font-weight:600;min-height:220px}
-#lp-home .ph small{display:block;font-weight:400;margin-top:4px}
-#lp-home .ph.hero-img{min-height:380px}
-#lp-home .ph.logo-ph{min-height:56px;font-size:.75rem;padding:8px}
 
 /* product shots — inline UI mockups built from the real design language */
 #lp-home .shot{border:1px solid var(--line);border-radius:var(--radius);background:var(--bg);overflow:hidden;box-shadow:0 12px 34px rgba(15,27,45,.10);font-size:.8rem;color:var(--ink)}
@@ -111,12 +102,6 @@ export const MARKETING_STYLE = `
 #lp-home .sbadge.live{color:var(--accent);background:color-mix(in srgb,var(--accent) 15%,transparent)}
 #lp-home .sbadge.lost{color:var(--danger);background:color-mix(in srgb,var(--danger) 13%,transparent)}
 #lp-home .sbadge.changed{color:var(--warn);background:color-mix(in srgb,var(--warn) 18%,transparent)}
-#lp-home .sbar{display:flex;height:12px;border-radius:7px;overflow:hidden;background:var(--bg-alt)}
-#lp-home .sbar i{display:block;height:100%}
-#lp-home .sleg{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.68rem;color:var(--muted)}
-#lp-home .sleg span{display:inline-flex;align-items:center;gap:6px}
-#lp-home .sleg b{color:var(--ink);font-weight:650}
-#lp-home .sdot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none}
 #lp-home .stags{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 #lp-home .stag{font-size:.66rem;border:1px solid var(--line);border-radius:99px;padding:2px 9px;color:var(--muted);background:var(--bg-alt)}
 #lp-home .sbtn{display:inline-block;font-size:.72rem;font-weight:650;padding:7px 12px;border-radius:8px;background:linear-gradient(135deg,var(--brand),var(--violet));color:#fff}
@@ -153,8 +138,6 @@ export const MARKETING_STYLE = `
 @media(max-width:760px){#lp-home .tool form{grid-template-columns:1fr}}
 #lp-home .tool input{width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:10px;font:inherit;background:var(--bg);color:var(--ink)}
 #lp-home .tool button{cursor:pointer;font:inherit}
-#lp-home .result-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;font-size:.85rem}
-#lp-home .result-list span{background:var(--bg-alt);border:1px solid var(--line);border-radius:99px;padding:3px 12px}
 
 /* verify tool */
 #lp-home .tool.verify form{grid-template-columns:1fr 1fr;gap:14px}
@@ -199,13 +182,6 @@ export const MARKETING_STYLE = `
 #lp-home .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px}
 #lp-home .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 
-/* proof */
-#lp-home .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin:32px 0}
-@media(max-width:700px){#lp-home .stats{grid-template-columns:1fr}}
-#lp-home .stat{text-align:center;padding:20px;border:1px solid var(--line);border-radius:var(--radius);background:var(--bg)}
-#lp-home .stat b{display:block;font-size:2rem;color:var(--brand)}
-#lp-home .logos{display:grid;grid-template-columns:repeat(5,1fr);gap:16px}
-@media(max-width:700px){#lp-home .logos{grid-template-columns:repeat(2,1fr)}}
 
 /* cards */
 #lp-home .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px;margin-top:36px}
@@ -219,19 +195,14 @@ export const MARKETING_STYLE = `
 @media(max-width:800px){#lp-home .steps{grid-template-columns:1fr}}
 #lp-home .step{counter-increment:s}
 #lp-home .step::before{content:counter(s);display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:var(--brand);color:#fff;font-weight:800;margin-bottom:12px}
-#lp-home .step .ph{min-height:160px;margin-bottom:16px}
 
 /* split */
 #lp-home .split{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center}
-#lp-home .split.rev .ph{order:2}
-@media(max-width:860px){#lp-home .split{grid-template-columns:1fr}#lp-home .split.rev .ph{order:0}}
+@media(max-width:860px){#lp-home .split{grid-template-columns:1fr}}
 #lp-home ul.check{list-style:none;padding:0;margin:16px 0}
 #lp-home ul.check li{padding-left:28px;position:relative;margin-bottom:8px}
 #lp-home ul.check li::before{content:"✓";position:absolute;left:0;color:var(--accent);font-weight:800}
 
-/* alert mock */
-#lp-home .alert-mock{border:1px solid color-mix(in srgb,var(--danger) 32%,var(--line));border-radius:10px;padding:14px 16px;background:color-mix(in srgb,var(--danger) 8%,var(--bg));font-size:.9rem;margin-top:20px}
-#lp-home .alert-mock b{color:var(--danger)}
 
 /* table */
 #lp-home .tablewrap{overflow-x:auto;margin-top:32px}
@@ -257,12 +228,6 @@ export const MARKETING_STYLE = `
 #lp-home .plan .price{font-size:2.2rem;font-weight:800;margin:8px 0}
 #lp-home .plan ul{padding-left:20px;color:var(--muted);flex:1}
 
-/* reviews */
-#lp-home .reviews{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:36px}
-@media(max-width:860px){#lp-home .reviews{grid-template-columns:1fr}}
-#lp-home .review{border:1px dashed var(--ph-line);border-radius:var(--radius);padding:24px;background:var(--bg)}
-#lp-home .review .who{display:flex;gap:12px;align-items:center;margin-top:16px}
-#lp-home .review .avatar{width:48px;height:48px;border-radius:50%;flex:none;min-height:0;padding:0;font-size:.6rem}
 
 /* faq */
 #lp-home .faq{max-width:820px;margin:32px auto 0}
@@ -308,7 +273,7 @@ export const MARKETING_STYLE = `
 #lp-home a:not(.btn):hover{text-decoration:underline}
 #lp-home a:focus-visible,#lp-home button:focus-visible,#lp-home input:focus-visible,#lp-home summary:focus-visible{outline:2px solid var(--brand);outline-offset:3px;border-radius:8px}
 #lp-home .tool input:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px color-mix(in srgb,var(--brand) 25%,transparent)}
-#lp-home .stat b,#lp-home .health-score b,#lp-home .plan .price,#lp-home .health-table td{font-variant-numeric:tabular-nums}
+#lp-home .health-score b,#lp-home .plan .price,#lp-home .health-table td{font-variant-numeric:tabular-nums}
 #lp-home .tablewrap{scrollbar-width:thin;scrollbar-color:var(--line) transparent}
 #lp-home .tablewrap::-webkit-scrollbar{height:10px}
 #lp-home .tablewrap::-webkit-scrollbar-thumb{background:var(--line);border-radius:99px}
