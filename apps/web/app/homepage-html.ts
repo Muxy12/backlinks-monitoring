@@ -254,6 +254,48 @@ const QUIZ_STYLE = `<style>
 @media(max-width:1000px){#lp-home .cards.five{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:680px){#lp-home .cards.five{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:460px){#lp-home .cards.five{grid-template-columns:1fr}}
+/* ===== Live "pulse" hero monitor — the Pulz heartbeat made literal, in pure CSS
+   (no JS, so the hero stays edge-cacheable). An ECG line sweeps while monitored
+   links tick; on a 9s loop one link flips Live -> Lost and an alert slides in.
+   Reduced motion freezes it on a calm, all-live state. ===== */
+#lp-home .pulse-card{position:relative;border:1px solid var(--line);border-radius:18px;background:linear-gradient(180deg,color-mix(in srgb,var(--brand) 10%,var(--bg)),var(--bg));box-shadow:0 30px 70px -22px color-mix(in srgb,var(--brand) 45%,transparent);padding:18px 18px 20px;overflow:hidden}
+#lp-home .pulse-card::before{content:"";position:absolute;inset:0;background:radial-gradient(120% 60% at 82% -12%,color-mix(in srgb,var(--violet) 24%,transparent),transparent 60%);pointer-events:none}
+#lp-home .pulse-top{display:flex;align-items:center;justify-content:space-between;position:relative}
+#lp-home .pulse-live{display:inline-flex;align-items:center;gap:9px;font-size:.84rem;font-weight:700;color:var(--ink);letter-spacing:.01em}
+#lp-home .pulse-ping{position:relative;width:9px;height:9px;border-radius:50%;background:var(--accent)}
+#lp-home .pulse-ping::after{content:"";position:absolute;inset:-4px;border-radius:50%;border:1.5px solid var(--accent);opacity:.7;animation:pulse-ping 2s ease-out infinite}
+#lp-home .pulse-meta{font-size:.72rem;color:var(--muted);font-variant-numeric:tabular-nums}
+#lp-home .pulse-wave{height:58px;margin:12px 0 6px}
+#lp-home .pulse-wave svg{width:100%;height:100%;display:block}
+#lp-home .wave-track{fill:none;stroke:color-mix(in srgb,var(--brand) 26%,transparent);stroke-width:2}
+#lp-home .wave-pulse{fill:none;stroke:var(--brand);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 5px var(--brand));stroke-dasharray:16 84;stroke-dashoffset:100;animation:pulse-sweep 2.8s linear infinite}
+#lp-home .pulse-rows{position:relative}
+#lp-home .prow{display:flex;align-items:center;gap:10px;padding:9px 2px;border-bottom:1px solid color-mix(in srgb,var(--line) 70%,transparent);font-size:.78rem}
+#lp-home .prow:last-child{border-bottom:0}
+#lp-home .pdot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--accent);box-shadow:0 0 7px color-mix(in srgb,var(--accent) 70%,transparent)}
+#lp-home .purl{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink)}
+#lp-home .pb{font-size:.66rem;font-weight:700;padding:3px 10px;border-radius:99px;white-space:nowrap;position:relative;display:inline-flex;align-items:center;justify-content:center;min-width:44px;color:var(--accent);background:color-mix(in srgb,var(--accent) 15%,transparent)}
+#lp-home .pb .b-lost{position:absolute;inset:0;display:inline-flex;align-items:center;justify-content:center;opacity:0}
+#lp-home .prow.alertrow .pdot{animation:pulse-flipdot 9s ease-in-out infinite}
+#lp-home .prow.alertrow .pb{animation:pulse-flipbg 9s ease-in-out infinite}
+#lp-home .prow.alertrow .pb .b-ok{animation:pulse-fadeout 9s ease-in-out infinite}
+#lp-home .prow.alertrow .pb .b-lost{animation:pulse-fadein 9s ease-in-out infinite}
+#lp-home .pulse-toast{position:absolute;left:14px;right:14px;bottom:14px;display:flex;align-items:center;gap:11px;padding:11px 13px;border-radius:12px;background:color-mix(in srgb,var(--danger) 13%,var(--bg));border:1px solid color-mix(in srgb,var(--danger) 42%,var(--line));box-shadow:0 16px 32px -10px color-mix(in srgb,var(--danger) 45%,transparent);opacity:0;transform:translateY(16px);animation:pulse-toast 9s ease-in-out infinite}
+#lp-home .pulse-toast-dot{width:9px;height:9px;border-radius:50%;background:var(--danger);flex:none;box-shadow:0 0 8px var(--danger)}
+#lp-home .pulse-toast b{display:block;color:var(--danger);font-size:.8rem;line-height:1.2}
+#lp-home .pulse-toast span{display:block;color:var(--muted);font-size:.7rem}
+@keyframes pulse-sweep{to{stroke-dashoffset:0}}
+@keyframes pulse-ping{0%{transform:scale(.6);opacity:.8}100%{transform:scale(2.3);opacity:0}}
+@keyframes pulse-flipdot{0%,40%{background:var(--accent);box-shadow:0 0 7px color-mix(in srgb,var(--accent) 70%,transparent)}48%,72%{background:var(--danger);box-shadow:0 0 10px color-mix(in srgb,var(--danger) 85%,transparent)}80%,100%{background:var(--accent);box-shadow:0 0 7px color-mix(in srgb,var(--accent) 70%,transparent)}}
+@keyframes pulse-flipbg{0%,40%{color:var(--accent);background:color-mix(in srgb,var(--accent) 15%,transparent)}48%,72%{color:var(--danger);background:color-mix(in srgb,var(--danger) 15%,transparent)}80%,100%{color:var(--accent);background:color-mix(in srgb,var(--accent) 15%,transparent)}}
+@keyframes pulse-fadeout{0%,41%{opacity:1}47%,74%{opacity:0}80%,100%{opacity:1}}
+@keyframes pulse-fadein{0%,42%{opacity:0}48%,72%{opacity:1}78%,100%{opacity:0}}
+@keyframes pulse-toast{0%,42%{opacity:0;transform:translateY(16px)}50%,68%{opacity:1;transform:translateY(0)}76%,100%{opacity:0;transform:translateY(16px)}}
+@media(prefers-reduced-motion:reduce){
+  #lp-home .wave-pulse,#lp-home .pulse-ping::after,#lp-home .prow.alertrow .pdot,#lp-home .prow.alertrow .pb,#lp-home .prow.alertrow .pb .b-ok,#lp-home .prow.alertrow .pb .b-lost,#lp-home .pulse-toast{animation:none}
+  #lp-home .pulse-toast{display:none}
+  #lp-home .prow.alertrow .pb .b-lost{opacity:0}
+}
 </style>`;
 
 const MAIN = `${QUIZ_STYLE}
@@ -275,7 +317,25 @@ const MAIN = `${QUIZ_STYLE}
       </div>
       <p class="micro">10-day free trial · No credit card required · Set up in minutes</p>
     </div>
-    <img class="hero-img" src="${HERO_SRC}" srcset="${HERO_SRCSET}" sizes="${HERO_SIZES}" alt="LinkPulz backlink monitoring dashboard showing a lost backlink alert" title="LinkPulz backlink monitoring dashboard" width="1448" height="1086" fetchpriority="high" style="width:100%;height:auto;border-radius:var(--radius);border:1px solid var(--line)">
+    <div class="pulse-card" role="img" aria-label="LinkPulz live backlink monitor: links are checked on a pulse and a lost-link alert fires when one disappears">
+      <div class="pulse-top">
+        <span class="pulse-live"><span class="pulse-ping"></span>Live monitor</span>
+        <span class="pulse-meta">1,284 backlinks · checking</span>
+      </div>
+      <div class="pulse-wave" aria-hidden="true">
+        <svg viewBox="0 0 320 64" preserveAspectRatio="none">
+          <path class="wave-track" pathLength="100" d="M0,40 H92 l6,-4 l5,-24 l8,50 l7,-36 l6,14 H320"></path>
+          <path class="wave-pulse" pathLength="100" d="M0,40 H92 l6,-4 l5,-24 l8,50 l7,-36 l6,14 H320"></path>
+        </svg>
+      </div>
+      <div class="pulse-rows">
+        <div class="prow"><span class="pdot"></span><span class="purl">forbes.com/best-seo-tools</span><span class="pb">Live</span></div>
+        <div class="prow alertrow"><span class="pdot"></span><span class="purl">blog.example.com/seo-guide</span><span class="pb"><span class="b-ok">Live</span><span class="b-lost">Lost</span></span></div>
+        <div class="prow"><span class="pdot"></span><span class="purl">news.site/tool-review</span><span class="pb">Live</span></div>
+        <div class="prow"><span class="pdot"></span><span class="purl">partner.io/resources</span><span class="pb">Live</span></div>
+      </div>
+      <div class="pulse-toast" aria-hidden="true"><span class="pulse-toast-dot"></span><div><b>Backlink lost</b><span>blog.example.com · detected just now</span></div></div>
+    </div>
   </div>
 </section>
 

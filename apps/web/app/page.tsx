@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { HERO_SIZES, HERO_SRCSET, HOMEPAGE_HTML } from "./homepage-html";
+import { HOMEPAGE_HTML } from "./homepage-html";
 
 // Public, content-only page → render statically so it's served from the edge
 // cache (fast TTFB). Pairs with the static marketing CSP in middleware.ts.
@@ -176,16 +176,6 @@ const MOTION_SCRIPT = `(function(){
 export default function HomePage() {
   return (
     <>
-      {/* The hero dashboard image is the LCP element — preload the exact
-          responsive variant the browser will pick, so the download starts before
-          the HTML/CSS is parsed (big win on slow 4G). */}
-      <link
-        rel="preload"
-        as="image"
-        imageSrcSet={HERO_SRCSET}
-        imageSizes={HERO_SIZES}
-        fetchPriority="high"
-      />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSONLD }} />
       <div dangerouslySetInnerHTML={{ __html: HOMEPAGE_HTML }} />
       <script dangerouslySetInnerHTML={{ __html: QUIZ_SCRIPT }} />
