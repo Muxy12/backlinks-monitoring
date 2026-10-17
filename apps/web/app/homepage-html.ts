@@ -200,6 +200,12 @@ const QUIZ_STYLE = `<style>
 #lp-home .quiz.done .quiz-res .cards .card:not(.matched){display:none}
 #lp-home .quiz-res .card.matched{border-color:var(--brand);box-shadow:0 12px 34px color-mix(in srgb,var(--brand) 20%,transparent)}
 @media(prefers-reduced-motion:reduce){#lp-home .quiz.done .quiz-verdict{animation:none}}
+/* Four-up how-it-works steps. A stylesheet rule (not an inline style, which would
+   beat the base .steps mobile media query) so the grid collapses on small screens:
+   4 → 2 → 1. */
+#lp-home .steps.four{grid-template-columns:repeat(4,1fr)}
+@media(max-width:900px){#lp-home .steps.four{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){#lp-home .steps.four{grid-template-columns:1fr}}
 </style>`;
 
 const MAIN = `${QUIZ_STYLE}
@@ -675,7 +681,7 @@ const MAIN = `${QUIZ_STYLE}
       <h2 id="how-h">How to monitor backlinks in 4 simple steps</h2>
       <p class="lead">You don't need to revisit every backlink by hand to stay informed. Here's a more efficient workflow.</p>
     </div>
-    <div class="steps" style="grid-template-columns:repeat(4,1fr)">
+    <div class="steps four">
       <div class="step">
         <h3>Add the backlinks to monitor</h3>
         <p>Paste them, upload a CSV or Excel file, or import referring domains from Google Search Console. Tag each one by campaign, client or cost.</p>
