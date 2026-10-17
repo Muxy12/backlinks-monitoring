@@ -247,6 +247,13 @@ const QUIZ_STYLE = `<style>
   #lp-home .reveal{opacity:0;transform:translateY(24px);transition:opacity .6s cubic-bezier(.16,1,.3,1),transform .6s cubic-bezier(.16,1,.3,1)}
   #lp-home .reveal.in{opacity:1;transform:none}
 }
+/* Five-up card rows (the "why" and "who" sections): keep all five on one line on
+   desktop, then collapse 5 -> 3 -> 2 -> 1 as the viewport narrows. */
+#lp-home .cards.five{grid-template-columns:repeat(5,1fr);gap:16px}
+#lp-home .cards.five .card{padding:20px 18px}
+@media(max-width:1000px){#lp-home .cards.five{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:680px){#lp-home .cards.five{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:460px){#lp-home .cards.five{grid-template-columns:1fr}}
 </style>`;
 
 const MAIN = `${QUIZ_STYLE}
@@ -493,7 +500,7 @@ const MAIN = `${QUIZ_STYLE}
       <h2 id="why-h">Why is backlink monitoring important for SEO?</h2>
       <p class="lead">Building backlinks is only part of a successful link-building strategy. Once links are acquired, you need to know whether they stay in place and whether their attributes change.</p>
     </div>
-    <div class="cards">
+    <div class="cards five">
       <div class="card"><div class="ic">1</div><h3>Detect lost backlinks before they go unnoticed</h3><p>Publishers remove links, update articles, delete pages or restructure sites. Monitoring tells you when a tracked link is no longer found, so you can investigate and reach out while it's recent.</p></div>
       <div class="card"><div class="ic">2</div><h3>Protect your link-building efforts</h3><p>Outreach, digital PR and partnerships take time and budget. Monitoring verifies that the placements you earned or paid for are still live.</p></div>
       <div class="card"><div class="ic">3</div><h3>Track dofollow and nofollow changes</h3><p>A publisher can change a link's attributes after publication. Monitoring surfaces the change so you can check the backlink still meets your expectations.</p></div>
@@ -864,7 +871,7 @@ const MAIN = `${QUIZ_STYLE}
 <section aria-labelledby="use-h">
   <div class="wrap">
     <div class="center"><h2 id="use-h">Who should use backlink monitoring software?</h2></div>
-    <div class="cards">
+    <div class="cards five">
       <div class="card"><h3>SEO professionals</h3><p>Keep visibility into important backlinks, review attribute changes and investigate lost links as part of your workflow.</p></div>
       <div class="card"><h3>SEO agencies</h3><p>Organize monitoring across client campaigns and support reporting with structured backlink data.</p></div>
       <div class="card"><h3>Link-building teams</h3><p>Track acquired placements, catch lost links and stay aware of changes affecting outreach campaigns.</p></div>
@@ -933,21 +940,79 @@ const MAIN = `${QUIZ_STYLE}
 
 <!-- ============ PRICING ============ -->
 <section id="pricing" aria-labelledby="price-h">
-  <div class="wrap">
-    <div class="center">
-      <h2 id="price-h">Start with a free trial</h2>
-      <p class="lead">Every plan includes a 10-day free trial, no credit card, and checks every backlink on the schedule you set (daily to monthly).</p>
+  <div class="wrap center">
+    <h2 id="price-h">Simple pricing, 10-day free trial</h2>
+    <p class="lead">Every plan includes a 10-day free trial, no credit card, and every monitoring feature. Pay monthly, or save two months with annual billing.</p>
+
+    <input type="radio" name="billing" id="bill-m" class="bill-radio" checked>
+    <input type="radio" name="billing" id="bill-a" class="bill-radio">
+    <div class="bill-toggle" role="group" aria-label="Billing period">
+      <label for="bill-m" class="seg">Monthly</label>
+      <label for="bill-a" class="seg">Annual <span class="save-badge">2 months free</span></label>
     </div>
+
     <div class="plans">
-      <div class="plan"><h3>Starter</h3><div class="price-block price-monthly"><div class="price">$29<small>/mo</small></div><div class="per">billed monthly</div></div><div class="limits"><span><b>500</b> backlinks</span><span><b>3</b> projects</span><span><b>1</b> user</span></div><a class="btn ghost" href="/register">Start free trial</a></div>
-      <div class="plan hl"><span class="pop">Most popular</span><h3>Pro</h3><div class="price-block price-monthly"><div class="price">$59<small>/mo</small></div><div class="per">billed monthly</div></div><div class="limits"><span><b>2,500</b> backlinks</span><span><b>10</b> projects</span><span><b>3</b> users</span></div><a class="btn" href="/register">Start free trial</a></div>
-      <div class="plan"><h3>Business</h3><div class="price-block price-monthly"><div class="price">$99<small>/mo</small></div><div class="per">billed monthly</div></div><div class="limits"><span><b>5,000</b> backlinks</span><span><b>25</b> projects</span><span><b>5</b> users</span></div><a class="btn ghost" href="/register">Start free trial</a></div>
-      <div class="plan"><h3>Agency</h3><div class="price-block price-monthly"><div class="price">$199<small>/mo</small></div><div class="per">billed monthly</div></div><div class="limits"><span><b>15,000</b> backlinks</span><span><b>75</b> projects</span><span><b>15</b> users</span></div><a class="btn ghost" href="/register">Start free trial</a></div>
+      <div class="plan">
+        <h3>Starter</h3>
+        <p class="pos">For website owners and small SEO projects.</p>
+        <div class="price-block price-monthly"><div class="price">$29<small>/mo</small></div><div class="per">billed monthly</div></div>
+        <div class="price-block price-annual"><div class="price">$24<small>/mo</small></div><div class="per">$290 billed yearly</div></div>
+        <div class="limits"><span><b>500</b> backlinks monitored</span><span><b>3</b> projects</span><span><b>1</b> user</span></div>
+        <ul class="feats">
+          <li>Checks on a schedule you set</li>
+          <li>Lost &amp; removed link alerts</li>
+          <li>Broken &amp; redirected link detection</li>
+          <li>Nofollow / noindex change alerts</li>
+          <li>CSV import</li>
+          <li>Email alerts</li>
+        </ul>
+        <a class="btn ghost" href="/register">Start free trial</a>
+      </div>
+      <div class="plan hl">
+        <span class="pop">Most popular</span>
+        <h3>Pro</h3>
+        <p class="pos">For SEO professionals and link builders.</p>
+        <div class="price-block price-monthly"><div class="price">$59<small>/mo</small></div><div class="per">billed monthly</div></div>
+        <div class="price-block price-annual"><div class="price">$49<small>/mo</small></div><div class="per">$590 billed yearly</div></div>
+        <div class="limits"><span><b>2,500</b> backlinks monitored</span><span><b>10</b> projects</span><span><b>3</b> users</span></div>
+        <ul class="feats">
+          <li>Everything in Starter</li>
+          <li>Webhook &amp; Slack alerts</li>
+          <li>Full backlink change history</li>
+          <li>Team access</li>
+        </ul>
+        <a class="btn" href="/register">Start free trial</a>
+      </div>
+      <div class="plan">
+        <h3>Business</h3>
+        <p class="pos">For SEO teams managing multiple websites.</p>
+        <div class="price-block price-monthly"><div class="price">$99<small>/mo</small></div><div class="per">billed monthly</div></div>
+        <div class="price-block price-annual"><div class="price">$82<small>/mo</small></div><div class="per">$990 billed yearly</div></div>
+        <div class="limits"><span><b>5,000</b> backlinks monitored</span><span><b>25</b> projects</span><span><b>5</b> users</span></div>
+        <ul class="feats">
+          <li>Everything in Pro</li>
+          <li>Priority email support</li>
+          <li>Higher monitoring limits</li>
+        </ul>
+        <a class="btn ghost" href="/register">Start free trial</a>
+      </div>
+      <div class="plan">
+        <h3>Agency</h3>
+        <p class="pos">For agencies managing many client portfolios.</p>
+        <div class="price-block price-monthly"><div class="price">$199<small>/mo</small></div><div class="per">billed monthly</div></div>
+        <div class="price-block price-annual"><div class="price">$166<small>/mo</small></div><div class="per">$1,990 billed yearly</div></div>
+        <div class="limits"><span><b>15,000</b> backlinks monitored</span><span><b>75</b> projects</span><span><b>15</b> users</span></div>
+        <ul class="feats">
+          <li>Everything in Business</li>
+          <li>Dedicated priority support</li>
+          <li>Built for client portfolios</li>
+        </ul>
+        <a class="btn ghost" href="/register">Start free trial</a>
+      </div>
     </div>
-    <div class="prose center" style="margin-top:24px">
-      <p class="micro">Your free trial includes 10 days of full access with every monitoring feature, the backlink and project limits of the plan you pick, and all alert channels (email, Slack, webhook). No credit card required. After the trial, continue on a plan from $29/mo, or stop, no charge.</p>
-    </div>
-    <div class="center" style="margin-top:20px"><a class="btn ghost" href="/pricing">Compare plans &amp; annual pricing →</a></div>
+
+    <p class="price-note">Every plan includes all monitoring features and all alert channels (email, Slack, webhook), the plans differ by how much you track and how big your team is. No credit card for the trial. Prices in USD. Going over a limit never stops monitoring or deletes data, you just can't add new links until you upgrade.</p>
+    <div class="center" style="margin-top:8px"><a class="btn ghost" href="/pricing">See full pricing &amp; FAQ →</a></div>
   </div>
 </section>
 
