@@ -1,0 +1,37 @@
+LinkPulz — Proprietary Software License
+Copyright (c) 2026 MeedWise (SASU). All rights reserved.
+
+This repository and all of its contents (the "Software") — including source
+code, configuration, documentation, assets, and database schema — are the
+exclusive property of MeedWise (SASU), a French société par actions simplifiée
+unipersonnelle registered in Paris, and are protected by copyright and other
+intellectual property laws.
+
+This is proprietary, closed-source software. The Software is made publicly
+viewable for transparency and reference only. Being able to view or fork the
+repository on the hosting platform does NOT grant any license to the Software.
+
+NO LICENSE IS GRANTED. Except where a separate written agreement signed by
+MeedWise (SASU) states otherwise, no person or entity is granted any right to:
+
+  - use, run, execute, or deploy the Software, in whole or in part;
+  - copy, reproduce, or store the Software other than the transient copy your
+    browser or the hosting platform creates to display it;
+  - modify, adapt, translate, or create derivative works from the Software;
+  - distribute, publish, sublicense, sell, rent, or otherwise make the Software
+    available to any third party;
+  - remove or alter this notice or any proprietary marking.
+
+Permitted, without further authorization: viewing the Software on the hosting
+platform, and quoting short excerpts for commentary, review, or education with
+attribution, to the extent allowed by applicable law (e.g. fair use / the right
+of quotation).
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+For licensing inquiries, contact: contact@linkpulz.com
