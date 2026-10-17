@@ -51,25 +51,42 @@ const JSONLD = `{
   ]
 }`;
 
-// Interactive scoring for the homepage self-assessment quiz. The homepage body is
-// injected via dangerouslySetInnerHTML, where a <script> tag would NOT execute —
-// so the behaviour lives here, as a real rendered <script>. Public marketing pages
-// use the static CSP (`script-src 'self' 'unsafe-inline'`, no nonce), so this
-// inline script runs; it is a no-op on any page that lacks the quiz. It only ever
-// mutates the DOM from a user `change` event (never before React hydrates, which
-// would corrupt the injected subtree): once all five answers are in it scores
-// 0/1/2 per question into a 0–10 total, maps that to a tier, adds `.done`, and
-// reveals the matching profile + verdict. Without JS the quiz degrades to its
-// static three-profile preview.
+// Homepage self-assessment quiz behaviour. The homepage body is injected via
+// dangerouslySetInnerHTML, where a <script> tag would NOT execute, so the logic
+// lives here as a real rendered <script>. Public marketing pages use the static
+// CSP (`script-src 'self' 'unsafe-inline'`, no nonce), so this inline script runs;
+// it is a no-op on any page without the quiz. It runs as the parser reaches it
+// (right after the injected body), turning the quiz into a one-question-at-a-time
+// stepper before paint; the injected subtree is opaque to React's reconciler, so
+// toggling classes/attributes inside it does not affect hydration. Picking an
+// answer auto-advances (Back steps you back); once all five are in it scores 0/1/2
+// per question into a 0–10 total, maps that to a tier, adds `.done`, and reveals
+// the matching profile + verdict. Without JS every question shows as a plain form.
 const QUIZ_SCRIPT = `(function(){
+  var q=document.querySelector('#quiz .quiz'); if(!q) return;
+  var lis=q.querySelectorAll('.quiz-q > li');
+  var total=lis.length; if(!total) return;
+  var bar=q.querySelector('.quiz-bar i');
+  var label=q.querySelector('.quiz-step');
+  var step=0, advancing=false;
+  function render(){
+    for(var k=0;k<lis.length;k++){ lis[k].classList.toggle('active', k===step); }
+    q.setAttribute('data-step', step);
+    if(bar){ bar.style.width=((step+1)/total*100)+'%'; }
+    if(label){ label.textContent='Question '+(step+1)+' of '+total; }
+  }
+  function go(i){
+    step = i<0 ? 0 : (i>total-1 ? total-1 : i);
+    render();
+    var li=lis[step]; if(li){ try{ li.focus({preventScroll:true}); }catch(e){ try{ li.focus(); }catch(e2){} } }
+  }
   function compute(){
-    var q=document.querySelector('#quiz .quiz'); if(!q) return;
     var sum=0, all=true;
-    for(var i=1;i<=5;i++){
+    for(var i=1;i<=total;i++){
       var el=q.querySelector('input[name="q'+i+'"]:checked');
       if(!el){all=false;} else {sum+=(parseInt(el.value,10)||0);}
     }
-    if(!all){ q.classList.remove('done'); return; }
+    if(!all){ return; }
     var tier = sum<=3 ? 0 : (sum<=7 ? 1 : 2);
     var names=['Reactive monitoring','Developing monitoring','Proactive monitoring'];
     var cards=q.querySelectorAll('.quiz-res .card');
@@ -80,10 +97,27 @@ const QUIZ_SCRIPT = `(function(){
     if(vd){ vd.innerHTML='Your profile: <b>'+names[tier]+'</b> · '+sum+'/10'; }
     q.classList.add('done');
   }
-  document.addEventListener('change', function(e){
-    var t=e.target;
-    if(t && t.name && /^q[1-5]$/.test(t.name)){ compute(); }
+  // Set up the stepper synchronously, before first paint.
+  q.classList.add('stepper');
+  render();
+  q.addEventListener('change', function(e){
+    var t=e.target; if(!(t && t.name && /^q[1-5]$/.test(t.name))) return;
+    if(step < total-1){
+      if(advancing) return; advancing=true;
+      setTimeout(function(){ advancing=false; go(step+1); }, 240);
+    } else {
+      compute();
+    }
   });
+  var back=q.querySelector('.quiz-back');
+  if(back){ back.addEventListener('click', function(){ if(step>0){ go(step-1); } }); }
+  var restart=q.querySelector('.quiz-restart');
+  if(restart){ restart.addEventListener('click', function(){
+    q.classList.remove('done');
+    var rs=q.querySelectorAll('input[type="radio"]'); for(var i=0;i<rs.length;i++){ rs[i].checked=false; }
+    var cs=q.querySelectorAll('.quiz-res .card'); for(var j=0;j<cs.length;j++){ cs[j].classList.remove('matched'); }
+    go(0);
+  }); }
 })();`;
 
 export default function HomePage() {

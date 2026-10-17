@@ -187,11 +187,14 @@ const QUIZ_STYLE = `<style>
 #lp-home .quiz-res .tier{width:10px;height:10px;border-radius:50%;flex:none;display:inline-block}
 #lp-home .quiz-res .next{color:var(--ink);font-size:.9rem;margin:10px 0 0}
 #lp-home .quiz-res .next b{color:var(--brand)}
-/* Interactive scoring. The page.tsx inline script adds .done to .quiz once all
-   five answers are in — only on a user change event, never before React hydrates
-   (mutating this innerHTML subtree pre-hydration causes a mismatch). Before .done
-   (and with no JS at all) the three profiles show as a preview; after it, only the
-   matched profile and the verdict remain. */
+/* Quiz behaviour (driven by the page.tsx inline script). The script runs as the
+   parser reaches it, right after the injected body, so it sets up before paint;
+   the dangerouslySetInnerHTML subtree is opaque to React's reconciler, so toggling
+   classes inside it does not affect hydration. Two layers:
+   - Stepper: .stepper shows one question at a time (.active) with a progress bar
+     and a Back button; without JS every question shows as a plain scrollable form.
+   - Scoring: once all five answers are in, .done reveals the matched profile and
+     the verdict. */
 #lp-home .quiz-verdict{display:none;text-align:center;font-weight:750;font-size:1.2rem;letter-spacing:-.01em;margin:0 0 20px;color:var(--ink)}
 #lp-home .quiz-verdict b{color:var(--brand)}
 #lp-home .quiz.done .quiz-res .cap{display:none}
@@ -199,7 +202,29 @@ const QUIZ_STYLE = `<style>
 #lp-home .quiz.done .quiz-res .cards{grid-template-columns:minmax(0,520px);justify-content:center}
 #lp-home .quiz.done .quiz-res .cards .card:not(.matched){display:none}
 #lp-home .quiz-res .card.matched{border-color:var(--brand);box-shadow:0 12px 34px color-mix(in srgb,var(--brand) 20%,transparent)}
-@media(prefers-reduced-motion:reduce){#lp-home .quiz.done .quiz-verdict{animation:none}}
+/* Stepper: one question at a time */
+#lp-home .quiz-progress{display:none;align-items:center;gap:14px;margin-bottom:20px}
+#lp-home .quiz-step{font-size:.82rem;font-weight:650;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+#lp-home .quiz-bar{flex:1;height:6px;border-radius:999px;background:var(--bg-alt);overflow:hidden}
+#lp-home .quiz-bar i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--brand),var(--violet));transition:width .35s cubic-bezier(.16,1,.3,1)}
+#lp-home .quiz-nav{display:none;margin-top:16px}
+#lp-home .quiz-back{font:inherit;font-size:.9rem;font-weight:600;color:var(--muted);background:none;border:0;cursor:pointer;padding:6px 4px}
+#lp-home .quiz-back:hover{color:var(--brand)}
+#lp-home .quiz-restart{font:inherit;font-size:.9rem;font-weight:600;color:var(--brand);background:none;border:0;cursor:pointer;padding:6px 4px;display:none}
+#lp-home .quiz-restart:hover{text-decoration:underline}
+#lp-home .quiz.stepper .quiz-progress{display:flex}
+#lp-home .quiz.stepper .quiz-nav{display:flex}
+#lp-home .quiz.stepper .quiz-q{gap:0}
+#lp-home .quiz.stepper .quiz-q>li{display:none}
+#lp-home .quiz.stepper .quiz-q>li.active{display:block;animation:lp-rise .35s cubic-bezier(.16,1,.3,1) both}
+#lp-home .quiz.stepper .quiz-q>li:focus{outline:none}
+#lp-home .quiz.stepper[data-step="0"] .quiz-back{visibility:hidden}
+#lp-home .quiz.stepper .quiz-res{display:none}
+#lp-home .quiz.stepper:not(.done) .quiz-note,#lp-home .quiz.stepper:not(.done) .quiz-cta{display:none}
+#lp-home .quiz.stepper.done .quiz-q,#lp-home .quiz.stepper.done .quiz-progress,#lp-home .quiz.stepper.done .quiz-nav{display:none}
+#lp-home .quiz.stepper.done .quiz-res{display:block}
+#lp-home .quiz.stepper.done .quiz-restart{display:inline-block}
+@media(prefers-reduced-motion:reduce){#lp-home .quiz.done .quiz-verdict,#lp-home .quiz.stepper .quiz-q>li.active{animation:none}}
 /* Four-up how-it-works steps. A stylesheet rule (not an inline style, which would
    beat the base .steps mobile media query) so the grid collapses on small screens:
    4 → 2 → 1. */
@@ -237,11 +262,15 @@ const MAIN = `${QUIZ_STYLE}
   <div class="wrap">
     <div class="center">
       <h2 id="quiz-h">How strong is your backlink monitoring strategy?</h2>
-      <p class="lead">Answer five quick questions and get your monitoring profile, with the next step for you.</p>
+      <p class="lead">Five quick questions, one at a time. Get your monitoring profile and the next step for you.</p>
     </div>
     <div class="quiz">
+      <div class="quiz-progress">
+        <span class="quiz-step" aria-live="polite">Question 1 of 5</span>
+        <div class="quiz-bar" aria-hidden="true"><i style="width:20%"></i></div>
+      </div>
       <ol class="quiz-q">
-        <li>
+        <li tabindex="-1">
           <p class="quiz-ttl">1. How do you currently track your backlinks?</p>
           <div class="quiz-opts">
             <label><input type="radio" name="q1" value="0"><span>I don't track them</span></label>
@@ -249,7 +278,7 @@ const MAIN = `${QUIZ_STYLE}
             <label><input type="radio" name="q1" value="2"><span>Automated monitoring software</span></label>
           </div>
         </li>
-        <li>
+        <li tabindex="-1">
           <p class="quiz-ttl">2. How quickly do you notice a lost backlink?</p>
           <div class="quiz-opts">
             <label><input type="radio" name="q2" value="0"><span>Usually I don't notice</span></label>
@@ -257,7 +286,7 @@ const MAIN = `${QUIZ_STYLE}
             <label><input type="radio" name="q2" value="2"><span>Through an automated alert</span></label>
           </div>
         </li>
-        <li>
+        <li tabindex="-1">
           <p class="quiz-ttl">3. Do you monitor dofollow and nofollow changes?</p>
           <div class="quiz-opts">
             <label><input type="radio" name="q3" value="0"><span>No</span></label>
@@ -265,7 +294,7 @@ const MAIN = `${QUIZ_STYLE}
             <label><input type="radio" name="q3" value="2"><span>Yes, consistently</span></label>
           </div>
         </li>
-        <li>
+        <li tabindex="-1">
           <p class="quiz-ttl">4. How do you analyze competitor backlinks?</p>
           <div class="quiz-opts">
             <label><input type="radio" name="q4" value="0"><span>I don't analyze them</span></label>
@@ -273,7 +302,7 @@ const MAIN = `${QUIZ_STYLE}
             <label><input type="radio" name="q4" value="2"><span>I use a dedicated tool</span></label>
           </div>
         </li>
-        <li>
+        <li tabindex="-1">
           <p class="quiz-ttl">5. How do you organize your backlink data?</p>
           <div class="quiz-opts">
             <label><input type="radio" name="q5" value="0"><span>No structured process</span></label>
@@ -282,6 +311,10 @@ const MAIN = `${QUIZ_STYLE}
           </div>
         </li>
       </ol>
+
+      <div class="quiz-nav">
+        <button type="button" class="quiz-back">&larr; Back</button>
+      </div>
 
       <div class="quiz-res">
         <p class="cap">Three monitoring profiles. Answer the five questions above to see which one fits you.</p>
@@ -303,10 +336,11 @@ const MAIN = `${QUIZ_STYLE}
             <p class="next"><b>Next step:</b> explore competitor analysis and manage monitoring across larger campaigns.</p>
           </div>
         </div>
+        <div class="center" style="margin-top:16px"><button type="button" class="quiz-restart">&#8635; Start over</button></div>
       </div>
 
-      <p class="micro" style="margin-top:18px">This assessment reflects your self-reported habits. It is not a technical audit of your backlink profile.</p>
-      <div class="center" style="margin-top:12px"><a class="btn" href="/register">Start your monitoring setup</a></div>
+      <p class="quiz-note micro" style="margin-top:18px">This assessment reflects your self-reported habits. It is not a technical audit of your backlink profile.</p>
+      <div class="quiz-cta center" style="margin-top:12px"><a class="btn" href="/register">Start your monitoring setup</a></div>
     </div>
   </div>
 </section>
