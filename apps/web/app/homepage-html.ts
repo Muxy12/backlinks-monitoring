@@ -291,10 +291,27 @@ const QUIZ_STYLE = `<style>
 @keyframes pulse-fadeout{0%,41%{opacity:1}47%,74%{opacity:0}80%,100%{opacity:1}}
 @keyframes pulse-fadein{0%,42%{opacity:0}48%,72%{opacity:1}78%,100%{opacity:0}}
 @keyframes pulse-toast{0%,42%{opacity:0;transform:translateY(16px)}50%,68%{opacity:1;transform:translateY(0)}76%,100%{opacity:0;transform:translateY(16px)}}
+/* Hero monitor: slide-up entrance on the wrapper (so it joins the headline/CTA
+   stagger), then a slow, calm float once it has arrived. Timings share the hero's
+   cubic-bezier so every motion feels part of one system. */
+#lp-home .hero .pulse-wrap{animation:lp-rise .8s cubic-bezier(.16,1,.3,1) .3s both}
+#lp-home .hero .pulse-card{animation:pulse-float 7s ease-in-out 1.1s infinite}
+/* Discreet breathing on the Live indicators (not the one that flips). */
+#lp-home .prow:not(.alertrow) .pdot{animation:pulse-dot 2.8s ease-in-out infinite}
+#lp-home .prow:nth-child(3) .pdot{animation-delay:.7s}
+#lp-home .prow:nth-child(4) .pdot{animation-delay:1.4s}
+/* Hero button micro-interaction: a soft lift on hover, settle on press. */
+#lp-home .hero .btn{transition:filter .18s cubic-bezier(.16,1,.3,1),transform .18s cubic-bezier(.16,1,.3,1),box-shadow .18s cubic-bezier(.16,1,.3,1)}
+#lp-home .hero .btn:hover{transform:translateY(-2px)}
+#lp-home .hero .btn:not(.ghost):hover{box-shadow:0 14px 30px color-mix(in srgb,var(--brand) 34%,transparent)}
+#lp-home .hero .btn:active{transform:translateY(0)}
+@keyframes pulse-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes pulse-dot{0%,100%{box-shadow:0 0 6px color-mix(in srgb,var(--accent) 50%,transparent)}50%{box-shadow:0 0 11px color-mix(in srgb,var(--accent) 95%,transparent)}}
 @media(prefers-reduced-motion:reduce){
-  #lp-home .wave-pulse,#lp-home .pulse-ping::after,#lp-home .prow.alertrow .pdot,#lp-home .prow.alertrow .pb,#lp-home .prow.alertrow .pb .b-ok,#lp-home .prow.alertrow .pb .b-lost,#lp-home .pulse-toast{animation:none}
+  #lp-home .wave-pulse,#lp-home .pulse-ping::after,#lp-home .prow .pdot,#lp-home .prow.alertrow .pb,#lp-home .prow.alertrow .pb .b-ok,#lp-home .prow.alertrow .pb .b-lost,#lp-home .pulse-toast,#lp-home .hero .pulse-wrap,#lp-home .hero .pulse-card{animation:none}
   #lp-home .pulse-toast{display:none}
   #lp-home .prow.alertrow .pb .b-lost{opacity:0}
+  #lp-home .hero .btn:hover{transform:none}
 }
 </style>`;
 
@@ -317,7 +334,7 @@ const MAIN = `${QUIZ_STYLE}
       </div>
       <p class="micro">10-day free trial · No credit card required · Set up in minutes</p>
     </div>
-    <div class="pulse-card" role="img" aria-label="LinkPulz live backlink monitor: links are checked on a pulse and a lost-link alert fires when one disappears">
+    <div class="pulse-wrap"><div class="pulse-card" role="img" aria-label="LinkPulz live backlink monitor: links are checked on a pulse and a lost-link alert fires when one disappears">
       <div class="pulse-top">
         <span class="pulse-live"><span class="pulse-ping"></span>Live monitor</span>
         <span class="pulse-meta">1,284 backlinks · checking</span>
@@ -335,7 +352,7 @@ const MAIN = `${QUIZ_STYLE}
         <div class="prow"><span class="pdot"></span><span class="purl">partner.io/resources</span><span class="pb">Live</span></div>
       </div>
       <div class="pulse-toast" aria-hidden="true"><span class="pulse-toast-dot"></span><div><b>Backlink lost</b><span>blog.example.com · detected just now</span></div></div>
-    </div>
+    </div></div>
   </div>
 </section>
 
