@@ -313,6 +313,14 @@ const QUIZ_STYLE = `<style>
   #lp-home .prow.alertrow .pb .b-lost{opacity:0}
   #lp-home .hero .btn:hover{transform:none}
 }
+/* Trust band: a sober wordmark strip of brands that use LinkPulz. Grayscale at
+   rest, brightening on hover, kept homogeneous so no single name shouts. */
+#lp-home .trust{padding:38px 0 42px}
+#lp-home .trust-label{font-size:.82rem;font-weight:600;letter-spacing:.02em;color:var(--muted);margin:0 0 22px}
+#lp-home .trust-logos{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:18px 46px}
+#lp-home .tlogo{font-size:1.18rem;font-weight:750;letter-spacing:-.01em;color:var(--muted);opacity:.72;white-space:nowrap;transition:color .16s,opacity .16s}
+#lp-home .tlogo:hover{color:var(--ink);opacity:1}
+@media(max-width:600px){#lp-home .trust-logos{gap:14px 30px}#lp-home .tlogo{font-size:1.02rem}}
 </style>`;
 
 const MAIN = `${QUIZ_STYLE}
@@ -353,6 +361,20 @@ const MAIN = `${QUIZ_STYLE}
       </div>
       <div class="pulse-toast" aria-hidden="true"><span class="pulse-toast-dot"></span><div><b>Backlink lost</b><span>blog.example.com · detected just now</span></div></div>
     </div></div>
+  </div>
+</section>
+
+<!-- ============ TRUST / BRANDS ============ -->
+<section class="trust" aria-label="Brands that use LinkPulz">
+  <div class="wrap center">
+    <p class="trust-label">Trusted by teams and brands that build links</p>
+    <div class="trust-logos">
+      <span class="tlogo">SEO Acquisition</span>
+      <span class="tlogo">Loisir Land</span>
+      <span class="tlogo">GelFighter</span>
+      <span class="tlogo">Pulverisateur Malin</span>
+      <span class="tlogo">Ma Raquette Padel</span>
+    </div>
   </div>
 </section>
 
