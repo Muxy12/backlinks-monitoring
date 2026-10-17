@@ -156,16 +156,6 @@ const JSONLD = `{
   ]
 }`;
 
-// Hero (LCP) image served through Next's image optimizer: Vercel re-encodes and
-// resizes it on the fly, so mobile downloads a right-sized file instead of the
-// full 1448×1086 original. The blob host is allow-listed in next.config images.
-const HERO_BLOB =
-  "https://ye8jhaekbbcviws9.public.blob.vercel-storage.com/banniere-dashboard-linkpulz.webp";
-const heroOpt = (w: number) => `/_next/image?url=${encodeURIComponent(HERO_BLOB)}&w=${w}&q=75`;
-export const HERO_SIZES = "(max-width: 900px) 92vw, 540px";
-export const HERO_SRCSET = [640, 828, 1080, 1200].map((w) => `${heroOpt(w)} ${w}w`).join(", ");
-export const HERO_SRC = heroOpt(1200);
-
 // Quiz-only styles live here (not in the shared marketing.ts) so this rewrite
 // doesn't collide with other open PRs that touch marketing.ts. A <style> injected
 // via dangerouslySetInnerHTML is parsed and applied by the browser (a <script>
