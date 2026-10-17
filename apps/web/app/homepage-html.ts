@@ -236,6 +236,17 @@ const QUIZ_STYLE = `<style>
 #lp-home .card{transition:border-color .16s,transform .16s,box-shadow .16s}
 #lp-home .card:hover{border-color:color-mix(in srgb,var(--brand) 38%,var(--line));transform:translateY(-3px);box-shadow:0 14px 34px color-mix(in srgb,var(--brand) 12%,transparent)}
 @media(prefers-reduced-motion:reduce){#lp-home .card{transition:none}#lp-home .card:hover{transform:none;box-shadow:none}}
+/* Scroll-triggered section entrances. The page.tsx MOTION_SCRIPT adds .reveal to
+   each non-hero section's parts (before paint, so no flash) and .in once the part
+   enters the viewport. Safety by construction: the hiding rule lives ONLY inside
+   prefers-reduced-motion:no-preference, and .reveal is only ever added by the
+   script, so with no JS or with motion reduced nothing is hidden. .reveal.in (two
+   classes) cleanly outranks .reveal (one), and the script's scroll sweep reveals
+   anything scrolled past, so content can never stay hidden. */
+@media(prefers-reduced-motion:no-preference){
+  #lp-home .reveal{opacity:0;transform:translateY(24px);transition:opacity .6s cubic-bezier(.16,1,.3,1),transform .6s cubic-bezier(.16,1,.3,1)}
+  #lp-home .reveal.in{opacity:1;transform:none}
+}
 </style>`;
 
 const MAIN = `${QUIZ_STYLE}

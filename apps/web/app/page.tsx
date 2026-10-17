@@ -120,6 +120,59 @@ const QUIZ_SCRIPT = `(function(){
   }); }
 })();`;
 
+// Homepage scroll-entrance motion. Runs as the parser reaches it (right after the
+// injected body, before paint), so sections start hidden without a flash. Safety
+// by construction: it bails without IntersectionObserver (nothing tagged -> nothing
+// hidden), and the CSS only hides .reveal under prefers-reduced-motion:no-preference
+// — so with no JS or motion reduced, content is fully visible. An IntersectionObserver
+// gives each part a staggered entrance as it enters; a rAF-throttled scroll sweep
+// (plus one on load) reveals anything scrolled past, so fast scrolling can never
+// leave content hidden. The injected subtree is opaque to React, so this does not
+// affect hydration.
+const MOTION_SCRIPT = `(function(){
+  var root=document.getElementById('lp-home'); if(!root) return;
+  if(!('IntersectionObserver' in window)) return;
+  var secs=root.querySelectorAll('section:not(.hero)');
+  var targets=[];
+  for(var s=0;s<secs.length;s++){
+    var wrap=secs[s].querySelector('.wrap'); if(!wrap) continue;
+    var parts=wrap.children;
+    for(var i=0;i<parts.length;i++){
+      var el=parts[i];
+      el.classList.add('reveal');
+      el.style.transitionDelay=(Math.min(i,3)*0.07)+'s';
+      targets.push(el);
+    }
+  }
+  if(!targets.length) return;
+  var io=new IntersectionObserver(function(entries){
+    for(var k=0;k<entries.length;k++){
+      if(entries[k].isIntersecting){ entries[k].target.classList.add('in'); io.unobserve(entries[k].target); }
+    }
+  }, {rootMargin:'0px 0px -8% 0px', threshold:0.08});
+  for(var t=0;t<targets.length;t++){ io.observe(targets[t]); }
+  function sweep(){
+    var vh=window.innerHeight, remaining=[];
+    for(var t=0;t<targets.length;t++){
+      var el=targets[t];
+      if(el.classList.contains('in')) continue;
+      if(el.getBoundingClientRect().top < vh*0.95){ el.classList.add('in'); io.unobserve(el); }
+      else { remaining.push(el); }
+    }
+    targets=remaining;
+    if(!targets.length){ window.removeEventListener('scroll', onScroll); window.removeEventListener('resize', onScroll); }
+  }
+  var last=0;
+  function onScroll(){ var now=Date.now(); if(now-last>=80){ last=now; sweep(); } }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  window.addEventListener('resize', onScroll, {passive:true});
+  window.addEventListener('load', function(){ sweep(); setTimeout(sweep, 500); });
+  sweep();
+  // Ultimate safety net: whatever happens with the observer, timers and scrolling,
+  // nothing may stay hidden. After a few seconds reveal anything still untagged.
+  setTimeout(function(){ for(var t=0;t<targets.length;t++){ targets[t].classList.add('in'); } targets=[]; }, 4000);
+})();`;
+
 export default function HomePage() {
   return (
     <>
@@ -136,6 +189,7 @@ export default function HomePage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSONLD }} />
       <div dangerouslySetInnerHTML={{ __html: HOMEPAGE_HTML }} />
       <script dangerouslySetInnerHTML={{ __html: QUIZ_SCRIPT }} />
+      <script dangerouslySetInnerHTML={{ __html: MOTION_SCRIPT }} />
     </>
   );
 }
