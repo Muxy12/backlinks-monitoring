@@ -58,7 +58,7 @@ export default function RegisterPage() {
         <div className="auth-card">
           <h1>We&apos;re almost ready</h1>
           <p className="sub">
-            New sign-ups aren&apos;t open just yet — we&apos;re putting the final touches on LinkPulz.
+            New sign-ups aren&apos;t open just yet. We&apos;re putting the final touches on LinkPulz.
             Join the waitlist and we&apos;ll email you the moment early access opens.
           </p>
           <button className="auth-btn" type="button" onClick={() => setShowWaitlist(true)}>

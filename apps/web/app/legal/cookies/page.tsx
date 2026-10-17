@@ -13,7 +13,7 @@ export default function CookiesPage() {
 
       <p>
         LinkPulz uses a deliberately small number of cookies: strictly necessary ones to run the
-        Service, and — only if you agree — analytics cookies to understand how the site is used. We
+        Service, and (only if you agree) analytics cookies to understand how the site is used. We
         do not use advertising or cross-site advertising cookies.
       </p>
 

@@ -121,7 +121,7 @@ const JSONLD = `{
         {
           "@type": "Question",
           "name": "How often do you check my backlinks?",
-          "acceptedAnswer": { "@type": "Answer", "text": "On a schedule you set — daily, weekly, bi-weekly or monthly — on every plan. LinkPulz re-checks each backlink on that schedule and alerts you when a link is lost, redirected, broken, nofollowed or noindexed." }
+          "acceptedAnswer": { "@type": "Answer", "text": "On a schedule you set (daily, weekly, bi-weekly or monthly), on every plan. LinkPulz re-checks each backlink on that schedule and alerts you when a link is lost, redirected, broken, nofollowed or noindexed." }
         },
         {
           "@type": "Question",
@@ -299,7 +299,7 @@ const MAIN = `
       <details><summary>Is there a free trial?</summary><p>Yes. Every plan starts with a 10-day free trial and no credit card is required. You can monitor backlinks right away and only choose a plan when the trial ends.</p></details>
       <details><summary>Do I need a credit card to start?</summary><p>No. You can start the 10-day trial with just an email. We ask for payment details only if you decide to continue on a paid plan.</p></details>
       <details><summary>What happens when my trial ends?</summary><p>Nothing is deleted. Monitoring pauses and you choose a plan to continue. All your backlinks, projects and history are preserved and resume as soon as you subscribe.</p></details>
-      <details><summary>How often do you check my backlinks?</summary><p>On a schedule you set — daily, weekly, bi-weekly or monthly — on every plan. LinkPulz re-checks each backlink on that schedule and alerts you when a link is lost, redirected, broken, nofollowed or noindexed.</p></details>
+      <details><summary>How often do you check my backlinks?</summary><p>On a schedule you set (daily, weekly, bi-weekly or monthly), on every plan. LinkPulz re-checks each backlink on that schedule and alerts you when a link is lost, redirected, broken, nofollowed or noindexed.</p></details>
       <details><summary>What happens if I reach my plan limit?</summary><p>You can keep monitoring everything you already track, going over a limit never stops monitoring or deletes data. You simply can't add new backlinks, projects or team members until you upgrade.</p></details>
       <details><summary>Can I change plans later?</summary><p>Yes. You can upgrade or downgrade at any time from your billing settings. Upgrades take effect immediately so you can add more backlinks and projects straight away.</p></details>
       <details><summary>How does annual billing save money?</summary><p>Annual plans are billed once a year at the price of ten months, so you get two months free compared with paying monthly.</p></details>
