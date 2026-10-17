@@ -238,8 +238,7 @@ const MAIN = `${QUIZ_STYLE}
 <section class="hero" aria-labelledby="h1">
   <div class="wrap grid">
     <div>
-      <span class="badge">Backlink monitoring software with automated alerts</span>
-      <h1 id="h1">Backlink Monitoring Tool with Automated Alerts</h1>
+      <h1 id="h1">Backlink monitoring with automated alerts</h1>
       <p class="lead">Track your backlinks. Detect changes. Stay in control of your SEO. LinkPulz monitors new and lost backlinks, tracks dofollow and nofollow changes, analyzes competitor backlinks, and alerts you the moment something important changes.</p>
       <ul class="check">
         <li>Track new and lost backlinks</li>
