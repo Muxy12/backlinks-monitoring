@@ -47,7 +47,7 @@ export default function DpaPage() {
 
       <h2>Categories of data &amp; data subjects</h2>
       <p>
-        The data the Customer chooses to add — typically URLs, anchor text, link metadata, campaign and
+        The data the Customer chooses to add: typically URLs, anchor text, link metadata, campaign and
         client notes, and any contact details the Customer enters. Data subjects are the people the
         Customer chooses to include (for example, contacts at linking sites). The Customer must not use
         the Service for special categories of data.

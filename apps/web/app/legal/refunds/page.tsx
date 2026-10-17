@@ -19,7 +19,7 @@ export default function RefundsPage() {
       <h2>Free trial</h2>
       <p>
         Paid plans start with a 10-day free trial. No credit card is required to begin the trial, and
-        it ends automatically — you are only charged if you choose to subscribe.
+        it ends automatically. You are only charged if you choose to subscribe.
       </p>
 
       <h2>Billing</h2>
@@ -44,7 +44,7 @@ export default function RefundsPage() {
         faith.
       </p>
 
-      <h2>Consumers — right of withdrawal (EU)</h2>
+      <h2>Consumers: right of withdrawal (EU)</h2>
       <p>
         If you subscribe as a consumer (outside any trade, business or profession), you normally have a
         14-day right of withdrawal under EU and French consumer law. Because LinkPulz is a digital

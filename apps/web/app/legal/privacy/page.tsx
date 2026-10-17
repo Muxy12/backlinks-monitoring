@@ -81,7 +81,7 @@ export default function PrivacyPage() {
         Depending on your location, you may have the right to access, correct, export, restrict or
         delete your personal data, and to object to certain processing. To exercise these rights,
         contact us at the address below. If you are in the EU, you also have the right to lodge a
-        complaint with your supervisory authority — in France, the{" "}
+        complaint with your supervisory authority: in France, the{" "}
         <a href="https://www.cnil.fr" rel="nofollow noopener" target="_blank">
           CNIL
         </a>

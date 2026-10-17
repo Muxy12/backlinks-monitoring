@@ -247,7 +247,7 @@ const MAIN = `
         <tbody>
           <tr><th>When it runs</th><td>Once, when you check</td><td>On a schedule you set</td></tr>
           <tr><th>What you learn</th><td>The link's state at that moment</td><td>The link's state and every change over time</td></tr>
-          <tr><th>If the link disappears</th><td>You only find out if you check again</td><td>You get an alert — email, Slack or webhook</td></tr>
+          <tr><th>If the link disappears</th><td>You only find out if you check again</td><td>You get an alert: email, Slack or webhook</td></tr>
           <tr><th>Best for</th><td>Confirming a new link</td><td>Protecting links you earned or paid for</td></tr>
         </tbody>
       </table>
