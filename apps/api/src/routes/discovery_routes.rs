@@ -91,6 +91,9 @@ pub async fn import_seeds(
     check_csrf(&jar, &headers, &session)?;
     let scope = authorize_org(&state.pool, user.id, org_id).await?;
     scope.require(Role::Member)?;
+    // The project must belong to this org (404 otherwise) so a cross-tenant
+    // project_id can never be used to attach imported seeds.
+    projects::get(&state.pool, &scope, project_id).await?;
     let source = match body.source.as_deref() {
         Some("gsc") => "gsc",
         Some("manual") => "manual",

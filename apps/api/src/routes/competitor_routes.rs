@@ -14,7 +14,7 @@ use axum::http::{HeaderMap, StatusCode};
 use axum_extra::extract::cookie::CookieJar;
 use common::Role;
 use db::authorize_org;
-use db::repositories::{backlinks, competitors};
+use db::repositories::{backlinks, competitors, projects};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -59,6 +59,9 @@ pub async fn create_competitor(
     check_csrf(&jar, &headers, &session)?;
     let scope = authorize_org(&state.pool, user.id, org_id).await?;
     scope.require(Role::Member)?;
+    // The project must belong to this org (404 otherwise) so a cross-tenant
+    // project_id can never be stitched onto a competitor row.
+    projects::get(&state.pool, &scope, project_id).await?;
     let domain = body.domain.trim();
     if domain.is_empty() {
         return Err(ApiError::Validation("domain is required".into()));
