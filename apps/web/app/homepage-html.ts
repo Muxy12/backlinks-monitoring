@@ -231,6 +231,11 @@ const QUIZ_STYLE = `<style>
 #lp-home .steps.four{grid-template-columns:repeat(4,1fr)}
 @media(max-width:900px){#lp-home .steps.four{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:560px){#lp-home .steps.four{grid-template-columns:1fr}}
+/* Interaction motion: cards lift on hover (brand-safe feedback the skill's motion
+   pass asks for). Transform + opacity only, and no travel under reduced motion. */
+#lp-home .card{transition:border-color .16s,transform .16s,box-shadow .16s}
+#lp-home .card:hover{border-color:color-mix(in srgb,var(--brand) 38%,var(--line));transform:translateY(-3px);box-shadow:0 14px 34px color-mix(in srgb,var(--brand) 12%,transparent)}
+@media(prefers-reduced-motion:reduce){#lp-home .card{transition:none}#lp-home .card:hover{transform:none;box-shadow:none}}
 </style>`;
 
 const MAIN = `${QUIZ_STYLE}
