@@ -187,6 +187,19 @@ const QUIZ_STYLE = `<style>
 #lp-home .quiz-res .tier{width:10px;height:10px;border-radius:50%;flex:none;display:inline-block}
 #lp-home .quiz-res .next{color:var(--ink);font-size:.9rem;margin:10px 0 0}
 #lp-home .quiz-res .next b{color:var(--brand)}
+/* Interactive scoring. The page.tsx inline script adds .done to .quiz once all
+   five answers are in — only on a user change event, never before React hydrates
+   (mutating this innerHTML subtree pre-hydration causes a mismatch). Before .done
+   (and with no JS at all) the three profiles show as a preview; after it, only the
+   matched profile and the verdict remain. */
+#lp-home .quiz-verdict{display:none;text-align:center;font-weight:750;font-size:1.2rem;letter-spacing:-.01em;margin:0 0 20px;color:var(--ink)}
+#lp-home .quiz-verdict b{color:var(--brand)}
+#lp-home .quiz.done .quiz-res .cap{display:none}
+#lp-home .quiz.done .quiz-verdict{display:block;animation:lp-rise .5s cubic-bezier(.16,1,.3,1) both}
+#lp-home .quiz.done .quiz-res .cards{grid-template-columns:minmax(0,520px);justify-content:center}
+#lp-home .quiz.done .quiz-res .cards .card:not(.matched){display:none}
+#lp-home .quiz-res .card.matched{border-color:var(--brand);box-shadow:0 12px 34px color-mix(in srgb,var(--brand) 20%,transparent)}
+@media(prefers-reduced-motion:reduce){#lp-home .quiz.done .quiz-verdict{animation:none}}
 </style>`;
 
 const MAIN = `${QUIZ_STYLE}
@@ -213,8 +226,87 @@ const MAIN = `${QUIZ_STYLE}
   </div>
 </section>
 
+<!-- ============ QUIZ (interactive self-assessment) ============ -->
+<section class="alt" id="quiz" aria-labelledby="quiz-h">
+  <div class="wrap">
+    <div class="center">
+      <h2 id="quiz-h">How strong is your backlink monitoring strategy?</h2>
+      <p class="lead">Answer five quick questions and get your monitoring profile — with the next step for you.</p>
+    </div>
+    <div class="quiz">
+      <ol class="quiz-q">
+        <li>
+          <p class="quiz-ttl">1. How do you currently track your backlinks?</p>
+          <div class="quiz-opts">
+            <label><input type="radio" name="q1" value="0"><span>I don't track them</span></label>
+            <label><input type="radio" name="q1" value="1"><span>Spreadsheets or manual checks</span></label>
+            <label><input type="radio" name="q1" value="2"><span>Automated monitoring software</span></label>
+          </div>
+        </li>
+        <li>
+          <p class="quiz-ttl">2. How quickly do you notice a lost backlink?</p>
+          <div class="quiz-opts">
+            <label><input type="radio" name="q2" value="0"><span>Usually I don't notice</span></label>
+            <label><input type="radio" name="q2" value="1"><span>During my next manual SEO audit</span></label>
+            <label><input type="radio" name="q2" value="2"><span>Through an automated alert</span></label>
+          </div>
+        </li>
+        <li>
+          <p class="quiz-ttl">3. Do you monitor dofollow and nofollow changes?</p>
+          <div class="quiz-opts">
+            <label><input type="radio" name="q3" value="0"><span>No</span></label>
+            <label><input type="radio" name="q3" value="1"><span>Occasionally</span></label>
+            <label><input type="radio" name="q3" value="2"><span>Yes, consistently</span></label>
+          </div>
+        </li>
+        <li>
+          <p class="quiz-ttl">4. How do you analyze competitor backlinks?</p>
+          <div class="quiz-opts">
+            <label><input type="radio" name="q4" value="0"><span>I don't analyze them</span></label>
+            <label><input type="radio" name="q4" value="1"><span>I research them occasionally</span></label>
+            <label><input type="radio" name="q4" value="2"><span>I use a dedicated tool</span></label>
+          </div>
+        </li>
+        <li>
+          <p class="quiz-ttl">5. How do you organize your backlink data?</p>
+          <div class="quiz-opts">
+            <label><input type="radio" name="q5" value="0"><span>No structured process</span></label>
+            <label><input type="radio" name="q5" value="1"><span>Spreadsheets or CSV files</span></label>
+            <label><input type="radio" name="q5" value="2"><span>A dedicated management workflow</span></label>
+          </div>
+        </li>
+      </ol>
+
+      <div class="quiz-res">
+        <p class="cap">Three monitoring profiles — answer the five questions above to see which one fits you.</p>
+        <p class="quiz-verdict" aria-live="polite"></p>
+        <div class="cards">
+          <div class="card" data-tier="0">
+            <h3><span class="tier" style="background:var(--danger)"></span>Reactive monitoring</h3>
+            <p>Important backlink changes may be going unnoticed.</p>
+            <p class="next"><b>Next step:</b> start monitoring your most important backlinks and enable automated alerts.</p>
+          </div>
+          <div class="card" data-tier="1">
+            <h3><span class="tier" style="background:var(--warn)"></span>Developing monitoring</h3>
+            <p>You have some practices, but there's room to cut manual work and improve consistency.</p>
+            <p class="next"><b>Next step:</b> organize your backlink data and automate change notifications.</p>
+          </div>
+          <div class="card" data-tier="2">
+            <h3><span class="tier" style="background:var(--accent)"></span>Proactive monitoring</h3>
+            <p>You have an established monitoring workflow.</p>
+            <p class="next"><b>Next step:</b> explore competitor analysis and manage monitoring across larger campaigns.</p>
+          </div>
+        </div>
+      </div>
+
+      <p class="micro" style="margin-top:18px">This assessment reflects your self-reported habits. It is not a technical audit of your backlink profile.</p>
+      <div class="center" style="margin-top:12px"><a class="btn" href="/register">Start your monitoring setup</a></div>
+    </div>
+  </div>
+</section>
+
 <!-- ============ SEE WHAT'S HAPPENING ============ -->
-<section class="alt" aria-labelledby="see-h">
+<section aria-labelledby="see-h">
   <div class="wrap">
     <div class="center">
       <h2 id="see-h">See what's happening to your backlinks</h2>
@@ -602,84 +694,6 @@ const MAIN = `${QUIZ_STYLE}
       </div>
     </div>
     <div class="center" style="margin-top:36px"><a class="btn" href="/register">Start monitoring backlinks free</a></div>
-  </div>
-</section>
-
-<!-- ============ QUIZ (self-assessment) ============ -->
-<section class="alt" id="quiz" aria-labelledby="quiz-h">
-  <div class="wrap">
-    <div class="center">
-      <h2 id="quiz-h">How strong is your backlink monitoring strategy?</h2>
-      <p class="lead">Answer five quick questions, then see which profile fits — and the next step for each.</p>
-    </div>
-    <div class="quiz">
-      <ol class="quiz-q">
-        <li>
-          <p class="quiz-ttl">1. How do you currently track your backlinks?</p>
-          <div class="quiz-opts">
-            <label><input type="radio" name="q1"><span>I don't track them</span></label>
-            <label><input type="radio" name="q1"><span>Spreadsheets or manual checks</span></label>
-            <label><input type="radio" name="q1"><span>Automated monitoring software</span></label>
-          </div>
-        </li>
-        <li>
-          <p class="quiz-ttl">2. How quickly do you notice a lost backlink?</p>
-          <div class="quiz-opts">
-            <label><input type="radio" name="q2"><span>Usually I don't notice</span></label>
-            <label><input type="radio" name="q2"><span>During my next manual SEO audit</span></label>
-            <label><input type="radio" name="q2"><span>Through an automated alert</span></label>
-          </div>
-        </li>
-        <li>
-          <p class="quiz-ttl">3. Do you monitor dofollow and nofollow changes?</p>
-          <div class="quiz-opts">
-            <label><input type="radio" name="q3"><span>No</span></label>
-            <label><input type="radio" name="q3"><span>Occasionally</span></label>
-            <label><input type="radio" name="q3"><span>Yes, consistently</span></label>
-          </div>
-        </li>
-        <li>
-          <p class="quiz-ttl">4. How do you analyze competitor backlinks?</p>
-          <div class="quiz-opts">
-            <label><input type="radio" name="q4"><span>I don't analyze them</span></label>
-            <label><input type="radio" name="q4"><span>I research them occasionally</span></label>
-            <label><input type="radio" name="q4"><span>I use a dedicated tool</span></label>
-          </div>
-        </li>
-        <li>
-          <p class="quiz-ttl">5. How do you organize your backlink data?</p>
-          <div class="quiz-opts">
-            <label><input type="radio" name="q5"><span>No structured process</span></label>
-            <label><input type="radio" name="q5"><span>Spreadsheets or CSV files</span></label>
-            <label><input type="radio" name="q5"><span>A dedicated management workflow</span></label>
-          </div>
-        </li>
-      </ol>
-
-      <div class="quiz-res">
-        <p class="cap">Mostly first answers, middle answers, or last answers? Find where you fit.</p>
-        <div class="cards">
-          <div class="card">
-            <h3><span class="tier" style="background:var(--danger)"></span>Reactive monitoring</h3>
-            <p>Important backlink changes may be going unnoticed.</p>
-            <p class="next"><b>Next step:</b> start monitoring your most important backlinks and enable automated alerts.</p>
-          </div>
-          <div class="card">
-            <h3><span class="tier" style="background:var(--warn)"></span>Developing monitoring</h3>
-            <p>You have some practices, but there's room to cut manual work and improve consistency.</p>
-            <p class="next"><b>Next step:</b> organize your backlink data and automate change notifications.</p>
-          </div>
-          <div class="card">
-            <h3><span class="tier" style="background:var(--accent)"></span>Proactive monitoring</h3>
-            <p>You have an established monitoring workflow.</p>
-            <p class="next"><b>Next step:</b> explore competitor analysis and manage monitoring across larger campaigns.</p>
-          </div>
-        </div>
-      </div>
-
-      <p class="micro" style="margin-top:18px">This assessment reflects your self-reported habits. It is not a technical audit of your backlink profile.</p>
-      <div class="center" style="margin-top:12px"><a class="btn" href="/register">Start your monitoring setup</a></div>
-    </div>
   </div>
 </section>
 
