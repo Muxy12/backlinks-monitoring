@@ -11,7 +11,7 @@ export const dynamic = "force-static";
 export const metadata: Metadata = {
   title: { absolute: "Backlink Monitoring Tool with Automated Alerts | LinkPulz" },
   description:
-    "Monitor new and lost backlinks, track dofollow and nofollow changes, analyze competitor backlinks, and get automated alerts the moment a link changes. Start your free trial.",
+    "Backlink monitoring software that tracks new and lost backlinks, nofollow changes and competitor links, and alerts you the moment a backlink changes. Start free.",
   alternates: { canonical: "/", languages: { en: "/", "x-default": "/" } },
   robots: { index: true, follow: true, "max-image-preview": "large" },
   openGraph: {
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
     type: "website",
     title: "Backlink Monitoring Tool with Automated Alerts | LinkPulz",
     description:
-      "Monitor new and lost backlinks, track dofollow and nofollow changes, analyze competitor backlinks, and get automated alerts when a link changes.",
+      "Backlink monitoring software: track new and lost backlinks, nofollow changes and competitor links, and get alerts the moment a backlink changes.",
     url: "/",
     images: ["https://ye8jhaekbbcviws9.public.blob.vercel-storage.com/banniere-dashboard-linkpulz.webp"],
   },
