@@ -18,10 +18,11 @@ const inter = Inter({
   variable: "--font-inter",
 });
 
-// Applied before first paint (no flash of the wrong theme): use the saved choice,
-// else the OS preference, else light. The attribute is always set explicitly
-// ("light" or "dark"); light is the design default, so a failed read stays light.
-const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem('backlio_theme');if(!t){t=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','light');}})();`;
+// Applied before first paint (no flash of the wrong theme): use the saved choice
+// if the visitor has toggled before, otherwise default to dark (the brand's
+// default on arrival, regardless of OS preference). The attribute is always set
+// explicitly ("light" or "dark"), and a failed read also stays dark.
+const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem('backlio_theme');if(t!=='light'&&t!=='dark'){t='dark';}document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();`;
 
 // First-touch marketing attribution (docs/20 §P8). Runs site-wide before React;
 // stores utm_* + referrer + landing path in localStorage the first time a visit
