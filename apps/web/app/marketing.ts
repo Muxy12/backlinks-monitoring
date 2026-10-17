@@ -17,7 +17,7 @@ export const MARKETING_STYLE = `
   font:17px/1.6 var(--font-sans);
   color:var(--ink);
   background:radial-gradient(circle at 50% -10%,color-mix(in srgb,var(--brand) 18%,transparent),transparent 36%),var(--bg);
-  min-height:100vh;
+  min-height:100dvh;
 }
 :root[data-theme="light"] #lp-home{
   --bg:#ffffff; --bg-alt:#f4f7fb; --ink:#0f1b2d; --muted:#51607a; --line:#dbe3ee;
@@ -123,9 +123,11 @@ export const MARKETING_STYLE = `
 #lp-home .split.rev .shot{order:2}
 @media(max-width:860px){#lp-home .split.rev .shot{order:0}}
 
-/* hero */
+/* hero — the headline leads, so give it a wider column and a larger, tighter
+   display size than the shared h1 step (a stronger first-screen focal point). */
 #lp-home .hero{text-align:left;overflow:visible}
-#lp-home .hero .grid{display:grid;grid-template-columns:1.05fr 1fr;gap:48px;align-items:center}
+#lp-home .hero .grid{display:grid;grid-template-columns:1.2fr .9fr;gap:48px;align-items:center}
+#lp-home .hero h1{font-size:clamp(2.3rem,6vw,4.2rem);line-height:1.04;letter-spacing:-.03em}
 @media(max-width:900px){#lp-home .hero .grid{grid-template-columns:1fr}}
 #lp-home .badge{display:inline-block;font-size:.8rem;font-weight:700;color:var(--brand);background:color-mix(in srgb,var(--brand) 12%,transparent);padding:4px 12px;border-radius:99px;margin-bottom:16px}
 
