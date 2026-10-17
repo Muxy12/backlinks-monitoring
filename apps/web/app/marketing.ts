@@ -51,14 +51,30 @@ export const MARKETING_STYLE = `
 #lp-home .crumbs span{margin:0 6px;opacity:.6}
 
 /* header */
-#lp-home header.site{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+#lp-home header.site{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
 #lp-home header.site .wrap{display:flex;align-items:center;justify-content:space-between;height:64px}
 #lp-home .logo{font-weight:800;font-size:1.3rem;color:var(--ink);text-decoration:none}
 #lp-home .logo span{color:var(--brand)}
-#lp-home nav.main{display:flex;gap:24px;align-items:center}
-#lp-home nav.main a{color:var(--ink);text-decoration:none;font-size:.95rem}
-#lp-home nav.main a:hover{color:var(--brand)}
-@media(max-width:760px){#lp-home nav.main a:not(.btn){display:none}}
+#lp-home nav.main{display:flex;gap:28px;align-items:center}
+#lp-home nav.main a:not(.btn){color:var(--ink);text-decoration:none;font-size:.95rem;font-weight:550;position:relative;padding:5px 0;transition:color .15s}
+#lp-home nav.main a:not(.btn):hover{color:var(--brand)}
+#lp-home nav.main a:not(.btn)::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;border-radius:2px;background:var(--brand);transform:scaleX(0);transform-origin:left;transition:transform .18s cubic-bezier(.16,1,.3,1)}
+#lp-home nav.main a:not(.btn):hover::after{transform:scaleX(1)}
+/* mobile menu (pure CSS, no JS): the burger label toggles a hidden checkbox */
+#lp-home .nav-toggle{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+#lp-home .nav-burger{display:none}
+@media(max-width:760px){
+  #lp-home .nav-burger{display:inline-flex;flex-direction:column;justify-content:center;gap:5px;width:42px;height:42px;margin-right:-10px;cursor:pointer;border-radius:10px}
+  #lp-home .nav-burger span{display:block;width:22px;height:2px;background:var(--ink);border-radius:2px;margin:0 auto;transition:transform .2s ease,opacity .2s ease}
+  #lp-home nav.main{position:absolute;top:100%;left:0;right:0;flex-direction:column;align-items:stretch;gap:0;background:var(--bg);border-bottom:1px solid var(--line);box-shadow:0 16px 34px rgba(0,0,0,.28);padding:6px 20px 18px;display:none}
+  #lp-home .nav-toggle:checked~nav.main{display:flex;animation:lp-rise .22s ease both}
+  #lp-home nav.main a:not(.btn){padding:14px 2px;border-bottom:1px solid var(--line);font-size:1rem}
+  #lp-home nav.main a:not(.btn)::after{display:none}
+  #lp-home nav.main a.btn{margin-top:14px;justify-content:center;text-align:center}
+  #lp-home .nav-toggle:checked~.nav-burger span:nth-child(1){transform:translateY(7px) rotate(45deg)}
+  #lp-home .nav-toggle:checked~.nav-burger span:nth-child(2){opacity:0}
+  #lp-home .nav-toggle:checked~.nav-burger span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
+}
 
 /* buttons */
 #lp-home .btn{display:inline-block;background:linear-gradient(135deg,var(--brand),var(--violet));color:#fff!important;padding:13px 24px;border-radius:10px;font-weight:600;text-decoration:none;border:2px solid transparent;box-shadow:0 6px 18px color-mix(in srgb,var(--brand) 24%,transparent);transition:filter .15s,transform .15s}
@@ -262,10 +278,15 @@ export const MARKETING_STYLE = `
 #lp-home .final .lead{color:#b9c6df;margin:0 auto}
 #lp-home .final .btn{background:#fff;color:#111720!important;border-color:#fff;box-shadow:none}
 
-#lp-home footer.site{padding:40px 0;border-top:1px solid var(--line);font-size:.92rem;color:var(--muted)}
-#lp-home footer.site .cols{display:flex;flex-wrap:wrap;gap:32px;justify-content:space-between}
-#lp-home footer.site a{color:var(--muted);display:block;margin-bottom:6px;text-decoration:none}
-#lp-home footer.site a:hover{color:var(--brand)}
+#lp-home footer.site{padding:52px 0 40px;border-top:1px solid var(--line);font-size:.92rem;color:var(--muted)}
+#lp-home footer.site .cols{display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr 1fr;gap:28px 32px}
+@media(max-width:860px){#lp-home footer.site .cols{grid-template-columns:1.4fr 1fr 1fr}}
+@media(max-width:560px){#lp-home footer.site .cols{grid-template-columns:1fr 1fr}}
+#lp-home footer.site .cols>div>b{display:block;color:var(--ink);font-weight:650;font-size:.82rem;letter-spacing:.01em;margin-bottom:12px}
+#lp-home footer.site a{color:var(--muted);display:block;margin-bottom:9px;text-decoration:none;text-underline-offset:3px;transition:color .14s}
+#lp-home footer.site a:hover{color:var(--brand);text-decoration:underline}
+#lp-home footer.site .cols .logo{margin-bottom:0}
+#lp-home footer.site .cols .logo:hover{text-decoration:none}
 /* footer newsletter */
 #lp-home .nl{display:flex;flex-wrap:wrap;gap:16px 32px;align-items:center;justify-content:space-between;padding-bottom:28px;margin-bottom:28px;border-bottom:1px solid var(--line)}
 #lp-home .nl-copy b{display:block;color:var(--ink);font-size:1rem;margin-bottom:2px}
@@ -336,6 +357,8 @@ export const MARKETING_HEADER = `
 <header class="site">
   <div class="wrap">
     <a class="logo" href="/" aria-label="LinkPulz home"><img src="https://ye8jhaekbbcviws9.public.blob.vercel-storage.com/logo-linkpulz.webp" alt="LinkPulz backlink monitoring software" title="LinkPulz" width="1254" height="1254" style="height:26px;width:auto;margin-right:9px;vertical-align:-6px;display:inline-block">Link<span>Pulz</span></a>
+    <input type="checkbox" id="lp-nav-toggle" class="nav-toggle">
+    <label for="lp-nav-toggle" class="nav-burger" aria-label="Open menu"><span></span><span></span><span></span></label>
     <nav class="main" aria-label="Main">
       <a href="/#features">Features</a>
       <a href="/#how-it-works">How it works</a>
@@ -354,10 +377,10 @@ export const MARKETING_FOOTER = `
   </div>
   <div class="wrap cols">
     <div><a class="logo" href="/" aria-label="LinkPulz home"><img src="https://ye8jhaekbbcviws9.public.blob.vercel-storage.com/logo-linkpulz.webp" alt="LinkPulz backlink monitoring software" title="LinkPulz" width="1254" height="1254" style="height:24px;width:auto;margin-right:8px;vertical-align:-5px;display:inline-block">Link<span>Pulz</span></a><p class="micro" style="margin-top:8px">Backlink monitoring software.</p><a href="https://www.linkedin.com/showcase/linkpulz" target="_blank" rel="noopener noreferrer me" aria-label="LinkPulz on LinkedIn" style="display:inline-flex;align-items:center;gap:6px;margin-top:4px"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style="flex:none"><path d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.42v1.56h.05c.47-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13zM7.12 20.45H3.55V9h3.57v11.45zM22.23 0H1.77C.79 0 0 .77 0 1.73v20.54C0 23.22.79 24 1.77 24h20.46c.98 0 1.77-.78 1.77-1.73V1.73C24 .77 23.21 0 22.23 0z"/></svg>LinkedIn</a></div>
-    <div><b>Product</b><br><a href="/lost-backlinks">Lost backlinks</a><a href="/broken-backlinks">Broken backlinks</a><a href="/verify-backlinks">Verify a backlink</a><a href="/backlink-health-check">Backlink health check</a></div>
-    <div><b>Guides</b><br><a href="/backlink-management">Backlink management</a><a href="/backlink-audit">Backlink audit</a><a href="/backlink-profile">Backlink profile</a><a href="/backlink-reporting">Backlink reporting</a></div>
-    <div><b>Tools</b><br><a href="/tools/backlink-checker">Free backlink checker</a><a href="/docs">Documentation</a><a href="/pricing">Pricing</a></div>
-    <div><b>Company</b><br><a href="/register">Start free trial</a><a href="/login">Log in</a><a href="/legal">Legal</a><a href="/legal/privacy">Privacy</a><a href="/legal/terms">Terms</a><a href="/legal/notice">Legal notice</a></div>
+    <div><b>Product</b><a href="/lost-backlinks">Lost backlinks</a><a href="/broken-backlinks">Broken backlinks</a><a href="/verify-backlinks">Verify a backlink</a><a href="/backlink-health-check">Backlink health check</a></div>
+    <div><b>Guides</b><a href="/backlink-management">Backlink management</a><a href="/backlink-audit">Backlink audit</a><a href="/backlink-profile">Backlink profile</a><a href="/backlink-reporting">Backlink reporting</a></div>
+    <div><b>Tools</b><a href="/tools/backlink-checker">Free backlink checker</a><a href="/docs">Documentation</a><a href="/pricing">Pricing</a></div>
+    <div><b>Company</b><a href="/register">Start free trial</a><a href="/login">Log in</a><a href="/legal">Legal</a><a href="/legal/privacy">Privacy</a><a href="/legal/terms">Terms</a><a href="/legal/notice">Legal notice</a></div>
   </div>
   <div class="wrap micro" style="margin-top:24px">© <span id="y">2026</span> LinkPulz, a service of MeedWise (SASU), Paris, France. All rights reserved.</div>
 </footer>`;
