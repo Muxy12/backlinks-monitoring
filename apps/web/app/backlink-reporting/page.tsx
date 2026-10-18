@@ -32,7 +32,7 @@ const JSONLD = `{
       "@id": "https://www.linkpulz.com/#organization",
       "name": "LinkPulz",
       "url": "https://www.linkpulz.com/",
-      "logo": { "@type": "ImageObject", "url": "https://ye8jhaekbbcviws9.public.blob.vercel-storage.com/logo-linkpulz.webp" },
+      "logo": { "@type": "ImageObject", "url": "https://ye8jhaekbbcviws9.public.blob.vercel-storage.com/Logo_LinkPulz_en_n%C3%A9on_d%C3%A9grad%C3%A9.png" },
       "sameAs": ["https://www.linkedin.com/company/linkpulz", "https://x.com/linkpulz"]
     },
     {
