@@ -1,6 +1,8 @@
 import type { MetadataRoute } from "next";
 import { SITE_URL } from "@/lib/site";
 import { GLOSSARY } from "./glossary/glossary-data";
+import { PERSONAS } from "./backlink-monitoring-for/persona-data";
+import { ALTERNATIVES } from "./alternatives/alternatives-data";
 
 // Auto-refreshing sitemap. Next regenerates it on demand and at most once an hour
 // (`revalidate`), and `lastModified` is stamped at generation time — so it always
@@ -28,6 +30,17 @@ export default function sitemap(): MetadataRoute.Sitemap {
     ...GLOSSARY.map((t) => ({
       path: `/glossary/${t.slug}`,
       priority: 0.6,
+      changeFrequency: "monthly" as const,
+    })),
+    ...PERSONAS.map((p) => ({
+      path: `/backlink-monitoring-for/${p.slug}`,
+      priority: 0.7,
+      changeFrequency: "monthly" as const,
+    })),
+    { path: "/alternatives", priority: 0.7, changeFrequency: "monthly" },
+    ...ALTERNATIVES.map((a) => ({
+      path: `/alternatives/${a.slug}`,
+      priority: 0.7,
       changeFrequency: "monthly" as const,
     })),
   ];
