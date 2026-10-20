@@ -45,7 +45,7 @@
 }
 .checker-field input:focus {
   outline: none;
-  border-color: var(--accent);
+  border-color: var(--brand, var(--accent));
 }
 .checker-btn {
   width: 100%;
@@ -53,7 +53,9 @@
   font-size: 15px;
   font-weight: 600;
   color: #fff;
-  background: var(--accent);
+  /* Match the marketing primary CTA (brand gradient) when rendered inside the
+     #lp-home shell; falls back to the global accent elsewhere. */
+  background: linear-gradient(135deg, var(--brand, var(--accent)), var(--violet, var(--accent)));
   border: none;
   border-radius: 8px;
   cursor: pointer;
