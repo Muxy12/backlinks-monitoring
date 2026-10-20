@@ -8,11 +8,65 @@ export const metadata: Metadata = {
   description:
     "How LinkPulz works: monitor backlinks, track lost links and changes, watch competitors, build link tiers, discover new backlinks, explore the graph, and use the API.",
   alternates: { canonical: "/docs", languages: { en: "/docs", "x-default": "/docs" } },
+  robots: { index: true, follow: true, "max-image-preview": "large" },
+  openGraph: {
+    siteName: "LinkPulz",
+    type: "article",
+    title: "LinkPulz Documentation",
+    description:
+      "How LinkPulz works: monitor backlinks, track lost links and changes, watch competitors, build link tiers, discover new backlinks, explore the graph, and use the API.",
+    url: "/docs",
+  },
 };
+
+const JSONLD = `{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://www.linkpulz.com/#organization",
+      "name": "LinkPulz",
+      "url": "https://www.linkpulz.com/",
+      "logo": { "@type": "ImageObject", "url": "https://ye8jhaekbbcviws9.public.blob.vercel-storage.com/Logo_LinkPulz_en_n%C3%A9on_d%C3%A9grad%C3%A9.png" },
+      "sameAs": ["https://www.linkedin.com/showcase/linkpulz", "https://x.com/linkpulz"]
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://www.linkpulz.com/#website",
+      "url": "https://www.linkpulz.com/",
+      "name": "LinkPulz",
+      "inLanguage": "en",
+      "publisher": { "@id": "https://www.linkpulz.com/#organization" }
+    },
+    {
+      "@type": "TechArticle",
+      "@id": "https://www.linkpulz.com/docs#article",
+      "headline": "LinkPulz Documentation",
+      "name": "Documentation",
+      "description": "How LinkPulz works: monitor backlinks, track lost links and changes, watch competitors, build link tiers, discover new backlinks, explore the graph, and use the API.",
+      "url": "https://www.linkpulz.com/docs",
+      "inLanguage": "en",
+      "isPartOf": { "@id": "https://www.linkpulz.com/#website" },
+      "author": { "@id": "https://www.linkpulz.com/#organization" },
+      "publisher": { "@id": "https://www.linkpulz.com/#organization" },
+      "breadcrumb": { "@id": "https://www.linkpulz.com/docs#breadcrumb" }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "@id": "https://www.linkpulz.com/docs#breadcrumb",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.linkpulz.com/" },
+        { "@type": "ListItem", "position": 2, "name": "Documentation", "item": "https://www.linkpulz.com/docs" }
+      ]
+    }
+  ]
+}`;
 
 export default function DocsPage() {
   return (
-    <ProseShell>
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSONLD }} />
+      <ProseShell>
       <h1>Documentation</h1>
       <p className="prose-updated">
         Everything you need to monitor your backlinks with LinkPulz.
@@ -77,6 +131,11 @@ export default function DocsPage() {
         a link is only declared lost after it is repeatedly absent, so a flaky fetch or a temporary
         outage does not create a false alarm.
       </div>
+      <p>
+        See the guides on <a href="/lost-backlinks">lost backlinks</a> and{" "}
+        <a href="/broken-backlinks">broken backlinks</a> for how these states play out in practice, or{" "}
+        <a href="/tools/backlink-checker">check a single backlink</a> right now.
+      </p>
 
       <h2 id="competitors">Competitors</h2>
       <p>
@@ -138,6 +197,7 @@ GET  /v1/organizations/&#123;org&#125;/dashboard</code></pre>
       </p>
 
       <ProseFooter />
-    </ProseShell>
+      </ProseShell>
+    </>
   );
 }
