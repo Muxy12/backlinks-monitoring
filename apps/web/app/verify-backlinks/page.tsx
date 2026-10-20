@@ -282,6 +282,9 @@ const MAIN = `
       <div class="card"><h3><a href="/lost-backlinks">Lost Backlinks</a></h3><p>Find links that have disappeared, understand why, and win them back.</p></div>
       <div class="card"><h3><a href="/broken-backlinks">Broken Backlinks</a></h3><p>Find links that lead to errors, or that sit on pages returning errors.</p></div>
       <div class="card"><h3><a href="/backlink-health-check">Backlink Health Check</a></h3><p>See the overall state of your backlink portfolio at a glance.</p></div>
+      <div class="card"><h3><a href="/tools/backlink-checker">Free Backlink Checker</a></h3><p>Check a single backlink right now, free and without signing up.</p></div>
+      <div class="card"><h3><a href="/backlink-audit">Backlink Audit</a></h3><p>Review your whole backlink profile and spot the links that need attention.</p></div>
+      <div class="card"><h3><a href="/">Backlink Monitoring</a></h3><p>Track every link you earn or buy and get alerted the moment one changes.</p></div>
     </div>
   </div>
 </section>
