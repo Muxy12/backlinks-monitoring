@@ -38,12 +38,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Self-serve sign-ups: open by default, closed only when REGISTRATION_OPEN=false
     // (soft-launch: public site, registration held until the product is ready).
     let registration_open = std::env::var("REGISTRATION_OPEN").as_deref() != Ok("false");
+    // LinkAvista marketplace integration: inert unless LINKAVISTA_API_KEY is set.
+    // Sandbox mode is the default (simulated orders, no debit) until real
+    // purchasing is explicitly enabled with LINKAVISTA_SANDBOX=false.
+    let linkavista_api_key = std::env::var("LINKAVISTA_API_KEY")
+        .ok()
+        .filter(|s| !s.is_empty());
+    let linkavista_sandbox = std::env::var("LINKAVISTA_SANDBOX").as_deref() != Ok("false");
+    let linkavista_base_url = std::env::var("LINKAVISTA_BASE_URL")
+        .ok()
+        .filter(|s| !s.is_empty());
     let cfg = ApiConfig {
         secure_cookies,
         stripe_webhook_secret,
         session_ttl_hours,
         campaigns_beta,
         registration_open,
+        linkavista_api_key,
+        linkavista_sandbox,
+        linkavista_base_url,
         ..ApiConfig::default()
     };
     // Bootstrap platform admins from ADMIN_EMAILS (comma-separated). The operator

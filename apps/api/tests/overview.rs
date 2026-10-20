@@ -32,6 +32,9 @@ async fn build(beta: bool) -> Option<(AppState, PgPool)> {
             allow_private_fetch: false,
             campaigns_beta: beta,
             registration_open: true,
+            linkavista_api_key: None,
+            linkavista_sandbox: true,
+            linkavista_base_url: None,
         },
     );
     Some((state, db.pool))

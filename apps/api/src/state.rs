@@ -29,6 +29,16 @@ pub struct ApiConfig {
     /// (surfaced via `GET /v1/config`). Lets us keep the marketing site public
     /// while the product is not yet open to everyone.
     pub registration_open: bool,
+    /// LinkAvista marketplace API key (per-deployment secret). `None` disables
+    /// the integration: catalogue routes 404 and the UI hides the surface
+    /// (surfaced via `me.features.linkavista`). The key never leaves the server.
+    pub linkavista_api_key: Option<String>,
+    /// Use LinkAvista sandbox mode (simulated orders, no debit). Default `true`;
+    /// set `LINKAVISTA_SANDBOX=false` only once real purchasing is intended.
+    /// (Lot 1 is read-only, so this is not yet consulted; it gates future orders.)
+    pub linkavista_sandbox: bool,
+    /// LinkAvista API base URL; `None` falls back to the public base at call time.
+    pub linkavista_base_url: Option<String>,
 }
 
 impl Default for ApiConfig {
@@ -41,6 +51,9 @@ impl Default for ApiConfig {
             allow_private_fetch: false,
             campaigns_beta: false,
             registration_open: true,
+            linkavista_api_key: None,
+            linkavista_sandbox: true,
+            linkavista_base_url: None,
         }
     }
 }

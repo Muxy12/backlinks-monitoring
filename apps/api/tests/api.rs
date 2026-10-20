@@ -27,6 +27,9 @@ async fn state() -> Option<AppState> {
         allow_private_fetch: false,
         campaigns_beta: false,
         registration_open: true,
+        linkavista_api_key: None,
+        linkavista_sandbox: true,
+        linkavista_base_url: None,
     };
     Some(AppState::new(db.pool, cfg))
 }
@@ -231,6 +234,9 @@ async fn register_refused_when_registration_closed() {
     // Rebuild the state with sign-ups closed.
     let cfg = ApiConfig {
         registration_open: false,
+        linkavista_api_key: None,
+        linkavista_sandbox: true,
+        linkavista_base_url: None,
         ..base.cfg.clone()
     };
     let state = AppState::new(base.pool.clone(), cfg);

@@ -30,6 +30,9 @@ fn checker_cfg() -> ApiConfig {
         allow_private_fetch: true,
         campaigns_beta: false, // reach the wiremock loopback server
         registration_open: true,
+        linkavista_api_key: None,
+        linkavista_sandbox: true,
+        linkavista_base_url: None,
     }
 }
 
@@ -141,6 +144,9 @@ async fn checker_blocks_private_targets_when_not_allowed() {
         allow_private_fetch: false,
         campaigns_beta: false,
         registration_open: true,
+        linkavista_api_key: None,
+        linkavista_sandbox: true,
+        linkavista_base_url: None,
     };
     let app = api::app(AppState::new(pool, cfg));
 

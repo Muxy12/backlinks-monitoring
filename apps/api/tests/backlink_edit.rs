@@ -27,6 +27,9 @@ async fn state() -> Option<AppState> {
             allow_private_fetch: false,
             campaigns_beta: false,
             registration_open: true,
+            linkavista_api_key: None,
+            linkavista_sandbox: true,
+            linkavista_base_url: None,
         },
     ))
 }

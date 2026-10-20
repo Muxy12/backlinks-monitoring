@@ -29,6 +29,8 @@ pub struct Features {
     pub campaigns_beta: bool,
     /// Google Search Console integration is configured (Post-Link Impact).
     pub gsc: bool,
+    /// LinkAvista marketplace integration is configured (catalogue + ordering).
+    pub linkavista: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -63,6 +65,7 @@ pub async fn me(
             // so the flag now gates only on the integration being configured.
             // The whole Impact UI keys off this flag.
             gsc: crate::routes::gsc_routes::configured(),
+            linkavista: crate::routes::linkavista_routes::configured(&state.cfg),
         },
     }))
 }

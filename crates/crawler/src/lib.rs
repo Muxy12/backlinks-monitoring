@@ -14,6 +14,7 @@
 pub mod config;
 pub mod discovery;
 pub mod fetch;
+pub mod linkavista;
 pub mod matching;
 pub mod parse;
 
