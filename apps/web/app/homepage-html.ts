@@ -532,7 +532,7 @@ const MAIN = `${QUIZ_STYLE}
       </div>
     </div>
 
-    <p class="micro">Looking for more? See the full <a href="/verify-backlinks">backlink verification tool</a>.</p>
+    <p class="micro">Looking for more? See the full <a href="/verify-backlinks">backlink verification tool</a>, or run a quick check with the <a href="/tools/backlink-checker">free backlink checker</a>.</p>
   </div>
 </section>
 
@@ -596,7 +596,9 @@ const MAIN = `${QUIZ_STYLE}
       <div class="card"><div class="ic">4</div><h3>Reduce manual backlink checks</h3><p>Checking links one by one gets harder as your portfolio grows. Automation brings detected changes into a single workflow instead of repeated manual visits.</p></div>
       <div class="card"><div class="ic">5</div><h3>Understand competitor backlink activity</h3><p>Competitors' backlinks reveal outreach opportunities and relevant publications. Competitor analysis helps you explore those signals to inform your strategy.</p></div>
     </div>
-    <div class="center" style="margin-top:36px"><a class="btn" href="/register">Start your free trial</a></div>
+    <div class="center" style="margin-top:36px"><a class="btn" href="/register">Start your free trial</a>
+      <p class="micro" style="margin-top:12px">Learn more: <a href="/backlink-audit">how to run a backlink audit</a>.</p>
+    </div>
   </div>
 </section>
 
@@ -791,6 +793,7 @@ const MAIN = `${QUIZ_STYLE}
         <li>Turn gap domains into outreach prospects</li>
         <li>Support competitor-focused SEO research</li>
       </ul>
+      <p class="micro" style="margin-top:12px">Learn more: <a href="/backlink-profile">how to analyze a backlink profile</a>.</p>
     </div>
   </div>
 </section>
@@ -806,6 +809,7 @@ const MAIN = `${QUIZ_STYLE}
         <li>Import referring domains from Google Search Console</li>
         <li>Export every link and its change history to CSV</li>
       </ul>
+      <p class="micro" style="margin-top:12px">Learn more: <a href="/backlink-reporting">backlink reporting and client exports</a>.</p>
     </div>
     <div class="shot" role="img" aria-label="Importing backlinks from a file">
       <div class="shot-bar"><span class="shot-dots"><i></i><i></i><i></i></span><span class="shot-ttl">Import backlinks</span></div>
@@ -844,7 +848,9 @@ const MAIN = `${QUIZ_STYLE}
         <p>Not every change needs the same response. Some are temporary; others call for contacting a publisher or updating your records.</p>
       </div>
     </div>
-    <div class="center" style="margin-top:36px"><a class="btn" href="/register">Start monitoring backlinks free</a></div>
+    <div class="center" style="margin-top:36px"><a class="btn" href="/register">Start monitoring backlinks free</a>
+      <p class="micro" style="margin-top:12px">Learn more: <a href="/backlink-management">backlink management best practices</a>.</p>
+    </div>
   </div>
 </section>
 
