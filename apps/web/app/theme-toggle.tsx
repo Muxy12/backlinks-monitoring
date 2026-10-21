@@ -30,7 +30,7 @@ export function ThemeToggle() {
     try {
       localStorage.setItem(KEY, next);
     } catch {
-      /* private mode — theme still applies for this session */
+      /* private mode, theme still applies for this session */
     }
     setTheme(next);
   };
@@ -53,7 +53,7 @@ export function ThemeToggle() {
 }
 
 // Inline SVG (Lucide) so this root-level toggle stays self-contained on the
-// static marketing pages too — no import from the (app) route group.
+// static marketing pages too, no import from the (app) route group.
 function svgProps(size: number) {
   return {
     width: size,

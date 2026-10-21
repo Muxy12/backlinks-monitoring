@@ -5,7 +5,7 @@
 //
 // All CSS is scoped under #lp-home so it never collides with the app's global
 // stylesheets (globals.css / theme-light.css). Static markup, injected by a
-// Server Component via dangerouslySetInnerHTML — zero client JS. The light/dark
+// Server Component via dangerouslySetInnerHTML, zero client JS. The light/dark
 // switch rides the app's `data-theme` toggle (not OS prefers-color-scheme).
 
 export const MARKETING_STYLE = `
@@ -85,7 +85,7 @@ export const MARKETING_STYLE = `
 #lp-home .micro{font-size:.88rem;color:var(--muted)}
 
 
-/* product shots — inline UI mockups built from the real design language */
+/* product shots, inline UI mockups built from the real design language */
 #lp-home .shot{border:1px solid var(--line);border-radius:var(--radius);background:var(--bg);overflow:hidden;box-shadow:0 12px 34px rgba(15,27,45,.10);font-size:.8rem;color:var(--ink)}
 #lp-home .shot-bar{display:flex;align-items:center;gap:9px;height:34px;padding:0 13px;background:var(--bg-alt);border-bottom:1px solid var(--line)}
 #lp-home .shot-dots{display:flex;gap:5px}
@@ -124,7 +124,7 @@ export const MARKETING_STYLE = `
 #lp-home .split.rev .shot{order:2}
 @media(max-width:860px){#lp-home .split.rev .shot{order:0}}
 
-/* hero — the headline leads, so give it a wider column and a larger, tighter
+/* hero, the headline leads, so give it a wider column and a larger, tighter
    display size than the shared h1 step (a stronger first-screen focal point). */
 #lp-home .hero{text-align:left;overflow:visible}
 #lp-home .hero .grid{display:grid;grid-template-columns:1.2fr .9fr;gap:48px;align-items:center}
@@ -238,7 +238,7 @@ export const MARKETING_STYLE = `
 #lp-home details[open] summary::after{content:"–"}
 #lp-home details p{margin:12px 0 0;color:var(--muted)}
 
-/* final — fixed dark band (readable in both themes) */
+/* final, fixed dark band (readable in both themes) */
 #lp-home .final{background:#111720;color:#fff;text-align:center}
 #lp-home .final .lead{color:#b9c6df;margin:0 auto}
 #lp-home .final .btn{background:#fff;color:#111720!important;border-color:#fff;box-shadow:none}

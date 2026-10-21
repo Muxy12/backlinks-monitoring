@@ -1,8 +1,8 @@
 // Minimal, dependency-light .xlsx → CSV converter, client-side. An .xlsx file is
 // a zip of XML; we unzip it (fflate) and read the first worksheet + the shared
 // strings table, then emit CSV text that the existing CSV import path handles
-// (same flexible header matching). Only the common case is supported — text and
-// number cells of the first sheet — which is all a backlink list needs. No eval,
+// (same flexible header matching). Only the common case is supported, text and
+// number cells of the first sheet, which is all a backlink list needs. No eval,
 // so it is fine under the strict CSP.
 
 import { unzipSync, strFromU8 } from "fflate";

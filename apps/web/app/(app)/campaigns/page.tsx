@@ -31,7 +31,7 @@ export default function CampaignsPage() {
         return;
       }
       // The BETA is env-gated; if it is off for this workspace, there is nothing
-      // here — send the user back to the dashboard.
+      // here, send the user back to the dashboard.
       if (!res.data.features?.campaigns_beta) {
         router.replace("/dashboard");
         return;

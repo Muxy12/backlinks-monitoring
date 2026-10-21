@@ -7,7 +7,7 @@ import { Turnstile, TURNSTILE_ENABLED } from "./turnstile";
 
 // Newsletter / email capture for the marketing footer. The footer is static HTML
 // (injected server-side), so this client component renders its form into the
-// `#lp-newsletter` slot via a portal once hydrated — progressive enhancement.
+// `#lp-newsletter` slot via a portal once hydrated, progressive enhancement.
 // Emails go through the existing POST /v1/waitlist flow (Turnstile-protected),
 // which adds the contact to the Resend audience the newsletter is sent from.
 export function NewsletterSignup() {
@@ -43,7 +43,7 @@ export function NewsletterSignup() {
   const content =
     status === "done" ? (
       <p className="nl-done" role="status">
-        ✓ You&apos;re subscribed — watch your inbox for tips and launch news.
+        ✓ You&apos;re subscribed, watch your inbox for tips and launch news.
       </p>
     ) : (
       <form className="nl-form" onSubmit={submit}>

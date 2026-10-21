@@ -4,14 +4,14 @@ import { useEffect, useRef } from "react";
 
 // Cloudflare Turnstile widget (anti-spam on public forms). Gated on the public
 // site key: when it is unset the component renders nothing and forms submit as
-// before — the API skips verification unless its secret is also set. The script
+// before, the API skips verification unless its secret is also set. The script
 // is injected programmatically, so it inherits trust under the app's
 // `strict-dynamic` CSP (see middleware.ts, which also opens frame-src for the
 // widget's Cloudflare iframe when the key is present).
 
 const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
-/** True when Turnstile is configured — forms use it to require a token. */
+/** True when Turnstile is configured, forms use it to require a token. */
 export const TURNSTILE_ENABLED = !!SITE_KEY;
 
 type RenderOpts = {

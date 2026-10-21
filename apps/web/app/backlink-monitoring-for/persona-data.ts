@@ -1,6 +1,6 @@
 // Persona pages (programmatic SEO): "backlink monitoring for [audience]".
 // Each entry renders one static page at /backlink-monitoring-for/<slug>. Content
-// reframes LinkPulz's REAL features for a specific audience — no invented stats,
+// reframes LinkPulz's REAL features for a specific audience, no invented stats,
 // no features the product doesn't have. Each page has a genuinely distinct angle
 // (not a name-swap) so it earns its place.
 
@@ -36,7 +36,7 @@ export const PERSONAS: Persona[] = [
     pains: [
       {
         h: "Many clients, many portfolios",
-        p: "Each client is a separate set of links, campaigns and target pages. Keeping them apart — and reporting per client — gets messy fast in a spreadsheet.",
+        p: "Each client is a separate set of links, campaigns and target pages. Keeping them apart, and reporting per client, gets messy fast in a spreadsheet.",
       },
       {
         h: "Proving the work stayed live",
@@ -54,7 +54,7 @@ export const PERSONAS: Persona[] = [
       },
       {
         h: "Scheduled checks + alerts",
-        p: "Every link is re-checked on a schedule you set (daily to monthly) with email, Slack or webhook alerts, so a lost, redirected or nofollowed link reaches you the moment it is detected — not at the next audit.",
+        p: "Every link is re-checked on a schedule you set (daily to monthly) with email, Slack or webhook alerts, so a lost, redirected or nofollowed link reaches you the moment it is detected, not at the next audit.",
       },
       {
         h: "Clean exports for client reports",
@@ -100,7 +100,7 @@ export const PERSONAS: Persona[] = [
       },
       {
         h: "Competitors earning the links you want",
-        p: "The sites linking to your competitors are often the best outreach targets for you — but finding them by hand is slow.",
+        p: "The sites linking to your competitors are often the best outreach targets for you, but finding them by hand is slow.",
       },
       {
         h: "Links spread across many target pages",
@@ -114,7 +114,7 @@ export const PERSONAS: Persona[] = [
       },
       {
         h: "Competitor backlink gap analysis",
-        p: "Add competitor domains and LinkPulz surfaces the referring domains that link to them but not yet to you — a ready-made shortlist for outreach.",
+        p: "Add competitor domains and LinkPulz surfaces the referring domains that link to them but not yet to you, a ready-made shortlist for outreach.",
       },
       {
         h: "API-first and import-friendly",
@@ -150,7 +150,7 @@ export const PERSONAS: Persona[] = [
     description:
       "Keep the backlinks to your category and product pages healthy. Catch links broken by catalog changes and get alerted when a hard-won link disappears.",
     intro: [
-      "Ecommerce catalogs change constantly — products go out of stock, URLs change, categories get restructured. Each change can break a backlink that pointed at a page that no longer exists, wasting the authority it carried.",
+      "Ecommerce catalogs change constantly, products go out of stock, URLs change, categories get restructured. Each change can break a backlink that pointed at a page that no longer exists, wasting the authority it carried.",
       "LinkPulz catches both sides of the problem: links that disappear, and links that still exist but now point to an error.",
     ],
     pains: [
@@ -160,7 +160,7 @@ export const PERSONAS: Persona[] = [
       },
       {
         h: "Seasonal link-building campaigns",
-        p: "Gift guides and seasonal roundups earn links that matter for a few months — you want to know they stayed live through the season.",
+        p: "Gift guides and seasonal roundups earn links that matter for a few months, you want to know they stayed live through the season.",
       },
       {
         h: "Many referring domains to track",
@@ -170,7 +170,7 @@ export const PERSONAS: Persona[] = [
     how: [
       {
         h: "Catch broken backlinks",
-        p: "LinkPulz flags links that still exist but point to a page returning an error, and links sitting on pages that now error — so a catalog change doesn't silently waste link equity.",
+        p: "LinkPulz flags links that still exist but point to a page returning an error, and links sitting on pages that now error, so a catalog change doesn't silently waste link equity.",
       },
       {
         h: "Scheduled monitoring with alerts",
@@ -210,7 +210,7 @@ export const PERSONAS: Persona[] = [
     description:
       "A focused, affordable way to monitor the backlinks you build for clients, prove the work stayed live, and report without an enterprise toolset.",
     intro: [
-      "Consultants and freelancers deliver link building as a service, often without the budget — or the need — for a heavyweight enterprise suite. What you do need is a reliable way to prove the links you built are still live, and to report it simply.",
+      "Consultants and freelancers deliver link building as a service, often without the budget, or the need, for a heavyweight enterprise suite. What you do need is a reliable way to prove the links you built are still live, and to report it simply.",
       "LinkPulz is a focused backlink monitor, not a sprawling platform, which keeps it affordable and quick to use.",
     ],
     pains: [
@@ -220,7 +220,7 @@ export const PERSONAS: Persona[] = [
       },
       {
         h: "No budget for enterprise suites",
-        p: "A full SEO platform is overkill — and overpriced — when your core need is monitoring the links you built.",
+        p: "A full SEO platform is overkill, and overpriced, when your core need is monitoring the links you built.",
       },
       {
         h: "Reporting without busywork",
@@ -230,7 +230,7 @@ export const PERSONAS: Persona[] = [
     how: [
       {
         h: "Focused and affordable",
-        p: "LinkPulz does one job well — monitoring the backlinks you've earned or bought — with a 10-day free trial, no card, and paid plans from $29/mo based on how many links you monitor.",
+        p: "LinkPulz does one job well, monitoring the backlinks you've earned or bought, with a 10-day free trial, no card, and paid plans from $29/mo based on how many links you monitor.",
       },
       {
         h: "Automated checks, ready-to-share history",
@@ -290,7 +290,7 @@ export const PERSONAS: Persona[] = [
     how: [
       {
         h: "Track attribute changes, not just presence",
-        p: "LinkPulz records rel attributes on every check and alerts you when a link switches dofollow to nofollow — not only when it disappears.",
+        p: "LinkPulz records rel attributes on every check and alerts you when a link switches dofollow to nofollow, not only when it disappears.",
       },
       {
         h: "Catch lost and broken links early",
@@ -298,7 +298,7 @@ export const PERSONAS: Persona[] = [
       },
       {
         h: "Set it and get alerted",
-        p: "Add your links, set a schedule, and get email, Slack or webhook alerts — no manual re-checking.",
+        p: "Add your links, set a schedule, and get email, Slack or webhook alerts, no manual re-checking.",
       },
     ],
     faq: [

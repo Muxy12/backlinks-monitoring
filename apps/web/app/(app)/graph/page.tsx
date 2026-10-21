@@ -83,7 +83,7 @@ export default function GraphPage() {
 
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const [size, setSize] = useState({ w: 800, h: 520 });
-  // Hovered node id — kept in a ref so the per-frame canvas renderer can read it
+  // Hovered node id, kept in a ref so the per-frame canvas renderer can read it
   // without forcing a React re-render.
   const hoverRef = useRef<string | null>(null);
 
@@ -191,7 +191,7 @@ export default function GraphPage() {
     linkCurvature: 0.12,
     linkDirectionalArrowLength: 2.5,
     linkDirectionalArrowRelPos: 1,
-    // Animate particles along live links only — a subtle sense of "flow".
+    // Animate particles along live links only, a subtle sense of "flow".
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     linkDirectionalParticles: (l: any) => (LIVE.has(l.status) ? 2 : 0),
     linkDirectionalParticleWidth: 1.8,
@@ -228,7 +228,7 @@ export default function GraphPage() {
     },
   };
 
-  // 2D: fully custom node — soft glow, degree-scaled radius, ring for
+  // 2D: fully custom node, soft glow, degree-scaled radius, ring for
   // root/match/hover, and a label for the root, hovered, or when zoomed in.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const twoDProps: any = {

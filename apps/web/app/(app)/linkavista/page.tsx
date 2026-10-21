@@ -17,12 +17,12 @@ import "../dashboard/dashboard.css";
 import "./linkavista.css";
 
 // LinkAvista marketplace catalogue (Lot 2) + sandbox order flow (Lot 3a). The
-// order modal places a SANDBOX order — a dry-run preview with no real order and
+// order modal places a SANDBOX order, a dry-run preview with no real order and
 // no debit. Live ordering (real spend) is a later, explicitly confirmed step.
 const fmtCompact = (n: number | null | undefined) =>
-  n == null ? "—" : Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 }).format(n);
+  n == null ? "-" : Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 }).format(n);
 const euros = (cents: number | null | undefined) =>
-  cents == null ? "—" : `€${Math.round(cents / 100).toLocaleString("en")}`;
+  cents == null ? "-" : `€${Math.round(cents / 100).toLocaleString("en")}`;
 
 export default function LinkavistaPage() {
   const router = useRouter();
@@ -190,7 +190,7 @@ export default function LinkavistaPage() {
         </div>
 
         <p className="lav-note">
-          Prices are in EUR, excl. VAT, as listed by LinkAvista. Ordering runs in <b>sandbox</b> for now — placing an
+          Prices are in EUR, excl. VAT, as listed by LinkAvista. Ordering runs in <b>sandbox</b> for now, placing an
           order shows a price preview and does not spend anything.
         </p>
 
@@ -253,13 +253,13 @@ function SiteCard({ site, onOrder }: { site: LinkavistaSite; onOrder: () => void
       </div>
       <div className="lav-metrics">
         <span className="lav-m">
-          DA <b>{m?.da ?? "—"}</b>
+          DA <b>{m?.da ?? "-"}</b>
         </span>
         <span className="lav-m">
-          TF <b>{m?.tf ?? "—"}</b>
+          TF <b>{m?.tf ?? "-"}</b>
         </span>
         <span className="lav-m">
-          CF <b>{m?.cf ?? "—"}</b>
+          CF <b>{m?.cf ?? "-"}</b>
         </span>
         <span className="lav-m">
           RD <b>{fmtCompact(m?.rd)}</b>
@@ -347,7 +347,7 @@ function OrderModal({
         {outcome ? (
           <div className="lav-outcome">
             <div className={`lav-outcome-badge${outcome.sandbox ? " sandbox" : ""}`}>
-              {outcome.sandbox ? "Sandbox — no order placed" : "Order placed"}
+              {outcome.sandbox ? "Sandbox, no order placed" : "Order placed"}
             </div>
             <p>
               {outcome.sandbox
@@ -364,7 +364,7 @@ function OrderModal({
               </div>
               <div>
                 <dt>Status</dt>
-                <dd>{outcome.would_create_status ?? outcome.status ?? "—"}</dd>
+                <dd>{outcome.would_create_status ?? outcome.status ?? "-"}</dd>
               </div>
             </dl>
             <div className="lav-modal-actions">

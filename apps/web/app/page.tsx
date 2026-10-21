@@ -124,7 +124,7 @@ const QUIZ_SCRIPT = `(function(){
 // injected body, before paint), so sections start hidden without a flash. Safety
 // by construction: it bails without IntersectionObserver (nothing tagged -> nothing
 // hidden), and the CSS only hides .reveal under prefers-reduced-motion:no-preference
-// — so with no JS or motion reduced, content is fully visible. An IntersectionObserver
+//, so with no JS or motion reduced, content is fully visible. An IntersectionObserver
 // gives each part a staggered entrance as it enters; a rAF-throttled scroll sweep
 // (plus one on load) reveals anything scrolled past, so fast scrolling can never
 // leave content hidden. The injected subtree is opaque to React, so this does not

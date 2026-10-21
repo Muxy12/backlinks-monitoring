@@ -118,7 +118,7 @@ export default function ImportPage() {
         setCsv(xlsxToCsv(await f.arrayBuffer()));
         setError(null);
       } catch {
-        setError("Could not read that Excel file — make sure it's a .xlsx, or export it to CSV.");
+        setError("Could not read that Excel file, make sure it's a .xlsx, or export it to CSV.");
       }
     } else {
       setCsv(await f.text());
@@ -156,7 +156,7 @@ export default function ImportPage() {
     <main className="dash">
       <header className="page-head">
         <h1>Import backlinks</h1>
-        <p className="muted">CSV or Excel (.xlsx) — generic, Ahrefs, or Semrush headers. Duplicates are skipped.</p>
+        <p className="muted">CSV or Excel (.xlsx), generic, Ahrefs, or Semrush headers. Duplicates are skipped.</p>
       </header>
 
       {!orgId ? (

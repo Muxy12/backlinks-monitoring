@@ -1,6 +1,6 @@
 import { SITE_URL } from "@/lib/site";
 
-// /llms.txt — the llmstxt.org convention: a concise, LLM-friendly map of the site
+// /llms.txt, the llmstxt.org convention: a concise, LLM-friendly map of the site
 // so assistants can find the important pages without scraping HTML. Served as
 // text/plain markdown and regenerated hourly with the current canonical origin.
 //
@@ -15,7 +15,7 @@ export async function GET() {
 > LinkPulz is a backlink monitoring platform for SEO teams, link builders and
 > agencies. It re-checks every backlink you build or earn on a schedule you set
 > and alerts you the moment a link is lost, redirected, broken, nofollowed or
-> noindexed — plus anchor/rel changes, warranty expiries and the link graph for
+> noindexed, plus anchor/rel changes, warranty expiries and the link graph for
 > you and your competitors. 10-day free trial, no credit card. Plans $29–$199/mo.
 
 ## Product

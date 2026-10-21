@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 
 // Waitlist unsubscribe landing, reached from the email link (?t=<token>). It
 // does NOT unsubscribe on load (so an email client's link prefetch can't remove
-// someone) — the visitor confirms with a button. The whole site is noindex
+// someone), the visitor confirms with a button. The whole site is noindex
 // during pre-launch, so this utility page is excluded from search too.
 
 const card: React.CSSProperties = {

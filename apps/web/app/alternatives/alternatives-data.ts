@@ -18,9 +18,9 @@ export type Alternative = {
   // One honest, verifiable sentence about what the competitor broadly is.
   category: string;
   intro: string[];
-  // Where LinkPulz fits — real LinkPulz strengths only.
+  // Where LinkPulz fits, real LinkPulz strengths only.
   linkpulzFor: AltBlock[];
-  // When the competitor is the better choice — honest, builds trust.
+  // When the competitor is the better choice, honest, builds trust.
   competitorFor: string[];
   faq: AltFaq[];
   related: string[];
@@ -35,7 +35,7 @@ const LINKPULZ_FITS: AltBlock[] = [
   },
   {
     h: "Focused and affordable",
-    p: "It does one job — backlink monitoring — rather than bundling a full SEO platform, with a 10-day free trial, no card, and paid plans from $29/mo based on how many links you monitor.",
+    p: "It does one job, backlink monitoring, rather than bundling a full SEO platform, with a 10-day free trial, no card, and paid plans from $29/mo based on how many links you monitor.",
   },
   {
     h: "Built around the monitoring workflow",
@@ -60,7 +60,7 @@ export const ALTERNATIVES: Alternative[] = [
     category:
       "Ahrefs is a comprehensive SEO toolset, best known for its large backlink index alongside keyword research, site audit and rank tracking.",
     intro: [
-      "Ahrefs is a broad, powerful SEO suite. If your main need is simply to keep watch on the backlinks you have already earned or paid for — and be told the moment one changes — a focused monitoring tool can be a simpler, cheaper fit than a full platform.",
+      "Ahrefs is a broad, powerful SEO suite. If your main need is simply to keep watch on the backlinks you have already earned or paid for, and be told the moment one changes, a focused monitoring tool can be a simpler, cheaper fit than a full platform.",
       "LinkPulz is that focused tool. It is not an Ahrefs replacement for keyword research or link discovery; it is purpose-built for monitoring your own link portfolio.",
     ],
     linkpulzFor: LINKPULZ_FITS,
@@ -96,7 +96,7 @@ export const ALTERNATIVES: Alternative[] = [
     category:
       "Semrush is a broad all-in-one SEO and digital marketing suite spanning keyword research, site audits, rank tracking, backlink analysis and more.",
     intro: [
-      "Semrush is an all-in-one marketing suite with a wide feature set. If what you actually need is dependable monitoring of the backlinks you have built — not the whole platform — a dedicated tool can do that job with less overhead.",
+      "Semrush is an all-in-one marketing suite with a wide feature set. If what you actually need is dependable monitoring of the backlinks you have built, not the whole platform, a dedicated tool can do that job with less overhead.",
       "LinkPulz focuses on exactly that: keeping watch on your link portfolio and telling you when something changes.",
     ],
     linkpulzFor: LINKPULZ_FITS,
@@ -132,18 +132,18 @@ export const ALTERNATIVES: Alternative[] = [
     category:
       "Monitor Backlinks is a backlink monitoring and analysis tool focused on tracking your links and your competitors'.",
     intro: [
-      "Monitor Backlinks sits in the same space as LinkPulz: dedicated backlink monitoring rather than a sprawling SEO suite. When two tools do the same core job, the right pick comes down to fit — the specific workflow, the alerting, the reporting and the pricing that match how you work.",
+      "Monitor Backlinks sits in the same space as LinkPulz: dedicated backlink monitoring rather than a sprawling SEO suite. When two tools do the same core job, the right pick comes down to fit, the specific workflow, the alerting, the reporting and the pricing that match how you work.",
       "LinkPulz approaches monitoring with scheduled re-checks, email/Slack/webhook alerts, competitor gap analysis, cost and warranty tracking, and CSV/Google Search Console import.",
     ],
     linkpulzFor: LINKPULZ_FITS,
     competitorFor: [
       "You already use Monitor Backlinks and its workflow fits how you work.",
-      "The right choice between two focused monitors is a matter of fit — compare both against your needs and current pricing.",
+      "The right choice between two focused monitors is a matter of fit, compare both against your needs and current pricing.",
     ],
     faq: [
       {
         q: "How is LinkPulz different from Monitor Backlinks?",
-        a: "Both are dedicated backlink monitors rather than full SEO suites. LinkPulz re-checks each link on a schedule, alerts you by email, Slack or webhook, and adds competitor gap analysis, cost/warranty tracking and CSV/Google Search Console import. The best fit depends on your workflow and current pricing — compare both.",
+        a: "Both are dedicated backlink monitors rather than full SEO suites. LinkPulz re-checks each link on a schedule, alerts you by email, Slack or webhook, and adds competitor gap analysis, cost/warranty tracking and CSV/Google Search Console import. The best fit depends on your workflow and current pricing, compare both.",
       },
       {
         q: "Can I try LinkPulz before switching?",
@@ -203,7 +203,7 @@ export const ALTERNATIVES: Alternative[] = [
     category:
       "Majestic is a backlink-focused platform known for its large link index and metrics like Trust Flow and Citation Flow.",
     intro: [
-      "Majestic specializes in backlink data and index metrics. If your goal is to monitor the specific links you have earned or bought — and be alerted when they change — rather than explore a large index, a dedicated monitor is a closer fit.",
+      "Majestic specializes in backlink data and index metrics. If your goal is to monitor the specific links you have earned or bought, and be alerted when they change, rather than explore a large index, a dedicated monitor is a closer fit.",
       "LinkPulz is built for monitoring: scheduled re-checks of your links, with alerts, rather than index-wide link metrics.",
     ],
     linkpulzFor: LINKPULZ_FITS,

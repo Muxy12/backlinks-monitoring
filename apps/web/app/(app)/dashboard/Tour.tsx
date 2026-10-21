@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState, type CSSProperties } from "react";
 
 // A lightweight, dependency-free coachmark tour. It spotlights real elements by
 // CSS selector (a dimmed overlay with a cutout ring via box-shadow) and shows a
-// tooltip with Next / Back / Skip. No eval, no injected scripts — it works under
+// tooltip with Next / Back / Skip. No eval, no injected scripts, it works under
 // the strict nonce/strict-dynamic CSP. A missing target (e.g. a collapsed mobile
 // sidebar) gracefully falls back to a centered tooltip. Seen-state is per-browser
 // in localStorage; "Take the tour" on the checklist replays it.
@@ -22,7 +22,7 @@ const STEPS: TourStep[] = [
   {
     target: '[data-tour="checklist"]',
     title: "Your setup checklist",
-    body: "Follow these three steps and you're live — it ticks them off automatically as you go.",
+    body: "Follow these three steps and you're live, it ticks them off automatically as you go.",
   },
   {
     target: 'a.side-link[href="/backlinks"]',
@@ -32,7 +32,7 @@ const STEPS: TourStep[] = [
   {
     target: 'a.side-link[href="/settings/notifications"]',
     title: "Set up alerts",
-    body: "Choose how you hear about changes — email, Slack or webhook. In-app alerts are always on.",
+    body: "Choose how you hear about changes, email, Slack or webhook. In-app alerts are always on.",
   },
   {
     target: null,

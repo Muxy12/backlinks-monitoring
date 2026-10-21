@@ -10,7 +10,7 @@ export function num(n: number): string {
 /** A single currency amount, e.g. "€24,850" (cents only when non-zero). */
 export function money(amount: string | number, currency?: string | null): string {
   const n = typeof amount === "string" ? parseFloat(amount) : amount;
-  if (!isFinite(n)) return "—";
+  if (!isFinite(n)) return "-";
   const cur = (currency || "").toUpperCase();
   try {
     return new Intl.NumberFormat(undefined, {
@@ -25,15 +25,15 @@ export function money(amount: string | number, currency?: string | null): string
 
 /** A per-currency money list (no FX): the dominant amount + "+N more". */
 export function moneyList(rows: { currency: string; amount: string }[] | null | undefined): string {
-  if (!rows || rows.length === 0) return "—";
+  if (!rows || rows.length === 0) return "-";
   const sorted = [...rows].sort((a, b) => parseFloat(b.amount) - parseFloat(a.amount));
   const head = money(sorted[0].amount, sorted[0].currency);
   return sorted.length === 1 ? head : `${head} +${sorted.length - 1} more`;
 }
 
-/** Percent, or "—" when null. */
+/** Percent, or "-" when null. */
 export function pct(x: number | null | undefined, digits = 0): string {
-  return x == null ? "—" : `${x.toFixed(digits)}%`;
+  return x == null ? "-" : `${x.toFixed(digits)}%`;
 }
 
 /** Compact relative time, e.g. "8m ago", "3d ago". */

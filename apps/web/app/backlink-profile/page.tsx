@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 export const dynamic = "force-static"; // public content → prerender + edge cache (pairs with the static marketing CSP in middleware.ts)
 import { marketingPage } from "../marketing";
 
-// Backlink Profile — SEO guide/tool page on the shared marketing shell. Unique
+// Backlink Profile, SEO guide/tool page on the shared marketing shell. Unique
 // content targeting "backlink profile" / "what is a backlink profile" /
 // "analyze backlink profile". Intent: understand and analyse the composite
 // picture (dofollow ratio, anchors, referring domains), distinct from the

@@ -4,8 +4,8 @@ import { useId } from "react";
 import type { GrowthPoint } from "@/lib/api";
 
 // A dependency-free, themeable SVG area chart for the Overview's Backlink Growth.
-// Plots the daily snapshot's real series — live backlinks, referring domains and
-// protected links — with a soft gradient fill and a glow on the lead line, so it
+// Plots the daily snapshot's real series, live backlinks, referring domains and
+// protected links, with a soft gradient fill and a glow on the lead line, so it
 // reads premium in both light and dark. Colors come from CSS tokens.
 
 const W = 640;

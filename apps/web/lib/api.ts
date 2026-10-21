@@ -111,7 +111,7 @@ export interface GscSite {
   site_url: string;
   permission_level: string | null;
 }
-// Post-Link Impact (BETA) — observed before/after around a backlink's T0.
+// Post-Link Impact (BETA), observed before/after around a backlink's T0.
 // `status` values: positive | neutral | negative | insufficient_data | unavailable | pending.
 // Crawl + Indexation (Phase 2) from Google URL Inspection.
 export interface ImpactCrawlLayer {
@@ -241,7 +241,7 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ email, turnstile_token: turnstileToken, attribution }),
     }),
-  // Newsletter subscription — separate Resend audience from the waitlist.
+  // Newsletter subscription, separate Resend audience from the waitlist.
   subscribeNewsletter: (email: string, turnstileToken?: string) =>
     request<{ ok: boolean }>("/v1/newsletter", {
       method: "POST",
@@ -519,7 +519,7 @@ export interface NotificationsResponse {
 }
 
 // A direct URL to the CSV export. It is a top-level GET navigation (an <a>
-// download), so the SameSite=Lax session cookie is sent — no fetch needed.
+// download), so the SameSite=Lax session cookie is sent, no fetch needed.
 export function backlinksExportUrl(org: string, projectId?: string, clientId?: string): string {
   const base = `${BASE}/v1/organizations/${org}/backlinks/export`;
   const p = new URLSearchParams();
@@ -1471,7 +1471,7 @@ export interface AdminUser {
   organizations: number;
 }
 
-// Founder-ops read models (docs/19) — real data from existing tables.
+// Founder-ops read models (docs/19), real data from existing tables.
 export interface AdminOps {
   window_secs: number;
   queue: {

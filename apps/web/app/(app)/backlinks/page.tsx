@@ -404,7 +404,7 @@ export default function BacklinksPage() {
       if (tg.ok) setBlTags(tg.data);
       if (oc.ok) setOccurrences(oc.data);
       if (t2.ok) setTier2(t2.data);
-      // Post-Link Impact — only when Search Console is configured for this install.
+      // Post-Link Impact, only when Search Console is configured for this install.
       if (me?.features?.gsc) {
         const im = await orgApi.backlinkImpact(orgId, b.id);
         setImpact(im.ok ? im.data : null);
@@ -592,7 +592,7 @@ export default function BacklinksPage() {
       return;
     }
     toast(
-      monitorNew ? "Backlink added — first check runs within ~10 minutes" : "Backlink added (not monitored)",
+      monitorNew ? "Backlink added, first check runs within ~10 minutes" : "Backlink added (not monitored)",
       "success",
     );
     setShowAdd(false);
@@ -646,7 +646,7 @@ export default function BacklinksPage() {
     toast(
       `Added ${created} backlink${created === 1 ? "" : "s"}` +
         (duplicates ? `, ${duplicates} already existed` : "") +
-        (monitorNew ? " — first checks run within ~10 minutes" : ""),
+        (monitorNew ? ", first checks run within ~10 minutes" : ""),
       "success",
     );
     setBulkText("");
@@ -702,9 +702,9 @@ export default function BacklinksPage() {
   if (searchQ.trim())
     activeFilters.push({ key: "q", label: `“${searchQ.trim()}”`, clear: () => setSearchQ("") });
   if (clientFilter)
-    activeFilters.push({ key: "client", label: `Client: ${clients.find((c) => c.id === clientFilter)?.name ?? "—"}`, clear: () => setClientFilter("") });
+    activeFilters.push({ key: "client", label: `Client: ${clients.find((c) => c.id === clientFilter)?.name ?? "-"}`, clear: () => setClientFilter("") });
   if (tagFilter)
-    activeFilters.push({ key: "tag", label: `Tag: ${orgTags.find((t) => t.id === tagFilter)?.name ?? "—"}`, clear: () => setTagFilter("") });
+    activeFilters.push({ key: "tag", label: `Tag: ${orgTags.find((t) => t.id === tagFilter)?.name ?? "-"}`, clear: () => setTagFilter("") });
   if (domainFilter)
     activeFilters.push({ key: "domain", label: `Domain: ${domainFilter}`, clear: () => setDomainFilter("") });
   if (acqFilter)
@@ -799,7 +799,7 @@ export default function BacklinksPage() {
                   label="New"
                   icon="signal"
                   accent="var(--live)"
-                  value={overview ? `+${num(overview.backlink_growth.new_count)}` : "—"}
+                  value={overview ? `+${num(overview.backlink_growth.new_count)}` : "-"}
                   hint="recently added"
                   onClick={() => {
                     setStatusFilter("");
@@ -823,7 +823,7 @@ export default function BacklinksPage() {
                   value={
                     overview && overview.summary.link_health.percentage != null
                       ? `${Math.round(overview.summary.link_health.percentage)}%`
-                      : "—"
+                      : "-"
                   }
                   delta={overview?.summary.link_health.change ?? null}
                   hint={
@@ -1343,7 +1343,7 @@ export default function BacklinksPage() {
                   style={{ marginTop: 2 }}
                 />
                 <span>
-                  <b>Monitor these links</b> — re-check them on a schedule and alert me the moment
+                  <b>Monitor these links</b>, re-check them on a schedule and alert me the moment
                   one is lost, redirected, nofollowed or broken. <span className="muted">(Uncheck to
                   just store them without monitoring.)</span>
                 </span>
@@ -1351,7 +1351,7 @@ export default function BacklinksPage() {
 
               <label>
                 <span>
-                  Paste your backlinks — one per line: <code>source URL, target URL</code>
+                  Paste your backlinks, one per line: <code>source URL, target URL</code>
                 </span>
                 <textarea
                   rows={7}
@@ -1529,7 +1529,7 @@ export default function BacklinksPage() {
               <Icon name="signal" size={14} />
               <span>
                 The values below (found anchor, rel, URLs, HTTP status, dates…) are{" "}
-                <b>detected automatically</b> each time LinkPulz checks this backlink — they aren’t
+                <b>detected automatically</b> each time LinkPulz checks this backlink, they aren’t
                 entered by hand.
                 {selected.status === "pending" &&
                   " This link hasn’t been checked yet, so they show “-”; they fill in after the first check (within ~10 min for monitored links)."}{" "}
@@ -1559,10 +1559,10 @@ export default function BacklinksPage() {
             <h3 className="drawer-sub">Classification</h3>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
               {([
-                ["Acquisition", "acquisition", ACQUISITION, "— Unclassified"],
+                ["Acquisition", "acquisition", ACQUISITION, "Unclassified"],
                 ["Attribute", "link_attribute", ATTRIBUTE, "Auto (detected)"],
-                ["Placement", "placement", PLACEMENT, "— Unclassified"],
-                ["Format", "link_format", FORMAT, "— Unclassified"],
+                ["Placement", "placement", PLACEMENT, "Unclassified"],
+                ["Format", "link_format", FORMAT, "Unclassified"],
               ] as const).map(([label, field, opts, blank]) => (
                 <label key={field} style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
                   <span className="muted">
@@ -1672,7 +1672,7 @@ export default function BacklinksPage() {
                   value={selected.commercial_model ?? ""}
                   onChange={(e) => void patchBacklink({ commercial_model: e.target.value || null })}
                 >
-                  <option value="">—</option>
+                  <option value="">-</option>
                   {COMMERCIAL_MODEL.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                 </select>
               </label>
@@ -1895,7 +1895,7 @@ export default function BacklinksPage() {
                             </div>
                             {w.status === "pending" ? (
                               <p className="muted sm">
-                                Completes on {w.available_on ? fmtShort(w.available_on) : "—"}.
+                                Completes on {w.available_on ? fmtShort(w.available_on) : "-"}.
                               </p>
                             ) : (
                               <BeforeAfterChart
@@ -1926,7 +1926,7 @@ export default function BacklinksPage() {
                     {impact.context.overlapping_acquisitions > 0 && (
                       <p className="impact-warn">
                         {impact.context.overlapping_acquisitions} other link(s) to this page
-                        were acquired in the same window — changes can&apos;t be isolated to
+                        were acquired in the same window, changes can&apos;t be isolated to
                         one link.
                       </p>
                     )}

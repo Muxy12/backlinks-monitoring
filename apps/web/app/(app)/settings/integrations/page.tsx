@@ -145,8 +145,8 @@ export default function IntegrationsPage() {
             </h2>
           </div>
           <p className="muted">
-            Post-Link Impact — measuring the visibility, ranking, crawl and indexation response
-            after each backlink is acquired — is coming soon. You'll be able to connect your own
+            Post-Link Impact, measuring the visibility, ranking, crawl and indexation response
+            after each backlink is acquired, is coming soon. You'll be able to connect your own
             Google Search Console property here shortly.
           </p>
         </section>
@@ -205,7 +205,7 @@ export default function IntegrationsPage() {
                 <span>Status</span>
                 <span style={{ color: "var(--live)" }}>Connected</span>
                 <span>Property</span>
-                <span className="mono">{gsc.site_url ?? "— not mapped —"}</span>
+                <span className="mono">{gsc.site_url ?? "Not mapped"}</span>
                 {gsc.google_email && (
                   <>
                     <span>Account</span>

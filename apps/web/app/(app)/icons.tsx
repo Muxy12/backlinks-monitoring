@@ -1,6 +1,6 @@
-// Inline SVG icons (Lucide, ISC/MIT) — no dependency, stroke = currentColor so
+// Inline SVG icons (Lucide, ISC/MIT), no dependency, stroke = currentColor so
 // they inherit the link's color in both themes. Replaces emoji-as-icons
-// (ui-ux-pro-max checklist: "No emojis as icons — use SVG").
+// (ui-ux-pro-max checklist: "No emojis as icons, use SVG").
 import type { ReactNode } from "react";
 
 const PATHS: Record<string, ReactNode> = {
@@ -87,7 +87,7 @@ const PATHS: Record<string, ReactNode> = {
       <circle cx="7.5" cy="7.5" r=".5" fill="currentColor" />
     </>
   ),
-  // Signal / radio-tower — "Monitored" tile.
+  // Signal / radio-tower, "Monitored" tile.
   signal: (
     <>
       <path d="M4.9 16.1C1 12.2 1 5.8 4.9 1.9" />
@@ -99,14 +99,14 @@ const PATHS: Record<string, ReactNode> = {
       <path d="m8 22 4-11 4 11" />
     </>
   ),
-  // Check-circle — "Live" tile.
+  // Check-circle, "Live" tile.
   check: (
     <>
       <path d="M21.801 10A10 10 0 1 1 17 3.335" />
       <path d="m9 11 3 3L22 4" />
     </>
   ),
-  // Circle-alert — "Needs attention" tile.
+  // Circle-alert, "Needs attention" tile.
   warn: (
     <>
       <circle cx="12" cy="12" r="10" />
@@ -114,7 +114,7 @@ const PATHS: Record<string, ReactNode> = {
       <line x1="12" x2="12.01" y1="16" y2="16" />
     </>
   ),
-  // Triangle-alert — "Value at risk" tile + warranty banner.
+  // Triangle-alert, "Value at risk" tile + warranty banner.
   alert: (
     <>
       <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
@@ -122,7 +122,7 @@ const PATHS: Record<string, ReactNode> = {
       <line x1="12" x2="12.01" y1="17" y2="17" />
     </>
   ),
-  // Link — empty-state icon.
+  // Link, empty-state icon.
   link: (
     <>
       <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
@@ -152,11 +152,11 @@ const PATHS: Record<string, ReactNode> = {
       <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" />
     </>
   ),
-  // Feedback — message bubble (Lucide message-square).
+  // Feedback, message bubble (Lucide message-square).
   feedback: (
     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
   ),
-  // Link building — trending-up (growth).
+  // Link building, trending-up (growth).
   campaigns: (
     <>
       <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />

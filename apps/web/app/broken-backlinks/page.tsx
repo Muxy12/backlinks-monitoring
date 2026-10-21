@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 export const dynamic = "force-static"; // public content → prerender + edge cache (pairs with the static marketing CSP in middleware.ts)
 import { marketingPage } from "../marketing";
 
-// Broken Backlinks — SEO tool/guide page on the shared marketing shell. Unique
+// Broken Backlinks, SEO tool/guide page on the shared marketing shell. Unique
 // content targeting "broken backlinks" / "broken backlink checker". TO CONFIRM
 // markers flag claims to verify before launch.
 export const metadata: Metadata = {

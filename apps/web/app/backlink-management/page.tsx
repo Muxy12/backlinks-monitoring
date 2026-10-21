@@ -3,9 +3,9 @@ import type { Metadata } from "next";
 export const dynamic = "force-static"; // public content → prerender + edge cache (pairs with the static marketing CSP in middleware.ts)
 import { marketingPage } from "../marketing";
 
-// Backlink Management — SEO tool/guide page on the shared marketing shell.
+// Backlink Management, SEO tool/guide page on the shared marketing shell.
 // Unique content targeting "backlink management" / "backlink management tool".
-// Intent: ongoing operations — organise and monitor a whole backlink portfolio
+// Intent: ongoing operations, organise and monitor a whole backlink portfolio
 // (distinct from the one-off audit and the point-in-time profile pages).
 // TO CONFIRM markers flag feature claims to verify before launch.
 export const metadata: Metadata = {

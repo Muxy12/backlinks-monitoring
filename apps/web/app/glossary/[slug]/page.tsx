@@ -5,7 +5,7 @@ import { GLOSSARY, GLOSSARY_BY_SLUG, type GlossaryTerm } from "../glossary-data"
 
 // Programmatic glossary pages: one static page per term from glossary-data.ts,
 // built on the shared marketing shell. Prerendered at build time; unknown slugs
-// 404 (dynamicParams = false). Content is authored and trusted — the term
+// 404 (dynamicParams = false). Content is authored and trusted, the term
 // strings carry intentional inline HTML (<b>, <code>, <i>) rendered as-is.
 export const dynamic = "force-static";
 export const dynamicParams = false;

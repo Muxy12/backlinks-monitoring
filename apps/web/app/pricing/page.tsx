@@ -3,10 +3,10 @@ import type { Metadata } from "next";
 export const dynamic = "force-static"; // public content → prerender + edge cache (pairs with the static marketing CSP in middleware.ts)
 import { marketingPage } from "../marketing";
 
-// Pricing — public marketing page. Built on the shared marketing shell
+// Pricing, public marketing page. Built on the shared marketing shell
 // (../marketing.ts) so the charte, header and footer match the rest of the site.
 // The monthly/annual toggle is pure CSS (hidden radios + `:checked ~` selectors),
-// so the page stays a zero-JS, fully server-rendered marketing page — best for SEO.
+// so the page stays a zero-JS, fully server-rendered marketing page, best for SEO.
 //
 // Prices, limits and the 48h interval MIRROR the single source of truth,
 // crates/billing/src/plans.rs (served live at GET /v1/plans). When a price or
