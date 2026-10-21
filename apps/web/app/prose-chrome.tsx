@@ -7,9 +7,14 @@ export function ProseShell({ children }: { children: React.ReactNode }) {
     <div className="prose-shell">
       <header className="prose-top">
         <div className="prose-top-inner">
-          <a className="prose-brand" href="/">
-            <span className="mark" />
-            LinkPulz
+          <a className="prose-brand" href="/" aria-label="LinkPulz home">
+            <img
+              className="prose-logo"
+              src="https://ye8jhaekbbcviws9.public.blob.vercel-storage.com/Logo_LinkPulz_en_n%C3%A9on_d%C3%A9grad%C3%A9.png"
+              alt="LinkPulz"
+              width={866}
+              height={288}
+            />
           </a>
           <nav className="prose-top-links" aria-label="Site">
             <a href="/docs">Docs</a>
