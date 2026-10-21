@@ -30,10 +30,10 @@ export default function LoginPage() {
       <form className="auth-card" onSubmit={onSubmit}>
         <img
           className="auth-logo"
-          src="https://ye8jhaekbbcviws9.public.blob.vercel-storage.com/logo-linkpulz.webp"
+          src="https://ye8jhaekbbcviws9.public.blob.vercel-storage.com/Logo_LinkPulz_en_n%C3%A9on_d%C3%A9grad%C3%A9.png"
           alt="LinkPulz"
-          width="44"
-          height="44"
+          width="866"
+          height="288"
         />
         <h1>Log in</h1>
         <p className="sub">Welcome back to LinkPulz.</p>

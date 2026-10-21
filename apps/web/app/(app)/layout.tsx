@@ -86,15 +86,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <a className="side-brand" href="/dashboard" onClick={() => setOpen(false)}>
       <img
         className="side-logo"
-        src="https://ye8jhaekbbcviws9.public.blob.vercel-storage.com/logo-linkpulz.webp"
-        alt=""
-        width="26"
-        height="26"
+        src="https://ye8jhaekbbcviws9.public.blob.vercel-storage.com/Logo_LinkPulz_en_n%C3%A9on_d%C3%A9grad%C3%A9.png"
+        alt="LinkPulz"
+        width={866}
+        height={288}
       />
-      <span className="side-brand-text">
-        LinkPulz
-        {workspace && <span className="side-workspace">{workspace}</span>}
-      </span>
+      {workspace && (
+        <span className="side-brand-text">
+          <span className="side-workspace">{workspace}</span>
+        </span>
+      )}
     </a>
   );
 
