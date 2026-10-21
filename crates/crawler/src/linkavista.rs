@@ -126,6 +126,35 @@ pub struct SitesPage {
     pub per_page: i64,
 }
 
+/// A placement order. Lot 3a supports platform-written articles only
+/// (content_provider = "platform"), with one anchor → one target URL.
+#[derive(Debug, Clone)]
+pub struct OrderRequest {
+    pub site_id: i64,
+    pub content_provider: String,
+    pub redaction_option: Option<String>,
+    pub article_title: String,
+    pub brief: String,
+    pub anchor_text: String,
+    pub target_url: String,
+    pub publish_date: String,
+}
+
+/// The outcome of a create-order call. In sandbox this is a dry-run preview
+/// (`sandbox = true`, no order created, no debit); in live mode it carries the
+/// created order's id and status.
+#[derive(Debug, Serialize)]
+pub struct OrderOutcome {
+    pub sandbox: bool,
+    pub status: Option<String>,
+    pub would_create_status: Option<String>,
+    pub would_debit_cents: Option<i64>,
+    pub price_cents: Option<i64>,
+    pub currency: Option<String>,
+    pub order_id: Option<String>,
+    pub message: Option<String>,
+}
+
 impl LinkavistaClient {
     /// `GET /advertiser/sites` — the browsable catalogue (read-only, no spend).
     pub async fn list_sites(&self, q: &SiteQuery) -> anyhow::Result<SitesPage> {
@@ -189,6 +218,63 @@ impl LinkavistaClient {
             last_page: as_i("last_page", 1),
             total: as_i("total", 0),
             per_page: as_i("per_page", 24),
+        })
+    }
+
+    /// `POST /advertiser/orders` — place an order. With a sandbox key this is a
+    /// dry-run (no order, no debit); the caller must still gate live spending.
+    pub async fn create_order(&self, o: &OrderRequest) -> anyhow::Result<OrderOutcome> {
+        let body = serde_json::json!({
+            "site_id": o.site_id,
+            "content_provider": o.content_provider,
+            "redaction_option": o.redaction_option,
+            "article_title": o.article_title,
+            "brief": o.brief,
+            "anchors": [{ "anchor_text": o.anchor_text, "target_url": o.target_url }],
+            "publish_date": o.publish_date,
+        });
+
+        let resp = client()
+            .post(format!("{}/advertiser/orders", self.base_url))
+            .header("X-API-Key", self.api_key.as_str())
+            .header(reqwest::header::ACCEPT, "application/json")
+            .json(&body)
+            .send()
+            .await?;
+
+        if !resp.status().is_success() {
+            let status = resp.status();
+            let text = resp.text().await.unwrap_or_default();
+            let msg = serde_json::from_str::<serde_json::Value>(&text)
+                .ok()
+                .and_then(|v| v.get("error").and_then(|e| e.as_str()).map(str::to_string))
+                .unwrap_or_else(|| text.chars().take(200).collect());
+            anyhow::bail!("linkavista HTTP {status}: {msg}");
+        }
+
+        let v: serde_json::Value = resp.json().await?;
+        let message = v
+            .get("message")
+            .and_then(|x| x.as_str())
+            .map(str::to_string);
+        let d = v.get("data").cloned().unwrap_or(serde_json::Value::Null);
+        let get_s = |k: &str| d.get(k).and_then(|x| x.as_str()).map(str::to_string);
+        let get_i = |k: &str| d.get(k).and_then(|x| x.as_i64());
+        let order_id = d
+            .get("order_id")
+            .and_then(|x| x.as_i64())
+            .map(|n| n.to_string())
+            .or_else(|| get_s("order_id"))
+            .or_else(|| d.get("id").and_then(|x| x.as_i64()).map(|n| n.to_string()));
+        Ok(OrderOutcome {
+            sandbox: d.get("sandbox").and_then(|x| x.as_bool()).unwrap_or(false),
+            status: get_s("status"),
+            would_create_status: get_s("would_create_status"),
+            would_debit_cents: get_i("would_debit_cents"),
+            price_cents: get_i("price").or_else(|| get_i("total_cents")),
+            currency: get_s("currency"),
+            order_id,
+            message,
         })
     }
 }

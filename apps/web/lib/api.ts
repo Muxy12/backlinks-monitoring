@@ -87,6 +87,19 @@ export interface LinkavistaSitesPage {
   total: number;
   per_page: number;
 }
+// Outcome of a create-order call. In sandbox mode it's a dry-run preview
+// (sandbox=true, no order placed, no debit): `would_debit_cents` is what a live
+// order would cost. `price_cents`/`would_debit_cents` are EUR cents.
+export interface LinkavistaOrderOutcome {
+  sandbox: boolean;
+  status: string | null;
+  would_create_status: string | null;
+  would_debit_cents: number | null;
+  price_cents: number | null;
+  currency: string | null;
+  order_id: string | null;
+  message: string | null;
+}
 export interface GscStatus {
   configured: boolean;
   connected: boolean;
@@ -1036,6 +1049,25 @@ export const orgApi = {
       `/v1/organizations/${org}/linkavista/sites${qs ? `?${qs}` : ""}`,
     );
   },
+  // Place a LinkAvista order (sandbox-only for now: returns a dry-run preview).
+  createLinkavistaOrder: (
+    org: string,
+    body: {
+      site_id: number;
+      project_id: string;
+      target_url: string;
+      anchor_text: string;
+      article_title: string;
+      brief: string;
+      redaction_option?: string;
+      publish_date: string;
+    },
+  ) =>
+    request<LinkavistaOrderOutcome>(`/v1/organizations/${org}/linkavista/orders`, {
+      method: "POST",
+      headers: csrfHeader(),
+      body: JSON.stringify(body),
+    }),
   campaign: (org: string, id: string) =>
     request<CampaignView>(`/v1/organizations/${org}/campaigns/${id}`),
   createCampaign: (org: string, body: NewCampaign) =>
