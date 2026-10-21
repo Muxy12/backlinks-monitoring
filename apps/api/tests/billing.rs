@@ -29,6 +29,9 @@ async fn app() -> Option<axum::Router> {
         allow_private_fetch: false,
         campaigns_beta: false,
         registration_open: true,
+        linkavista_api_key: None,
+        linkavista_sandbox: true,
+        linkavista_base_url: None,
     };
     Some(api::app(AppState::new(db.pool, cfg)))
 }

@@ -327,6 +327,10 @@ pub fn app(state: AppState) -> Router {
             post(routes::discovery_routes::run_discovery),
         )
         .route(
+            "/v1/organizations/{org_id}/linkavista/sites",
+            get(routes::linkavista_routes::list_sites),
+        )
+        .route(
             "/v1/organizations/{org_id}/warranties/expiring",
             get(routes::resource_routes::expiring_warranties),
         )

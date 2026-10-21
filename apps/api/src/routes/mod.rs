@@ -14,6 +14,7 @@ pub mod graph_routes;
 pub mod gsc_routes;
 pub mod impact_routes;
 pub mod internal_routes;
+pub mod linkavista_routes;
 pub mod me_routes;
 pub mod newsletter_routes;
 pub mod ops_routes;
