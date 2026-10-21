@@ -78,7 +78,7 @@ export function BacklinkCheckerForm() {
         </button>
       </form>
 
-      {error && <div className="checker-error">{error}</div>}
+      {error && <div className="checker-error" role="alert">{error}</div>}
 
       {result && <ResultCard result={result} />}
     </div>
@@ -88,7 +88,7 @@ export function BacklinkCheckerForm() {
 function ResultCard({ result }: { result: BacklinkCheckResult }) {
   if (result.error) {
     return (
-      <div className="checker-result state-error">
+      <div className="checker-result state-error" role="alert">
         <strong>Couldn&apos;t check</strong>
         <p>{ERROR_LABELS[result.error] ?? ERROR_LABELS.error}</p>
       </div>
@@ -96,7 +96,7 @@ function ResultCard({ result }: { result: BacklinkCheckResult }) {
   }
   if (!result.found) {
     return (
-      <div className="checker-result state-absent">
+      <div className="checker-result state-absent" role="status">
         <strong>Not found</strong>
         <p>
           The source page loaded (HTTP {result.http_status}) but does not link to your target URL.
@@ -105,7 +105,7 @@ function ResultCard({ result }: { result: BacklinkCheckResult }) {
     );
   }
   return (
-    <div className="checker-result state-found">
+    <div className="checker-result state-found" role="status">
       <strong>Backlink is live ✓</strong>
       <dl className="checker-detail">
         <div>

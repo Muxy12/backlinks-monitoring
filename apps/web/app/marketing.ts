@@ -274,6 +274,9 @@ export const MARKETING_STYLE = `
 #lp-home a:not(.btn){text-underline-offset:3px;text-decoration-thickness:1px}
 #lp-home a:not(.btn):hover{text-decoration:underline}
 #lp-home a:focus-visible,#lp-home button:focus-visible,#lp-home input:focus-visible,#lp-home summary:focus-visible{outline:2px solid var(--brand);outline-offset:3px;border-radius:8px}
+#lp-home .nav-toggle:focus-visible~.nav-burger{outline:2px solid var(--brand);outline-offset:2px}
+#lp-home .skip-link{position:absolute;left:8px;top:-60px;z-index:40;background:var(--brand);color:#fff;padding:10px 16px;border-radius:10px;font-weight:600;text-decoration:none;transition:top .15s}
+#lp-home .skip-link:focus{top:8px}
 #lp-home .tool input:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px color-mix(in srgb,var(--brand) 25%,transparent)}
 #lp-home .health-score b,#lp-home .plan .price,#lp-home .health-table td{font-variant-numeric:tabular-nums}
 #lp-home .tablewrap{scrollbar-width:thin;scrollbar-color:var(--line) transparent}
@@ -370,9 +373,10 @@ ${jsonLd}
 </script>
 
 <div id="lp-home">
+<a class="skip-link" href="#lp-main">Skip to content</a>
 ${MARKETING_HEADER}
 
-<main>
+<main id="lp-main" tabindex="-1">
 ${main}
 </main>
 

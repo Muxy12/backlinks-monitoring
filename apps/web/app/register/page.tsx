@@ -81,7 +81,7 @@ export default function RegisterPage() {
       <form className="auth-card" onSubmit={onSubmit}>
         <h1>Start monitoring</h1>
         <p className="sub">Create your LinkPulz account.</p>
-        {error && <div className="auth-error">{error}</div>}
+        {error && <div className="auth-error" role="alert">{error}</div>}
         <label className="auth-field">
           <span>Name</span>
           <input value={name} onChange={(e) => setName(e.target.value)} required autoComplete="name" />

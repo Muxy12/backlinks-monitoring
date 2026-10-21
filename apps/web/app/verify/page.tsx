@@ -39,7 +39,7 @@ export default function VerifyPage() {
         )}
         {state === "error" && (
           <>
-            <div className="auth-error">{detail || "Verification failed."}</div>
+            <div className="auth-error" role="alert">{detail || "Verification failed."}</div>
             <p className="auth-alt">
               The link may have expired. <a href="/login">Log in</a> and request a new one.
             </p>

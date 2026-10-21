@@ -60,7 +60,7 @@ export default function InvitePage() {
             </a>
           </>
         )}
-        {phase === "error" && <div className="auth-error">{message}</div>}
+        {phase === "error" && <div className="auth-error" role="alert">{message}</div>}
       </div>
     </div>
   );

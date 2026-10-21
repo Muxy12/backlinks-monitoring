@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   api,
@@ -151,6 +151,7 @@ export default function LinkavistaPage() {
             <input
               className="bl-search"
               placeholder="Search domain"
+              aria-label="Search domain"
               value={q}
               onChange={(e) => setQ(e.target.value)}
             />
@@ -159,6 +160,7 @@ export default function LinkavistaPage() {
               type="number"
               min="0"
               placeholder="DA min"
+              aria-label="Minimum Domain Authority"
               value={daMin}
               onChange={(e) => setDaMin(e.target.value)}
             />
@@ -167,6 +169,7 @@ export default function LinkavistaPage() {
               type="number"
               min="0"
               placeholder="TF min"
+              aria-label="Minimum Trust Flow"
               value={tfMin}
               onChange={(e) => setTfMin(e.target.value)}
             />
@@ -175,10 +178,15 @@ export default function LinkavistaPage() {
               type="number"
               min="0"
               placeholder="Max €"
+              aria-label="Maximum price in euros"
               value={priceMax}
               onChange={(e) => setPriceMax(e.target.value)}
             />
-            <select value={language} onChange={(e) => setLanguage(e.target.value)}>
+            <select
+              value={language}
+              aria-label="Filter by language"
+              onChange={(e) => setLanguage(e.target.value)}
+            >
               <option value="">Any language</option>
               <option value="en">English</option>
               <option value="fr">French</option>
@@ -307,6 +315,21 @@ function OrderModal({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<LinkavistaOrderOutcome | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  // Accessible dialog: move focus in on open, close on Escape, restore focus.
+  useEffect(() => {
+    const prev = document.activeElement as HTMLElement | null;
+    dialogRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      prev?.focus?.();
+    };
+  }, [onClose]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -336,10 +359,18 @@ function OrderModal({
 
   return (
     <div className="lav-modal-backdrop" onClick={onClose}>
-      <div className="lav-modal" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="lav-modal"
+        ref={dialogRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="lav-modal-title"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="lav-modal-head">
-          <h2>Order a link on {site.domain}</h2>
-          <button className="btn sm" onClick={onClose}>
+          <h2 id="lav-modal-title">Order a link on {site.domain}</h2>
+          <button className="btn sm" onClick={onClose} aria-label="Close">
             ✕
           </button>
         </div>
@@ -375,7 +406,7 @@ function OrderModal({
           </div>
         ) : (
           <form onSubmit={submit} className="ops-form">
-            {error && <div className="auth-error">{error}</div>}
+            {error && <div className="auth-error" role="alert">{error}</div>}
             <label className="auth-field">
               <span>Project (the site the link points to)</span>
               <select value={projectId} onChange={(e) => setProjectId(e.target.value)} required>

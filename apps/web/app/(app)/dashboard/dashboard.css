@@ -260,6 +260,8 @@
 .bl-table tr:last-child td { border-bottom: none; }
 .row-click { cursor: pointer; transition: background var(--t-fast) var(--ease); }
 .row-click:hover td { background: color-mix(in srgb, var(--primary) 5%, transparent); }
+.row-click:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+.row-click:focus-visible td { background: var(--primary-weak); }
 .mono { font-variant-numeric: tabular-nums; font-family: var(--font-mono); color: var(--muted); font-size: 12px; }
 /* Domain cells are the row's subject: readable, not muted metadata. */
 .cell-domain { color: var(--text); font-weight: 500; font-size: 13px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

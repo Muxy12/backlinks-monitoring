@@ -23,7 +23,7 @@
   --text: #0b1220;         /* primary text — deep navy */
   --text-2: #475268;       /* body secondary */
   --muted: #5a6578;        /* secondary text */
-  --muted-2: #8a94a6;      /* tertiary / labels */
+  --muted-2: #667085;      /* tertiary / labels — AA (≈4.6:1 on white) */
   --border: rgba(13, 24, 44, 0.09);
   --border-strong: rgba(13, 24, 44, 0.16);
   --border-hover: rgba(13, 24, 44, 0.16);
@@ -45,10 +45,10 @@
   --accent-2: #5e8bff;
 
   /* ── Semantic status ─────────────────────────────────────────────────── */
-  --live: #16a34a;         /* healthy / live */
+  --live: #15803d;         /* healthy / live — AA as text (≈4.5:1 on white) */
   --lost: #e11d48;         /* removed */
-  --changed: #d97706;      /* anchor/attribute changed */
-  --redirected: #7c5cff;   /* redirect */
+  --changed: #c2560a;      /* anchor/attribute changed — AA as text */
+  --redirected: #6d28d9;   /* redirect — AA as text */
   --nofollow: #b45309;     /* rel changed to nofollow */
   --broken: #dc2626;       /* http error */
   --pending: #64748b;      /* queued / checking */
@@ -120,7 +120,7 @@
   --text: #eaeef6;
   --text-2: #b4bdcc;
   --muted: #98a2b3;
-  --muted-2: #6b7688;
+  --muted-2: #8893a5;
   --border: rgba(255, 255, 255, 0.09);
   --border-strong: rgba(255, 255, 255, 0.18);
   --border-hover: rgba(255, 255, 255, 0.18);

@@ -4,6 +4,24 @@
 
 .shell { display: flex; min-height: 100vh; align-items: stretch; background: var(--bg); }
 
+/* Skip-to-content: first focusable element, visible only when focused. */
+.skip-link {
+  position: fixed;
+  left: 12px;
+  top: -60px;
+  z-index: 1000;
+  background: var(--primary);
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: var(--r-md);
+  font-weight: 600;
+  text-decoration: none;
+  transition: top 0.15s var(--ease);
+}
+.skip-link:focus { top: 12px; }
+/* The content region is a scripted skip target, not an interactive control. */
+.shell-main:focus { outline: none; }
+
 .sidebar {
   width: 240px;
   flex: none;

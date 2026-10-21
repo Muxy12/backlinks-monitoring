@@ -37,7 +37,7 @@ export default function LoginPage() {
         />
         <h1>Log in</h1>
         <p className="sub">Welcome back to LinkPulz.</p>
-        {error && <div className="auth-error">{error}</div>}
+        {error && <div className="auth-error" role="alert">{error}</div>}
         <label className="auth-field">
           <span>Email</span>
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
