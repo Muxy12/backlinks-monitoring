@@ -5,18 +5,20 @@ import { useRouter } from "next/navigation";
 import {
   api,
   orgApi,
+  type LinkavistaOrderOutcome,
   type LinkavistaSite,
   type LinkavistaSitesPage,
   type MeResponse,
+  type ProjectView,
 } from "@/lib/api";
 import { selectedOrg, selectedOrgId } from "@/lib/workspace";
 import "@/app/auth.css";
 import "../dashboard/dashboard.css";
 import "./linkavista.css";
 
-// LinkAvista marketplace catalogue (Lot 2): a read-only browse of buyable
-// placements. Gated on `features.linkavista` (API key configured server-side).
-// Ordering (Lot 3) is not here yet — this only surfaces inventory + metrics.
+// LinkAvista marketplace catalogue (Lot 2) + sandbox order flow (Lot 3a). The
+// order modal places a SANDBOX order — a dry-run preview with no real order and
+// no debit. Live ordering (real spend) is a later, explicitly confirmed step.
 const fmtCompact = (n: number | null | undefined) =>
   n == null ? "—" : Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 }).format(n);
 const euros = (cents: number | null | undefined) =>
@@ -27,6 +29,7 @@ export default function LinkavistaPage() {
   const [me, setMe] = useState<MeResponse | null>(null);
   const [orgId, setOrgId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [projects, setProjects] = useState<ProjectView[]>([]);
 
   // Filters
   const [q, setQ] = useState("");
@@ -40,13 +43,15 @@ export default function LinkavistaPage() {
   const [fetching, setFetching] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Order modal
+  const [orderSite, setOrderSite] = useState<LinkavistaSite | null>(null);
+
   useEffect(() => {
     api.me().then((res) => {
       if (!res.ok) {
         router.push("/login");
         return;
       }
-      // Env-gated: no API key configured -> nothing here, back to dashboard.
       if (!res.data.features?.linkavista) {
         router.replace("/dashboard");
         return;
@@ -56,6 +61,13 @@ export default function LinkavistaPage() {
       setLoading(false);
     });
   }, [router]);
+
+  useEffect(() => {
+    if (!orgId) return;
+    orgApi.projects(orgId).then((res) => {
+      if (res.ok) setProjects(res.data);
+    });
+  }, [orgId]);
 
   // Reset to page 1 whenever a filter changes.
   useEffect(() => {
@@ -178,8 +190,8 @@ export default function LinkavistaPage() {
         </div>
 
         <p className="lav-note">
-          Prices are in EUR, excl. VAT, as listed by LinkAvista. Placing an order from here is coming next;
-          for now this surfaces live inventory and metrics.
+          Prices are in EUR, excl. VAT, as listed by LinkAvista. Ordering runs in <b>sandbox</b> for now — placing an
+          order shows a price preview and does not spend anything.
         </p>
 
         {error ? (
@@ -194,7 +206,7 @@ export default function LinkavistaPage() {
           <>
             <div className="lav-grid" style={{ opacity: fetching ? 0.6 : 1 }}>
               {sites.map((s) => (
-                <SiteCard key={s.id} site={s} />
+                <SiteCard key={s.id} site={s} onOrder={() => setOrderSite(s)} />
               ))}
             </div>
             <div className="pager" style={{ marginTop: 16 }}>
@@ -204,22 +216,27 @@ export default function LinkavistaPage() {
               <span className="muted" style={{ margin: "0 10px" }}>
                 Page {result?.current_page ?? page} / {lastPage}
               </span>
-              <button
-                className="btn sm"
-                disabled={page >= lastPage}
-                onClick={() => setPage((p) => p + 1)}
-              >
+              <button className="btn sm" disabled={page >= lastPage} onClick={() => setPage((p) => p + 1)}>
                 Next
               </button>
             </div>
           </>
         )}
       </section>
+
+      {orderSite && orgId && (
+        <OrderModal
+          org={orgId}
+          site={orderSite}
+          projects={projects}
+          onClose={() => setOrderSite(null)}
+        />
+      )}
     </main>
   );
 }
 
-function SiteCard({ site }: { site: LinkavistaSite }) {
+function SiteCard({ site, onOrder }: { site: LinkavistaSite; onOrder: () => void }) {
   const m = site.metrics;
   const modes = site.writing_modes;
   return (
@@ -255,11 +272,164 @@ function SiteCard({ site }: { site: LinkavistaSite }) {
         <div className="lav-price">
           {euros(site.pricing?.price)} <small>excl. VAT</small>
         </div>
-        {modes && (
-          <div className="lav-modes">
-            {modes.platform && <span className="lav-mode">writing</span>}
-            {modes.advertiser && <span className="lav-mode">self</span>}
+        <button className="btn sm primary" onClick={onOrder} disabled={!(modes?.platform ?? true)}>
+          Order
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function defaultPublishDate(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 14);
+  return d.toISOString().slice(0, 10);
+}
+
+function OrderModal({
+  org,
+  site,
+  projects,
+  onClose,
+}: {
+  org: string;
+  site: LinkavistaSite;
+  projects: ProjectView[];
+  onClose: () => void;
+}) {
+  const [projectId, setProjectId] = useState(projects[0]?.id ?? "");
+  const [targetUrl, setTargetUrl] = useState("");
+  const [anchor, setAnchor] = useState("");
+  const [title, setTitle] = useState("");
+  const [brief, setBrief] = useState("");
+  const [redaction, setRedaction] = useState("classique");
+  const [publishDate, setPublishDate] = useState(defaultPublishDate());
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [outcome, setOutcome] = useState<LinkavistaOrderOutcome | null>(null);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (!projectId) {
+      setError("Pick a project.");
+      return;
+    }
+    setBusy(true);
+    const res = await orgApi.createLinkavistaOrder(org, {
+      site_id: site.id,
+      project_id: projectId,
+      target_url: targetUrl.trim(),
+      anchor_text: anchor.trim(),
+      article_title: title.trim(),
+      brief: brief.trim(),
+      redaction_option: redaction,
+      publish_date: publishDate,
+    });
+    setBusy(false);
+    if (!res.ok) {
+      setError(res.detail);
+      return;
+    }
+    setOutcome(res.data);
+  }
+
+  return (
+    <div className="lav-modal-backdrop" onClick={onClose}>
+      <div className="lav-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="lav-modal-head">
+          <h2>Order a link on {site.domain}</h2>
+          <button className="btn sm" onClick={onClose}>
+            ✕
+          </button>
+        </div>
+
+        {outcome ? (
+          <div className="lav-outcome">
+            <div className={`lav-outcome-badge${outcome.sandbox ? " sandbox" : ""}`}>
+              {outcome.sandbox ? "Sandbox — no order placed" : "Order placed"}
+            </div>
+            <p>
+              {outcome.sandbox
+                ? "This is a price preview. Nothing was ordered and nothing was charged."
+                : outcome.message ?? "Your order was submitted."}
+            </p>
+            <dl className="lav-outcome-grid">
+              <div>
+                <dt>{outcome.sandbox ? "Would cost" : "Price"}</dt>
+                <dd>
+                  {euros(outcome.would_debit_cents ?? outcome.price_cents)}{" "}
+                  <small>excl. VAT</small>
+                </dd>
+              </div>
+              <div>
+                <dt>Status</dt>
+                <dd>{outcome.would_create_status ?? outcome.status ?? "—"}</dd>
+              </div>
+            </dl>
+            <div className="lav-modal-actions">
+              <button className="btn sm" onClick={onClose}>
+                Close
+              </button>
+            </div>
           </div>
+        ) : (
+          <form onSubmit={submit} className="ops-form">
+            {error && <div className="auth-error">{error}</div>}
+            <label className="auth-field">
+              <span>Project (the site the link points to)</span>
+              <select value={projectId} onChange={(e) => setProjectId(e.target.value)} required>
+                <option value="">Select…</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}, {p.domain}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="auth-field">
+              <span>Target URL</span>
+              <input
+                value={targetUrl}
+                onChange={(e) => setTargetUrl(e.target.value)}
+                placeholder="https://your-site.com/page"
+                required
+              />
+            </label>
+            <label className="auth-field">
+              <span>Anchor text</span>
+              <input value={anchor} onChange={(e) => setAnchor(e.target.value)} required />
+            </label>
+            <label className="auth-field">
+              <span>Article title</span>
+              <input value={title} onChange={(e) => setTitle(e.target.value)} required />
+            </label>
+            <label className="auth-field">
+              <span>Brief (optional)</span>
+              <input
+                value={brief}
+                onChange={(e) => setBrief(e.target.value)}
+                placeholder="What the article should cover"
+              />
+            </label>
+            <div className="ops-money">
+              <label className="auth-field">
+                <span>Writing option</span>
+                <select value={redaction} onChange={(e) => setRedaction(e.target.value)}>
+                  <option value="classique">Standard</option>
+                  <option value="rapide">Fast</option>
+                  <option value="geo">Geo</option>
+                </select>
+              </label>
+              <label className="auth-field">
+                <span>Publish date</span>
+                <input type="date" value={publishDate} onChange={(e) => setPublishDate(e.target.value)} />
+              </label>
+            </div>
+            <button className="auth-btn" type="submit" disabled={busy}>
+              {busy ? "Checking…" : "Preview order (sandbox)"}
+            </button>
+          </form>
         )}
       </div>
     </div>

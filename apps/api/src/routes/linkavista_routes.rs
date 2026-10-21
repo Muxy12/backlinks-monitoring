@@ -7,10 +7,11 @@
 //! is a later increment and will be sandbox-first and explicitly confirmed.
 
 use crate::error::ApiError;
-use crate::session::current;
+use crate::session::{check_csrf, current};
 use crate::state::{ApiConfig, AppState};
 use axum::Json;
 use axum::extract::{Path, Query, State};
+use axum::http::HeaderMap;
 use axum_extra::extract::cookie::CookieJar;
 use common::Role;
 use crawler::linkavista::{self, SiteQuery};
@@ -69,4 +70,85 @@ pub async fn list_sites(
         ApiError::Validation(format!("linkavista: {e}"))
     })?;
     Ok(Json(page))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CreateOrderBody {
+    pub site_id: i64,
+    pub project_id: Uuid,
+    pub target_url: String,
+    pub anchor_text: String,
+    pub article_title: String,
+    pub brief: String,
+    /// Platform writing option: classique | rapide | geo. Defaults to classique.
+    pub redaction_option: Option<String>,
+    /// YYYY-MM-DD.
+    pub publish_date: String,
+}
+
+/// `POST /v1/organizations/{org_id}/linkavista/orders` — place a placement
+/// order for a project's target URL. Lot 3a is SANDBOX-ONLY: it refuses unless
+/// the deployment is in sandbox mode, so no real money can be spent here. With a
+/// sandbox key LinkAvista returns a dry-run (no order, no debit). Live ordering
+/// (with explicit confirmation) comes in Lot 3b.
+pub async fn create_order(
+    State(state): State<AppState>,
+    Path(org_id): Path<Uuid>,
+    jar: CookieJar,
+    headers: HeaderMap,
+    Json(body): Json<CreateOrderBody>,
+) -> Result<Json<linkavista::OrderOutcome>, ApiError> {
+    let client = linkavista::from_cfg(
+        state.cfg.linkavista_api_key.as_deref(),
+        state.cfg.linkavista_base_url.as_deref(),
+    )
+    .ok_or(ApiError::NotFound)?;
+
+    let (user, session) = current(&state, &jar).await?;
+    check_csrf(&jar, &headers, &session)?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Member)?;
+
+    // Hard safety gate: refuse to place a real (billable) order. Lot 3a only
+    // exercises the sandbox dry-run; live spending is a later, explicitly
+    // confirmed step.
+    if !state.cfg.linkavista_sandbox {
+        return Err(ApiError::Validation(
+            "live LinkAvista ordering is not enabled yet (sandbox only)".into(),
+        ));
+    }
+
+    // The project must belong to this org (404 otherwise).
+    db::repositories::projects::get(&state.pool, &scope, body.project_id).await?;
+
+    let anchor = body.anchor_text.trim();
+    let target = body.target_url.trim();
+    let title = body.article_title.trim();
+    if anchor.is_empty() || target.is_empty() || title.is_empty() {
+        return Err(ApiError::Validation(
+            "anchor text, target URL and article title are required".into(),
+        ));
+    }
+    let redaction = match body.redaction_option.as_deref() {
+        Some("rapide") => "rapide",
+        Some("geo") => "geo",
+        _ => "classique",
+    };
+
+    let req = linkavista::OrderRequest {
+        site_id: body.site_id,
+        content_provider: "platform".to_string(),
+        redaction_option: Some(redaction.to_string()),
+        article_title: title.to_string(),
+        brief: body.brief.trim().to_string(),
+        anchor_text: anchor.to_string(),
+        target_url: target.to_string(),
+        publish_date: body.publish_date.trim().to_string(),
+    };
+
+    let outcome = client.create_order(&req).await.map_err(|e| {
+        tracing::warn!(error = %e, "linkavista order failed");
+        ApiError::Validation(format!("linkavista: {e}"))
+    })?;
+    Ok(Json(outcome))
 }
