@@ -9,13 +9,14 @@ export default function DpaPage() {
   return (
     <ProseShell>
       <h1>Data Processing Agreement</h1>
-      <p className="prose-updated">Last updated: 8 October 2026</p>
+      <p className="prose-updated">Last updated: 21 October 2026</p>
 
       <p>
         This Data Processing Agreement (&quot;DPA&quot;) forms part of the{" "}
         <a href="/legal/terms">Terms of Service</a> between you (the &quot;Customer&quot;) and MeedWise
         (&quot;we&quot;, &quot;us&quot;), operator of LinkPulz, and applies where we process personal
-        data on your behalf under the GDPR (Regulation (EU) 2016/679).
+        data on your behalf under the GDPR (Regulation (EU) 2016/679) and, for customers in the United
+        Kingdom, the UK GDPR.
       </p>
 
       <div className="prose-note">
@@ -80,8 +81,12 @@ export default function DpaPage() {
 
       <h2>International transfers</h2>
       <p>
-        Where personal data is transferred outside the European Economic Area, the transfer relies on
-        appropriate safeguards such as the European Commission&apos;s Standard Contractual Clauses.
+        Where personal data is transferred outside the European Economic Area or the United Kingdom,
+        the transfer relies on appropriate safeguards, such as the European Commission&apos;s Standard
+        Contractual Clauses, the UK International Data Transfer Addendum for data from the UK, and, for
+        US sub-processors, their certification under the EU-US and UK Extension of the Data Privacy
+        Framework where available. Where the Standard Contractual Clauses apply, they are incorporated
+        into this DPA by reference.
       </p>
 
       <h2>Deletion &amp; return</h2>

@@ -9,7 +9,7 @@ export default function SubprocessorsPage() {
   return (
     <ProseShell>
       <h1>Sub-processors</h1>
-      <p className="prose-updated">Last updated: 8 October 2026</p>
+      <p className="prose-updated">Last updated: 21 October 2026</p>
 
       <p>
         To run LinkPulz, MeedWise relies on the infrastructure and service providers listed below.
@@ -66,8 +66,11 @@ export default function SubprocessorsPage() {
 
       <h2>International transfers</h2>
       <p>
-        Where a provider processes data outside the European Economic Area, the transfer is covered by
-        appropriate safeguards such as the European Commission&apos;s Standard Contractual Clauses.
+        Several of these providers are located in the United States. Where a provider processes personal
+        data outside the European Economic Area or the United Kingdom, the transfer is covered by
+        appropriate safeguards, such as the European Commission&apos;s Standard Contractual Clauses, the
+        UK International Data Transfer Addendum for data from the UK, and, for US providers, their
+        certification under the EU-US and UK Extension of the Data Privacy Framework where available.
       </p>
 
       <h2>Changes</h2>
