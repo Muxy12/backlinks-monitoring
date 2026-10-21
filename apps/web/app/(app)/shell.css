@@ -49,7 +49,17 @@
   white-space: nowrap;
 }
 
-.side-nav { display: flex; flex-direction: column; gap: 2px; }
+/* The nav takes the free space and scrolls when the sidebar is taller than the
+   viewport, so the pinned bottom block (settings + user/log-out) stays visible
+   on short screens instead of being pushed off-screen. */
+.side-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  min-height: 0;
+}
 
 /* ── Nav sections ──────────────────────────────────────────────────────── */
 .side-group { display: flex; flex-direction: column; gap: 2px; margin-bottom: 12px; }
@@ -101,7 +111,9 @@
   outline: 2px solid var(--primary);
   outline-offset: -2px;
 }
-.side-spacer { flex: 1 1 auto; min-height: 8px; }
+/* Legacy filler: the scrollable .side-nav now provides the gap, so this must
+   not grow (it would fight .side-nav for space and un-pin the bottom block). */
+.side-spacer { display: none; }
 
 .shell-main { flex: 1 1 auto; min-width: 0; }
 
