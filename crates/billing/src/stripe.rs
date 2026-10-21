@@ -140,8 +140,9 @@ pub async fn create_checkout_session(
     email: &str,
     success_url: &str,
     cancel_url: &str,
+    collect_tax: bool,
 ) -> Result<String, String> {
-    let form: Vec<(&str, String)> = vec![
+    let mut form: Vec<(&str, String)> = vec![
         ("mode", "subscription".into()),
         ("line_items[0][price]", price.to_string()),
         ("line_items[0][quantity]", "1".into()),
@@ -158,6 +159,16 @@ pub async fn create_checkout_session(
         ),
         ("subscription_data[metadata][plan]", plan_slug.to_string()),
     ];
+    // Stripe Tax: compute and collect VAT/sales tax at checkout, let EU business
+    // buyers enter a VAT number (reverse charge), and collect the billing address
+    // tax computation needs. Gated by STRIPE_TAX_ENABLED because it requires the
+    // Stripe account to have Tax enabled and every Price to carry a `tax_behavior`
+    // (otherwise Stripe rejects the session) — so it stays off until configured.
+    if collect_tax {
+        form.push(("automatic_tax[enabled]", "true".into()));
+        form.push(("tax_id_collection[enabled]", "true".into()));
+        form.push(("billing_address_collection", "required".into()));
+    }
     let json = post_form(secret, "https://api.stripe.com/v1/checkout/sessions", &form).await?;
     json["url"]
         .as_str()
