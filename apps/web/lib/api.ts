@@ -41,6 +41,51 @@ export interface OrgView {
 export interface Features {
   campaigns_beta: boolean;
   gsc?: boolean;
+  linkavista?: boolean;
+}
+
+// LinkAvista marketplace catalogue (read-only browse, Lot 2). Prices are in EUR
+// cents, excl. VAT, exactly as LinkAvista returns them.
+export interface LinkavistaMetrics {
+  da: number | null;
+  tf: number | null;
+  cf: number | null;
+  rd: number | null;
+  total_traffic: number | null;
+  keyword_count: number | null;
+}
+export interface LinkavistaPricing {
+  price: number | null;
+  redaction_price: number | null;
+  currency: string | null;
+}
+export interface LinkavistaWritingModes {
+  platform: boolean;
+  advertiser: boolean;
+  editor: boolean;
+}
+export interface LinkavistaConstraints {
+  max_links: number | null;
+  min_words: number | null;
+}
+export interface LinkavistaSite {
+  id: number;
+  domain: string;
+  url: string | null;
+  language: string | null;
+  theme: string | null;
+  theme_score: number | null;
+  metrics: LinkavistaMetrics | null;
+  pricing: LinkavistaPricing | null;
+  writing_modes: LinkavistaWritingModes | null;
+  constraints: LinkavistaConstraints | null;
+}
+export interface LinkavistaSitesPage {
+  data: LinkavistaSite[];
+  current_page: number;
+  last_page: number;
+  total: number;
+  per_page: number;
 }
 export interface GscStatus {
   configured: boolean;
@@ -965,6 +1010,32 @@ export const orgApi = {
       headers: csrfHeader(),
     }),
   campaigns: (org: string) => request<CampaignView[]>(`/v1/organizations/${org}/campaigns`),
+  // LinkAvista catalogue browse (read-only). `priceMax` is in EUR cents.
+  linkavistaSites: (
+    org: string,
+    opts: {
+      daMin?: number;
+      tfMin?: number;
+      priceMax?: number;
+      language?: string;
+      q?: string;
+      page?: number;
+      perPage?: number;
+    } = {},
+  ) => {
+    const p = new URLSearchParams();
+    if (opts.daMin != null) p.set("da_min", String(opts.daMin));
+    if (opts.tfMin != null) p.set("tf_min", String(opts.tfMin));
+    if (opts.priceMax != null) p.set("price_max", String(opts.priceMax));
+    if (opts.language) p.set("language", opts.language);
+    if (opts.q) p.set("q", opts.q);
+    if (opts.page != null) p.set("page", String(opts.page));
+    if (opts.perPage != null) p.set("per_page", String(opts.perPage));
+    const qs = p.toString();
+    return request<LinkavistaSitesPage>(
+      `/v1/organizations/${org}/linkavista/sites${qs ? `?${qs}` : ""}`,
+    );
+  },
   campaign: (org: string, id: string) =>
     request<CampaignView>(`/v1/organizations/${org}/campaigns/${id}`),
   createCampaign: (org: string, body: NewCampaign) =>

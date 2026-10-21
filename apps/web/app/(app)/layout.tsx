@@ -49,18 +49,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [me, setMe] = useState<MeResponse | null>(null);
   const isAdmin = !!me?.user.is_admin;
   const campaignsBeta = !!me?.features?.campaigns_beta;
-  // Surface the link-building workflow under "Grow" only when the BETA is on.
-  const sections = SECTIONS.map((s) =>
-    s.title === "Grow" && campaignsBeta
-      ? {
-          ...s,
-          links: [
-            ...s.links,
-            { href: "/campaigns", label: "Link Building", icon: "campaigns", badge: "BETA" },
-          ],
-        }
-      : s,
-  );
+  const linkavista = !!me?.features?.linkavista;
+  // Surface extra "Grow" tools only when their feature flags are on.
+  const sections = SECTIONS.map((s) => {
+    if (s.title !== "Grow") return s;
+    const links = [...s.links];
+    if (campaignsBeta)
+      links.push({ href: "/campaigns", label: "Link Building", icon: "campaigns", badge: "BETA" });
+    if (linkavista)
+      links.push({ href: "/linkavista", label: "Marketplace", icon: "competitors", badge: "BETA" });
+    return { ...s, links };
+  });
   const orgs = me?.organizations ?? [];
   const current = selectedOrg(orgs);
   const workspace = current?.name ?? null;
