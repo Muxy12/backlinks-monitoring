@@ -17,7 +17,9 @@
   padding: 32px;
   box-shadow: var(--shadow-lg);
 }
-.auth-logo { display: block; width: 44px; height: 44px; border-radius: 11px; margin-bottom: 18px; }
+/* The logo lockup has white "Link" text, so it sits on a dark chip to stay
+   legible on the (possibly light) auth card. */
+.auth-logo { display: inline-block; height: 30px; width: auto; background: #0b1220; padding: 8px 12px; border-radius: 12px; margin-bottom: 18px; }
 .auth-card h1 { font-size: 22px; letter-spacing: -0.02em; line-height: 1.2; margin-bottom: 4px; }
 .auth-card p.sub { color: var(--muted); font-size: 14px; margin-bottom: 24px; }
 .auth-field { display: block; margin-bottom: 16px; }
