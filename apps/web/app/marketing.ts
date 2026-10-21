@@ -244,9 +244,11 @@ export const MARKETING_STYLE = `
 #lp-home .final .btn{background:#fff;color:#111720!important;border-color:#fff;box-shadow:none}
 
 #lp-home footer.site{padding:52px 0 40px;border-top:1px solid var(--line);font-size:.92rem;color:var(--muted)}
-#lp-home footer.site .cols{display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr 1fr;gap:28px 32px}
-@media(max-width:860px){#lp-home footer.site .cols{grid-template-columns:1.4fr 1fr 1fr}}
-@media(max-width:560px){#lp-home footer.site .cols{grid-template-columns:1fr 1fr}}
+#lp-home footer.site .cols{display:grid;grid-template-columns:1.3fr repeat(5,1fr);gap:28px 28px}
+@media(max-width:980px){#lp-home footer.site .cols{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:560px){#lp-home footer.site .cols{grid-template-columns:repeat(2,1fr)}}
+#lp-home footer.site .foot-legal{margin-top:24px;display:flex;flex-wrap:wrap;align-items:center;gap:6px 0}
+#lp-home footer.site .foot-legal a{display:inline-block;margin-left:14px}
 #lp-home footer.site .cols>div>b{display:block;color:var(--ink);font-weight:650;font-size:.82rem;letter-spacing:.01em;margin-bottom:12px}
 #lp-home footer.site a{color:var(--muted);display:block;margin-bottom:9px;text-decoration:none;text-underline-offset:3px;transition:color .14s}
 #lp-home footer.site a:hover{color:var(--brand);text-decoration:underline}
@@ -321,7 +323,7 @@ export const MARKETING_STYLE = `
 export const MARKETING_HEADER = `
 <header class="site">
   <div class="wrap">
-    <a class="logo" href="/" aria-label="LinkPulz home"><img src="https://ye8jhaekbbcviws9.public.blob.vercel-storage.com/Logo_LinkPulz_en_n%C3%A9on_d%C3%A9grad%C3%A9.png" alt="LinkPulz backlink monitoring software" title="LinkPulz" width="866" height="288" style="height:28px;width:auto;display:block"></a>
+    <a class="logo" href="/" aria-label="LinkPulz home"><img src="https://ye8jhaekbbcviws9.public.blob.vercel-storage.com/Logo_LinkPulz_en_n%C3%A9on_d%C3%A9grad%C3%A9.png" alt="LinkPulz backlink monitoring software" title="LinkPulz" width="866" height="288" style="height:40px;width:auto;display:block"></a>
     <input type="checkbox" id="lp-nav-toggle" class="nav-toggle">
     <label for="lp-nav-toggle" class="nav-burger" aria-label="Open menu"><span></span><span></span><span></span></label>
     <nav class="main" aria-label="Main">
@@ -341,13 +343,17 @@ export const MARKETING_FOOTER = `
     <div id="lp-newsletter" class="nl-slot"></div>
   </div>
   <div class="wrap cols">
-    <div><a class="logo" href="/" aria-label="LinkPulz home"><img src="https://ye8jhaekbbcviws9.public.blob.vercel-storage.com/Logo_LinkPulz_en_n%C3%A9on_d%C3%A9grad%C3%A9.png" alt="LinkPulz backlink monitoring software" title="LinkPulz" width="866" height="288" style="height:26px;width:auto;display:block"></a><p class="micro" style="margin-top:8px">Backlink monitoring software.</p><a href="https://www.linkedin.com/showcase/linkpulz" target="_blank" rel="noopener noreferrer me" aria-label="LinkPulz on LinkedIn" style="display:inline-flex;align-items:center;gap:6px;margin-top:4px"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style="flex:none"><path d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.42v1.56h.05c.47-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13zM7.12 20.45H3.55V9h3.57v11.45zM22.23 0H1.77C.79 0 0 .77 0 1.73v20.54C0 23.22.79 24 1.77 24h20.46c.98 0 1.77-.78 1.77-1.73V1.73C24 .77 23.21 0 22.23 0z"/></svg>LinkedIn</a></div>
+    <div><a class="logo" href="/" aria-label="LinkPulz home"><img src="https://ye8jhaekbbcviws9.public.blob.vercel-storage.com/Logo_LinkPulz_en_n%C3%A9on_d%C3%A9grad%C3%A9.png" alt="LinkPulz backlink monitoring software" title="LinkPulz" width="866" height="288" style="height:34px;width:auto;display:block"></a><p class="micro" style="margin-top:8px">Backlink monitoring software.</p><a href="https://www.linkedin.com/showcase/linkpulz" target="_blank" rel="noopener noreferrer me" aria-label="LinkPulz on LinkedIn" style="display:inline-flex;align-items:center;gap:6px;margin-top:4px"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style="flex:none"><path d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.42v1.56h.05c.47-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13zM7.12 20.45H3.55V9h3.57v11.45zM22.23 0H1.77C.79 0 0 .77 0 1.73v20.54C0 23.22.79 24 1.77 24h20.46c.98 0 1.77-.78 1.77-1.73V1.73C24 .77 23.21 0 22.23 0z"/></svg>LinkedIn</a></div>
     <div><b>Product</b><a href="/lost-backlinks">Lost backlinks</a><a href="/broken-backlinks">Broken backlinks</a><a href="/verify-backlinks">Verify a backlink</a><a href="/backlink-health-check">Backlink health check</a></div>
-    <div><b>Guides</b><a href="/backlink-management">Backlink management</a><a href="/backlink-audit">Backlink audit</a><a href="/backlink-profile">Backlink profile</a><a href="/backlink-reporting">Backlink reporting</a></div>
-    <div><b>Tools</b><a href="/tools/backlink-checker">Free backlink checker</a><a href="/glossary">Glossary</a><a href="/docs">Documentation</a><a href="/pricing">Pricing</a></div>
-    <div><b>Company</b><a href="/register">Start free trial</a><a href="/login">Log in</a><a href="/legal">Legal</a><a href="/legal/privacy">Privacy</a><a href="/legal/terms">Terms</a><a href="/legal/notice">Legal notice</a></div>
+    <div><b>Guides</b><a href="/backlink-management">Backlink management</a><a href="/backlink-audit">Backlink audit</a><a href="/backlink-profile">Backlink profile</a><a href="/backlink-reporting">Backlink reporting</a><a href="/glossary">Glossary</a></div>
+    <div><b>By use case</b><a href="/backlink-monitoring-for/agencies">For agencies</a><a href="/backlink-monitoring-for/saas">For SaaS</a><a href="/backlink-monitoring-for/ecommerce">For ecommerce</a><a href="/backlink-monitoring-for/consultants">For consultants</a><a href="/backlink-monitoring-for/affiliates">For affiliates</a></div>
+    <div><b>Alternatives</b><a href="/alternatives/ahrefs">vs Ahrefs</a><a href="/alternatives/semrush">vs Semrush</a><a href="/alternatives/monitor-backlinks">vs Monitor Backlinks</a><a href="/alternatives/moz">vs Moz</a><a href="/alternatives/majestic">vs Majestic</a><a href="/alternatives">Compare all</a></div>
+    <div><b>Company</b><a href="/tools/backlink-checker">Free backlink checker</a><a href="/docs">Documentation</a><a href="/pricing">Pricing</a><a href="/login">Log in</a><a href="/register">Start free trial</a></div>
   </div>
-  <div class="wrap micro" style="margin-top:24px">© <span id="y">2026</span> LinkPulz, a service of MeedWise (SASU), Paris, France. All rights reserved.</div>
+  <div class="wrap foot-legal micro">
+    <span>© <span id="y">2026</span> LinkPulz, a service of MeedWise (SASU), Paris, France. All rights reserved.</span>
+    <a href="/legal">Legal</a><a href="/legal/privacy">Privacy</a><a href="/legal/terms">Terms</a><a href="/legal/notice">Legal notice</a>
+  </div>
 </footer>`;
 
 /**
