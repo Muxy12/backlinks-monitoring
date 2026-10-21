@@ -203,7 +203,7 @@ export default function ClientsPage() {
           <section className="panel">
             <div className="panel-head"><h2>{editId ? "Edit client" : "New client"}</h2></div>
             <form onSubmit={submit} className="ops-form">
-              {error && <div className="auth-error">{error}</div>}
+              {error && <div className="auth-error" role="alert">{error}</div>}
               <label className="auth-field">
                 <span>Name</span>
                 <input value={name} onChange={(e) => setName(e.target.value)} required />

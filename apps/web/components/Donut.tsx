@@ -36,7 +36,7 @@ export function Donut({
 
   return (
     <div className="donut">
-      <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} role="img" aria-label={centerLabel ?? "chart"}>
+      <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} role="img" aria-label={centerLabel ?? "Distribution chart"}>
         <circle cx={cx} cy={cx} r={r} fill="none" stroke="var(--surface-3)" strokeWidth={stroke} />
         {total > 0 &&
           arcs.map((a, i) => (

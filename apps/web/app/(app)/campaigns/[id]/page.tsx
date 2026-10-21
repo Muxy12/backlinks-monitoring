@@ -342,7 +342,7 @@ function OverviewTab({
             </ul>
           )}
           <form onSubmit={addTarget} className="ops-form" style={{ marginTop: 10 }}>
-            {err && <div className="auth-error">{err}</div>}
+            {err && <div className="auth-error" role="alert">{err}</div>}
             <label className="auth-field">
               <span>Target URL</span>
               <input
@@ -1099,7 +1099,7 @@ function EditCampaignPanel({
         <h2>Edit campaign</h2>
       </div>
       <form onSubmit={save} className="ops-form">
-        {error && <div className="auth-error">{error}</div>}
+        {error && <div className="auth-error" role="alert">{error}</div>}
         <label className="auth-field">
           <span>Name</span>
           <input value={name} onChange={(e) => setName(e.target.value)} required />

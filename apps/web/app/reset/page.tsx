@@ -51,7 +51,7 @@ export default function ResetPage() {
           </>
         ) : (
           <>
-            {error && <div className="auth-error">{error}</div>}
+            {error && <div className="auth-error" role="alert">{error}</div>}
             <label className="auth-field">
               <span>New password</span>
               <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="new-password" />

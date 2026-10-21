@@ -196,3 +196,5 @@
   font-weight: 500;
   color: var(--muted);
 }
+
+.lav-modal:focus-visible { outline: none; }

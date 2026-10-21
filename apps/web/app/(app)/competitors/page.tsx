@@ -200,7 +200,7 @@ export default function CompetitorsPage() {
                 <span>Add competitor domain</span>
                 <input value={domain} onChange={(e) => setDomain(e.target.value)} placeholder="competitor.com" disabled={!projectId} />
               </label>
-              {err && <div className="auth-error">{err}</div>}
+              {err && <div className="auth-error" role="alert">{err}</div>}
               <button className="btn primary" type="submit" disabled={!projectId}>Add competitor</button>
             </form>
           </section>

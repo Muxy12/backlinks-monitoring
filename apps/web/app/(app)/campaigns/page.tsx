@@ -187,7 +187,7 @@ function NewCampaignForm({
         <h2>New campaign</h2>
       </div>
       <form onSubmit={create} className="ops-form">
-        {error && <div className="auth-error">{error}</div>}
+        {error && <div className="auth-error" role="alert">{error}</div>}
         <label className="auth-field">
           <span>Project</span>
           <select value={projectId} onChange={(e) => setProjectId(e.target.value)} required>

@@ -95,6 +95,20 @@ export default function BacklinksPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [addBusy, setAddBusy] = useState(false);
   const [addErr, setAddErr] = useState<string | null>(null);
+
+  // Close any open drawer (add / notifications / detail) with Escape.
+  useEffect(() => {
+    if (!showAdd && !showNotifs && !selected) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setShowAdd(false);
+        setShowNotifs(false);
+        setSelected(null);
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [showAdd, showNotifs, selected]);
   const [addForm, setAddForm] = useState({
     project_id: "",
     source_url: "",
@@ -742,7 +756,7 @@ export default function BacklinksPage() {
           <p className="muted">{me.user.email}</p>
         </div>
         <div className="head-actions">
-          <button className="btn bell" onClick={() => setShowNotifs((v) => !v)} aria-label="Notifications">
+          <button className="btn bell" onClick={() => setShowNotifs((v) => !v)} aria-label="Notifications" aria-expanded={showNotifs} aria-haspopup="dialog">
             <Icon name="bell" size={17} />
             {notifs && notifs.unread > 0 && <span className="bell-badge">{notifs.unread}</span>}
           </button>
@@ -1034,10 +1048,15 @@ export default function BacklinksPage() {
                 <input
                   className="bl-search"
                   placeholder="Search domain/anchor"
+                  aria-label="Search backlinks by domain or anchor"
                   value={searchQ}
                   onChange={(e) => setSearchQ(e.target.value)}
                 />
-                <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                <select
+                  aria-label="Filter by status"
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                >
                   <option value="">All statuses</option>
                   {STATUSES.map((st) => (
                     <option key={st} value={st}>{statusLabel(st)}</option>
@@ -1254,7 +1273,20 @@ export default function BacklinksPage() {
                     </tr>
                   )}
                   {visibleBacklinks.map((b) => (
-                    <tr key={b.id} className="row-click" onClick={() => void openDetail(b)}>
+                    <tr
+                      key={b.id}
+                      className="row-click"
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Open backlink from ${b.source_domain}`}
+                      onClick={() => void openDetail(b)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          void openDetail(b);
+                        }
+                      }}
+                    >
                       <td onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
@@ -1315,7 +1347,14 @@ export default function BacklinksPage() {
       )}
       {showAdd && (
         <div className="drawer-backdrop" onClick={() => setShowAdd(false)}>
-          <aside className="drawer" onClick={(e) => e.stopPropagation()}>
+          <aside
+            className="drawer"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Add backlinks"
+            tabIndex={-1}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="panel-head">
               <h2>Add backlinks</h2>
               <button className="btn" onClick={() => setShowAdd(false)}>Close</button>
@@ -1483,7 +1522,14 @@ export default function BacklinksPage() {
       )}
       {showNotifs && (
         <div className="drawer-backdrop" onClick={() => setShowNotifs(false)}>
-          <aside className="drawer" onClick={(e) => e.stopPropagation()}>
+          <aside
+            className="drawer"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Notifications"
+            tabIndex={-1}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="panel-head">
               <h2>Notifications</h2>
               <div className="panel-actions"><a className="btn sm" href="/settings/notifications">Settings</a><button className="btn" onClick={() => setShowNotifs(false)}>Close</button></div>
@@ -1511,7 +1557,14 @@ export default function BacklinksPage() {
       )}
       {selected && (
         <div className="drawer-backdrop" onClick={() => setSelected(null)}>
-          <aside className="drawer" onClick={(e) => e.stopPropagation()}>
+          <aside
+            className="drawer"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Backlink details"
+            tabIndex={-1}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="panel-head">
               <h2>Backlink history</h2>
               <div className="panel-actions">
