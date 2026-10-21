@@ -1,6 +1,6 @@
 import { SITE_URL } from "@/lib/site";
 
-// /pricing.txt — machine-readable pricing for AI agents that compare products
+// /pricing.txt, machine-readable pricing for AI agents that compare products
 // programmatically before a human visits (ai-seo: opaque/JS-gated pricing gets
 // filtered out of AI-mediated buying journeys). Plain markdown, no JS, no login.
 //
@@ -12,15 +12,15 @@ import { SITE_URL } from "@/lib/site";
 export const revalidate = 3600;
 
 export async function GET() {
-  const body = `# Pricing — LinkPulz
+  const body = `# Pricing, LinkPulz
 
 LinkPulz is backlink monitoring software for SEO teams, link builders and agencies.
 Every plan includes a 10-day free trial with no credit card required, and re-checks
 every backlink on a schedule you set (daily, weekly, bi-weekly or monthly).
 
 Currency: USD. VAT included where applicable. Billing: monthly or annual (annual is
-billed once a year at the price of 10 months — 2 months free). Cancel anytime.
-Going over a plan limit never stops monitoring or deletes data — you just can't add
+billed once a year at the price of 10 months, 2 months free). Cancel anytime.
+Going over a plan limit never stops monitoring or deletes data, you just can't add
 new backlinks, projects or users until you upgrade.
 
 ## Starter

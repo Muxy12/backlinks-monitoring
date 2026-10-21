@@ -5,7 +5,7 @@ import { GA_ID } from "@/lib/site";
 import { CONSENT_KEY } from "./cookie-banner";
 
 // Google Analytics 4, loaded ONLY after the visitor consents to analytics (the
-// cookie banner stores "all") and ONLY in production — so dev/preview traffic
+// cookie banner stores "all") and ONLY in production, so dev/preview traffic
 // never pollutes the property, and no tracking cookie is set before consent.
 //
 // The tag is injected from client code at runtime. Under our strict CSP

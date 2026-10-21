@@ -2,7 +2,7 @@
 // brief (full "backlink monitoring" narrative: what/why/how, feature deep-dives,
 // a self-assessment, checker-vs-monitor + competitor comparisons, transparency,
 // pricing and FAQ). Every placeholder in the brief is resolved against the
-// shipped product — 10-day free trial, no card; checks on a schedule you set
+// shipped product, 10-day free trial, no card; checks on a schedule you set
 // (daily/weekly/bi-weekly/monthly); email/Slack/webhook alerts; CSV import and
 // export; competitor gap analysis; plans $29–$199. No invented testimonials or
 // case studies. The six+ product shots are inline `.shot` UI mockups built from
@@ -244,7 +244,7 @@ const QUIZ_STYLE = `<style>
 @media(max-width:1000px){#lp-home .cards.five{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:680px){#lp-home .cards.five{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:460px){#lp-home .cards.five{grid-template-columns:1fr}}
-/* ===== Live "pulse" hero monitor — the Pulz heartbeat made literal, in pure CSS
+/* ===== Live "pulse" hero monitor, the Pulz heartbeat made literal, in pure CSS
    (no JS, so the hero stays edge-cacheable). An ECG line sweeps while monitored
    links tick; on a 9s loop one link flips Live -> Lost and an alert slides in.
    Reduced motion freezes it on a calm, all-live state. ===== */

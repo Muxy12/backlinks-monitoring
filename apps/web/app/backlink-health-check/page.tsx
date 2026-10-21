@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 export const dynamic = "force-static"; // public content → prerender + edge cache (pairs with the static marketing CSP in middleware.ts)
 import { marketingPage } from "../marketing";
 
-// Backlink Health Check — SEO tool/guide page on the shared marketing shell.
+// Backlink Health Check, SEO tool/guide page on the shared marketing shell.
 // Unique content targeting "backlink health check". The dashboard figures are
 // illustrative; TO CONFIRM markers flag claims to verify before launch (how the
 // score is calculated, history, check frequency).

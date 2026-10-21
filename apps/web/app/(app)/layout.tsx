@@ -11,8 +11,8 @@ import "./dashboard/dashboard.css";
 import "./shell.css";
 
 // Shared shell for every authenticated page (route group "(app)", so URLs are
-// unchanged). It owns the cross-cutting navigation — a vertical sidebar on
-// desktop, a slide-in drawer on mobile — so pages only render their own title
+// unchanged). It owns the cross-cutting navigation, a vertical sidebar on
+// desktop, a slide-in drawer on mobile, so pages only render their own title
 // and content, never the nav.
 type Link = { href: string; label: string; icon: string; badge?: string };
 const SECTIONS: { title: string; links: Link[] }[] = [

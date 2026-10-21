@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 export const dynamic = "force-static"; // public content → prerender + edge cache (pairs with the static marketing CSP in middleware.ts)
 import { marketingPage } from "../marketing";
 
-// Backlink Reporting — SEO guide/tool page on the shared marketing shell. Unique
+// Backlink Reporting, SEO guide/tool page on the shared marketing shell. Unique
 // content targeting "backlink reporting" / "backlink reports for clients". Intent:
 // communicating backlink status to clients and stakeholders (agencies, in-house,
 // freelancers), distinct from management, audit and profile. TO CONFIRM markers

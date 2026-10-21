@@ -26,8 +26,8 @@ const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem('backlio_theme'
 
 // First-touch marketing attribution (docs/20 §P8). Runs site-wide before React;
 // stores utm_* + referrer + landing path in localStorage the first time a visit
-// carries a signal (utm params or an external referrer). First-touch only — a
-// later visit never overwrites it — and it's read once at signup.
+// carries a signal (utm params or an external referrer). First-touch only, a
+// later visit never overwrites it, and it's read once at signup.
 const ATTRIBUTION_SCRIPT = `(function(){try{var K='backlio_attribution';if(localStorage.getItem(K))return;var p=new URLSearchParams(location.search);var g=function(k){var v=p.get(k);return v?v.slice(0,400):'';};var ref=document.referrer||'';var ext=false;if(ref){try{ext=new URL(ref).hostname!==location.hostname;}catch(e){}}var us=g('utm_source'),um=g('utm_medium'),uc=g('utm_campaign');if(us||um||uc||ext){localStorage.setItem(K,JSON.stringify({utm_source:us,utm_medium:um,utm_campaign:uc,utm_term:g('utm_term'),utm_content:g('utm_content'),referrer:ref.slice(0,400),landing_path:location.pathname.slice(0,400)}));}}catch(e){}})();`;
 
 export const metadata: Metadata = {
@@ -49,18 +49,18 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  // The per-request nonce (set by middleware.ts) opts dynamic routes — the app
-  // and auth pages — into dynamic rendering, so Next stamps that nonce onto its
+  // The per-request nonce (set by middleware.ts) opts dynamic routes, the app
+  // and auth pages, into dynamic rendering, so Next stamps that nonce onto its
   // scripts and the strict `script-src 'nonce-…'` CSP works (docs/11 S8). We reuse
   // it for the inline scripts below. On the public marketing pages (which declare
   // `export const dynamic = "force-static"`), `headers()` returns empty, the
   // scripts render without a nonce, and the static marketing CSP allows them via
-  // 'unsafe-inline' — which is what lets those pages be cached at the edge.
+  // 'unsafe-inline', which is what lets those pages be cached at the edge.
   const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     <html lang="en" className={inter.variable} suppressHydrationWarning>
       <head>
-        {/* Blob storage serves the brand assets (logo, hero) — open the
+        {/* Blob storage serves the brand assets (logo, hero), open the
             connection early so they aren't gated behind DNS+TLS on first paint. */}
         <link rel="preconnect" href="https://ye8jhaekbbcviws9.public.blob.vercel-storage.com" />
         <link rel="dns-prefetch" href="https://ye8jhaekbbcviws9.public.blob.vercel-storage.com" />

@@ -27,7 +27,7 @@ export function CookieBanner() {
     try {
       localStorage.setItem(CONSENT_KEY, value);
     } catch {
-      /* private mode / blocked — just hide for this session */
+      /* private mode / blocked, just hide for this session */
     }
     if (value === "all") {
       // Tell the analytics loader to start now, without a reload.
@@ -44,7 +44,7 @@ export function CookieBanner() {
     <div className="cookie-banner" role="region" aria-label="Cookie choices">
       <p className="cookie-text">
         We use essential cookies to keep you signed in and secure the app. With your consent we also
-        use Google Analytics to understand how the site is used — never advertising cookies.{" "}
+        use Google Analytics to understand how the site is used, never advertising cookies.{" "}
         <a href="/legal/cookies">Learn more</a>.
       </p>
       <div className="cookie-actions">

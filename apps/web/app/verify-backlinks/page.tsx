@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 export const dynamic = "force-static"; // public content → prerender + edge cache (pairs with the static marketing CSP in middleware.ts)
 import { marketingPage } from "../marketing";
 
-// Verify Backlinks — SEO tool page. Content kept verbatim (copy, example results,
+// Verify Backlinks, SEO tool page. Content kept verbatim (copy, example results,
 // comparison table, FAQ, JSON-LD, TO CONFIRM placeholders). Built on the shared
 // marketing shell (./marketing.ts) so the charte, header and footer match the
 // homepage. Head SEO goes through Next metadata; the JSON-LD graph stays inline.

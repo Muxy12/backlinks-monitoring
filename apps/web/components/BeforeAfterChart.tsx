@@ -1,7 +1,7 @@
 "use client";
 
 // A dependency-free, themeable before/after bar pair for a backlink's Post-Link
-// Impact. Two bars — the window BEFORE acquisition and the window AFTER — split
+// Impact. Two bars, the window BEFORE acquisition and the window AFTER, split
 // by a dashed T0 marker. Deliberately plain: it shows an observed change, never a
 // causal claim (the label says "around acquisition", the tooltip "T0 = acquired").
 // Colors come from CSS tokens so it adapts to light/dark.

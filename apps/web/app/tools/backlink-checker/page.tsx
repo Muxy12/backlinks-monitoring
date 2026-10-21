@@ -151,20 +151,20 @@ export default function BacklinkCheckerPage() {
               </div>
               <ul className="check">
                 <li>
-                  <b>Link status</b> — whether the source page currently links to your target URL.
+                  <b>Link status</b>, whether the source page currently links to your target URL.
                 </li>
                 <li>
-                  <b>Anchor text</b> — the exact clickable text used for the link.
+                  <b>Anchor text</b>, the exact clickable text used for the link.
                 </li>
                 <li>
-                  <b>Dofollow or nofollow</b> — plus the raw rel attributes found (nofollow, sponsored, UGC).
+                  <b>Dofollow or nofollow</b>, plus the raw rel attributes found (nofollow, sponsored, UGC).
                 </li>
                 <li>
-                  <b>Source indexable</b> — whether the linking page is noindex, which affects how much the
+                  <b>Source indexable</b>, whether the linking page is noindex, which affects how much the
                   link is worth.
                 </li>
                 <li>
-                  <b>HTTP status</b> — so you can tell a missing link from a page that failed to load.
+                  <b>HTTP status</b>, so you can tell a missing link from a page that failed to load.
                 </li>
               </ul>
             </div>
@@ -220,19 +220,19 @@ export default function BacklinkCheckerPage() {
               </div>
               <ul className="check">
                 <li>
-                  <a href="/verify-backlinks">Verify a backlink</a> — the full backlink verification workflow.
+                  <a href="/verify-backlinks">Verify a backlink</a>, the full backlink verification workflow.
                 </li>
                 <li>
-                  <a href="/lost-backlinks">Lost backlinks</a> — find and recover links that disappeared.
+                  <a href="/lost-backlinks">Lost backlinks</a>, find and recover links that disappeared.
                 </li>
                 <li>
-                  <a href="/broken-backlinks">Broken backlinks</a> — spot links to or on pages that return errors.
+                  <a href="/broken-backlinks">Broken backlinks</a>, spot links to or on pages that return errors.
                 </li>
                 <li>
-                  <a href="/backlink-health-check">Backlink health check</a> — see the health of your whole profile.
+                  <a href="/backlink-health-check">Backlink health check</a>, see the health of your whole profile.
                 </li>
                 <li>
-                  <a href="/">Backlink monitoring</a> — track every link you earn or buy, automatically.
+                  <a href="/">Backlink monitoring</a>, track every link you earn or buy, automatically.
                 </li>
               </ul>
             </div>

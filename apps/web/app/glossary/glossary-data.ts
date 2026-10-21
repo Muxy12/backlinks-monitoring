@@ -1,6 +1,6 @@
 // Glossary data (programmatic SEO). Each entry renders one static page at
 // /glossary/<slug> via the shared [slug] template, plus a row on the /glossary
-// hub. Content is definitional and factual — no invented statistics or claims.
+// hub. Content is definitional and factual, no invented statistics or claims.
 // Terms are chosen to NOT cannibalize the existing marketing pages (backlink
 // monitoring, lost/broken/verify backlinks, backlink profile/audit/…): these are
 // upstream, definitional queries that feed into that cluster. `cluster` links the
@@ -43,7 +43,7 @@ export const GLOSSARY: GlossaryTerm[] = [
         h: "Why backlinks matter for SEO",
         body: [
           "A relevant backlink from a trusted site can pass authority to the page it points to and send referral traffic. Not all backlinks are equal: a link from a topically relevant, reputable page is worth more than one from a low-quality or unrelated site, and a nofollow link is treated differently from a dofollow one.",
-          "Because backlinks are earned (or paid for) and can disappear without warning, knowing which links you have — and being told when one changes — is as important as building them in the first place.",
+          "Because backlinks are earned (or paid for) and can disappear without warning, knowing which links you have, and being told when one changes, is as important as building them in the first place.",
         ],
       },
     ],
@@ -71,7 +71,7 @@ export const GLOSSARY: GlossaryTerm[] = [
       {
         h: "Why a dofollow→nofollow change matters",
         body: [
-          "A publisher can change a link's rel after it is published — for example switching a once-dofollow link to nofollow. The link still exists, so a simple presence check looks fine, but its SEO value has changed. Catching that shift is one of the reasons to monitor attributes, not just whether a link is still there.",
+          "A publisher can change a link's rel after it is published, for example switching a once-dofollow link to nofollow. The link still exists, so a simple presence check looks fine, but its SEO value has changed. Catching that shift is one of the reasons to monitor attributes, not just whether a link is still there.",
         ],
       },
     ],
@@ -93,13 +93,13 @@ export const GLOSSARY: GlossaryTerm[] = [
         h: "Referring domains vs backlinks",
         body: [
           "Backlinks count every individual link; referring domains count the distinct sites those links come from. The distinction matters because a hundred links from one site usually say less about your authority than links from a hundred different relevant sites.",
-          "When you analyze a backlink profile, the spread of referring domains — how many, how relevant, how reputable — is often a better health signal than the raw backlink total.",
+          "When you analyze a backlink profile, the spread of referring domains, how many, how relevant, how reputable, is often a better health signal than the raw backlink total.",
         ],
       },
       {
         h: "Referring domains in competitor analysis",
         body: [
-          "Referring domains are also the unit of competitor gap analysis: by comparing the domains that link to a competitor with the domains that link to you, you can surface relevant sites that already link to rivals but not yet to you — a ready-made outreach shortlist.",
+          "Referring domains are also the unit of competitor gap analysis: by comparing the domains that link to a competitor with the domains that link to you, you can surface relevant sites that already link to rivals but not yet to you, a ready-made outreach shortlist.",
         ],
       },
     ],
@@ -114,7 +114,7 @@ export const GLOSSARY: GlossaryTerm[] = [
     description:
       "Anchor text is the clickable words of a link. Learn the common anchor text types, why a natural mix matters, and why anchor changes are worth monitoring.",
     definition: [
-      "Anchor text is the visible, clickable text of a hyperlink — usually styled and underlined. For a backlink, the anchor text is one signal search engines use to understand what the linked page is about.",
+      "Anchor text is the visible, clickable text of a hyperlink, usually styled and underlined. For a backlink, the anchor text is one signal search engines use to understand what the linked page is about.",
     ],
     sections: [
       {
@@ -127,7 +127,7 @@ export const GLOSSARY: GlossaryTerm[] = [
       {
         h: "Why anchor changes matter",
         body: [
-          "A publisher can edit the anchor text of a link after publication, which changes the signal the link sends. Because the link is still present, a basic check won't flag it — monitoring the anchor itself is what surfaces the change.",
+          "A publisher can edit the anchor text of a link after publication, which changes the signal the link sends. Because the link is still present, a basic check won't flag it, monitoring the anchor itself is what surfaces the change.",
         ],
       },
     ],
@@ -142,7 +142,7 @@ export const GLOSSARY: GlossaryTerm[] = [
     description:
       "Link equity is the ranking value a link can pass from one page to another. Learn what affects it and why losing a strong link reduces the equity you receive.",
     definition: [
-      "Link equity — sometimes called \"link juice\" — is the ranking value that a link can pass from the page it sits on to the page it points to. It is an informal term for a real idea: not every link passes the same amount of value.",
+      "Link equity, sometimes called \"link juice\", is the ranking value that a link can pass from the page it sits on to the page it points to. It is an informal term for a real idea: not every link passes the same amount of value.",
     ],
     sections: [
       {
@@ -175,14 +175,14 @@ export const GLOSSARY: GlossaryTerm[] = [
       {
         h: "How they relate to nofollow",
         body: [
-          "All three — nofollow, sponsored and ugc — tell search engines to treat the link with caution. You can use them together (for example <code>rel=\"sponsored nofollow\"</code>). Sponsored and ugc simply add context about the link's origin, which Google asked publishers to provide for paid and user-created links.",
+          "All three, nofollow, sponsored and ugc, tell search engines to treat the link with caution. You can use them together (for example <code>rel=\"sponsored nofollow\"</code>). Sponsored and ugc simply add context about the link's origin, which Google asked publishers to provide for paid and user-created links.",
           "For the site earning the link, a paid or user-generated link marked this way typically passes little or no ranking value by design.",
         ],
       },
       {
         h: "Why it matters when you buy links",
         body: [
-          "If you pay for a placement, the publisher may mark it sponsored or nofollow — which changes what you actually get for your spend. Knowing the rel attributes on your paid links, and being alerted if they change, helps you verify that a placement still matches what you agreed to.",
+          "If you pay for a placement, the publisher may mark it sponsored or nofollow, which changes what you actually get for your spend. Knowing the rel attributes on your paid links, and being alerted if they change, helps you verify that a placement still matches what you agreed to.",
         ],
       },
     ],
@@ -210,7 +210,7 @@ export const GLOSSARY: GlossaryTerm[] = [
       {
         h: "When links genuinely need attention",
         body: [
-          "The clearer signal is a sudden, unexplained surge of unrelated links, which can point to a negative-SEO attempt or a hacked page. In the rare cases where manual action is warranted, Google's disavow tool exists — but it is a last resort, not routine hygiene.",
+          "The clearer signal is a sudden, unexplained surge of unrelated links, which can point to a negative-SEO attempt or a hacked page. In the rare cases where manual action is warranted, Google's disavow tool exists, but it is a last resort, not routine hygiene.",
         ],
       },
     ],
@@ -237,7 +237,7 @@ export const GLOSSARY: GlossaryTerm[] = [
       {
         h: "The step most teams skip: monitoring",
         body: [
-          "Building a link is the start, not the end. Publishers remove links, edit articles, migrate sites and change rel attributes — so links you earned or paid for can quietly disappear or lose value. Monitoring your backlinks closes that loop: it verifies the links you built are still live, still dofollow and still pointing where they should.",
+          "Building a link is the start, not the end. Publishers remove links, edit articles, migrate sites and change rel attributes, so links you earned or paid for can quietly disappear or lose value. Monitoring your backlinks closes that loop: it verifies the links you built are still live, still dofollow and still pointing where they should.",
         ],
       },
     ],

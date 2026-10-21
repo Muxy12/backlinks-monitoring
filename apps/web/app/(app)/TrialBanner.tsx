@@ -5,12 +5,12 @@ import { usePathname } from "next/navigation";
 import { orgApi } from "@/lib/api";
 import "./trial-banner.css";
 
-// A subtle, global trial indicator shown in the app shell (docs/20 — P6). It
+// A subtle, global trial indicator shown in the app shell (docs/20, P6). It
 // reads the org's billing status and shows:
 //   • "N days left in your free trial" while trialing (urgent styling ≤ 3 days),
-//   • "Your free trial has ended — choose a plan" once access is inactive.
+//   • "Your free trial has ended, choose a plan" once access is inactive.
 // It stays quiet for active subscriptions and on the billing page itself. No
-// countdown timers or dark patterns — just a clear, honest nudge.
+// countdown timers or dark patterns, just a clear, honest nudge.
 type Banner = {
   status: string;
   daysLeft?: number;

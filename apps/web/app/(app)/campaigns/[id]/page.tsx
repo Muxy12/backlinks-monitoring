@@ -31,7 +31,7 @@ type Tab = "overview" | "gap" | "pipeline";
 type GapRow = { source_domain: string; competitor_count: number };
 
 function money(rows: { currency: string; amount: string }[]) {
-  return rows.length === 0 ? "—" : rows.map((s) => `${s.amount} ${s.currency}`).join(" · ");
+  return rows.length === 0 ? "-" : rows.map((s) => `${s.amount} ${s.currency}`).join(" · ");
 }
 
 export default function CampaignDetailPage() {
@@ -268,17 +268,17 @@ function OverviewTab({
   return (
     <>
       <div className="tiles">
-        <Tile label="Prospects" value={summary ? summary.prospects_total : "—"} />
-        <Tile label="Backlinks" value={summary ? summary.total : "—"} />
-        <Tile label="Live" value={summary ? summary.live : "—"} />
+        <Tile label="Prospects" value={summary ? summary.prospects_total : "-"} />
+        <Tile label="Backlinks" value={summary ? summary.total : "-"} />
+        <Tile label="Live" value={summary ? summary.live : "-"} />
         <Tile
           label="Target progress"
-          value={progress == null ? "—" : `${Math.round(progress * 100)}%`}
+          value={progress == null ? "-" : `${Math.round(progress * 100)}%`}
           hint={campaign.target_backlinks ? `of ${campaign.target_backlinks}` : "no target"}
         />
         <Tile
           label="Budget"
-          value={campaign.budget ? `${campaign.budget} ${campaign.currency ?? ""}` : "—"}
+          value={campaign.budget ? `${campaign.budget} ${campaign.currency ?? ""}` : "-"}
           hint={summary && summary.spend.length ? `spent ${money(summary.spend)}` : "no spend yet"}
         />
       </div>
@@ -300,12 +300,12 @@ function OverviewTab({
               </select>
             </span>
             <span>Objective</span>
-            <span>{campaign.objective || "—"}</span>
+            <span>{campaign.objective || "-"}</span>
             <span>Primary target</span>
-            <span className="mono">{campaign.primary_target_url || "—"}</span>
+            <span className="mono">{campaign.primary_target_url || "-"}</span>
             <span>Dates</span>
             <span>
-              {campaign.start_date || "—"} → {campaign.end_date || "—"}
+              {campaign.start_date || "-"} → {campaign.end_date || "-"}
             </span>
           </div>
         </section>
@@ -400,7 +400,7 @@ function OverviewTab({
                   <span>Median visibility Δ</span>
                   <span className="mono">
                     {impact.median_visibility_change_percent == null
-                      ? "—"
+                      ? "-"
                       : `${impact.median_visibility_change_percent >= 0 ? "+" : ""}${Math.round(
                           impact.median_visibility_change_percent,
                         )}%`}
@@ -408,7 +408,7 @@ function OverviewTab({
                   <span>Median position Δ</span>
                   <span className="mono">
                     {impact.median_position_delta == null
-                      ? "—"
+                      ? "-"
                       : `${impact.median_position_delta > 0 ? "+" : ""}${impact.median_position_delta.toFixed(
                           1,
                         )}`}
@@ -681,7 +681,7 @@ function PipelineTab({
                           <td>
                             <span className="muted">{sourceLabel(p.source)}</span>
                           </td>
-                          <td>{p.score ?? "—"}</td>
+                          <td>{p.score ?? "-"}</td>
                           <td style={{ textAlign: "right" }}>
                             <button className="btn sm" onClick={() => setOpen(p)}>
                               Open
@@ -844,7 +844,7 @@ function ProspectDrawer({
           <span>{sourceLabel(prospect.source)}</span>
           <span>Score</span>
           <span>
-            {prospect.score ?? "—"}
+            {prospect.score ?? "-"}
             {prospect.score_reason ? ` · ${prospect.score_reason}` : ""}
           </span>
           {prospect.competitor_count != null && (
@@ -879,7 +879,7 @@ function ProspectDrawer({
             )}
             {prospect.stage === "won" && prospect.won_backlink_id && (
               <p style={{ margin: "8px 0 0", color: "#166534", fontWeight: 600 }}>
-                ✓ This link is live again — auto-won by monitoring.
+                ✓ This link is live again, auto-won by monitoring.
               </p>
             )}
           </div>
@@ -998,7 +998,7 @@ function ProspectDrawer({
         <div className="drawer-sub">Convert to backlink</div>
         {converted ? (
           <p className="muted">
-            Won — created a protected backlink.{" "}
+            Won, created a protected backlink.{" "}
             <a href={`/dashboard`}>View in dashboard</a>
           </p>
         ) : (

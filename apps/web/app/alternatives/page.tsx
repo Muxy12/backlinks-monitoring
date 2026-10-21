@@ -10,7 +10,7 @@ const BASE = "https://www.linkpulz.com";
 export const metadata: Metadata = {
   title: { absolute: "Backlink Monitoring Tool Alternatives | LinkPulz" },
   description:
-    "How LinkPulz compares to Ahrefs, Semrush, Monitor Backlinks, Moz and Majestic — a focused, affordable alternative for monitoring the backlinks you've earned.",
+    "How LinkPulz compares to Ahrefs, Semrush, Monitor Backlinks, Moz and Majestic, a focused, affordable alternative for monitoring the backlinks you've earned.",
   alternates: { canonical: "/alternatives", languages: { en: "/alternatives", "x-default": "/alternatives" } },
   robots: { index: true, follow: true, "max-image-preview": "large" },
   openGraph: {

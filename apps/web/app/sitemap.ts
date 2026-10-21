@@ -5,7 +5,7 @@ import { PERSONAS } from "./backlink-monitoring-for/persona-data";
 import { ALTERNATIVES } from "./alternatives/alternatives-data";
 
 // Auto-refreshing sitemap. Next regenerates it on demand and at most once an hour
-// (`revalidate`), and `lastModified` is stamped at generation time — so it always
+// (`revalidate`), and `lastModified` is stamped at generation time, so it always
 // reflects the current set of public, indexable pages without a manual rebuild.
 // Legal pages are intentionally absent (they are noindex); the app itself and the
 // auth pages are private/utility and excluded too.

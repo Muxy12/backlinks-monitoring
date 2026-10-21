@@ -2,10 +2,10 @@
 
 import type { AnchorsView, AnchorCategory } from "@/lib/api";
 
-// Anchor text distribution — a dependency-free view of a project's anchor mix.
+// Anchor text distribution, a dependency-free view of a project's anchor mix.
 // Reuses the dashboard `.dist` / `.dist-bar` / `.legend` primitives; adds a
 // repeated-anchors list and an honest over-concentration observation. No score,
-// no verdict — see the API note.
+// no verdict, see the API note.
 
 // One token per category, so the bar and chips read the same in light/dark.
 const CAT_COLOR: Record<AnchorCategory["slug"], string> = {
@@ -74,7 +74,7 @@ export function AnchorDistribution({ data }: { data: AnchorsView }) {
         <p className="anchors-note" role="note">
           <b>{fmtPct(data.over_concentration.percent)}</b> of your anchors are the single
           phrase <q>{data.over_concentration.anchor}</q>. Natural link profiles usually vary
-          more — worth a look, per{" "}
+          more, worth a look, per{" "}
           <a
             href="https://developers.google.com/search/docs/essentials/spam-policies#link-spam"
             target="_blank"

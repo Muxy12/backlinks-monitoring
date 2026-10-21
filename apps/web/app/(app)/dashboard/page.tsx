@@ -60,7 +60,7 @@ export default function OverviewPage() {
     try {
       if (!localStorage.getItem(TOUR_KEY)) setTourRun(true);
     } catch {
-      /* private mode — skip the tour rather than loop */
+      /* private mode, skip the tour rather than loop */
     }
   }, [orgId]);
 
@@ -250,7 +250,7 @@ function OverviewBody({ data, beta }: { data: OverviewResponse; beta: boolean })
             <span className="ok">
               <Icon name="check" size={18} />
             </span>
-            <span>You’re all caught up — nothing needs action right now.</span>
+            <span>You’re all caught up, nothing needs action right now.</span>
           </div>
         ) : (
           <div className="attention-list">
@@ -338,9 +338,9 @@ function OverviewBody({ data, beta }: { data: OverviewResponse; beta: boolean })
                   {data.top_opportunities.map((o) => (
                     <tr key={o.prospect_id}>
                       <td className="mono">{o.domain}</td>
-                      <td>{o.score ?? "—"}</td>
-                      <td className="muted">{o.score_reason ?? "—"}</td>
-                      <td>{o.estimated_cost ? money(o.estimated_cost, o.currency) : "—"}</td>
+                      <td>{o.score ?? "-"}</td>
+                      <td className="muted">{o.score_reason ?? "-"}</td>
+                      <td>{o.estimated_cost ? money(o.estimated_cost, o.currency) : "-"}</td>
                       <td style={{ textAlign: "right" }}>
                         <button className="btn sm" onClick={() => go(`/campaigns/${o.campaign_id}`)}>
                           Review
@@ -365,10 +365,10 @@ function OverviewBody({ data, beta }: { data: OverviewResponse; beta: boolean })
             </button>
           </div>
           <div className="comp-grid">
-            <span className="ch">Referring domains — you</span>
+            <span className="ch">Referring domains, you</span>
             <span className="cv">{num(data.competitive_position.our_referring_domains)}</span>
             <span className="cv" />
-            <span className="ch">Referring domains — competitors</span>
+            <span className="ch">Referring domains, competitors</span>
             <span className="cv">
               {num(data.competitive_position.competitor_referring_domains)}
             </span>
@@ -444,7 +444,7 @@ function OverviewBody({ data, beta }: { data: OverviewResponse; beta: boolean })
             className="muted"
             style={{ fontSize: 11.5, fontStyle: "italic", margin: "10px 0 0" }}
           >
-            Observed response after acquisition — correlation, not causation.
+            Observed response after acquisition, correlation, not causation.
           </p>
         </section>
       )}

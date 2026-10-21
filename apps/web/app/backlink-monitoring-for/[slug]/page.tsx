@@ -5,7 +5,7 @@ import { PERSONAS, PERSONA_BY_SLUG, type Persona } from "../persona-data";
 
 // Programmatic persona pages: "backlink monitoring for [audience]". One static
 // page per entry in persona-data.ts, on the shared marketing shell. Content
-// reframes real product features per audience — no invented stats or features.
+// reframes real product features per audience, no invented stats or features.
 export const dynamic = "force-static";
 export const dynamicParams = false;
 

@@ -55,7 +55,7 @@ export function GettingStarted({ org, onStartTour }: { org: string; onStartTour:
         {
           key: "backlinks",
           title: "Add your backlinks",
-          body: "Paste them or upload a CSV — LinkPulz re-checks each one on a schedule.",
+          body: "Paste them or upload a CSV, LinkPulz re-checks each one on a schedule.",
           cta: "Add backlinks",
           href: "/backlinks",
           done: backlinks > 0,

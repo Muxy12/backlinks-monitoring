@@ -49,12 +49,12 @@ function Time({ iso }: { iso: string }) {
   return <span className="admin-time" title={exact}>{rel}</span>;
 }
 
-// Share of one funnel stage against an earlier one ("—" when the base is 0).
+// Share of one funnel stage against an earlier one ("-" when the base is 0).
 function pctStr(n: number, d: number): string {
   return d > 0 ? `${Math.round((n / d) * 100)}%` : "-";
 }
 
-// Copyable internal id — available for support/debugging without dominating the UI.
+// Copyable internal id, available for support/debugging without dominating the UI.
 function IdChip({ id }: { id: string }) {
   const [copied, setCopied] = useState(false);
   const short = id.length > 10 ? `${id.slice(0, 8)}…` : id;
@@ -342,7 +342,7 @@ export default function AdminPage() {
     tab === "users" ? "Search users by name or email…" :
     "Search audit by actor, action, workspace…";
 
-  // Derived operational metrics — computed from the lists the admin already loads
+  // Derived operational metrics, computed from the lists the admin already loads
   // (real data, no fabrication). At scale these should become backend aggregates;
   // the coverage note is shown when the loaded lists are not complete.
   const WEEK = 7 * 86400000;
