@@ -39,6 +39,11 @@ pub struct ApiConfig {
     pub linkavista_sandbox: bool,
     /// LinkAvista API base URL; `None` falls back to the public base at call time.
     pub linkavista_base_url: Option<String>,
+    /// Enable Stripe Tax at checkout (automatic VAT/sales tax + VAT-ID collection
+    /// for EU reverse charge). Off by default: it requires the Stripe account to
+    /// have Tax enabled and every Price to carry a `tax_behavior`, so flip
+    /// `STRIPE_TAX_ENABLED=true` only once that is configured, or checkout breaks.
+    pub stripe_tax_enabled: bool,
 }
 
 impl Default for ApiConfig {
@@ -54,6 +59,7 @@ impl Default for ApiConfig {
             linkavista_api_key: None,
             linkavista_sandbox: true,
             linkavista_base_url: None,
+            stripe_tax_enabled: false,
         }
     }
 }

@@ -181,6 +181,7 @@ pub async fn create_checkout(
         &user.email,
         &success,
         &cancel,
+        state.cfg.stripe_tax_enabled,
     )
     .await
     .map_err(|e| {

@@ -32,6 +32,7 @@ async fn app() -> Option<axum::Router> {
         linkavista_api_key: None,
         linkavista_sandbox: true,
         linkavista_base_url: None,
+        stripe_tax_enabled: false,
     };
     Some(api::app(AppState::new(db.pool, cfg)))
 }

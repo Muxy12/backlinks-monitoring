@@ -33,6 +33,7 @@ fn checker_cfg() -> ApiConfig {
         linkavista_api_key: None,
         linkavista_sandbox: true,
         linkavista_base_url: None,
+        stripe_tax_enabled: false,
     }
 }
 
@@ -147,6 +148,7 @@ async fn checker_blocks_private_targets_when_not_allowed() {
         linkavista_api_key: None,
         linkavista_sandbox: true,
         linkavista_base_url: None,
+        stripe_tax_enabled: false,
     };
     let app = api::app(AppState::new(pool, cfg));
 

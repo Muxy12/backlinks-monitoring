@@ -30,6 +30,7 @@ async fn state() -> Option<AppState> {
         linkavista_api_key: None,
         linkavista_sandbox: true,
         linkavista_base_url: None,
+        stripe_tax_enabled: false,
     };
     Some(AppState::new(db.pool, cfg))
 }
@@ -237,6 +238,7 @@ async fn register_refused_when_registration_closed() {
         linkavista_api_key: None,
         linkavista_sandbox: true,
         linkavista_base_url: None,
+        stripe_tax_enabled: false,
         ..base.cfg.clone()
     };
     let state = AppState::new(base.pool.clone(), cfg);
