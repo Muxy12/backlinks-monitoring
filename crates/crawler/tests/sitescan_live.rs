@@ -28,7 +28,7 @@ async fn collects_h1s_from_home_and_one_click_pages() {
     // Homepage links to /guide and /pricing (same site) plus an external site.
     Mock::given(method("GET"))
         .and(path("/"))
-        .respond_with(html(&format!(
+        .respond_with(html(
             r#"<html><body>
                  <h1>Backlink monitoring</h1>
                  <a href="/guide">Guide</a>
@@ -36,7 +36,7 @@ async fn collects_h1s_from_home_and_one_click_pages() {
                  <a href="https://other-site.com/x">external</a>
                  <a href="/guide#section">Guide again</a>
                </body></html>"#,
-        )))
+        ))
         .mount(&server)
         .await;
     Mock::given(method("GET"))
