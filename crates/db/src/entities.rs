@@ -233,6 +233,40 @@ pub struct SpotKeyword {
     pub updated_at: DateTime<Utc>,
 }
 
+/// One Spot Finder SERP run for a project (migration 0044, Lot B). Tracks the
+/// keyword-ranking lookup and its cost (queries actually billed).
+#[derive(Debug, Clone, FromRow)]
+pub struct SpotSearchRun {
+    pub id: Uuid,
+    pub organization_id: Uuid,
+    pub project_id: Uuid,
+    pub status: String,
+    pub locale: String,
+    pub keywords_queried: i32,
+    pub serp_queries: i32,
+    pub spots_found: i32,
+    pub error: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+/// An aggregated prospect (migration 0044, Lot B): a domain that ranks for one or
+/// more of the project's keywords.
+#[derive(Debug, Clone, FromRow)]
+pub struct Spot {
+    pub id: Uuid,
+    pub organization_id: Uuid,
+    pub project_id: Uuid,
+    pub domain: String,
+    pub keyword_count: i32,
+    pub best_position: Option<i32>,
+    pub avg_position: Option<f64>,
+    pub example_url: Option<String>,
+    pub example_keyword: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
 /// A competitor domain tracked for a project (backlink-intelligence §1).
 #[derive(Debug, Clone, FromRow)]
 pub struct ProjectCompetitor {

@@ -17,10 +17,12 @@ pub mod fetch;
 pub mod linkavista;
 pub mod matching;
 pub mod parse;
+pub mod serp;
 pub mod sitescan;
 
 pub use config::CrawlerConfig;
 pub use fetch::{FetchError, FetchOk, FetchOutcome, fetch};
 pub use matching::{LinkMatch, best_match, evaluate, find_matches};
 pub use parse::{ExtractedLink, ParsedPage, parse_page};
+pub use serp::{Locale, SerpProvider, SerpResult};
 pub use sitescan::{ScannedH1, SiteScan, scan_site};

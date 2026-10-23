@@ -6,6 +6,7 @@ pub mod deliver;
 pub mod discover;
 pub mod engine;
 pub mod keywords;
+pub mod spots;
 
 use backlio_core::TransitionPolicy;
 use crawler::CrawlerConfig;
@@ -108,6 +109,11 @@ async fn dispatch(ctx: &WorkerCtx, job: &ClaimedJob) -> anyhow::Result<()> {
         JobKind::DetectSiteKeywords => {
             let scan_id = payload_uuid(&job.payload, "scan_id")?;
             keywords::run_detection(&ctx.pool, &ctx.crawler, scan_id).await?;
+            Ok(())
+        }
+        JobKind::FindSpots => {
+            let run_id = payload_uuid(&job.payload, "run_id")?;
+            spots::run_search(&ctx.pool, run_id).await?;
             Ok(())
         }
         // Other job types wire in as their handlers land (docs/07 §5).

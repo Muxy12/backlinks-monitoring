@@ -23,6 +23,7 @@ pub mod outreach;
 pub mod outreach_schedule;
 pub mod reclamation;
 pub mod scoring;
+pub mod spots;
 pub mod state_machine;
 pub mod status;
 pub mod url_normalize;
@@ -50,6 +51,7 @@ pub use outreach::{
 pub use outreach_schedule::{DispatchAction, decide as outreach_decide};
 pub use reclamation::ReclaimAngle;
 pub use scoring::{ProspectScore, ProspectSignals, score_prospect};
+pub use spots::{AggregatedSpot, SerpHit, aggregate_spots, is_blocked_domain, site_host};
 pub use state_machine::{BacklinkState, DetectedFields, Transition, TransitionPolicy, transition};
 pub use status::{BacklinkStatus, RelSet, RelType};
 pub use url_normalize::{NormalizeOptions, host_of, normalize};

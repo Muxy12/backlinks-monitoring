@@ -6986,3 +6986,254 @@ pub mod spot_keywords {
         Ok(())
     }
 }
+
+// ─── Spot Finder: SERP runs, spots, SERP cache (migration 0044, Lot B) ────────
+pub mod spots {
+    use super::*;
+    use crate::entities::{Spot, SpotSearchRun};
+    use serde_json::Value;
+
+    macro_rules! run_cols {
+        () => {
+            "id, organization_id, project_id, status, locale, keywords_queried, \
+             serp_queries, spots_found, error, created_at, updated_at"
+        };
+    }
+    macro_rules! spot_cols {
+        () => {
+            "id, organization_id, project_id, domain, keyword_count, best_position, \
+             avg_position, example_url, example_keyword, created_at, updated_at"
+        };
+    }
+
+    // ── Runs ───────────────────────────────────────────────────────────────────
+
+    pub async fn search_in_flight(
+        pool: &PgPool,
+        scope: &OrgScope,
+        project_id: Uuid,
+    ) -> Result<bool, DbError> {
+        let (n,): (i64,) = sqlx::query_as(
+            "SELECT count(*) FROM spot_search_runs \
+             WHERE organization_id = $1 AND project_id = $2 \
+               AND status IN ('queued','running')",
+        )
+        .bind(scope.organization_id())
+        .bind(project_id)
+        .fetch_one(pool)
+        .await?;
+        Ok(n > 0)
+    }
+
+    pub async fn start_run(
+        pool: &PgPool,
+        scope: &OrgScope,
+        id: Uuid,
+        project_id: Uuid,
+        locale: &str,
+    ) -> Result<SpotSearchRun, DbError> {
+        sqlx::query_as::<_, SpotSearchRun>(concat!(
+            "INSERT INTO spot_search_runs (id, organization_id, project_id, locale) \
+             VALUES ($1, $2, $3, $4) RETURNING ",
+            run_cols!()
+        ))
+        .bind(id)
+        .bind(scope.organization_id())
+        .bind(project_id)
+        .bind(locale)
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_insert)
+    }
+
+    pub async fn latest_run(
+        pool: &PgPool,
+        scope: &OrgScope,
+        project_id: Uuid,
+    ) -> Result<Option<SpotSearchRun>, DbError> {
+        Ok(sqlx::query_as::<_, SpotSearchRun>(concat!(
+            "SELECT ",
+            run_cols!(),
+            " FROM spot_search_runs WHERE organization_id = $1 AND project_id = $2 \
+             ORDER BY created_at DESC LIMIT 1"
+        ))
+        .bind(scope.organization_id())
+        .bind(project_id)
+        .fetch_optional(pool)
+        .await?)
+    }
+
+    /// Worker-side: claim a queued run (→ running). Returns org + project + locale.
+    pub async fn mark_run_running(
+        pool: &PgPool,
+        run_id: Uuid,
+    ) -> Result<Option<SpotSearchRun>, DbError> {
+        Ok(sqlx::query_as::<_, SpotSearchRun>(concat!(
+            "UPDATE spot_search_runs SET status = 'running' \
+             WHERE id = $1 AND status = 'queued' RETURNING ",
+            run_cols!()
+        ))
+        .bind(run_id)
+        .fetch_optional(pool)
+        .await?)
+    }
+
+    /// Worker-side: record a finished run. `error = None` → status `done`.
+    pub async fn finish_run(
+        pool: &PgPool,
+        run_id: Uuid,
+        keywords_queried: i32,
+        serp_queries: i32,
+        spots_found: i32,
+        error: Option<&str>,
+    ) -> Result<(), DbError> {
+        sqlx::query(
+            "UPDATE spot_search_runs SET \
+                status = CASE WHEN $5::text IS NULL THEN 'done' ELSE 'error' END, \
+                keywords_queried = $2, serp_queries = $3, spots_found = $4, error = $5 \
+             WHERE id = $1",
+        )
+        .bind(run_id)
+        .bind(keywords_queried)
+        .bind(serp_queries)
+        .bind(spots_found)
+        .bind(error)
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    /// Worker-side: the kept keywords (display text) for a project, cross-tenant
+    /// by the trusted (org, project) from the claimed run. Capped for cost.
+    pub async fn kept_keywords(
+        pool: &PgPool,
+        organization_id: Uuid,
+        project_id: Uuid,
+        limit: i64,
+    ) -> Result<Vec<String>, DbError> {
+        let rows: Vec<(String,)> = sqlx::query_as(
+            "SELECT keyword FROM spot_keywords \
+             WHERE organization_id = $1 AND project_id = $2 AND status = 'kept' \
+             ORDER BY created_at LIMIT $3",
+        )
+        .bind(organization_id)
+        .bind(project_id)
+        .bind(limit.clamp(1, 200))
+        .fetch_all(pool)
+        .await?;
+        Ok(rows.into_iter().map(|(k,)| k).collect())
+    }
+
+    // ── SERP cache (org-scoped) ─────────────────────────────────────────────────
+
+    /// Fresh cached results for a keyword+locale, or `None` if absent or stale.
+    pub async fn cache_get(
+        pool: &PgPool,
+        organization_id: Uuid,
+        keyword_normalized: &str,
+        locale: &str,
+        max_age_days: i64,
+    ) -> Result<Option<Value>, DbError> {
+        let row: Option<(Value,)> = sqlx::query_as(
+            "SELECT results FROM serp_cache \
+             WHERE organization_id = $1 AND keyword_normalized = $2 AND locale = $3 \
+               AND fetched_at > now() - make_interval(days => $4)",
+        )
+        .bind(organization_id)
+        .bind(keyword_normalized)
+        .bind(locale)
+        .bind(max_age_days.max(0) as f64)
+        .fetch_optional(pool)
+        .await?;
+        Ok(row.map(|(v,)| v))
+    }
+
+    /// Store/refresh cached results for a keyword+locale.
+    pub async fn cache_put(
+        pool: &PgPool,
+        organization_id: Uuid,
+        keyword_normalized: &str,
+        locale: &str,
+        results: &Value,
+    ) -> Result<(), DbError> {
+        sqlx::query(
+            "INSERT INTO serp_cache (id, organization_id, keyword_normalized, locale, results) \
+             VALUES ($1, $2, $3, $4, $5) \
+             ON CONFLICT (organization_id, keyword_normalized, locale) \
+             DO UPDATE SET results = EXCLUDED.results, fetched_at = now()",
+        )
+        .bind(Uuid::now_v7())
+        .bind(organization_id)
+        .bind(keyword_normalized)
+        .bind(locale)
+        .bind(results)
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    // ── Spots ────────────────────────────────────────────────────────────────
+
+    /// A spot to persist (from the pure aggregation).
+    pub struct NewSpot<'a> {
+        pub domain: &'a str,
+        pub keyword_count: i32,
+        pub best_position: Option<i32>,
+        pub avg_position: Option<f64>,
+        pub example_url: Option<&'a str>,
+        pub example_keyword: Option<&'a str>,
+    }
+
+    /// Worker-side: replace a project's spots with a fresh set, atomically. The
+    /// latest run is the source of truth, so a re-run reflects the current SERPs.
+    pub async fn replace_spots(
+        pool: &PgPool,
+        organization_id: Uuid,
+        project_id: Uuid,
+        spots: &[NewSpot<'_>],
+    ) -> Result<(), DbError> {
+        let mut tx = pool.begin().await?;
+        sqlx::query("DELETE FROM spots WHERE organization_id = $1 AND project_id = $2")
+            .bind(organization_id)
+            .bind(project_id)
+            .execute(&mut *tx)
+            .await?;
+        for s in spots {
+            sqlx::query(
+                "INSERT INTO spots (id, organization_id, project_id, domain, keyword_count, \
+                    best_position, avg_position, example_url, example_keyword) \
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)",
+            )
+            .bind(Uuid::now_v7())
+            .bind(organization_id)
+            .bind(project_id)
+            .bind(s.domain)
+            .bind(s.keyword_count)
+            .bind(s.best_position)
+            .bind(s.avg_position)
+            .bind(s.example_url)
+            .bind(s.example_keyword)
+            .execute(&mut *tx)
+            .await?;
+        }
+        tx.commit().await?;
+        Ok(())
+    }
+
+    pub async fn list_spots(
+        pool: &PgPool,
+        scope: &OrgScope,
+        project_id: Uuid,
+    ) -> Result<Vec<Spot>, DbError> {
+        Ok(sqlx::query_as::<_, Spot>(concat!(
+            "SELECT ",
+            spot_cols!(),
+            " FROM spots WHERE organization_id = $1 AND project_id = $2 \
+             ORDER BY keyword_count DESC, avg_position ASC NULLS LAST"
+        ))
+        .bind(scope.organization_id())
+        .bind(project_id)
+        .fetch_all(pool)
+        .await?)
+    }
+}

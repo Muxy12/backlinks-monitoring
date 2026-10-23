@@ -43,6 +43,7 @@ export interface Features {
   gsc?: boolean;
   linkavista?: boolean;
   spot_finder?: boolean;
+  dataforseo?: boolean;
 }
 
 // Spot Finder — keyword detection & review (Lot A).
@@ -67,6 +68,32 @@ export interface SpotKeywordView {
 export interface SpotKeywordsResponse {
   scan: SpotScanView | null;
   keywords: SpotKeywordView[];
+}
+
+// Spot Finder — SERP search & spots (Lot B).
+export interface SpotRunView {
+  id: string;
+  status: "queued" | "running" | "done" | "error";
+  locale: string;
+  keywords_queried: number;
+  serp_queries: number;
+  spots_found: number;
+  error: string | null;
+  created_at: string;
+  updated_at: string;
+}
+export interface SpotView {
+  id: string;
+  domain: string;
+  keyword_count: number;
+  best_position: number | null;
+  avg_position: number | null;
+  example_url: string | null;
+  example_keyword: string | null;
+}
+export interface SpotsResponse {
+  run: SpotRunView | null;
+  spots: SpotView[];
 }
 
 // LinkAvista marketplace catalogue (read-only browse, Lot 2). Prices are in EUR
@@ -918,6 +945,14 @@ export const orgApi = {
     request<null>(`/v1/organizations/${org}/projects/${projectId}/keywords/${id}`, {
       method: "DELETE",
       headers: csrfHeader(),
+    }),
+  spots: (org: string, projectId: string) =>
+    request<SpotsResponse>(`/v1/organizations/${org}/projects/${projectId}/spots`),
+  searchSpots: (org: string, projectId: string, locale: string) =>
+    request<SpotRunView>(`/v1/organizations/${org}/projects/${projectId}/spots/search`, {
+      method: "POST",
+      headers: csrfHeader(),
+      body: JSON.stringify({ locale }),
     }),
   createProject: (
     org: string,

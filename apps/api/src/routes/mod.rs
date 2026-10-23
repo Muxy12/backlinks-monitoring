@@ -23,6 +23,7 @@ pub mod overview_routes;
 pub mod prefs_routes;
 pub mod resource_routes;
 pub mod spot_keyword_routes;
+pub mod spot_search_routes;
 pub mod tags_routes;
 pub mod team_routes;
 pub mod tools_routes;
