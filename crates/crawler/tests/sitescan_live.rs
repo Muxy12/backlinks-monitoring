@@ -3,7 +3,7 @@
 //! so these set `allow_private_addresses` (the test-only escape hatch) to reach
 //! the loopback mock.
 
-use crawler::{CrawlerConfig, FetchOutcome, fetch, scan_site};
+use crawler::{CrawlerConfig, scan_site};
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
@@ -14,10 +14,10 @@ fn test_cfg() -> CrawlerConfig {
     }
 }
 
+// `set_body_raw` with an explicit mime — `set_body_string` would force
+// `text/plain`, which the scanner (correctly) skips as non-HTML.
 fn html(body: &str) -> ResponseTemplate {
-    ResponseTemplate::new(200)
-        .insert_header("content-type", "text/html")
-        .set_body_string(body)
+    ResponseTemplate::new(200).set_body_raw(body.as_bytes().to_vec(), "text/html")
 }
 
 #[tokio::test]
@@ -51,28 +51,11 @@ async fn collects_h1s_from_home_and_one_click_pages() {
         .await;
     // External page must never be fetched (same-site filter) — not mounted.
 
-    // DIAGNOSTIC: fetch the root directly to see what the home request returns.
-    let diag = match fetch(&test_cfg(), &base).await {
-        FetchOutcome::Response(r) => format!(
-            "status={} ct={:?} final={} bodylen={} bodyhead={:?}",
-            r.status,
-            r.content_type,
-            r.final_url,
-            r.body.len(),
-            r.body.chars().take(60).collect::<String>()
-        ),
-        other => format!("FAILED: {other:?}"),
-    };
-
     let scan = scan_site(&test_cfg(), &base, 10).await;
 
     // P0 + 2 deduped P1 pages (the #section link is the same page as /guide).
+    assert_eq!(scan.pages_scanned, 3, "home + 2 unique same-site pages");
     let texts: Vec<&str> = scan.h1s.iter().map(|h| h.text.as_str()).collect();
-    assert_eq!(
-        scan.pages_scanned, 3,
-        "home + 2 unique same-site pages; base={base}; pages={}; h1s={texts:?}; HOME[{diag}]",
-        scan.pages_scanned
-    );
     assert!(texts.contains(&"Backlink monitoring"));
     assert!(texts.contains(&"Link building guide"));
     assert!(texts.contains(&"Pricing"));
