@@ -268,9 +268,13 @@
   border-radius: 999px;
   font-weight: 700;
   font-size: 12.5px;
-  color: var(--primary);
-  background: var(--primary-weak);
+  color: var(--primary-press);
+  background: color-mix(in srgb, var(--primary) 16%, transparent);
   border: 1px solid color-mix(in srgb, var(--primary) 30%, transparent);
+}
+/* Dark theme brightens --primary; use it so the score chip keeps contrast. */
+:root[data-theme="dark"] .sf-score {
+  color: var(--primary);
 }
 .sf-buy {
   display: inline-block;
