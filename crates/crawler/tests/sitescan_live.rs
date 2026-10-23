@@ -3,7 +3,7 @@
 //! so these set `allow_private_addresses` (the test-only escape hatch) to reach
 //! the loopback mock.
 
-use crawler::{CrawlerConfig, scan_site};
+use crawler::{CrawlerConfig, FetchOutcome, fetch, scan_site};
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
@@ -51,14 +51,26 @@ async fn collects_h1s_from_home_and_one_click_pages() {
         .await;
     // External page must never be fetched (same-site filter) — not mounted.
 
+    // DIAGNOSTIC: fetch the root directly to see what the home request returns.
+    let diag = match fetch(&test_cfg(), &base).await {
+        FetchOutcome::Response(r) => format!(
+            "status={} ct={:?} final={} bodylen={} bodyhead={:?}",
+            r.status,
+            r.content_type,
+            r.final_url,
+            r.body.len(),
+            r.body.chars().take(60).collect::<String>()
+        ),
+        other => format!("FAILED: {other:?}"),
+    };
+
     let scan = scan_site(&test_cfg(), &base, 10).await;
 
     // P0 + 2 deduped P1 pages (the #section link is the same page as /guide).
     let texts: Vec<&str> = scan.h1s.iter().map(|h| h.text.as_str()).collect();
-    let urls: Vec<&str> = scan.h1s.iter().map(|h| h.url.as_str()).collect();
     assert_eq!(
         scan.pages_scanned, 3,
-        "home + 2 unique same-site pages; base={base}; pages={}; h1s={texts:?}; urls={urls:?}",
+        "home + 2 unique same-site pages; base={base}; pages={}; h1s={texts:?}; HOME[{diag}]",
         scan.pages_scanned
     );
     assert!(texts.contains(&"Backlink monitoring"));
