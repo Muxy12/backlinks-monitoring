@@ -14,10 +14,10 @@ fn test_cfg() -> CrawlerConfig {
     }
 }
 
+// `set_body_raw` with an explicit mime — `set_body_string` would force
+// `text/plain`, which the scanner (correctly) skips as non-HTML.
 fn html(body: &str) -> ResponseTemplate {
-    ResponseTemplate::new(200)
-        .insert_header("content-type", "text/html")
-        .set_body_string(body)
+    ResponseTemplate::new(200).set_body_raw(body.as_bytes().to_vec(), "text/html")
 }
 
 #[tokio::test]
