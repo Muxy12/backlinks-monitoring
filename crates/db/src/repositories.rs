@@ -1079,6 +1079,24 @@ pub mod projects {
         .map_err(DbError::from_fetch)
     }
 
+    /// Cross-tenant read of a project's domain by `(organization_id, id)` — for
+    /// worker jobs that already hold a trusted `(org, project)` pair from a
+    /// queued row and so have no request `OrgScope`. Returns `None` if the
+    /// project no longer exists.
+    pub async fn domain_by_id(
+        pool: &PgPool,
+        organization_id: Uuid,
+        project_id: Uuid,
+    ) -> Result<Option<String>, DbError> {
+        let row: Option<(String,)> =
+            sqlx::query_as("SELECT domain FROM projects WHERE id = $1 AND organization_id = $2")
+                .bind(project_id)
+                .bind(organization_id)
+                .fetch_optional(pool)
+                .await?;
+        Ok(row.map(|(d,)| d))
+    }
+
     /// Partial update (§21): rename, change the check frequency, and/or
     /// reassign the client. Each argument is "apply if `Some`, keep if `None`";
     /// `client` is a double option so `Some(None)` clears the client. Built with
@@ -6680,5 +6698,291 @@ pub mod outreach {
         .bind(prospect_id)
         .fetch_optional(pool)
         .await?)
+    }
+}
+
+// ─── Spot Finder: keyword detection (migration 0043, Lot A) — tenant-scoped ───
+pub mod spot_keywords {
+    use super::*;
+    use crate::entities::{SpotKeyword, SpotKeywordScan};
+
+    macro_rules! scan_cols {
+        () => {
+            "id, organization_id, project_id, status, pages_scanned, h1_count, \
+             keywords_found, error, created_at, updated_at"
+        };
+    }
+    macro_rules! kw_cols {
+        () => {
+            "id, organization_id, project_id, keyword, normalized, source, \
+             origin_url, status, created_at, updated_at"
+        };
+    }
+
+    // ── Scans ────────────────────────────────────────────────────────────────
+
+    /// Is a detection scan for this project still in flight? Used to avoid
+    /// enqueuing a second crawl while one is queued/running.
+    pub async fn scan_in_flight(
+        pool: &PgPool,
+        scope: &OrgScope,
+        project_id: Uuid,
+    ) -> Result<bool, DbError> {
+        let (n,): (i64,) = sqlx::query_as(
+            "SELECT count(*) FROM spot_keyword_scans \
+             WHERE organization_id = $1 AND project_id = $2 \
+               AND status IN ('queued','running')",
+        )
+        .bind(scope.organization_id())
+        .bind(project_id)
+        .fetch_one(pool)
+        .await?;
+        Ok(n > 0)
+    }
+
+    /// Start a scan (status `queued`). The worker picks it up by id.
+    pub async fn start_scan(
+        pool: &PgPool,
+        scope: &OrgScope,
+        id: Uuid,
+        project_id: Uuid,
+    ) -> Result<SpotKeywordScan, DbError> {
+        sqlx::query_as::<_, SpotKeywordScan>(concat!(
+            "INSERT INTO spot_keyword_scans (id, organization_id, project_id) \
+             VALUES ($1, $2, $3) RETURNING ",
+            scan_cols!()
+        ))
+        .bind(id)
+        .bind(scope.organization_id())
+        .bind(project_id)
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_insert)
+    }
+
+    /// The most recent scan for a project (for the UI's status line), if any.
+    pub async fn latest_scan(
+        pool: &PgPool,
+        scope: &OrgScope,
+        project_id: Uuid,
+    ) -> Result<Option<SpotKeywordScan>, DbError> {
+        Ok(sqlx::query_as::<_, SpotKeywordScan>(concat!(
+            "SELECT ",
+            scan_cols!(),
+            " FROM spot_keyword_scans WHERE organization_id = $1 AND project_id = $2 \
+             ORDER BY created_at DESC LIMIT 1"
+        ))
+        .bind(scope.organization_id())
+        .bind(project_id)
+        .fetch_optional(pool)
+        .await?)
+    }
+
+    /// Worker-side: claim a queued scan by id, moving it to `running`. Returns
+    /// the row (org + project) so the worker knows what site to crawl. Cross-
+    /// tenant by design (the worker runs outside a request scope); the id is an
+    /// unguessable v7 UUID carried in the job payload.
+    pub async fn mark_running(
+        pool: &PgPool,
+        scan_id: Uuid,
+    ) -> Result<Option<SpotKeywordScan>, DbError> {
+        Ok(sqlx::query_as::<_, SpotKeywordScan>(concat!(
+            "UPDATE spot_keyword_scans SET status = 'running' \
+             WHERE id = $1 AND status = 'queued' RETURNING ",
+            scan_cols!()
+        ))
+        .bind(scan_id)
+        .fetch_optional(pool)
+        .await?)
+    }
+
+    /// Worker-side: record a finished scan. `error = None` → status `done`.
+    pub async fn finish_scan(
+        pool: &PgPool,
+        scan_id: Uuid,
+        pages_scanned: i32,
+        h1_count: i32,
+        keywords_found: i32,
+        error: Option<&str>,
+    ) -> Result<(), DbError> {
+        sqlx::query(
+            "UPDATE spot_keyword_scans SET \
+                status = CASE WHEN $5::text IS NULL THEN 'done' ELSE 'error' END, \
+                pages_scanned = $2, h1_count = $3, keywords_found = $4, error = $5 \
+             WHERE id = $1",
+        )
+        .bind(scan_id)
+        .bind(pages_scanned)
+        .bind(h1_count)
+        .bind(keywords_found)
+        .bind(error)
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    // ── Keyword candidates ─────────────────────────────────────────────────────
+
+    pub async fn list(
+        pool: &PgPool,
+        scope: &OrgScope,
+        project_id: Uuid,
+    ) -> Result<Vec<SpotKeyword>, DbError> {
+        Ok(sqlx::query_as::<_, SpotKeyword>(concat!(
+            "SELECT ",
+            kw_cols!(),
+            " FROM spot_keywords WHERE organization_id = $1 AND project_id = $2 \
+             ORDER BY created_at"
+        ))
+        .bind(scope.organization_id())
+        .bind(project_id)
+        .fetch_all(pool)
+        .await?)
+    }
+
+    /// Worker-side: insert a detected (`h1`) candidate if its normalized form is
+    /// new for the project. Idempotent on `(project_id, normalized)` — a re-run
+    /// never clobbers a keyword the user already kept/edited. Returns whether a
+    /// row was newly inserted. Cross-tenant by (org, project) from the scan row.
+    pub async fn upsert_detected(
+        pool: &PgPool,
+        organization_id: Uuid,
+        project_id: Uuid,
+        keyword: &str,
+        normalized: &str,
+        origin_url: Option<&str>,
+    ) -> Result<bool, DbError> {
+        let row: Option<(Uuid,)> = sqlx::query_as(
+            "INSERT INTO spot_keywords \
+                (id, organization_id, project_id, keyword, normalized, source, origin_url) \
+             VALUES ($1, $2, $3, $4, $5, 'h1', $6) \
+             ON CONFLICT (project_id, normalized) DO NOTHING RETURNING id",
+        )
+        .bind(Uuid::now_v7())
+        .bind(organization_id)
+        .bind(project_id)
+        .bind(keyword)
+        .bind(normalized)
+        .bind(origin_url)
+        .fetch_optional(pool)
+        .await
+        .map_err(DbError::from_insert)?;
+        Ok(row.is_some())
+    }
+
+    /// Add a manual keyword (status `kept`). Returns `None` on duplicate.
+    pub async fn add_manual(
+        pool: &PgPool,
+        scope: &OrgScope,
+        id: Uuid,
+        project_id: Uuid,
+        keyword: &str,
+        normalized: &str,
+    ) -> Result<Option<SpotKeyword>, DbError> {
+        sqlx::query_as::<_, SpotKeyword>(concat!(
+            "INSERT INTO spot_keywords \
+                (id, organization_id, project_id, keyword, normalized, source, status) \
+             VALUES ($1, $2, $3, $4, $5, 'manual', 'kept') \
+             ON CONFLICT (project_id, normalized) DO NOTHING RETURNING ",
+            kw_cols!()
+        ))
+        .bind(id)
+        .bind(scope.organization_id())
+        .bind(project_id)
+        .bind(keyword)
+        .bind(normalized)
+        .fetch_optional(pool)
+        .await
+        .map_err(DbError::from_insert)
+    }
+
+    /// Set a keyword's review status (`kept` | `rejected` | `candidate`).
+    /// `NotFound` if it is not in this org.
+    pub async fn set_status(
+        pool: &PgPool,
+        scope: &OrgScope,
+        id: Uuid,
+        status: &str,
+    ) -> Result<SpotKeyword, DbError> {
+        sqlx::query_as::<_, SpotKeyword>(concat!(
+            "UPDATE spot_keywords SET status = $3 \
+             WHERE id = $1 AND organization_id = $2 RETURNING ",
+            kw_cols!()
+        ))
+        .bind(id)
+        .bind(scope.organization_id())
+        .bind(status)
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_fetch)
+    }
+
+    /// Set the status of many keywords at once (bulk keep/reject). Returns the
+    /// number updated. Only rows in this org are touched.
+    pub async fn set_status_many(
+        pool: &PgPool,
+        scope: &OrgScope,
+        ids: &[Uuid],
+        status: &str,
+    ) -> Result<u64, DbError> {
+        if ids.is_empty() {
+            return Ok(0);
+        }
+        let res = sqlx::query(
+            "UPDATE spot_keywords SET status = $3 \
+             WHERE organization_id = $1 AND id = ANY($2)",
+        )
+        .bind(scope.organization_id())
+        .bind(ids)
+        .bind(status)
+        .execute(pool)
+        .await?;
+        Ok(res.rows_affected())
+    }
+
+    /// Edit a keyword's text (and its normalized key). `NotFound` if not in this
+    /// org; `Config` if the new text collides with another keyword in the project.
+    pub async fn update_text(
+        pool: &PgPool,
+        scope: &OrgScope,
+        id: Uuid,
+        keyword: &str,
+        normalized: &str,
+    ) -> Result<SpotKeyword, DbError> {
+        sqlx::query_as::<_, SpotKeyword>(concat!(
+            "UPDATE spot_keywords SET keyword = $3, normalized = $4 \
+             WHERE id = $1 AND organization_id = $2 RETURNING ",
+            kw_cols!()
+        ))
+        .bind(id)
+        .bind(scope.organization_id())
+        .bind(keyword)
+        .bind(normalized)
+        .fetch_one(pool)
+        .await
+        // Missing row → NotFound (404); a normalized collision with another
+        // keyword in the project → Conflict (not a 500).
+        .map_err(|e| match &e {
+            sqlx::Error::RowNotFound => DbError::NotFound,
+            sqlx::Error::Database(db) if db.code().as_deref() == Some("23505") => {
+                DbError::Conflict(db.constraint().unwrap_or("unique").to_string())
+            }
+            _ => DbError::Sqlx(e),
+        })
+    }
+
+    /// Delete a keyword. `NotFound` if it is not in this org.
+    pub async fn delete(pool: &PgPool, scope: &OrgScope, id: Uuid) -> Result<(), DbError> {
+        let row: Option<(Uuid,)> = sqlx::query_as(
+            "DELETE FROM spot_keywords WHERE id = $1 AND organization_id = $2 RETURNING id",
+        )
+        .bind(id)
+        .bind(scope.organization_id())
+        .fetch_optional(pool)
+        .await?;
+        if row.is_none() {
+            return Err(DbError::NotFound);
+        }
+        Ok(())
     }
 }

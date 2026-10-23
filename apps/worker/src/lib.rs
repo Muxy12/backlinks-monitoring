@@ -5,6 +5,7 @@
 pub mod deliver;
 pub mod discover;
 pub mod engine;
+pub mod keywords;
 
 use backlio_core::TransitionPolicy;
 use crawler::CrawlerConfig;
@@ -102,6 +103,11 @@ async fn dispatch(ctx: &WorkerCtx, job: &ClaimedJob) -> anyhow::Result<()> {
             let today = chrono::Utc::now().date_naive();
             let n = engine::run_warranty_sweep(&ctx.pool, today, within_days, 5000).await?;
             tracing::info!(new_alerts = n, "warranty sweep complete");
+            Ok(())
+        }
+        JobKind::DetectSiteKeywords => {
+            let scan_id = payload_uuid(&job.payload, "scan_id")?;
+            keywords::run_detection(&ctx.pool, &ctx.crawler, scan_id).await?;
             Ok(())
         }
         // Other job types wire in as their handlers land (docs/07 §5).

@@ -199,6 +199,40 @@ pub struct DiscoverySeed {
     pub updated_at: DateTime<Utc>,
 }
 
+/// One Spot Finder keyword-detection run for a project (migration 0043, Lot A).
+/// Tracks the crawl of the user's own site (P0 + P1) so the UI can show
+/// queued/running/done/error without polling the crawler.
+#[derive(Debug, Clone, FromRow)]
+pub struct SpotKeywordScan {
+    pub id: Uuid,
+    pub organization_id: Uuid,
+    pub project_id: Uuid,
+    pub status: String,
+    pub pages_scanned: i32,
+    pub h1_count: i32,
+    pub keywords_found: i32,
+    pub error: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+/// A reviewable keyword candidate for a project (migration 0043, Lot A). Detected
+/// from the site's own `<h1>` headings (`source = 'h1'`) or added by the user
+/// (`source = 'manual'`); `status` is the review state (candidate/kept/rejected).
+#[derive(Debug, Clone, FromRow)]
+pub struct SpotKeyword {
+    pub id: Uuid,
+    pub organization_id: Uuid,
+    pub project_id: Uuid,
+    pub keyword: String,
+    pub normalized: String,
+    pub source: String,
+    pub origin_url: Option<String>,
+    pub status: String,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
 /// A competitor domain tracked for a project (backlink-intelligence §1).
 #[derive(Debug, Clone, FromRow)]
 pub struct ProjectCompetitor {

@@ -30,6 +30,9 @@ pub enum JobKind {
     RecomputeUsage,
     /// Nightly `backlink_checks` downsampling (docs/03 §3.5).
     RetentionDownsample,
+    /// Spot Finder (Lot A): crawl a project's own site (P0 + P1) and extract
+    /// `<h1>` keyword candidates. User-initiated, so it sits above background work.
+    DetectSiteKeywords,
 }
 
 impl JobKind {
@@ -43,6 +46,9 @@ impl JobKind {
             JobKind::SendNotification => 30,
             JobKind::ProcessImport | JobKind::ImportRowsChunk => 20,
             JobKind::DigestNotifications | JobKind::CheckWarranties | JobKind::RecomputeUsage => 10,
+            // User-initiated keyword detection — above plain background crawls so
+            // the review screen fills promptly, but it does not jump the queue.
+            JobKind::DetectSiteKeywords => 15,
             JobKind::CheckSourcePage | JobKind::CheckTargetUrl => 0,
             JobKind::RetentionDownsample => -10,
         }
@@ -62,6 +68,7 @@ impl JobKind {
             JobKind::CheckWarranties => "check_warranties",
             JobKind::RecomputeUsage => "recompute_usage",
             JobKind::RetentionDownsample => "retention_downsample",
+            JobKind::DetectSiteKeywords => "detect_site_keywords",
         }
     }
 }
@@ -83,6 +90,7 @@ impl FromStr for JobKind {
             "check_warranties" => CheckWarranties,
             "recompute_usage" => RecomputeUsage,
             "retention_downsample" => RetentionDownsample,
+            "detect_site_keywords" => DetectSiteKeywords,
             _ => return Err(()),
         })
     }
@@ -123,6 +131,7 @@ mod tests {
             JobKind::CheckWarranties,
             JobKind::RecomputeUsage,
             JobKind::RetentionDownsample,
+            JobKind::DetectSiteKeywords,
         ] {
             assert_eq!(k.as_str().parse::<JobKind>(), Ok(k), "round-trip for {k:?}");
         }

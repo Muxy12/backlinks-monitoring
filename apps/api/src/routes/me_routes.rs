@@ -31,6 +31,8 @@ pub struct Features {
     pub gsc: bool,
     /// LinkAvista marketplace integration is configured (catalogue + ordering).
     pub linkavista: bool,
+    /// Spot Finder BETA (keyword-based prospecting) is enabled for this deployment.
+    pub spot_finder: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -66,6 +68,7 @@ pub async fn me(
             // The whole Impact UI keys off this flag.
             gsc: crate::routes::gsc_routes::configured(),
             linkavista: crate::routes::linkavista_routes::configured(&state.cfg),
+            spot_finder: state.cfg.spot_finder,
         },
     }))
 }

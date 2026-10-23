@@ -51,6 +51,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Stripe Tax: off unless STRIPE_TAX_ENABLED=true (requires Tax configured in
     // the Stripe account + a tax_behavior on every Price, or checkout fails).
     let stripe_tax_enabled = std::env::var("STRIPE_TAX_ENABLED").as_deref() == Ok("true");
+    // Spot Finder BETA: off unless SPOT_FINDER=true (keyword-based prospecting).
+    let spot_finder = std::env::var("SPOT_FINDER").as_deref() == Ok("true");
     let cfg = ApiConfig {
         secure_cookies,
         stripe_webhook_secret,
@@ -61,6 +63,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         linkavista_sandbox,
         linkavista_base_url,
         stripe_tax_enabled,
+        spot_finder,
         ..ApiConfig::default()
     };
     // Bootstrap platform admins from ADMIN_EMAILS (comma-separated). The operator

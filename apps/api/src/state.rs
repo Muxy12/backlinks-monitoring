@@ -44,6 +44,12 @@ pub struct ApiConfig {
     /// have Tax enabled and every Price to carry a `tax_behavior`, so flip
     /// `STRIPE_TAX_ENABLED=true` only once that is configured, or checkout breaks.
     pub stripe_tax_enabled: bool,
+    /// Spot Finder BETA (keyword-based prospecting, migration 0043). Env-gated
+    /// via `SPOT_FINDER` and off by default: when false the keyword routes 404
+    /// and the UI hides the nav entry (surfaced via `me.features.spot_finder`).
+    /// Lot A (keyword detection) has no external cost — this just keeps the
+    /// half-built surface dormant in production until it is switched on.
+    pub spot_finder: bool,
 }
 
 impl Default for ApiConfig {
@@ -60,6 +66,7 @@ impl Default for ApiConfig {
             linkavista_sandbox: true,
             linkavista_base_url: None,
             stripe_tax_enabled: false,
+            spot_finder: false,
         }
     }
 }

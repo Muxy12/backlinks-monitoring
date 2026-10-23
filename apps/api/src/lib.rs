@@ -327,6 +327,24 @@ pub fn app(state: AppState) -> Router {
             post(routes::discovery_routes::run_discovery),
         )
         .route(
+            "/v1/organizations/{org_id}/projects/{project_id}/keywords",
+            get(routes::spot_keyword_routes::list_keywords)
+                .post(routes::spot_keyword_routes::add_keyword),
+        )
+        .route(
+            "/v1/organizations/{org_id}/projects/{project_id}/keywords/detect",
+            post(routes::spot_keyword_routes::detect_keywords),
+        )
+        .route(
+            "/v1/organizations/{org_id}/projects/{project_id}/keywords/bulk-status",
+            post(routes::spot_keyword_routes::bulk_status),
+        )
+        .route(
+            "/v1/organizations/{org_id}/projects/{project_id}/keywords/{keyword_id}",
+            axum::routing::patch(routes::spot_keyword_routes::update_keyword)
+                .delete(routes::spot_keyword_routes::delete_keyword),
+        )
+        .route(
             "/v1/organizations/{org_id}/linkavista/sites",
             get(routes::linkavista_routes::list_sites),
         )

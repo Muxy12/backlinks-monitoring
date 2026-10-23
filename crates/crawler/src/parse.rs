@@ -106,6 +106,10 @@ pub struct ParsedPage {
     /// regardless of per-link `rel` (docs/06 §3.3).
     pub robots_nofollow: bool,
     pub links: Vec<ExtractedLink>,
+    /// The page's `<h1>` headings, whitespace-collapsed, empties dropped. Used by
+    /// the Spot Finder keyword detector (Lot A) — the topical headings of the
+    /// user's own pages seed keyword candidates.
+    pub h1s: Vec<String>,
 }
 
 fn sel(cache: &'static OnceLock<Selector>, s: &str) -> &'static Selector {
@@ -119,6 +123,7 @@ pub fn parse_page(html: &str) -> ParsedPage {
     static CANON: OnceLock<Selector> = OnceLock::new();
     static ROBOTS: OnceLock<Selector> = OnceLock::new();
     static IMG: OnceLock<Selector> = OnceLock::new();
+    static H1: OnceLock<Selector> = OnceLock::new();
 
     let doc = Html::parse_document(html);
 
@@ -212,12 +217,27 @@ pub fn parse_page(html: &str) -> ParsedPage {
         });
     }
 
+    // `<h1>` headings, whitespace-collapsed; empties dropped (Spot Finder, Lot A).
+    let h1s: Vec<String> = doc
+        .select(sel(&H1, "h1"))
+        .filter_map(|h| {
+            let text = h
+                .text()
+                .collect::<String>()
+                .split_whitespace()
+                .collect::<Vec<_>>()
+                .join(" ");
+            (!text.is_empty()).then_some(text)
+        })
+        .collect();
+
     ParsedPage {
         base_href,
         canonical,
         robots_noindex,
         robots_nofollow,
         links,
+        h1s,
     }
 }
 
@@ -351,5 +371,19 @@ mod tests {
         let page = parse_page(r#"<a href="/first">1</a><a href="/second">2</a>"#);
         assert_eq!(page.links[0].position, 0);
         assert_eq!(page.links[1].position, 1);
+    }
+
+    #[test]
+    fn extracts_h1_headings_collapsed() {
+        let page = parse_page(
+            r#"<h1>  Backlink   monitoring </h1><p>x</p><h1>Link <b>building</b></h1><h1>   </h1>"#,
+        );
+        assert_eq!(page.h1s, vec!["Backlink monitoring", "Link building"]);
+    }
+
+    #[test]
+    fn no_h1_is_empty() {
+        let page = parse_page(r#"<h2>Not an h1</h2>"#);
+        assert!(page.h1s.is_empty());
     }
 }

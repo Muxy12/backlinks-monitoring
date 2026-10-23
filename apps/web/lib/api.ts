@@ -42,6 +42,31 @@ export interface Features {
   campaigns_beta: boolean;
   gsc?: boolean;
   linkavista?: boolean;
+  spot_finder?: boolean;
+}
+
+// Spot Finder — keyword detection & review (Lot A).
+export interface SpotScanView {
+  id: string;
+  status: "queued" | "running" | "done" | "error";
+  pages_scanned: number;
+  h1_count: number;
+  keywords_found: number;
+  error: string | null;
+  created_at: string;
+  updated_at: string;
+}
+export interface SpotKeywordView {
+  id: string;
+  keyword: string;
+  source: "h1" | "manual";
+  origin_url: string | null;
+  status: "candidate" | "kept" | "rejected";
+  created_at: string;
+}
+export interface SpotKeywordsResponse {
+  scan: SpotScanView | null;
+  keywords: SpotKeywordView[];
 }
 
 // LinkAvista marketplace catalogue (read-only browse, Lot 2). Prices are in EUR
@@ -860,6 +885,40 @@ export const orgApi = {
       headers: csrfHeader(),
     }),
   projects: (org: string) => request<ProjectView[]>(`/v1/organizations/${org}/projects`),
+  // ── Spot Finder: keyword detection & review (Lot A) ──
+  spotKeywords: (org: string, projectId: string) =>
+    request<SpotKeywordsResponse>(`/v1/organizations/${org}/projects/${projectId}/keywords`),
+  detectSpotKeywords: (org: string, projectId: string) =>
+    request<SpotScanView>(`/v1/organizations/${org}/projects/${projectId}/keywords/detect`, {
+      method: "POST",
+      headers: csrfHeader(),
+    }),
+  addSpotKeyword: (org: string, projectId: string, keyword: string) =>
+    request<SpotKeywordView>(`/v1/organizations/${org}/projects/${projectId}/keywords`, {
+      method: "POST",
+      headers: csrfHeader(),
+      body: JSON.stringify({ keyword }),
+    }),
+  updateSpotKeyword: (
+    org: string,
+    projectId: string,
+    id: string,
+    body: { status?: string; keyword?: string },
+  ) =>
+    request<SpotKeywordView>(
+      `/v1/organizations/${org}/projects/${projectId}/keywords/${id}`,
+      { method: "PATCH", headers: csrfHeader(), body: JSON.stringify(body) },
+    ),
+  bulkSpotKeywordStatus: (org: string, projectId: string, ids: string[], status: string) =>
+    request<{ updated: number }>(
+      `/v1/organizations/${org}/projects/${projectId}/keywords/bulk-status`,
+      { method: "POST", headers: csrfHeader(), body: JSON.stringify({ ids, status }) },
+    ),
+  deleteSpotKeyword: (org: string, projectId: string, id: string) =>
+    request<null>(`/v1/organizations/${org}/projects/${projectId}/keywords/${id}`, {
+      method: "DELETE",
+      headers: csrfHeader(),
+    }),
   createProject: (
     org: string,
     body: { name: string; domain: string; check_frequency_hours?: number; client_id?: string },
