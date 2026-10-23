@@ -185,8 +185,7 @@ export default function ClientsPage() {
                       <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
                         <button className="btn sm" onClick={() => startEdit(c)}>Edit</button>{" "}
                         <button
-                          className="btn sm"
-                          style={{ color: "#b91c1c", borderColor: "#fecaca" }}
+                          className="btn sm danger"
                           onClick={() => void remove(c)}
                         >
                           Delete

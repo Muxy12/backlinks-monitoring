@@ -247,8 +247,8 @@ export default function IntegrationsPage() {
               )}
 
               <button
-                className="btn sm"
-                style={{ color: "#b91c1c", borderColor: "#fecaca", marginTop: 8 }}
+                className="btn sm danger"
+                style={{ marginTop: 8 }}
                 onClick={() => void disconnect()}
               >
                 Disconnect

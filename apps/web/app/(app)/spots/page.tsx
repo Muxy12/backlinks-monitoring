@@ -687,6 +687,7 @@ export default function SpotsPage() {
                       {pushMsg}
                     </p>
                   )}
+                  <div className="bl-scroll">
                   <table className="bl-table sf-spots-table">
                     <thead>
                       <tr>
@@ -766,6 +767,7 @@ export default function SpotsPage() {
                       ))}
                     </tbody>
                   </table>
+                  </div>
                   {spotsData!.spots.some((s) => !s.enriched) && (
                     <p className="sf-footnote muted">
                       Scores, DR, traffic and spam appear after “Enrich top spots”. Blank cells aren’t
@@ -788,6 +790,7 @@ export default function SpotsPage() {
                 discusses the topic. Join and contribute genuinely; links should come from real
                 participation, not drops (most forums forbid that, and it is risky).
               </p>
+              <div className="bl-scroll">
               <table className="bl-table sf-spots-table">
                 <thead>
                   <tr>
@@ -814,6 +817,7 @@ export default function SpotsPage() {
                   ))}
                 </tbody>
               </table>
+              </div>
             </section>
           )}
         </>
