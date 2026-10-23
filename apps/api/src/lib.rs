@@ -345,6 +345,14 @@ pub fn app(state: AppState) -> Router {
                 .delete(routes::spot_keyword_routes::delete_keyword),
         )
         .route(
+            "/v1/organizations/{org_id}/projects/{project_id}/spots",
+            get(routes::spot_search_routes::list_spots),
+        )
+        .route(
+            "/v1/organizations/{org_id}/projects/{project_id}/spots/search",
+            post(routes::spot_search_routes::search_spots),
+        )
+        .route(
             "/v1/organizations/{org_id}/linkavista/sites",
             get(routes::linkavista_routes::list_sites),
         )

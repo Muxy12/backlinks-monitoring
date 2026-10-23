@@ -380,3 +380,62 @@ async fn another_orgs_project_is_invisible() {
         .await;
     assert_eq!(st, StatusCode::NOT_FOUND);
 }
+
+// ── Lot B: spots (SERP search) ──────────────────────────────────────────────
+
+#[tokio::test]
+async fn spots_route_is_gated_off() {
+    let Some(s) = bootstrap(false).await else {
+        return;
+    };
+    let project = s.new_project("spots-off.com").await;
+    let (st, _) = s
+        .send(
+            "GET",
+            format!("/v1/organizations/{}/projects/{project}/spots", s.org),
+            None,
+            false,
+        )
+        .await;
+    assert_eq!(st, StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn spots_empty_and_search_needs_dataforseo() {
+    let Some(s) = bootstrap(true).await else {
+        return;
+    };
+    let org = s.org;
+    let project = s.new_project("spots-on.com").await;
+
+    // Empty to start: no run, no spots.
+    let (st, v) = s
+        .send(
+            "GET",
+            format!("/v1/organizations/{org}/projects/{project}/spots"),
+            None,
+            false,
+        )
+        .await;
+    assert_eq!(st, StatusCode::OK);
+    assert!(v["run"].is_null());
+    assert_eq!(v["spots"].as_array().unwrap().len(), 0);
+
+    // Search is refused when DataForSEO is not configured (the test env has no
+    // credentials), before anything is spent. (A missing-credentials environment
+    // is the deterministic case here; the kept-keyword guard is exercised once a
+    // provider is configured.)
+    let (st, _) = s
+        .send(
+            "POST",
+            format!("/v1/organizations/{org}/projects/{project}/spots/search"),
+            Some(serde_json::json!({"locale":"fr"})),
+            true,
+        )
+        .await;
+    assert_eq!(
+        st,
+        StatusCode::UNPROCESSABLE_ENTITY,
+        "search refused without DataForSEO configured"
+    );
+}

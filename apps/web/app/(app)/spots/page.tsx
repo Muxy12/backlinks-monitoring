@@ -9,6 +9,7 @@ import {
   type ProjectView,
   type SpotKeywordsResponse,
   type SpotKeywordView,
+  type SpotsResponse,
 } from "@/lib/api";
 import { selectedOrgId } from "@/lib/workspace";
 import "@/app/auth.css";
@@ -37,6 +38,12 @@ export default function SpotsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
+  // Lot B — spots (SERP search over the kept keywords).
+  const [spotsData, setSpotsData] = useState<SpotsResponse | null>(null);
+  const [locale, setLocale] = useState("fr");
+  const [spotsBusy, setSpotsBusy] = useState(false);
+  const [spotsErr, setSpotsErr] = useState<string | null>(null);
+  const dataforseo = !!me?.features?.dataforseo;
 
   useEffect(() => {
     api.me().then((res) => {
@@ -65,11 +72,29 @@ export default function SpotsPage() {
     if (res.ok) setData(res.data);
   }, []);
 
+  const loadSpots = useCallback(async (org: string, project: string) => {
+    const res = await orgApi.spots(org, project);
+    if (res.ok) setSpotsData(res.data);
+  }, []);
+
   useEffect(() => {
     setData(null);
+    setSpotsData(null);
     setFilter("all");
-    if (orgId && projectId) void load(orgId, projectId);
-  }, [orgId, projectId, load]);
+    if (orgId && projectId) {
+      void load(orgId, projectId);
+      void loadSpots(orgId, projectId);
+    }
+  }, [orgId, projectId, load, loadSpots]);
+
+  // Poll while a spot search is running.
+  const spotRun = spotsData?.run ?? null;
+  const searching = spotRun?.status === "queued" || spotRun?.status === "running";
+  useEffect(() => {
+    if (!orgId || !projectId || !searching) return;
+    const t = setTimeout(() => void loadSpots(orgId, projectId), 3000);
+    return () => clearTimeout(t);
+  }, [orgId, projectId, searching, spotsData, loadSpots]);
 
   // Poll while a detection scan is still queued/running.
   const scan = data?.scan ?? null;
@@ -138,6 +163,44 @@ export default function SpotsPage() {
     setEditingId(null);
     setEditText("");
     await load(orgId, projectId);
+  }
+
+  async function search() {
+    if (!orgId || !projectId) return;
+    setSpotsErr(null);
+    setSpotsBusy(true);
+    const res = await orgApi.searchSpots(orgId, projectId, locale);
+    setSpotsBusy(false);
+    if (!res.ok) {
+      setSpotsErr(res.detail || "Could not start the search.");
+      return;
+    }
+    setSpotsData((d) => ({ run: res.data, spots: d?.spots ?? [] }));
+  }
+
+  function exportSpotsCsv() {
+    const rows = spotsData?.spots ?? [];
+    if (rows.length === 0) return;
+    const header = ["domain", "keywords", "best_position", "avg_position", "example_keyword", "example_url"];
+    const body = rows.map((s) =>
+      [
+        s.domain,
+        s.keyword_count,
+        s.best_position ?? "",
+        s.avg_position != null ? s.avg_position.toFixed(1) : "",
+        s.example_keyword ?? "",
+        s.example_url ?? "",
+      ]
+        .map((v) => `"${String(v).replace(/"/g, '""')}"`)
+        .join(","),
+    );
+    const csv = [header.join(","), ...body].join("\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "spots.csv";
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   const keywords = data?.keywords ?? [];
@@ -378,9 +441,111 @@ export default function SpotsPage() {
 
               {counts.kept > 0 && (
                 <p className="sf-footnote muted">
-                  {counts.kept} kept keyword{counts.kept === 1 ? "" : "s"} will feed the SERP lookup in
-                  the next step (coming soon).
+                  {counts.kept} kept keyword{counts.kept === 1 ? "" : "s"} feed the spot search below.
                 </p>
+              )}
+            </section>
+          )}
+
+          {projects.length > 0 && (
+            <section className="panel sf-spots" style={{ marginTop: 16 }}>
+              <div className="panel-head">
+                <h2>Spots — who ranks for your keywords</h2>
+                <div className="sf-detect-row">
+                  <select
+                    aria-label="Search locale"
+                    value={locale}
+                    onChange={(e) => setLocale(e.target.value)}
+                    disabled={searching}
+                  >
+                    <option value="fr">France · French</option>
+                    <option value="en">United States · English</option>
+                  </select>
+                  <button
+                    className="btn primary"
+                    onClick={() => void search()}
+                    disabled={spotsBusy || searching || counts.kept === 0 || !dataforseo}
+                  >
+                    {searching ? "Searching…" : spotsBusy ? "Starting…" : "Find spots"}
+                  </button>
+                </div>
+              </div>
+
+              <p className="muted" style={{ marginBottom: 10 }}>
+                For each kept keyword we look up who ranks on Google, then surface the domains that
+                rank for your keywords — relevance-first link prospects. Uses DataForSEO (paid per
+                query); results are cached, so re-running is cheap.
+              </p>
+
+              {!dataforseo && (
+                <div className="auth-error" role="alert" style={{ marginBottom: 10 }}>
+                  DataForSEO is not configured on this deployment, so the search is disabled.
+                </div>
+              )}
+              {dataforseo && counts.kept === 0 && (
+                <p className="muted">Keep at least one keyword above to enable the search.</p>
+              )}
+
+              <p
+                className={`sf-status${spotRun?.status === "error" ? " sf-status-error" : ""}`}
+                role="status"
+              >
+                {searching && <span className="sf-spinner" aria-hidden="true" />}
+                {spotRun
+                  ? spotRun.status === "error"
+                    ? `Search failed: ${spotRun.error ?? "unknown error"}`
+                    : searching
+                      ? "Searching the SERPs…"
+                      : `Searched ${spotRun.keywords_queried} keyword${spotRun.keywords_queried === 1 ? "" : "s"} (${spotRun.serp_queries} billed) → ${spotRun.spots_found} spot${spotRun.spots_found === 1 ? "" : "s"}.`
+                  : "No search yet."}
+              </p>
+              {spotsErr && (
+                <div className="auth-error" role="alert" style={{ marginTop: 8 }}>
+                  {spotsErr}
+                </div>
+              )}
+
+              {(spotsData?.spots.length ?? 0) > 0 && (
+                <>
+                  <div className="sf-spots-head">
+                    <span className="muted">{spotsData!.spots.length} spots</span>
+                    <button className="btn sm ghost" onClick={exportSpotsCsv}>
+                      Export CSV
+                    </button>
+                  </div>
+                  <table className="bl-table sf-spots-table">
+                    <thead>
+                      <tr>
+                        <th>Domain</th>
+                        <th>Keywords</th>
+                        <th>Best</th>
+                        <th>Avg</th>
+                        <th>Example</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {spotsData!.spots.map((s) => (
+                        <tr key={s.id}>
+                          <td className="mono">{s.domain}</td>
+                          <td>
+                            <b>{s.keyword_count}</b>
+                          </td>
+                          <td>{s.best_position ?? "-"}</td>
+                          <td>{s.avg_position != null ? s.avg_position.toFixed(1) : "-"}</td>
+                          <td className="sf-example">
+                            {s.example_url ? (
+                              <a href={s.example_url} target="_blank" rel="noopener noreferrer" title={s.example_url}>
+                                {s.example_keyword ?? "page"} ↗
+                              </a>
+                            ) : (
+                              (s.example_keyword ?? "-")
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </>
               )}
             </section>
           )}

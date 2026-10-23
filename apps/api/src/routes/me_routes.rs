@@ -33,6 +33,9 @@ pub struct Features {
     pub linkavista: bool,
     /// Spot Finder BETA (keyword-based prospecting) is enabled for this deployment.
     pub spot_finder: bool,
+    /// DataForSEO (SERP lookup) is configured — the UI can enable/disable the
+    /// "Find spots" action accordingly.
+    pub dataforseo: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -69,6 +72,7 @@ pub async fn me(
             gsc: crate::routes::gsc_routes::configured(),
             linkavista: crate::routes::linkavista_routes::configured(&state.cfg),
             spot_finder: state.cfg.spot_finder,
+            dataforseo: crawler::serp::SerpProvider::from_env().is_some(),
         },
     }))
 }

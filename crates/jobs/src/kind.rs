@@ -33,6 +33,9 @@ pub enum JobKind {
     /// Spot Finder (Lot A): crawl a project's own site (P0 + P1) and extract
     /// `<h1>` keyword candidates. User-initiated, so it sits above background work.
     DetectSiteKeywords,
+    /// Spot Finder (Lot B): run the SERP lookup over the kept keywords and
+    /// aggregate ranking domains into spots. User-initiated, paid (DataForSEO).
+    FindSpots,
 }
 
 impl JobKind {
@@ -46,9 +49,9 @@ impl JobKind {
             JobKind::SendNotification => 30,
             JobKind::ProcessImport | JobKind::ImportRowsChunk => 20,
             JobKind::DigestNotifications | JobKind::CheckWarranties | JobKind::RecomputeUsage => 10,
-            // User-initiated keyword detection — above plain background crawls so
-            // the review screen fills promptly, but it does not jump the queue.
-            JobKind::DetectSiteKeywords => 15,
+            // User-initiated Spot Finder work — above plain background crawls so
+            // the UI fills promptly, but it does not jump the queue.
+            JobKind::DetectSiteKeywords | JobKind::FindSpots => 15,
             JobKind::CheckSourcePage | JobKind::CheckTargetUrl => 0,
             JobKind::RetentionDownsample => -10,
         }
@@ -69,6 +72,7 @@ impl JobKind {
             JobKind::RecomputeUsage => "recompute_usage",
             JobKind::RetentionDownsample => "retention_downsample",
             JobKind::DetectSiteKeywords => "detect_site_keywords",
+            JobKind::FindSpots => "find_spots",
         }
     }
 }
@@ -91,6 +95,7 @@ impl FromStr for JobKind {
             "recompute_usage" => RecomputeUsage,
             "retention_downsample" => RetentionDownsample,
             "detect_site_keywords" => DetectSiteKeywords,
+            "find_spots" => FindSpots,
             _ => return Err(()),
         })
     }
@@ -132,6 +137,7 @@ mod tests {
             JobKind::RecomputeUsage,
             JobKind::RetentionDownsample,
             JobKind::DetectSiteKeywords,
+            JobKind::FindSpots,
         ] {
             assert_eq!(k.as_str().parse::<JobKind>(), Ok(k), "round-trip for {k:?}");
         }
