@@ -87,14 +87,16 @@ export default function SpotsPage() {
     }
   }, [orgId, projectId, load, loadSpots]);
 
-  // Poll while a spot search is running.
+  // Poll while a spot search or enrichment is running.
   const spotRun = spotsData?.run ?? null;
+  const enrichRun = spotsData?.enrich_run ?? null;
   const searching = spotRun?.status === "queued" || spotRun?.status === "running";
+  const enriching = enrichRun?.status === "queued" || enrichRun?.status === "running";
   useEffect(() => {
-    if (!orgId || !projectId || !searching) return;
+    if (!orgId || !projectId || !(searching || enriching)) return;
     const t = setTimeout(() => void loadSpots(orgId, projectId), 3000);
     return () => clearTimeout(t);
-  }, [orgId, projectId, searching, spotsData, loadSpots]);
+  }, [orgId, projectId, searching, enriching, spotsData, loadSpots]);
 
   // Poll while a detection scan is still queued/running.
   const scan = data?.scan ?? null;
@@ -175,19 +177,51 @@ export default function SpotsPage() {
       setSpotsErr(res.detail || "Could not start the search.");
       return;
     }
-    setSpotsData((d) => ({ run: res.data, spots: d?.spots ?? [] }));
+    setSpotsData((d) => ({ run: res.data, enrich_run: d?.enrich_run ?? null, spots: d?.spots ?? [] }));
+  }
+
+  async function enrich() {
+    if (!orgId || !projectId) return;
+    setSpotsErr(null);
+    setSpotsBusy(true);
+    const res = await orgApi.enrichSpots(orgId, projectId);
+    setSpotsBusy(false);
+    if (!res.ok) {
+      setSpotsErr(res.detail || "Could not start enrichment.");
+      return;
+    }
+    setSpotsData((d) => ({ run: d?.run ?? null, enrich_run: res.data, spots: d?.spots ?? [] }));
   }
 
   function exportSpotsCsv() {
     const rows = spotsData?.spots ?? [];
     if (rows.length === 0) return;
-    const header = ["domain", "keywords", "best_position", "avg_position", "example_keyword", "example_url"];
+    const header = [
+      "domain",
+      "quality_score",
+      "keywords",
+      "best_position",
+      "avg_position",
+      "domain_rank",
+      "referring_domains",
+      "spam_score",
+      "organic_keywords",
+      "organic_traffic",
+      "example_keyword",
+      "example_url",
+    ];
     const body = rows.map((s) =>
       [
         s.domain,
+        s.quality_score != null ? s.quality_score.toFixed(1) : "",
         s.keyword_count,
         s.best_position ?? "",
         s.avg_position != null ? s.avg_position.toFixed(1) : "",
+        s.domain_rank ?? "",
+        s.referring_domains ?? "",
+        s.spam_score ?? "",
+        s.organic_keywords ?? "",
+        s.organic_traffic ?? "",
         s.example_keyword ?? "",
         s.example_url ?? "",
       ]
@@ -464,9 +498,23 @@ export default function SpotsPage() {
                   <button
                     className="btn primary"
                     onClick={() => void search()}
-                    disabled={spotsBusy || searching || counts.kept === 0 || !dataforseo}
+                    disabled={spotsBusy || searching || enriching || counts.kept === 0 || !dataforseo}
                   >
-                    {searching ? "Searching…" : spotsBusy ? "Starting…" : "Find spots"}
+                    {searching ? "Searching…" : "Find spots"}
+                  </button>
+                  <button
+                    className="btn sm"
+                    onClick={() => void enrich()}
+                    disabled={
+                      spotsBusy ||
+                      searching ||
+                      enriching ||
+                      (spotsData?.spots.length ?? 0) === 0 ||
+                      !dataforseo
+                    }
+                    title="Fetch authority, traffic and backlink metrics for the top spots and score them"
+                  >
+                    {enriching ? "Scoring…" : "Enrich top spots"}
                   </button>
                 </div>
               </div>
@@ -499,6 +547,19 @@ export default function SpotsPage() {
                       : `Searched ${spotRun.keywords_queried} keyword${spotRun.keywords_queried === 1 ? "" : "s"} (${spotRun.serp_queries} billed) → ${spotRun.spots_found} spot${spotRun.spots_found === 1 ? "" : "s"}.`
                   : "No search yet."}
               </p>
+              {enrichRun && (
+                <p
+                  className={`sf-status${enrichRun.status === "error" ? " sf-status-error" : ""}`}
+                  role="status"
+                >
+                  {enriching && <span className="sf-spinner" aria-hidden="true" />}
+                  {enrichRun.status === "error"
+                    ? `Enrichment failed: ${enrichRun.error ?? "unknown error"}`
+                    : enriching
+                      ? "Scoring the top spots…"
+                      : `Scored ${enrichRun.spots_enriched} spot${enrichRun.spots_enriched === 1 ? "" : "s"} (${enrichRun.provider_queries} queries billed).`}
+                </p>
+              )}
               {spotsErr && (
                 <div className="auth-error" role="alert" style={{ marginTop: 8 }}>
                   {spotsErr}
@@ -516,22 +577,34 @@ export default function SpotsPage() {
                   <table className="bl-table sf-spots-table">
                     <thead>
                       <tr>
+                        <th>Score</th>
                         <th>Domain</th>
                         <th>Keywords</th>
                         <th>Best</th>
-                        <th>Avg</th>
+                        <th title="Domain authority (DataForSEO rank 0–1000)">DR</th>
+                        <th title="Estimated monthly organic traffic">Traffic</th>
+                        <th title="Backlink spam score (lower is better)">Spam</th>
                         <th>Example</th>
                       </tr>
                     </thead>
                     <tbody>
                       {spotsData!.spots.map((s) => (
                         <tr key={s.id}>
+                          <td>
+                            {s.quality_score != null ? (
+                              <span className="sf-score">{Math.round(s.quality_score)}</span>
+                            ) : (
+                              <span className="muted">–</span>
+                            )}
+                          </td>
                           <td className="mono">{s.domain}</td>
                           <td>
                             <b>{s.keyword_count}</b>
                           </td>
                           <td>{s.best_position ?? "-"}</td>
-                          <td>{s.avg_position != null ? s.avg_position.toFixed(1) : "-"}</td>
+                          <td>{s.domain_rank ?? "–"}</td>
+                          <td>{s.organic_traffic != null ? s.organic_traffic.toLocaleString() : "–"}</td>
+                          <td>{s.spam_score ?? "–"}</td>
                           <td className="sf-example">
                             {s.example_url ? (
                               <a href={s.example_url} target="_blank" rel="noopener noreferrer" title={s.example_url}>
@@ -545,6 +618,12 @@ export default function SpotsPage() {
                       ))}
                     </tbody>
                   </table>
+                  {spotsData!.spots.some((s) => !s.enriched) && (
+                    <p className="sf-footnote muted">
+                      Scores, DR, traffic and spam appear after “Enrich top spots”. Blank cells aren’t
+                      enriched yet.
+                    </p>
+                  )}
                 </>
               )}
             </section>
