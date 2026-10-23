@@ -138,7 +138,7 @@ pub async fn run_search(pool: &sqlx::PgPool, run_id: Uuid) -> anyhow::Result<()>
         }
     }
     let mut forum_rows: Vec<(String, ForumAcc)> = forums.into_iter().collect();
-    forum_rows.sort_by(|a, b| a.1.best.cmp(&b.1.best));
+    forum_rows.sort_by_key(|(_, f)| f.best);
     forum_rows.truncate(MAX_FORUMS);
     let new_forums: Vec<spots::NewForum> = forum_rows
         .iter()
