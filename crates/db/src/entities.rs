@@ -283,6 +283,21 @@ pub struct Spot {
     pub updated_at: DateTime<Utc>,
 }
 
+/// A forum/community page that ranks for the project's keywords (migration 0047,
+/// Lot E) — a candidate for participation / contextual links.
+#[derive(Debug, Clone, FromRow)]
+pub struct SpotForum {
+    pub id: Uuid,
+    pub organization_id: Uuid,
+    pub project_id: Uuid,
+    pub url: String,
+    pub domain: String,
+    pub forum_kind: String,
+    pub example_keyword: Option<String>,
+    pub best_position: Option<i32>,
+    pub created_at: DateTime<Utc>,
+}
+
 /// One Spot Finder marketplace-matching pass for a project (migration 0046, Lot
 /// D): cross-reference spots against link-buying platforms.
 #[derive(Debug, Clone, FromRow)]

@@ -186,6 +186,7 @@ export default function SpotsPage() {
       enrich_run: d?.enrich_run ?? null,
       match_run: d?.match_run ?? null,
       spots: d?.spots ?? [],
+      forums: d?.forums ?? [],
     }));
   }
 
@@ -204,6 +205,7 @@ export default function SpotsPage() {
       enrich_run: res.data,
       match_run: d?.match_run ?? null,
       spots: d?.spots ?? [],
+      forums: d?.forums ?? [],
     }));
   }
 
@@ -222,6 +224,7 @@ export default function SpotsPage() {
       enrich_run: d?.enrich_run ?? null,
       match_run: res.data,
       spots: d?.spots ?? [],
+      forums: d?.forums ?? [],
     }));
   }
 
@@ -710,6 +713,46 @@ export default function SpotsPage() {
                   )}
                 </>
               )}
+            </section>
+          )}
+
+          {(spotsData?.forums.length ?? 0) > 0 && (
+            <section className="panel" style={{ marginTop: 16 }}>
+              <div className="panel-head">
+                <h2>Communities &amp; forums</h2>
+                <span className="muted">{spotsData!.forums.length} found</span>
+              </div>
+              <p className="muted" style={{ marginBottom: 10 }}>
+                Forums and communities that rank for your keywords — places your audience already
+                discusses the topic. Join and contribute genuinely; links should come from real
+                participation, not drops (most forums forbid that, and it is risky).
+              </p>
+              <table className="bl-table sf-spots-table">
+                <thead>
+                  <tr>
+                    <th>Community</th>
+                    <th>Type</th>
+                    <th>Best</th>
+                    <th>Keyword</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {spotsData!.forums.map((f) => (
+                    <tr key={f.id}>
+                      <td className="sf-example">
+                        <a href={f.url} target="_blank" rel="noopener noreferrer" title={f.url}>
+                          {f.domain} ↗
+                        </a>
+                      </td>
+                      <td>
+                        <span className="sf-tag">{f.forum_kind}</span>
+                      </td>
+                      <td>{f.best_position ?? "–"}</td>
+                      <td>{f.example_keyword ?? "–"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </section>
           )}
         </>

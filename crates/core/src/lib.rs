@@ -14,6 +14,7 @@ pub mod attention;
 pub mod csv_export;
 pub mod csv_import;
 pub mod event;
+pub mod forums;
 pub mod impact;
 pub mod keywords;
 pub mod monitoring;
@@ -38,6 +39,7 @@ pub use attention::{
     AttentionKind, Priority, priority as attention_priority, sort_key as attention_sort_key,
 };
 pub use event::{BacklinkEvent, EventType, change_alert_label};
+pub use forums::{ForumKind, forum_kind, is_forum};
 pub use impact::{Confidence, SignalState};
 pub use keywords::{KeywordCandidate, candidates_from_h1s, clean_keyword};
 pub use monitoring::{

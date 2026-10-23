@@ -3,10 +3,13 @@
 //! them. Cost is controlled two ways: only kept keywords are queried (capped),
 //! and an org-scoped cache skips keywords looked up recently.
 
-use backlio_core::{SerpHit, aggregate_spots};
+use backlio_core::{SerpHit, aggregate_spots, forum_kind, site_host};
 use crawler::serp::{Locale, SerpProvider, SerpResult};
+use std::collections::HashMap;
 use uuid::Uuid;
 
+/// Max forums/communities stored per run (Lot E).
+const MAX_FORUMS: usize = 50;
 /// Max kept keywords queried per run (cost guard).
 const MAX_KEYWORDS: i64 = 50;
 /// Organic depth requested per keyword.
@@ -104,6 +107,50 @@ pub async fn run_search(pool: &sqlx::PgPool, run_id: Uuid) -> anyhow::Result<()>
         })
         .collect();
     spots::replace_spots(pool, org, project, &new_spots).await?;
+
+    // Forums & communities (Lot E): split out the forum-like SERP hits — free,
+    // same data. Dedup by URL, keep the best position + a keyword, drop own site.
+    let own_host = site_host(&own_domain);
+    struct ForumAcc {
+        domain: String,
+        kind: &'static str,
+        best: i32,
+        keyword: String,
+    }
+    let mut forums: HashMap<String, ForumAcc> = HashMap::new();
+    for h in &hits {
+        let Some(kind) = forum_kind(&h.url) else {
+            continue;
+        };
+        let host = site_host(&h.domain);
+        if host.is_empty() || host == own_host {
+            continue;
+        }
+        let entry = forums.entry(h.url.clone()).or_insert_with(|| ForumAcc {
+            domain: host,
+            kind: kind.as_str(),
+            best: h.rank,
+            keyword: h.keyword.clone(),
+        });
+        if h.rank < entry.best {
+            entry.best = h.rank;
+            entry.keyword = h.keyword.clone();
+        }
+    }
+    let mut forum_rows: Vec<(String, ForumAcc)> = forums.into_iter().collect();
+    forum_rows.sort_by(|a, b| a.1.best.cmp(&b.1.best));
+    forum_rows.truncate(MAX_FORUMS);
+    let new_forums: Vec<spots::NewForum> = forum_rows
+        .iter()
+        .map(|(url, f)| spots::NewForum {
+            url,
+            domain: &f.domain,
+            forum_kind: f.kind,
+            example_keyword: Some(&f.keyword),
+            best_position: Some(f.best),
+        })
+        .collect();
+    spots::replace_forums(pool, org, project, &new_forums).await?;
 
     spots::finish_run(
         pool,
