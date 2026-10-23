@@ -45,9 +45,9 @@
   font-weight: 600;
   letter-spacing: 0.01em;
   text-transform: capitalize;
-  color: var(--primary);
-  background: var(--primary-weak);
-  border: 1px solid color-mix(in srgb, var(--primary) 26%, transparent);
+  color: var(--primary-press);
+  background: color-mix(in srgb, var(--primary) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary) 30%, transparent);
   border-radius: 999px;
   vertical-align: middle;
 }
@@ -316,9 +316,16 @@
 
 .client-badge {
   margin-left: 10px; padding: 2px 9px; font-size: 12px; font-weight: 500;
-  color: var(--primary); background: var(--primary-weak);
-  border: 1px solid color-mix(in srgb, var(--primary) 26%, transparent);
+  color: var(--primary-press); background: color-mix(in srgb, var(--primary) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary) 30%, transparent);
   border-radius: 999px; vertical-align: middle;
+}
+
+/* Dark theme brightens --primary; use it (not the darker -press) as the pill
+   text there so these blue-on-tint pills keep AA contrast on the dark fill. */
+:root[data-theme="dark"] .role-pill,
+:root[data-theme="dark"] .client-badge {
+  color: var(--primary);
 }
 
 /* ── Empty & loading states ─────────────────────────────────────────────── */
