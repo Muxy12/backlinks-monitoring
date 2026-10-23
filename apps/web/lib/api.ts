@@ -1005,6 +1005,11 @@ export const orgApi = {
       method: "POST",
       headers: csrfHeader(),
     }),
+  spotToCampaign: (org: string, projectId: string, spotId: string, campaignId: string) =>
+    request<{ prospect_id: string; domain: string }>(
+      `/v1/organizations/${org}/projects/${projectId}/spots/${spotId}/to-campaign`,
+      { method: "POST", headers: csrfHeader(), body: JSON.stringify({ campaign_id: campaignId }) },
+    ),
   createProject: (
     org: string,
     body: { name: string; domain: string; check_frequency_hours?: number; client_id?: string },
