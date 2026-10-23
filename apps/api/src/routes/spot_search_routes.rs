@@ -314,7 +314,8 @@ pub async fn enrich_spots(
     }
 
     // Need spots before enriching them.
-    let some = spots::spots_to_enrich(&state.pool, scope.organization_id(), project_id, 1).await?;
+    let some =
+        spots::spots_to_enrich(&state.pool, scope.organization_id(), project_id, false, 1).await?;
     if some.is_empty() {
         return Err(ApiError::Validation(
             "search for spots before enriching them".into(),
@@ -365,7 +366,8 @@ pub async fn match_spots(
         return Ok((StatusCode::ACCEPTED, Json(MatchRunView::from(existing))));
     }
 
-    let some = spots::spots_to_enrich(&state.pool, scope.organization_id(), project_id, 1).await?;
+    let some =
+        spots::spots_to_enrich(&state.pool, scope.organization_id(), project_id, false, 1).await?;
     if some.is_empty() {
         return Err(ApiError::Validation(
             "search for spots before matching marketplaces".into(),

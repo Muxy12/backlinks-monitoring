@@ -28,14 +28,16 @@ pub async fn run_enrich(pool: &sqlx::PgPool, run_id: Uuid) -> anyhow::Result<()>
         }
     };
 
-    let targets = spots::spots_to_enrich(pool, org, project, TOP_SPOTS).await?;
+    // only_stale = true: skip spots already enriched within the last week so a
+    // repeated run doesn't re-bill DataForSEO for fresh metrics.
+    let targets = spots::spots_to_enrich(pool, org, project, true, TOP_SPOTS).await?;
     if targets.is_empty() {
         spots::finish_enrich(
             pool,
             run_id,
             0,
             0,
-            Some("no spots to enrich — search first"),
+            Some("all spots already have fresh metrics — nothing to enrich"),
         )
         .await?;
         return Ok(());

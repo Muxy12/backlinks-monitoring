@@ -7360,19 +7360,28 @@ pub mod spots {
     /// Worker-side: the top spots to enrich (by relevance), cross-tenant by the
     /// trusted (org, project) from the claimed run. Returns (id, domain,
     /// keyword_count) — the count feeds the relevance signal of the score.
+    ///
+    /// `only_stale` restricts to spots never enriched or enriched more than a
+    /// week ago, so a repeated "Enrich" doesn't re-bill DataForSEO for spots that
+    /// already have fresh metrics (the enrich path passes `true`; marketplace
+    /// matching, which wants the full shortlist, passes `false`).
     pub async fn spots_to_enrich(
         pool: &PgPool,
         organization_id: Uuid,
         project_id: Uuid,
+        only_stale: bool,
         limit: i64,
     ) -> Result<Vec<(Uuid, String, i32)>, DbError> {
         Ok(sqlx::query_as::<_, (Uuid, String, i32)>(
             "SELECT id, domain, keyword_count FROM spots \
              WHERE organization_id = $1 AND project_id = $2 \
-             ORDER BY keyword_count DESC, avg_position ASC NULLS LAST LIMIT $3",
+               AND ($3 = FALSE OR enriched_at IS NULL \
+                    OR enriched_at < now() - make_interval(days => 7)) \
+             ORDER BY keyword_count DESC, avg_position ASC NULLS LAST LIMIT $4",
         )
         .bind(organization_id)
         .bind(project_id)
+        .bind(only_stale)
         .bind(limit.clamp(1, 100))
         .fetch_all(pool)
         .await?)

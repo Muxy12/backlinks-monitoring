@@ -33,7 +33,7 @@ pub async fn run_match(pool: &sqlx::PgPool, run_id: Uuid) -> anyhow::Result<()> 
         return Ok(());
     }
 
-    let targets = spots::spots_to_enrich(pool, org, project, MAX_SPOTS).await?;
+    let targets = spots::spots_to_enrich(pool, org, project, false, MAX_SPOTS).await?;
     if targets.is_empty() {
         spots::finish_match(
             pool,
