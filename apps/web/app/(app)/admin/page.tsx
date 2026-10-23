@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   api,
@@ -22,6 +22,7 @@ import {
 import "@/app/auth.css";
 import "../dashboard/dashboard.css";
 import "./admin.css";
+import { toast } from "../toast";
 
 const PLAN_LABEL: Record<string, string> = {
   starter: "Starter",
@@ -57,12 +58,13 @@ function pctStr(n: number, d: number): string {
 // Copyable internal id, available for support/debugging without dominating the UI.
 function IdChip({ id }: { id: string }) {
   const [copied, setCopied] = useState(false);
-  const short = id.length > 10 ? `${id.slice(0, 8)}…` : id;
+  const short = id.length > 10 ? `${id.slice(0, 8)}â¦` : id;
   return (
     <button
       type="button"
       className={`idchip${copied ? " copied" : ""}`}
       title={`${id}, click to copy`}
+      aria-label={copied ? "Copied to clipboard" : `Copy id ${id}`}
       onClick={async (e) => {
         e.stopPropagation();
         try {
@@ -72,10 +74,11 @@ function IdChip({ id }: { id: string }) {
         } catch { /* clipboard unavailable */ }
       }}
     >
-      {copied ? "copied" : short}
+      <span aria-hidden="true">{copied ? "copied" : short}</span>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
         <rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V5a2 2 0 0 1 2-2h10" />
       </svg>
+      <span className="sr-only" role="status" aria-live="polite">{copied ? "Copied to clipboard" : ""}</span>
     </button>
   );
 }
@@ -98,9 +101,24 @@ export default function AdminPage() {
   const [usage, setUsage] = useState<AdminUsageLimit[]>([]);
   const [tab, setTab] = useState<"orgs" | "subscriptions" | "users" | "audit">("orgs");
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [err, setErr] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [detail, setDetail] = useState<AdminOrg | null>(null);
+  // Customer 360 drawer: focus management + Escape (accessible dialog).
+  const drawerRef = useRef<HTMLElement | null>(null);
+  const drawerOpenerRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (!detail) return;
+    drawerOpenerRef.current = document.activeElement as HTMLElement | null;
+    drawerRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setDetail(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      drawerOpenerRef.current?.focus?.();
+    };
+  }, [detail]);
 
   const loadAll = useCallback(async () => {
     const [s, o, u, a, op, bl, sb, an, ug, wl, fb] = await Promise.all([
@@ -175,13 +193,13 @@ export default function AdminPage() {
       return;
     }
     setBusyId(u.id);
-    setErr(null);
     const res = await adminApi.setAdmin(u.id, next);
     setBusyId(null);
     if (!res.ok) {
-      setErr(res.detail);
+      toast(res.detail, "error");
       return;
     }
+    toast(next ? "Platform admin granted." : "Platform admin revoked.", "success");
     setUsers((list) => list.map((x) => (x.id === u.id ? { ...x, is_platform_admin: next } : x)));
   };
 
@@ -194,26 +212,36 @@ export default function AdminPage() {
       return;
     }
     setBusyId(o.id);
-    setErr(null);
     const res = await adminApi.setOrgSuspended(o.id, next);
     setBusyId(null);
     if (!res.ok) {
-      setErr(res.detail);
+      toast(res.detail, "error");
       return;
     }
+    toast(next ? `"${o.name}" suspended.` : `"${o.name}" reactivated.`, "success");
     await refreshOrgs();
   };
 
   const changePlan = async (o: AdminOrg, plan: string) => {
     if (plan === o.plan) return;
+    // Plan changes affect billing, so confirm before applying (the <select> is
+    // controlled, so a cancel simply snaps it back to the current plan).
+    if (
+      !confirm(
+        `Change "${o.name}" from ${PLAN_LABEL[o.plan] ?? o.plan} to ${PLAN_LABEL[plan] ?? plan}? This applies immediately.`,
+      )
+    ) {
+      return;
+    }
     setBusyId(o.id);
-    setErr(null);
     const res = await adminApi.setOrgPlan(o.id, plan);
     setBusyId(null);
     if (!res.ok) {
-      setErr(res.detail);
+      toast(res.detail, "error");
+      await refreshOrgs();
       return;
     }
+    toast(`"${o.name}" moved to ${PLAN_LABEL[plan] ?? plan}.`, "success");
     await refreshOrgs();
   };
 
@@ -224,17 +252,17 @@ export default function AdminPage() {
     );
     if (typed === null) return;
     if (typed.trim() !== o.slug) {
-      setErr("Slug did not match, deletion cancelled.");
+      toast("Slug did not match â deletion cancelled.", "error");
       return;
     }
     setBusyId(o.id);
-    setErr(null);
     const res = await adminApi.deleteOrg(o.id);
     setBusyId(null);
     if (!res.ok) {
-      setErr(res.detail);
+      toast(res.detail, "error");
       return;
     }
+    toast(`"${o.name}" permanently deleted.`, "success");
     await refreshOrgs();
   };
 
@@ -244,16 +272,18 @@ export default function AdminPage() {
       return;
     }
     setBusyId("waitlist-resend");
-    setErr(null);
     const res = await adminApi.resendWaitlistConfirmations();
     setBusyId(null);
     if (!res.ok) {
-      setErr(res.detail);
+      toast(res.detail, "error");
       return;
     }
     const wl = await adminApi.waitlist();
     if (wl.ok) setWaitlist(wl.data);
-    alert(`Sent ${res.data.sent}${res.data.failed ? ` · ${res.data.failed} failed` : ""}. ${res.data.remaining} still pending.`);
+    toast(
+      `Sent ${res.data.sent}${res.data.failed ? ` Â· ${res.data.failed} failed` : ""}. ${res.data.remaining} still pending.`,
+      res.data.failed ? "error" : "success",
+    );
   };
 
   const syncAudience = async () => {
@@ -262,26 +292,23 @@ export default function AdminPage() {
       return;
     }
     setBusyId("waitlist-sync");
-    setErr(null);
     const res = await adminApi.syncWaitlistAudience();
     setBusyId(null);
     if (!res.ok) {
-      setErr(res.detail);
+      toast(res.detail, "error");
       return;
     }
     const d = res.data;
-    let text = `Synced ${d.synced} of ${d.total} to Resend${d.failed ? ` · ${d.failed} failed` : ""}.\nAudience: ${d.audience}`;
-    if (d.error) text += `\n\nFirst error: ${d.error}`;
-    alert(text);
+    const summary = `Synced ${d.synced} of ${d.total} to Resend${d.failed ? ` Â· ${d.failed} failed` : ""}.`;
+    toast(d.error ? `${summary} First error: ${d.error}` : summary, d.failed ? "error" : "success");
   };
 
   const changeFeedbackStatus = async (id: string, status: string) => {
     setBusyId(`fb-${id}`);
-    setErr(null);
     const res = await adminApi.setFeedbackStatus(id, status);
     setBusyId(null);
     if (!res.ok) {
-      setErr(res.detail);
+      toast(res.detail, "error");
       return;
     }
     // Reflect the new status locally without a full reload.
@@ -302,7 +329,7 @@ export default function AdminPage() {
         <div className="page-head">
           <h1>Admin</h1>
         </div>
-        <p className="muted">Loading…</p>
+        <p className="muted" role="status" aria-busy="true">Loading the operator consoleâ¦</p>
       </div>
     );
   }
@@ -337,10 +364,10 @@ export default function AdminPage() {
   const livePct = stats && stats.backlinks ? Math.round((stats.backlinks_live / stats.backlinks) * 100) : null;
   const lostPct = stats && stats.backlinks ? Math.round((stats.backlinks_lost / stats.backlinks) * 100) : null;
   const searchPlaceholder =
-    tab === "orgs" ? "Search workspaces, slugs, owners…" :
-    tab === "subscriptions" ? "Search by workspace, owner, plan, status…" :
-    tab === "users" ? "Search users by name or email…" :
-    "Search audit by actor, action, workspace…";
+    tab === "orgs" ? "Search workspaces, slugs, ownersâ¦" :
+    tab === "subscriptions" ? "Search by workspace, owner, plan, statusâ¦" :
+    tab === "users" ? "Search users by name or emailâ¦" :
+    "Search audit by actor, action, workspaceâ¦";
 
   // Derived operational metrics, computed from the lists the admin already loads
   // (real data, no fabrication). At scale these should become backend aggregates;
@@ -367,12 +394,12 @@ export default function AdminPage() {
 
       {stats && (
         <div className="admin-stats">
-          <div className="admin-stat"><div className="k">Workspaces</div><div className="v">{stats.organizations.toLocaleString()}</div><div className={`delta${newOrgs7 ? " up" : ""}`}>{newOrgs7 ? `+${newOrgs7} new · 7d` : "none new · 7d"}</div></div>
-          <div className="admin-stat"><div className="k">Users</div><div className="v">{stats.users.toLocaleString()}</div><div className={`delta${newUsers7 ? " up" : ""}`}>{newUsers7 ? `+${newUsers7} new · 7d` : "none new · 7d"}</div></div>
+          <div className="admin-stat"><div className="k">Workspaces</div><div className="v">{stats.organizations.toLocaleString()}</div><div className={`delta${newOrgs7 ? " up" : ""}`}>{newOrgs7 ? `+${newOrgs7} new Â· 7d` : "none new Â· 7d"}</div></div>
+          <div className="admin-stat"><div className="k">Users</div><div className="v">{stats.users.toLocaleString()}</div><div className={`delta${newUsers7 ? " up" : ""}`}>{newUsers7 ? `+${newUsers7} new Â· 7d` : "none new Â· 7d"}</div></div>
           <div className="admin-stat"><div className="k">Activated</div><div className="v">{activatedPct}%</div><div className="sub">{activatedOrgs} of {orgs.length} have backlinks</div></div>
           <div className="admin-stat"><div className="k">Suspended</div><div className="v">{suspendedCount.toLocaleString()}</div><div className={`sub${suspendedCount ? " bad" : ""}`}>{suspendedCount ? "needs review" : "none"}</div></div>
           <div className="admin-stat"><div className="k">Backlinks</div><div className="v">{stats.backlinks.toLocaleString()}</div><div className="sub">monitored platform-wide</div></div>
-          <div className="admin-stat"><div className="k">Live</div><div className="v">{livePct != null ? `${livePct}%` : "-"}</div>{lostPct != null && <div className="sub bad">{stats.backlinks_lost.toLocaleString()} lost · {lostPct}%</div>}</div>
+          <div className="admin-stat"><div className="k">Live</div><div className="v">{livePct != null ? `${livePct}%` : "—"}</div>{lostPct != null && <div className="sub bad">{stats.backlinks_lost.toLocaleString()} lost Â· {lostPct}%</div>}</div>
         </div>
       )}
 
@@ -380,7 +407,7 @@ export default function AdminPage() {
         <>
           <div className="ops-section-h">
             <h2>Plan distribution</h2>
-            <span className="note">Plan tier from active subscription (paying or admin-comped){orgsComplete ? "" : ` · ${orgs.length} of ${stats.organizations} loaded`}</span>
+            <span className="note">Plan tier from active subscription (paying or admin-comped){orgsComplete ? "" : ` Â· ${orgs.length} of ${stats.organizations} loaded`}</span>
           </div>
           <div className="plan-mix">
             {planMix.map((pm) => (
@@ -397,20 +424,20 @@ export default function AdminPage() {
 
       {ops ? (
         <>
-          <div className="ops-section-h"><h2>System &amp; queue</h2><span className="note">jobs · live</span></div>
+          <div className="ops-section-h"><h2>System &amp; queue</h2><span className="note">jobs Â· live</span></div>
           <div className="admin-stats">
             <div className="admin-stat"><div className="k">Pending</div><div className="v">{ops.queue.pending.toLocaleString()}</div></div>
             <div className="admin-stat"><div className="k">Processing</div><div className="v">{ops.queue.processing.toLocaleString()}</div></div>
             <div className="admin-stat"><div className="k">Failed</div><div className="v">{ops.queue.failed.toLocaleString()}</div><div className={`sub${ops.queue.failed ? " bad" : ""}`}>{ops.queue.failed ? "retrying" : "none"}</div></div>
             <div className="admin-stat"><div className="k">Dead</div><div className="v">{ops.queue.dead.toLocaleString()}</div><div className={`sub${ops.queue.dead ? " bad" : ""}`}>{ops.queue.dead ? "needs a human" : "none"}</div></div>
-            <div className="admin-stat"><div className="k">Last job</div><div className="v" style={{ fontSize: 15 }}>{ops.queue.last_completed_at ? <Time iso={ops.queue.last_completed_at} /> : "-"}</div><div className="sub">{ops.queue.created_last_hour} queued · 1h</div></div>
-            <div className="admin-stat"><div className="k">Oldest pending</div><div className="v" style={{ fontSize: 15 }}>{ops.queue.oldest_pending_at ? <Time iso={ops.queue.oldest_pending_at} /> : "-"}</div></div>
+            <div className="admin-stat"><div className="k">Last job</div><div className="v" style={{ fontSize: 15 }}>{ops.queue.last_completed_at ? <Time iso={ops.queue.last_completed_at} /> : "—"}</div><div className="sub">{ops.queue.created_last_hour} queued Â· 1h</div></div>
+            <div className="admin-stat"><div className="k">Oldest pending</div><div className="v" style={{ fontSize: 15 }}>{ops.queue.oldest_pending_at ? <Time iso={ops.queue.oldest_pending_at} /> : "—"}</div></div>
           </div>
           <div className="ops-section-h"><h2>Monitoring &amp; delivery</h2><span className="note">last {Math.round(ops.window_secs / 3600)}h</span></div>
           <div className="admin-stats">
             <div className="admin-stat"><div className="k">Checks</div><div className="v">{ops.monitoring.checks.toLocaleString()}</div></div>
-            <div className="admin-stat"><div className="k">Failed</div><div className="v">{ops.monitoring.failed.toLocaleString()}</div><div className={`sub${ops.monitoring.failed ? " bad" : ""}`}>{ops.monitoring.checks ? `${Math.round((ops.monitoring.failed / ops.monitoring.checks) * 100)}%` : "-"}</div></div>
-            <div className="admin-stat"><div className="k">Avg duration</div><div className="v">{ops.monitoring.avg_duration_ms != null ? ops.monitoring.avg_duration_ms.toLocaleString() : "-"}</div><div className="sub">ms</div></div>
+            <div className="admin-stat"><div className="k">Failed</div><div className="v">{ops.monitoring.failed.toLocaleString()}</div><div className={`sub${ops.monitoring.failed ? " bad" : ""}`}>{ops.monitoring.checks ? `${Math.round((ops.monitoring.failed / ops.monitoring.checks) * 100)}%` : "—"}</div></div>
+            <div className="admin-stat"><div className="k">Avg duration</div><div className="v">{ops.monitoring.avg_duration_ms != null ? ops.monitoring.avg_duration_ms.toLocaleString() : "—"}</div><div className="sub">ms</div></div>
             <div className="admin-stat"><div className="k">Lost detected</div><div className="v">{ops.monitoring.lost_detected.toLocaleString()}</div></div>
             <div className="admin-stat"><div className="k">Alert emails</div><div className="v">{ops.email.sent.toLocaleString()}</div><div className="sub">sent</div></div>
             <div className="admin-stat"><div className="k">Email failures</div><div className="v">{ops.email.failed.toLocaleString()}</div><div className={`sub${ops.email.failed ? " bad" : ""}`}>{ops.email.failed ? "check destinations" : "none"}</div></div>
@@ -422,8 +449,8 @@ export default function AdminPage() {
           <div className="ops-gap">
             {[
               { t: "Monitoring, checks running & failing", d: "backlink_checks holds found / error_kind / duration_ms. Served by /v1/admin/ops." },
-              { t: "Queue health, pending · failed · dead", d: "The jobs table + stuck/dead indexes. Served by /v1/admin/ops." },
-              { t: "Revenue, MRR · paying · canceled", d: "subscriptions + the plan price catalog. Served by /v1/admin/billing." },
+              { t: "Queue health, pending Â· failed Â· dead", d: "The jobs table + stuck/dead indexes. Served by /v1/admin/ops." },
+              { t: "Revenue, MRR Â· paying Â· canceled", d: "subscriptions + the plan price catalog. Served by /v1/admin/billing." },
               { t: "Plan-limit usage", d: "Plan caps vs live backlink counts. Served by /v1/admin/usage/limits." },
               { t: "Email, alert sends & failures", d: "alert_deliveries. Served by /v1/admin/ops." },
               { t: "Scheduler liveness", d: "Last completed job + jobs queued per hour. Served by /v1/admin/ops." },
@@ -438,28 +465,28 @@ export default function AdminPage() {
 
       {billing && (
         <>
-          <div className="ops-section-h"><h2>Revenue</h2><span className="note">USD · excludes admin-comped subscriptions</span></div>
+          <div className="ops-section-h"><h2>Revenue</h2><span className="note">USD Â· excludes admin-comped subscriptions</span></div>
           <div className="admin-stats">
             <div className="admin-stat"><div className="k">MRR</div><div className="v">${Math.round(billing.mrr_cents / 100).toLocaleString()}</div><div className="sub">/ month</div></div>
             <div className="admin-stat"><div className="k">ARR</div><div className="v">${Math.round((billing.mrr_cents * 12) / 100).toLocaleString()}</div><div className="sub">run-rate</div></div>
-            <div className="admin-stat"><div className="k">Paying</div><div className="v">{billing.paying.toLocaleString()}</div><div className="sub">{billing.paying ? `$${Math.round(billing.mrr_cents / 100 / billing.paying).toLocaleString()} ARPA` : "-"}</div></div>
+            <div className="admin-stat"><div className="k">Paying</div><div className="v">{billing.paying.toLocaleString()}</div><div className="sub">{billing.paying ? `$${Math.round(billing.mrr_cents / 100 / billing.paying).toLocaleString()} ARPA` : "—"}</div></div>
             <div className="admin-stat"><div className="k">Past due</div><div className="v">{billing.past_due.toLocaleString()}</div><div className={`sub${billing.past_due ? " bad" : ""}`}>{billing.past_due ? "dunning" : "none"}</div></div>
             <div className="admin-stat"><div className="k">Canceled</div><div className="v">{billing.canceled.toLocaleString()}</div></div>
             <div className="admin-stat"><div className="k">Comped</div><div className="v">{billing.comped.toLocaleString()}</div><div className="sub">admin-set</div></div>
           </div>
-          <div className="ops-section-h"><h2>Trial funnel</h2><span className="note">10-day free trial → paid</span></div>
+          <div className="ops-section-h"><h2>Trial funnel</h2><span className="note">10-day free trial â paid</span></div>
           <div className="admin-stats">
             <div className="admin-stat"><div className="k">Trials active</div><div className="v">{billing.trialing_active.toLocaleString()}</div><div className="sub">in progress</div></div>
             <div className="admin-stat"><div className="k">Trials expired</div><div className="v">{billing.trialing_expired.toLocaleString()}</div><div className={`sub${billing.trialing_expired ? " bad" : ""}`}>{billing.trialing_expired ? "lapsed, not converted" : "none"}</div></div>
             <div className="admin-stat"><div className="k">Converted</div><div className="v">{billing.paying.toLocaleString()}</div><div className="sub">now paying</div></div>
-            <div className="admin-stat"><div className="k">Conversion</div><div className="v">{billing.conversion_pct != null ? `${billing.conversion_pct}%` : "-"}</div><div className="sub">of resolved trials</div></div>
+            <div className="admin-stat"><div className="k">Conversion</div><div className="v">{billing.conversion_pct != null ? `${billing.conversion_pct}%` : "—"}</div><div className="sub">of resolved trials</div></div>
           </div>
         </>
       )}
 
       {analytics && (analytics.signups > 0 || analytics.subscribed > 0) && (
         <>
-          <div className="ops-section-h"><h2>Acquisition funnel</h2><span className="note">last {Math.round(analytics.window_secs / 86400)} days · from product events</span></div>
+          <div className="ops-section-h"><h2>Acquisition funnel</h2><span className="note">last {Math.round(analytics.window_secs / 86400)} days Â· from product events</span></div>
           <div className="admin-stats">
             <div className="admin-stat"><div className="k">Signups</div><div className="v">{analytics.signups.toLocaleString()}</div></div>
             <div className="admin-stat"><div className="k">Trials started</div><div className="v">{analytics.trials_started.toLocaleString()}</div><div className="sub">{pctStr(analytics.trials_started, analytics.signups)} of signups</div></div>
@@ -468,7 +495,7 @@ export default function AdminPage() {
           </div>
           {analytics.by_source.length > 0 && (
             <>
-              <div className="ops-section-h"><h2>Signups by source</h2><span className="note">first-touch attribution · last {Math.round(analytics.window_secs / 86400)} days</span></div>
+              <div className="ops-section-h"><h2>Signups by source</h2><span className="note">first-touch attribution Â· last {Math.round(analytics.window_secs / 86400)} days</span></div>
               <div className="plan-mix">
                 {analytics.by_source.map((s) => (
                   <span key={s.source} className="plan-chip"><span className="pn">{s.source}</span><span className="pc">{s.signups}</span></span>
@@ -485,17 +512,17 @@ export default function AdminPage() {
             <h2>Pre-launch waitlist</h2>
             <span className="note">
               {waitlist.total.toLocaleString()} email{waitlist.total === 1 ? "" : "s"} captured
-              {waitlist.pending > 0 ? ` · ${waitlist.pending} pending confirmation` : " · all confirmed"}
+              {waitlist.pending > 0 ? ` Â· ${waitlist.pending} pending confirmation` : " Â· all confirmed"}
             </span>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "0 0 12px" }}>
             {waitlist.pending > 0 && (
               <button className="btn sm" disabled={busyId === "waitlist-resend"} onClick={resendConfirmations}>
-                {busyId === "waitlist-resend" ? "Sending…" : `Resend confirmation to ${waitlist.pending} pending`}
+                {busyId === "waitlist-resend" ? "Sendingâ¦" : `Resend confirmation to ${waitlist.pending} pending`}
               </button>
             )}
             <button className="btn sm" disabled={busyId === "waitlist-sync"} onClick={syncAudience}>
-              {busyId === "waitlist-sync" ? "Syncing…" : "Sync to Resend audience"}
+              {busyId === "waitlist-sync" ? "Syncingâ¦" : "Sync to Resend audience"}
             </button>
           </div>
           <div className="bl-scroll" style={{ maxHeight: 260 }}>
@@ -521,7 +548,7 @@ export default function AdminPage() {
             <h2>User feedback</h2>
             <span className="note">
               {feedback.items.length} total
-              {feedback.open > 0 ? ` · ${feedback.open} new` : " · all triaged"}
+              {feedback.open > 0 ? ` Â· ${feedback.open} new` : " Â· all triaged"}
             </span>
           </div>
           {feedback.items.length === 0 ? (
@@ -604,15 +631,13 @@ export default function AdminPage() {
         ))}
       </div>
 
-      {err && <p className="error">{err}</p>}
-
       <div className="panel">
         <div className="admin-toolbar">
-          <div className="admin-tabs" role="tablist">
-            <button role="tab" aria-selected={tab === "orgs"} className={tab === "orgs" ? "on" : ""} onClick={() => setTab("orgs")}>Workspaces <span className="n">{orgs.length}</span></button>
-            <button role="tab" aria-selected={tab === "subscriptions"} className={tab === "subscriptions" ? "on" : ""} onClick={() => setTab("subscriptions")}>Subscriptions <span className="n">{subs.length}</span></button>
-            <button role="tab" aria-selected={tab === "users"} className={tab === "users" ? "on" : ""} onClick={() => setTab("users")}>Users <span className="n">{users.length}</span></button>
-            <button role="tab" aria-selected={tab === "audit"} className={tab === "audit" ? "on" : ""} onClick={() => setTab("audit")}>Audit <span className="n">{audit.length}</span></button>
+          <div className="admin-tabs" role="group" aria-label="Table view">
+            <button type="button" aria-pressed={tab === "orgs"} className={tab === "orgs" ? "on" : ""} onClick={() => setTab("orgs")}>Workspaces <span className="n">{orgs.length}</span></button>
+            <button type="button" aria-pressed={tab === "subscriptions"} className={tab === "subscriptions" ? "on" : ""} onClick={() => setTab("subscriptions")}>Subscriptions <span className="n">{subs.length}</span></button>
+            <button type="button" aria-pressed={tab === "users"} className={tab === "users" ? "on" : ""} onClick={() => setTab("users")}>Users <span className="n">{users.length}</span></button>
+            <button type="button" aria-pressed={tab === "audit"} className={tab === "audit" ? "on" : ""} onClick={() => setTab("audit")}>Audit <span className="n">{audit.length}</span></button>
           </div>
           <input className="admin-search" placeholder={searchPlaceholder} value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search" />
         </div>
@@ -639,7 +664,7 @@ export default function AdminPage() {
                       <button className="admin-name link" onClick={() => setDetail(o)} title="Open Customer 360">{o.name}</button>
                       <div className="admin-sub">/{o.slug}</div>
                     </td>
-                    <td className="admin-email">{o.owner_email ?? "-"}</td>
+                    <td className="admin-email">{o.owner_email ?? "—"}</td>
                     <td>
                       <select
                         value={o.plan}
@@ -708,15 +733,15 @@ export default function AdminPage() {
                       <td>
                         <button className="admin-name link" onClick={() => { const o = orgs.find((x) => x.id === s.id); if (o) setDetail(o); }} title="Open Customer 360">{s.name}</button>
                       </td>
-                      <td className="admin-email">{s.owner_email ?? "-"}</td>
+                      <td className="admin-email">{s.owner_email ?? "—"}</td>
                       <td>{PLAN_LABEL[s.plan] ?? s.plan}</td>
                       <td style={{ whiteSpace: "nowrap" }}>
                         <span className={`abadge ${badge}`}>{s.status.replace("_", " ")}</span>
                         {s.comped && <span className="abadge info" style={{ marginLeft: 6 }}>comped</span>}
                         {s.cancel_at_period_end && <span className="abadge bad" style={{ marginLeft: 6 }}>cancels</span>}
                       </td>
-                      <td className="mono" style={{ textAlign: "right" }}>{s.mrr_cents > 0 ? `$${Math.round(s.mrr_cents / 100).toLocaleString()}` : "-"}</td>
-                      <td>{renewIso ? <Time iso={renewIso} /> : "-"}</td>
+                      <td className="mono" style={{ textAlign: "right" }}>{s.mrr_cents > 0 ? `$${Math.round(s.mrr_cents / 100).toLocaleString()}` : "—"}</td>
+                      <td>{renewIso ? <Time iso={renewIso} /> : "—"}</td>
                     </tr>
                   );
                 })}
@@ -757,13 +782,13 @@ export default function AdminPage() {
                     </td>
                     <td className="admin-email">{u.email}</td>
                     <td className="mono">{u.organizations}</td>
-                    <td>{u.email_verified ? <span className="abadge ok">verified</span> : <span className="muted">-</span>}</td>
-                    <td>{u.is_platform_admin ? <span className="abadge info">admin</span> : <span className="muted">-</span>}</td>
+                    <td>{u.email_verified ? <span className="abadge ok">verified</span> : <span className="muted">—</span>}</td>
+                    <td>{u.is_platform_admin ? <span className="abadge info">admin</span> : <span className="muted">—</span>}</td>
                     <td><Time iso={u.created_at} /></td>
                     <td style={{ whiteSpace: "nowrap", textAlign: "right" }}>
                       <IdChip id={u.id} />{" "}
                       <button className="btn sm" disabled={busyId === u.id} onClick={() => toggleAdmin(u)}>
-                        {busyId === u.id ? "…" : u.is_platform_admin ? "Revoke admin" : "Make admin"}
+                        {busyId === u.id ? "â¦" : u.is_platform_admin ? "Revoke admin" : "Make admin"}
                       </button>
                     </td>
                   </tr>
@@ -796,10 +821,10 @@ export default function AdminPage() {
                 {fAudit.map((a) => (
                   <tr key={a.id}>
                     <td><Time iso={a.created_at} /></td>
-                    <td className="admin-email">{a.actor_email ?? "-"}</td>
+                    <td className="admin-email">{a.actor_email ?? "—"}</td>
                     <td><span className="atag">{a.action}</span></td>
-                    <td className="sm">{a.org_name ?? a.resource_type ?? "-"}</td>
-                    <td className="mono muted" style={{ maxWidth: 280, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={a.after ?? undefined}>{a.after ?? "-"}</td>
+                    <td className="sm">{a.org_name ?? a.resource_type ?? "—"}</td>
+                    <td className="mono muted" style={{ maxWidth: 280, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={a.after ?? undefined}>{a.after ?? "—"}</td>
                   </tr>
                 ))}
                 {fAudit.length === 0 && (
@@ -817,10 +842,18 @@ export default function AdminPage() {
 
       {detail && (
         <div className="drawer-backdrop" onClick={() => setDetail(null)}>
-          <aside className="drawer" onClick={(e) => e.stopPropagation()}>
+          <aside
+            className="drawer"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="c360-title"
+            tabIndex={-1}
+            ref={drawerRef}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="panel-head">
-              <h2 style={{ fontSize: 16 }}>Customer 360</h2>
-              <button className="btn" onClick={() => setDetail(null)}>Close</button>
+              <h2 id="c360-title" style={{ fontSize: 16 }}>Customer 360</h2>
+              <button className="btn" onClick={() => setDetail(null)} aria-label="Close Customer 360">Close</button>
             </div>
             <div className="c360-head">
               <h2>{detail.name}</h2>
@@ -828,7 +861,7 @@ export default function AdminPage() {
             </div>
             <div className="c360-sub">/{detail.slug} <IdChip id={detail.id} /></div>
             <dl className="detail-grid">
-              <div><dt>Owner</dt><dd className="mono">{detail.owner_email ?? "-"}</dd></div>
+              <div><dt>Owner</dt><dd className="mono">{detail.owner_email ?? "—"}</dd></div>
               <div><dt>Plan</dt><dd>{PLAN_LABEL[detail.plan] ?? detail.plan}</dd></div>
               <div><dt>Created</dt><dd><Time iso={detail.created_at} /></dd></div>
               <div><dt>Members</dt><dd className="mono">{detail.members}</dd></div>
@@ -842,8 +875,8 @@ export default function AdminPage() {
                 <>
                   <div className="c360-subhead">Subscription</div>
                   <dl className="detail-grid">
-                    <div><dt>Status</dt><dd>{sb.status.replace("_", " ")}{sb.comped ? " · comped" : ""}</dd></div>
-                    <div><dt>MRR</dt><dd className="mono">{sb.mrr_cents > 0 ? `$${Math.round(sb.mrr_cents / 100).toLocaleString()}/mo` : "-"}</dd></div>
+                    <div><dt>Status</dt><dd>{sb.status.replace("_", " ")}{sb.comped ? " Â· comped" : ""}</dd></div>
+                    <div><dt>MRR</dt><dd className="mono">{sb.mrr_cents > 0 ? `$${Math.round(sb.mrr_cents / 100).toLocaleString()}/mo` : "—"}</dd></div>
                     {sb.status === "trialing" && sb.trial_ends_at && (
                       <div><dt>Trial ends</dt><dd><Time iso={sb.trial_ends_at} /></dd></div>
                     )}
