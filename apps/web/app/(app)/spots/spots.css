@@ -240,6 +240,13 @@
   justify-content: space-between;
   gap: 12px;
   margin: 14px 0 8px;
+  flex-wrap: wrap;
+}
+.sf-spots-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 .sf-spots-table th:not(:first-child),
 .sf-spots-table td:not(:first-child):not(.sf-example) {

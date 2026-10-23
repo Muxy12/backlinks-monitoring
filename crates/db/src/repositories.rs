@@ -7235,6 +7235,20 @@ pub mod spots {
         Ok(())
     }
 
+    /// One spot by id, tenant-scoped. `NotFound` if not in the org.
+    pub async fn get(pool: &PgPool, scope: &OrgScope, id: Uuid) -> Result<Spot, DbError> {
+        sqlx::query_as::<_, Spot>(concat!(
+            "SELECT ",
+            spot_cols!(),
+            " FROM spots WHERE id = $1 AND organization_id = $2"
+        ))
+        .bind(id)
+        .bind(scope.organization_id())
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_fetch)
+    }
+
     pub async fn list_spots(
         pool: &PgPool,
         scope: &OrgScope,

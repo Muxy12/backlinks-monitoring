@@ -478,6 +478,44 @@ async fn enrich_is_gated_and_needs_provider() {
 }
 
 #[tokio::test]
+async fn push_to_campaign_is_gated() {
+    let spot = Uuid::now_v7();
+    let campaign = Uuid::now_v7();
+    // Spot Finder off → 404.
+    if let Some(s) = bootstrap(false).await {
+        let project = s.new_project("push-off.com").await;
+        let (st, _) = s
+            .send(
+                "POST",
+                format!(
+                    "/v1/organizations/{}/projects/{project}/spots/{spot}/to-campaign",
+                    s.org
+                ),
+                Some(serde_json::json!({ "campaign_id": campaign })),
+                true,
+            )
+            .await;
+        assert_eq!(st, StatusCode::NOT_FOUND);
+    }
+    // Spot Finder on but campaigns BETA off → 422 (refused before touching data).
+    if let Some(s) = bootstrap(true).await {
+        let project = s.new_project("push-on.com").await;
+        let (st, _) = s
+            .send(
+                "POST",
+                format!(
+                    "/v1/organizations/{}/projects/{project}/spots/{spot}/to-campaign",
+                    s.org
+                ),
+                Some(serde_json::json!({ "campaign_id": campaign })),
+                true,
+            )
+            .await;
+        assert_eq!(st, StatusCode::UNPROCESSABLE_ENTITY);
+    }
+}
+
+#[tokio::test]
 async fn marketplace_match_is_gated_and_needs_a_marketplace() {
     // Gated off → 404.
     if let Some(s) = bootstrap(false).await {

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   api,
   orgApi,
+  type CampaignView,
   type MeResponse,
   type ProjectView,
   type SpotKeywordsResponse,
@@ -44,6 +45,11 @@ export default function SpotsPage() {
   const [spotsBusy, setSpotsBusy] = useState(false);
   const [spotsErr, setSpotsErr] = useState<string | null>(null);
   const dataforseo = !!me?.features?.dataforseo;
+  // Lot F — push a spot into a link-building campaign.
+  const [campaigns, setCampaigns] = useState<CampaignView[]>([]);
+  const [campaignId, setCampaignId] = useState<string>("");
+  const [pushMsg, setPushMsg] = useState<string | null>(null);
+  const campaignsBeta = !!me?.features?.campaigns_beta;
 
   useEffect(() => {
     api.me().then((res) => {
@@ -81,11 +87,20 @@ export default function SpotsPage() {
     setData(null);
     setSpotsData(null);
     setFilter("all");
+    setPushMsg(null);
+    setCampaignId("");
     if (orgId && projectId) {
       void load(orgId, projectId);
       void loadSpots(orgId, projectId);
     }
   }, [orgId, projectId, load, loadSpots]);
+
+  useEffect(() => {
+    if (!orgId || !projectId || !campaignsBeta) return;
+    orgApi.campaigns(orgId).then((res) => {
+      if (res.ok) setCampaigns(res.data.filter((c) => c.project_id === projectId));
+    });
+  }, [orgId, projectId, campaignsBeta]);
 
   // Poll while a spot search or enrichment is running.
   const spotRun = spotsData?.run ?? null;
@@ -226,6 +241,18 @@ export default function SpotsPage() {
       spots: d?.spots ?? [],
       forums: d?.forums ?? [],
     }));
+  }
+
+  async function pushToCampaign(spotId: string, domain: string) {
+    if (!orgId || !projectId || !campaignId) return;
+    setPushMsg(null);
+    const res = await orgApi.spotToCampaign(orgId, projectId, spotId, campaignId);
+    if (!res.ok) {
+      setPushMsg(res.detail || `Could not add ${domain}.`);
+      return;
+    }
+    const camp = campaigns.find((c) => c.id === campaignId);
+    setPushMsg(`Added ${domain} to ${camp?.name ?? "the campaign"} as a prospect.`);
   }
 
   function formatPrice(cents: number | null, currency: string | null): string {
@@ -635,10 +662,31 @@ export default function SpotsPage() {
                 <>
                   <div className="sf-spots-head">
                     <span className="muted">{spotsData!.spots.length} spots</span>
-                    <button className="btn sm ghost" onClick={exportSpotsCsv}>
-                      Export CSV
-                    </button>
+                    <div className="sf-spots-head-actions">
+                      {campaignsBeta && campaigns.length > 0 && (
+                        <select
+                          aria-label="Target campaign for prospects"
+                          value={campaignId}
+                          onChange={(e) => setCampaignId(e.target.value)}
+                        >
+                          <option value="">Add to campaign…</option>
+                          {campaigns.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.name}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                      <button className="btn sm ghost" onClick={exportSpotsCsv}>
+                        Export CSV
+                      </button>
+                    </div>
                   </div>
+                  {pushMsg && (
+                    <p className="sf-footnote muted" role="status">
+                      {pushMsg}
+                    </p>
+                  )}
                   <table className="bl-table sf-spots-table">
                     <thead>
                       <tr>
@@ -651,6 +699,7 @@ export default function SpotsPage() {
                         <th title="Backlink spam score (lower is better)">Spam</th>
                         <th>Buy</th>
                         <th>Example</th>
+                        {campaignsBeta && <th></th>}
                       </tr>
                     </thead>
                     <tbody>
@@ -701,6 +750,18 @@ export default function SpotsPage() {
                               (s.example_keyword ?? "-")
                             )}
                           </td>
+                          {campaignsBeta && (
+                            <td>
+                              <button
+                                className="btn sm ghost"
+                                disabled={!campaignId}
+                                title={campaignId ? "Add to the selected campaign" : "Pick a campaign above first"}
+                                onClick={() => void pushToCampaign(s.id, s.domain)}
+                              >
+                                → Campaign
+                              </button>
+                            </td>
+                          )}
                         </tr>
                       ))}
                     </tbody>

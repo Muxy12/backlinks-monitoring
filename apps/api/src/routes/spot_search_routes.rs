@@ -385,3 +385,80 @@ pub async fn match_spots(
 
     Ok((StatusCode::ACCEPTED, Json(MatchRunView::from(run))))
 }
+
+#[derive(Deserialize)]
+pub struct ToCampaignBody {
+    pub campaign_id: Uuid,
+}
+
+/// `POST …/projects/{project_id}/spots/{spot_id}/to-campaign` — push a spot into
+/// a link-building campaign as an outreach prospect. Member role; requires the
+/// campaigns BETA. Carries over the spot's domain, a ranking URL, the quality
+/// score and (when buyable) the marketplace price. Idempotent per campaign+domain.
+pub async fn spot_to_campaign(
+    State(state): State<AppState>,
+    Path((org_id, _project_id, spot_id)): Path<(Uuid, Uuid, Uuid)>,
+    jar: CookieJar,
+    headers: HeaderMap,
+    Json(body): Json<ToCampaignBody>,
+) -> Result<(StatusCode, Json<serde_json::Value>), ApiError> {
+    gate(&state)?;
+    if !state.cfg.campaigns_beta {
+        return Err(ApiError::Validation(
+            "link-building campaigns are not enabled".into(),
+        ));
+    }
+    let (user, session) = current(&state, &jar).await?;
+    check_csrf(&jar, &headers, &session)?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Member)?;
+
+    // Both the spot and the campaign must belong to this org (404 otherwise).
+    let spot = spots::get(&state.pool, &scope, spot_id).await?;
+    db::repositories::campaigns::get(&state.pool, &scope, body.campaign_id).await?;
+
+    let score = spot.quality_score.map(|q| q.round() as i32).unwrap_or(0);
+    let est_cost = spot
+        .buy_price_cents
+        .map(|c| format!("{:.2}", (c as f64) / 100.0));
+    let kw = spot.example_keyword.clone().unwrap_or_default();
+    let notes = format!(
+        "From Spot Finder — ranks for {} of your keyword(s){}{}",
+        spot.keyword_count,
+        if kw.is_empty() {
+            String::new()
+        } else {
+            format!("; e.g. \"{kw}\"")
+        },
+        match &spot.marketplace {
+            Some(m) => format!("; buyable on {m}"),
+            None => String::new(),
+        },
+    );
+
+    let prospect = db::repositories::prospects::create(
+        &state.pool,
+        &scope,
+        Uuid::now_v7(),
+        db::repositories::prospects::NewProspect {
+            campaign_id: body.campaign_id,
+            domain: &spot.domain,
+            source: "spot_finder",
+            contact_name: None,
+            contact_email: None,
+            target_url: spot.example_url.as_deref(),
+            estimated_cost: est_cost.as_deref(),
+            currency: spot.buy_currency.as_deref(),
+            notes: Some(&notes),
+            competitor_count: None,
+            score,
+            score_reason: "Spot Finder relevance + quality",
+        },
+    )
+    .await?;
+
+    Ok((
+        StatusCode::CREATED,
+        Json(serde_json::json!({ "prospect_id": prospect.id, "domain": prospect.domain })),
+    ))
+}
