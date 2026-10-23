@@ -326,9 +326,8 @@ pub async fn match_spots(
     scope.require(Role::Member)?;
     projects::get(&state.pool, &scope, project_id).await?;
 
-    if crate::routes::linkavista_routes::configured(&state.cfg) {
-        // ok: at least one marketplace (LinkAvista) is configured
-    } else {
+    // At least one marketplace (LinkAvista today) must be configured.
+    if !crate::routes::linkavista_routes::configured(&state.cfg) {
         return Err(ApiError::Validation(
             "no link marketplace is configured (set LINKAVISTA_API_KEY)".into(),
         ));
