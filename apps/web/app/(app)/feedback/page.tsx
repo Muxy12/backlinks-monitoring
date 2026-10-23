@@ -1,4 +1,5 @@
 "use client";
+import { PageLoading } from "@/components/PageLoading";
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -83,13 +84,7 @@ export default function FeedbackPage() {
     void loadMine();
   };
 
-  if (loading) {
-    return (
-      <main className="dash">
-        <p className="muted">Loading…</p>
-      </main>
-    );
-  }
+  if (loading) return <PageLoading />;
 
   return (
     <main className="dash">
