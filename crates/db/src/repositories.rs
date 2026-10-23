@@ -6990,7 +6990,7 @@ pub mod spot_keywords {
 // ─── Spot Finder: SERP runs, spots, SERP cache (migration 0044, Lot B) ────────
 pub mod spots {
     use super::*;
-    use crate::entities::{Spot, SpotEnrichRun, SpotSearchRun};
+    use crate::entities::{Spot, SpotEnrichRun, SpotMarketplaceRun, SpotSearchRun};
     use serde_json::Value;
 
     macro_rules! run_cols {
@@ -7004,13 +7004,20 @@ pub mod spots {
             "id, organization_id, project_id, domain, keyword_count, best_position, \
              avg_position, example_url, example_keyword, domain_rank, referring_domains, \
              spam_score, organic_keywords, organic_traffic, quality_score, enriched_at, \
-             created_at, updated_at"
+             marketplace, marketplace_site_id, buy_price_cents, buy_currency, \
+             marketplace_url, matched_at, created_at, updated_at"
         };
     }
     macro_rules! enrich_run_cols {
         () => {
             "id, organization_id, project_id, status, spots_enriched, provider_queries, \
              error, created_at, updated_at"
+        };
+    }
+    macro_rules! market_run_cols {
+        () => {
+            "id, organization_id, project_id, status, spots_checked, matches_found, \
+             provider_queries, error, created_at, updated_at"
         };
     }
 
@@ -7387,6 +7394,134 @@ pub mod spots {
         .bind(m.organic_keywords)
         .bind(m.organic_traffic)
         .bind(m.quality_score)
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    // ── Marketplace matching (Lot D) ───────────────────────────────────────────
+
+    pub async fn match_in_flight(
+        pool: &PgPool,
+        scope: &OrgScope,
+        project_id: Uuid,
+    ) -> Result<bool, DbError> {
+        let (n,): (i64,) = sqlx::query_as(
+            "SELECT count(*) FROM spot_marketplace_runs \
+             WHERE organization_id = $1 AND project_id = $2 \
+               AND status IN ('queued','running')",
+        )
+        .bind(scope.organization_id())
+        .bind(project_id)
+        .fetch_one(pool)
+        .await?;
+        Ok(n > 0)
+    }
+
+    pub async fn start_match(
+        pool: &PgPool,
+        scope: &OrgScope,
+        id: Uuid,
+        project_id: Uuid,
+    ) -> Result<SpotMarketplaceRun, DbError> {
+        sqlx::query_as::<_, SpotMarketplaceRun>(concat!(
+            "INSERT INTO spot_marketplace_runs (id, organization_id, project_id) \
+             VALUES ($1, $2, $3) RETURNING ",
+            market_run_cols!()
+        ))
+        .bind(id)
+        .bind(scope.organization_id())
+        .bind(project_id)
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_insert)
+    }
+
+    pub async fn latest_match(
+        pool: &PgPool,
+        scope: &OrgScope,
+        project_id: Uuid,
+    ) -> Result<Option<SpotMarketplaceRun>, DbError> {
+        Ok(sqlx::query_as::<_, SpotMarketplaceRun>(concat!(
+            "SELECT ",
+            market_run_cols!(),
+            " FROM spot_marketplace_runs WHERE organization_id = $1 AND project_id = $2 \
+             ORDER BY created_at DESC LIMIT 1"
+        ))
+        .bind(scope.organization_id())
+        .bind(project_id)
+        .fetch_optional(pool)
+        .await?)
+    }
+
+    pub async fn mark_match_running(
+        pool: &PgPool,
+        run_id: Uuid,
+    ) -> Result<Option<SpotMarketplaceRun>, DbError> {
+        Ok(sqlx::query_as::<_, SpotMarketplaceRun>(concat!(
+            "UPDATE spot_marketplace_runs SET status = 'running' \
+             WHERE id = $1 AND status = 'queued' RETURNING ",
+            market_run_cols!()
+        ))
+        .bind(run_id)
+        .fetch_optional(pool)
+        .await?)
+    }
+
+    pub async fn finish_match(
+        pool: &PgPool,
+        run_id: Uuid,
+        spots_checked: i32,
+        matches_found: i32,
+        provider_queries: i32,
+        error: Option<&str>,
+    ) -> Result<(), DbError> {
+        sqlx::query(
+            "UPDATE spot_marketplace_runs SET \
+                status = CASE WHEN $5::text IS NULL THEN 'done' ELSE 'error' END, \
+                spots_checked = $2, matches_found = $3, provider_queries = $4, error = $5 \
+             WHERE id = $1",
+        )
+        .bind(run_id)
+        .bind(spots_checked)
+        .bind(matches_found)
+        .bind(provider_queries)
+        .bind(error)
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    /// A marketplace match to write onto a spot (all `None` = not listed → clears).
+    #[derive(Default)]
+    pub struct SpotMarketplace<'a> {
+        pub marketplace: Option<&'a str>,
+        pub site_id: Option<i64>,
+        pub price_cents: Option<i64>,
+        pub currency: Option<&'a str>,
+        pub url: Option<&'a str>,
+    }
+
+    /// Worker-side: write (or clear) a spot's marketplace match. A match sets
+    /// `matched_at`; a clear (all `None`) resets the fields so a de-listed spot
+    /// stops showing as buyable.
+    pub async fn update_spot_marketplace(
+        pool: &PgPool,
+        spot_id: Uuid,
+        m: &SpotMarketplace<'_>,
+    ) -> Result<(), DbError> {
+        sqlx::query(
+            "UPDATE spots SET marketplace = $2, marketplace_site_id = $3, \
+                buy_price_cents = $4, buy_currency = $5, marketplace_url = $6, \
+                matched_at = CASE WHEN $2::text IS NULL THEN NULL ELSE now() END \
+             WHERE id = $1",
+        )
+        .bind(spot_id)
+        .bind(m.marketplace)
+        .bind(m.site_id)
+        .bind(m.price_cents)
+        .bind(m.currency)
+        .bind(m.url)
         .execute(pool)
         .await?;
         Ok(())

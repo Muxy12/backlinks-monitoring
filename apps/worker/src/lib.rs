@@ -7,6 +7,7 @@ pub mod discover;
 pub mod engine;
 pub mod enrich;
 pub mod keywords;
+pub mod marketplace;
 pub mod spots;
 
 use backlio_core::TransitionPolicy;
@@ -120,6 +121,11 @@ async fn dispatch(ctx: &WorkerCtx, job: &ClaimedJob) -> anyhow::Result<()> {
         JobKind::EnrichSpots => {
             let run_id = payload_uuid(&job.payload, "run_id")?;
             enrich::run_enrich(&ctx.pool, run_id).await?;
+            Ok(())
+        }
+        JobKind::MatchMarketplaces => {
+            let run_id = payload_uuid(&job.payload, "run_id")?;
+            marketplace::run_match(&ctx.pool, run_id).await?;
             Ok(())
         }
         // Other job types wire in as their handlers land (docs/07 §5).

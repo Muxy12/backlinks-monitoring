@@ -90,13 +90,17 @@ export default function SpotsPage() {
   // Poll while a spot search or enrichment is running.
   const spotRun = spotsData?.run ?? null;
   const enrichRun = spotsData?.enrich_run ?? null;
+  const matchRun = spotsData?.match_run ?? null;
   const searching = spotRun?.status === "queued" || spotRun?.status === "running";
   const enriching = enrichRun?.status === "queued" || enrichRun?.status === "running";
+  const matching = matchRun?.status === "queued" || matchRun?.status === "running";
+  const busyRun = searching || enriching || matching;
+  const linkavista = !!me?.features?.linkavista;
   useEffect(() => {
-    if (!orgId || !projectId || !(searching || enriching)) return;
+    if (!orgId || !projectId || !busyRun) return;
     const t = setTimeout(() => void loadSpots(orgId, projectId), 3000);
     return () => clearTimeout(t);
-  }, [orgId, projectId, searching, enriching, spotsData, loadSpots]);
+  }, [orgId, projectId, busyRun, spotsData, loadSpots]);
 
   // Poll while a detection scan is still queued/running.
   const scan = data?.scan ?? null;
@@ -177,7 +181,12 @@ export default function SpotsPage() {
       setSpotsErr(res.detail || "Could not start the search.");
       return;
     }
-    setSpotsData((d) => ({ run: res.data, enrich_run: d?.enrich_run ?? null, spots: d?.spots ?? [] }));
+    setSpotsData((d) => ({
+      run: res.data,
+      enrich_run: d?.enrich_run ?? null,
+      match_run: d?.match_run ?? null,
+      spots: d?.spots ?? [],
+    }));
   }
 
   async function enrich() {
@@ -190,7 +199,39 @@ export default function SpotsPage() {
       setSpotsErr(res.detail || "Could not start enrichment.");
       return;
     }
-    setSpotsData((d) => ({ run: d?.run ?? null, enrich_run: res.data, spots: d?.spots ?? [] }));
+    setSpotsData((d) => ({
+      run: d?.run ?? null,
+      enrich_run: res.data,
+      match_run: d?.match_run ?? null,
+      spots: d?.spots ?? [],
+    }));
+  }
+
+  async function match() {
+    if (!orgId || !projectId) return;
+    setSpotsErr(null);
+    setSpotsBusy(true);
+    const res = await orgApi.matchSpots(orgId, projectId);
+    setSpotsBusy(false);
+    if (!res.ok) {
+      setSpotsErr(res.detail || "Could not start the marketplace match.");
+      return;
+    }
+    setSpotsData((d) => ({
+      run: d?.run ?? null,
+      enrich_run: d?.enrich_run ?? null,
+      match_run: res.data,
+      spots: d?.spots ?? [],
+    }));
+  }
+
+  function formatPrice(cents: number | null, currency: string | null): string {
+    if (cents == null) return "–";
+    const amount = (cents / 100).toLocaleString(undefined, {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    });
+    return `${amount} ${currency ?? "EUR"}`;
   }
 
   function exportSpotsCsv() {
@@ -207,6 +248,9 @@ export default function SpotsPage() {
       "spam_score",
       "organic_keywords",
       "organic_traffic",
+      "marketplace",
+      "buy_price_cents",
+      "buy_currency",
       "example_keyword",
       "example_url",
     ];
@@ -222,6 +266,9 @@ export default function SpotsPage() {
         s.spam_score ?? "",
         s.organic_keywords ?? "",
         s.organic_traffic ?? "",
+        s.marketplace ?? "",
+        s.buy_price_cents ?? "",
+        s.buy_currency ?? "",
         s.example_keyword ?? "",
         s.example_url ?? "",
       ]
@@ -498,23 +545,25 @@ export default function SpotsPage() {
                   <button
                     className="btn primary"
                     onClick={() => void search()}
-                    disabled={spotsBusy || searching || enriching || counts.kept === 0 || !dataforseo}
+                    disabled={spotsBusy || busyRun || counts.kept === 0 || !dataforseo}
                   >
                     {searching ? "Searching…" : "Find spots"}
                   </button>
                   <button
                     className="btn sm"
                     onClick={() => void enrich()}
-                    disabled={
-                      spotsBusy ||
-                      searching ||
-                      enriching ||
-                      (spotsData?.spots.length ?? 0) === 0 ||
-                      !dataforseo
-                    }
+                    disabled={spotsBusy || busyRun || (spotsData?.spots.length ?? 0) === 0 || !dataforseo}
                     title="Fetch authority, traffic and backlink metrics for the top spots and score them"
                   >
                     {enriching ? "Scoring…" : "Enrich top spots"}
+                  </button>
+                  <button
+                    className="btn sm"
+                    onClick={() => void match()}
+                    disabled={spotsBusy || busyRun || (spotsData?.spots.length ?? 0) === 0 || !linkavista}
+                    title="Check which spots can be bought on your link marketplaces"
+                  >
+                    {matching ? "Matching…" : "Match marketplaces"}
                   </button>
                 </div>
               </div>
@@ -560,6 +609,19 @@ export default function SpotsPage() {
                       : `Scored ${enrichRun.spots_enriched} spot${enrichRun.spots_enriched === 1 ? "" : "s"} (${enrichRun.provider_queries} queries billed).`}
                 </p>
               )}
+              {matchRun && (
+                <p
+                  className={`sf-status${matchRun.status === "error" ? " sf-status-error" : ""}`}
+                  role="status"
+                >
+                  {matching && <span className="sf-spinner" aria-hidden="true" />}
+                  {matchRun.status === "error"
+                    ? `Marketplace match failed: ${matchRun.error ?? "unknown error"}`
+                    : matching
+                      ? "Checking marketplaces…"
+                      : `Checked ${matchRun.spots_checked} spot${matchRun.spots_checked === 1 ? "" : "s"} → ${matchRun.matches_found} buyable.`}
+                </p>
+              )}
               {spotsErr && (
                 <div className="auth-error" role="alert" style={{ marginTop: 8 }}>
                   {spotsErr}
@@ -584,6 +646,7 @@ export default function SpotsPage() {
                         <th title="Domain authority (DataForSEO rank 0–1000)">DR</th>
                         <th title="Estimated monthly organic traffic">Traffic</th>
                         <th title="Backlink spam score (lower is better)">Spam</th>
+                        <th>Buy</th>
                         <th>Example</th>
                       </tr>
                     </thead>
@@ -605,6 +668,27 @@ export default function SpotsPage() {
                           <td>{s.domain_rank ?? "–"}</td>
                           <td>{s.organic_traffic != null ? s.organic_traffic.toLocaleString() : "–"}</td>
                           <td>{s.spam_score ?? "–"}</td>
+                          <td>
+                            {s.buyable ? (
+                              s.marketplace_url ? (
+                                <a
+                                  className="sf-buy"
+                                  href={s.marketplace_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title={`Buy on ${s.marketplace}`}
+                                >
+                                  {formatPrice(s.buy_price_cents, s.buy_currency)} ↗
+                                </a>
+                              ) : (
+                                <span className="sf-buy">
+                                  {formatPrice(s.buy_price_cents, s.buy_currency)}
+                                </span>
+                              )
+                            ) : (
+                              <span className="muted">–</span>
+                            )}
+                          </td>
                           <td className="sf-example">
                             {s.example_url ? (
                               <a href={s.example_url} target="_blank" rel="noopener noreferrer" title={s.example_url}>

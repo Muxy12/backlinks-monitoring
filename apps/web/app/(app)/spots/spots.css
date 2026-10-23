@@ -265,3 +265,18 @@
   background: var(--primary-weak);
   border: 1px solid color-mix(in srgb, var(--primary) 30%, transparent);
 }
+.sf-buy {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 650;
+  white-space: nowrap;
+  color: var(--live);
+  background: color-mix(in srgb, var(--live) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--live) 30%, transparent);
+  text-decoration: none;
+}
+a.sf-buy:hover {
+  text-decoration: underline;
+}
