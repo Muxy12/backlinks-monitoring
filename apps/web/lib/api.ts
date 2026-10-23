@@ -121,11 +121,20 @@ export interface SpotMatchRunView {
   created_at: string;
   updated_at: string;
 }
+export interface SpotForumView {
+  id: string;
+  url: string;
+  domain: string;
+  forum_kind: string;
+  example_keyword: string | null;
+  best_position: number | null;
+}
 export interface SpotsResponse {
   run: SpotRunView | null;
   enrich_run: SpotEnrichRunView | null;
   match_run: SpotMatchRunView | null;
   spots: SpotView[];
+  forums: SpotForumView[];
 }
 
 // LinkAvista marketplace catalogue (read-only browse, Lot 2). Prices are in EUR

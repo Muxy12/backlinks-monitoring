@@ -163,11 +163,35 @@ impl From<db::entities::SpotMarketplaceRun> for MatchRunView {
 }
 
 #[derive(Serialize)]
+pub struct ForumView {
+    pub id: Uuid,
+    pub url: String,
+    pub domain: String,
+    pub forum_kind: String,
+    pub example_keyword: Option<String>,
+    pub best_position: Option<i32>,
+}
+
+impl From<db::entities::SpotForum> for ForumView {
+    fn from(f: db::entities::SpotForum) -> Self {
+        ForumView {
+            id: f.id,
+            url: f.url,
+            domain: f.domain,
+            forum_kind: f.forum_kind,
+            example_keyword: f.example_keyword,
+            best_position: f.best_position,
+        }
+    }
+}
+
+#[derive(Serialize)]
 pub struct SpotsResponse {
     pub run: Option<RunView>,
     pub enrich_run: Option<EnrichRunView>,
     pub match_run: Option<MatchRunView>,
     pub spots: Vec<SpotView>,
+    pub forums: Vec<ForumView>,
 }
 
 /// `GET …/projects/{project_id}/spots` — the spots list plus the latest run
@@ -187,11 +211,13 @@ pub async fn list_spots(
     let enrich_run = spots::latest_enrich(&state.pool, &scope, project_id).await?;
     let match_run = spots::latest_match(&state.pool, &scope, project_id).await?;
     let rows = spots::list_spots(&state.pool, &scope, project_id).await?;
+    let forums = spots::list_forums(&state.pool, &scope, project_id).await?;
     Ok(Json(SpotsResponse {
         run: run.map(RunView::from),
         enrich_run: enrich_run.map(EnrichRunView::from),
         match_run: match_run.map(MatchRunView::from),
         spots: rows.into_iter().map(SpotView::from).collect(),
+        forums: forums.into_iter().map(ForumView::from).collect(),
     }))
 }
 

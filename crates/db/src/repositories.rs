@@ -6990,7 +6990,7 @@ pub mod spot_keywords {
 // ─── Spot Finder: SERP runs, spots, SERP cache (migration 0044, Lot B) ────────
 pub mod spots {
     use super::*;
-    use crate::entities::{Spot, SpotEnrichRun, SpotMarketplaceRun, SpotSearchRun};
+    use crate::entities::{Spot, SpotEnrichRun, SpotForum, SpotMarketplaceRun, SpotSearchRun};
     use serde_json::Value;
 
     macro_rules! run_cols {
@@ -7525,5 +7525,69 @@ pub mod spots {
         .execute(pool)
         .await?;
         Ok(())
+    }
+
+    // ── Forums & communities (Lot E) ───────────────────────────────────────────
+
+    /// A forum/community page to persist (from the SERP run).
+    pub struct NewForum<'a> {
+        pub url: &'a str,
+        pub domain: &'a str,
+        pub forum_kind: &'a str,
+        pub example_keyword: Option<&'a str>,
+        pub best_position: Option<i32>,
+    }
+
+    /// Worker-side: replace a project's forums with a fresh set, atomically
+    /// (the latest SERP run is the source of truth).
+    pub async fn replace_forums(
+        pool: &PgPool,
+        organization_id: Uuid,
+        project_id: Uuid,
+        forums: &[NewForum<'_>],
+    ) -> Result<(), DbError> {
+        let mut tx = pool.begin().await?;
+        sqlx::query("DELETE FROM spot_forums WHERE organization_id = $1 AND project_id = $2")
+            .bind(organization_id)
+            .bind(project_id)
+            .execute(&mut *tx)
+            .await?;
+        for f in forums {
+            sqlx::query(
+                "INSERT INTO spot_forums (id, organization_id, project_id, url, domain, \
+                    forum_kind, example_keyword, best_position) \
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8) \
+                 ON CONFLICT (project_id, url) DO NOTHING",
+            )
+            .bind(Uuid::now_v7())
+            .bind(organization_id)
+            .bind(project_id)
+            .bind(f.url)
+            .bind(f.domain)
+            .bind(f.forum_kind)
+            .bind(f.example_keyword)
+            .bind(f.best_position)
+            .execute(&mut *tx)
+            .await?;
+        }
+        tx.commit().await?;
+        Ok(())
+    }
+
+    pub async fn list_forums(
+        pool: &PgPool,
+        scope: &OrgScope,
+        project_id: Uuid,
+    ) -> Result<Vec<SpotForum>, DbError> {
+        Ok(sqlx::query_as::<_, SpotForum>(
+            "SELECT id, organization_id, project_id, url, domain, forum_kind, \
+                    example_keyword, best_position, created_at \
+             FROM spot_forums WHERE organization_id = $1 AND project_id = $2 \
+             ORDER BY best_position ASC NULLS LAST",
+        )
+        .bind(scope.organization_id())
+        .bind(project_id)
+        .fetch_all(pool)
+        .await?)
     }
 }
