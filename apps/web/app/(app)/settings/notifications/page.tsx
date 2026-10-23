@@ -253,7 +253,7 @@ export default function NotificationSettingsPage() {
                     <td style={{ whiteSpace: "nowrap", textAlign: "right" }}>
                       <button className="btn sm" disabled={dbusy} onClick={() => void testDest(d)}>Test</button>{" "}
                       <button className="btn sm" onClick={() => void toggleDest(d)}>{d.enabled ? "Disable" : "Enable"}</button>{" "}
-                      <button className="btn sm" style={{ color: "#b91c1c", borderColor: "#fecaca" }} onClick={() => void delDest(d)}>Delete</button>
+                      <button className="btn sm danger" onClick={() => void delDest(d)}>Delete</button>
                     </td>
                   </tr>
                 ))}

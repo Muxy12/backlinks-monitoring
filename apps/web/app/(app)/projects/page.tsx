@@ -217,8 +217,7 @@ export default function ProjectsPage() {
                         <td style={{ whiteSpace: "nowrap" }}>
                           <button className="btn sm" onClick={() => startEdit(p)}>Edit</button>{" "}
                           <button
-                            className="btn sm"
-                            style={{ color: "#b91c1c", borderColor: "#fecaca" }}
+                            className="btn sm danger"
                             disabled={rowBusy === p.id}
                             onClick={() => void remove(p)}
                           >

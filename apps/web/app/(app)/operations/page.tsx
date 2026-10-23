@@ -276,8 +276,7 @@ function CampaignsTab({
                       </select>
                       <button className="btn sm" onClick={() => startEdit(c)}>Edit</button>
                       <button
-                        className="btn sm"
-                        style={{ color: "#b91c1c", borderColor: "#fecaca" }}
+                        className="btn sm danger"
                         onClick={() => void removeCampaign(c.id, c.name)}
                       >
                         Delete
