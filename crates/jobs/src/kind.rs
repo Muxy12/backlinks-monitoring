@@ -36,6 +36,9 @@ pub enum JobKind {
     /// Spot Finder (Lot B): run the SERP lookup over the kept keywords and
     /// aggregate ranking domains into spots. User-initiated, paid (DataForSEO).
     FindSpots,
+    /// Spot Finder (Lot C): enrich the shortlist of spots with authority/traffic
+    /// metrics and compute the quality score. User-initiated, paid (DataForSEO).
+    EnrichSpots,
 }
 
 impl JobKind {
@@ -51,7 +54,7 @@ impl JobKind {
             JobKind::DigestNotifications | JobKind::CheckWarranties | JobKind::RecomputeUsage => 10,
             // User-initiated Spot Finder work — above plain background crawls so
             // the UI fills promptly, but it does not jump the queue.
-            JobKind::DetectSiteKeywords | JobKind::FindSpots => 15,
+            JobKind::DetectSiteKeywords | JobKind::FindSpots | JobKind::EnrichSpots => 15,
             JobKind::CheckSourcePage | JobKind::CheckTargetUrl => 0,
             JobKind::RetentionDownsample => -10,
         }
@@ -73,6 +76,7 @@ impl JobKind {
             JobKind::RetentionDownsample => "retention_downsample",
             JobKind::DetectSiteKeywords => "detect_site_keywords",
             JobKind::FindSpots => "find_spots",
+            JobKind::EnrichSpots => "enrich_spots",
         }
     }
 }
@@ -96,6 +100,7 @@ impl FromStr for JobKind {
             "retention_downsample" => RetentionDownsample,
             "detect_site_keywords" => DetectSiteKeywords,
             "find_spots" => FindSpots,
+            "enrich_spots" => EnrichSpots,
             _ => return Err(()),
         })
     }
@@ -138,6 +143,7 @@ mod tests {
             JobKind::RetentionDownsample,
             JobKind::DetectSiteKeywords,
             JobKind::FindSpots,
+            JobKind::EnrichSpots,
         ] {
             assert_eq!(k.as_str().parse::<JobKind>(), Ok(k), "round-trip for {k:?}");
         }

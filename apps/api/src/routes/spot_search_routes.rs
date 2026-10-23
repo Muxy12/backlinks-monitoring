@@ -70,6 +70,14 @@ pub struct SpotView {
     pub avg_position: Option<f64>,
     pub example_url: Option<String>,
     pub example_keyword: Option<String>,
+    // Enrichment (Lot C) — null until the spot is enriched.
+    pub domain_rank: Option<i32>,
+    pub referring_domains: Option<i32>,
+    pub spam_score: Option<i32>,
+    pub organic_keywords: Option<i32>,
+    pub organic_traffic: Option<i64>,
+    pub quality_score: Option<f64>,
+    pub enriched: bool,
 }
 
 impl From<db::entities::Spot> for SpotView {
@@ -82,6 +90,38 @@ impl From<db::entities::Spot> for SpotView {
             avg_position: s.avg_position,
             example_url: s.example_url,
             example_keyword: s.example_keyword,
+            domain_rank: s.domain_rank,
+            referring_domains: s.referring_domains,
+            spam_score: s.spam_score,
+            organic_keywords: s.organic_keywords,
+            organic_traffic: s.organic_traffic,
+            quality_score: s.quality_score,
+            enriched: s.enriched_at.is_some(),
+        }
+    }
+}
+
+#[derive(Serialize)]
+pub struct EnrichRunView {
+    pub id: Uuid,
+    pub status: String,
+    pub spots_enriched: i32,
+    pub provider_queries: i32,
+    pub error: Option<String>,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+impl From<db::entities::SpotEnrichRun> for EnrichRunView {
+    fn from(r: db::entities::SpotEnrichRun) -> Self {
+        EnrichRunView {
+            id: r.id,
+            status: r.status,
+            spots_enriched: r.spots_enriched,
+            provider_queries: r.provider_queries,
+            error: r.error,
+            created_at: r.created_at.to_rfc3339(),
+            updated_at: r.updated_at.to_rfc3339(),
         }
     }
 }
@@ -89,6 +129,7 @@ impl From<db::entities::Spot> for SpotView {
 #[derive(Serialize)]
 pub struct SpotsResponse {
     pub run: Option<RunView>,
+    pub enrich_run: Option<EnrichRunView>,
     pub spots: Vec<SpotView>,
 }
 
@@ -106,9 +147,11 @@ pub async fn list_spots(
     projects::get(&state.pool, &scope, project_id).await?;
 
     let run = spots::latest_run(&state.pool, &scope, project_id).await?;
+    let enrich_run = spots::latest_enrich(&state.pool, &scope, project_id).await?;
     let rows = spots::list_spots(&state.pool, &scope, project_id).await?;
     Ok(Json(SpotsResponse {
         run: run.map(RunView::from),
+        enrich_run: enrich_run.map(EnrichRunView::from),
         spots: rows.into_iter().map(SpotView::from).collect(),
     }))
 }
@@ -174,4 +217,55 @@ pub async fn search_spots(
     .await?;
 
     Ok((StatusCode::ACCEPTED, Json(RunView::from(run))))
+}
+
+/// `POST …/projects/{project_id}/spots/enrich` — enrich the shortlist of spots
+/// with authority/traffic metrics and compute the quality score (stage 2).
+/// Member role. Paid (DataForSEO) — refused when the provider is unconfigured or
+/// there are no spots to enrich yet.
+pub async fn enrich_spots(
+    State(state): State<AppState>,
+    Path((org_id, project_id)): Path<(Uuid, Uuid)>,
+    jar: CookieJar,
+    headers: HeaderMap,
+) -> Result<(StatusCode, Json<EnrichRunView>), ApiError> {
+    gate(&state)?;
+    let (user, session) = current(&state, &jar).await?;
+    check_csrf(&jar, &headers, &session)?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Member)?;
+    projects::get(&state.pool, &scope, project_id).await?;
+
+    if crawler::metrics::MetricsProvider::from_env().is_none() {
+        return Err(ApiError::Validation(
+            "DataForSEO is not configured — set DATAFORSEO_LOGIN and DATAFORSEO_PASSWORD".into(),
+        ));
+    }
+
+    if spots::enrich_in_flight(&state.pool, &scope, project_id).await?
+        && let Some(existing) = spots::latest_enrich(&state.pool, &scope, project_id).await?
+    {
+        return Ok((StatusCode::ACCEPTED, Json(EnrichRunView::from(existing))));
+    }
+
+    // Need spots before enriching them.
+    let some = spots::spots_to_enrich(&state.pool, scope.organization_id(), project_id, 1).await?;
+    if some.is_empty() {
+        return Err(ApiError::Validation(
+            "search for spots before enriching them".into(),
+        ));
+    }
+
+    let run = spots::start_enrich(&state.pool, &scope, Uuid::now_v7(), project_id).await?;
+    let key = format!("enrich_spots:{}", run.id);
+    db::repositories::jobs::enqueue(
+        &state.pool,
+        Some(scope.organization_id()),
+        jobs::JobKind::EnrichSpots,
+        serde_json::json!({ "run_id": run.id }),
+        Some(&key),
+    )
+    .await?;
+
+    Ok((StatusCode::ACCEPTED, Json(EnrichRunView::from(run))))
 }

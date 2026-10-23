@@ -5,6 +5,7 @@
 pub mod deliver;
 pub mod discover;
 pub mod engine;
+pub mod enrich;
 pub mod keywords;
 pub mod spots;
 
@@ -114,6 +115,11 @@ async fn dispatch(ctx: &WorkerCtx, job: &ClaimedJob) -> anyhow::Result<()> {
         JobKind::FindSpots => {
             let run_id = payload_uuid(&job.payload, "run_id")?;
             spots::run_search(&ctx.pool, run_id).await?;
+            Ok(())
+        }
+        JobKind::EnrichSpots => {
+            let run_id = payload_uuid(&job.payload, "run_id")?;
+            enrich::run_enrich(&ctx.pool, run_id).await?;
             Ok(())
         }
         // Other job types wire in as their handlers land (docs/07 §5).

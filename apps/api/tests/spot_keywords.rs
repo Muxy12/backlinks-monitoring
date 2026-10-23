@@ -439,3 +439,40 @@ async fn spots_empty_and_search_needs_dataforseo() {
         "search refused without DataForSEO configured"
     );
 }
+
+#[tokio::test]
+async fn enrich_is_gated_and_needs_provider() {
+    // Gated off → 404.
+    if let Some(s) = bootstrap(false).await {
+        let project = s.new_project("enrich-off.com").await;
+        let (st, _) = s
+            .send(
+                "POST",
+                format!(
+                    "/v1/organizations/{}/projects/{project}/spots/enrich",
+                    s.org
+                ),
+                None,
+                true,
+            )
+            .await;
+        assert_eq!(st, StatusCode::NOT_FOUND);
+    }
+    // On, but no DataForSEO credentials in the test env → 422 (refused before
+    // spending). (If creds were present, the no-spots guard also returns 422.)
+    if let Some(s) = bootstrap(true).await {
+        let project = s.new_project("enrich-on.com").await;
+        let (st, _) = s
+            .send(
+                "POST",
+                format!(
+                    "/v1/organizations/{}/projects/{project}/spots/enrich",
+                    s.org
+                ),
+                None,
+                true,
+            )
+            .await;
+        assert_eq!(st, StatusCode::UNPROCESSABLE_ENTITY);
+    }
+}

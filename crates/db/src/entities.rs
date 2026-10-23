@@ -251,7 +251,8 @@ pub struct SpotSearchRun {
 }
 
 /// An aggregated prospect (migration 0044, Lot B): a domain that ranks for one or
-/// more of the project's keywords.
+/// more of the project's keywords. The enrichment columns (migration 0045, Lot C)
+/// are NULL until the shortlist is enriched.
 #[derive(Debug, Clone, FromRow)]
 pub struct Spot {
     pub id: Uuid,
@@ -263,6 +264,29 @@ pub struct Spot {
     pub avg_position: Option<f64>,
     pub example_url: Option<String>,
     pub example_keyword: Option<String>,
+    // ── Enrichment (migration 0045, Lot C) — NULL until enriched ──
+    pub domain_rank: Option<i32>,
+    pub referring_domains: Option<i32>,
+    pub spam_score: Option<i32>,
+    pub organic_keywords: Option<i32>,
+    pub organic_traffic: Option<i64>,
+    pub quality_score: Option<f64>,
+    pub enriched_at: Option<DateTime<Utc>>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+/// One Spot Finder enrichment pass for a project (migration 0045, Lot C): the
+/// stage-2 metrics lookup over the shortlist, with its cost.
+#[derive(Debug, Clone, FromRow)]
+pub struct SpotEnrichRun {
+    pub id: Uuid,
+    pub organization_id: Uuid,
+    pub project_id: Uuid,
+    pub status: String,
+    pub spots_enriched: i32,
+    pub provider_queries: i32,
+    pub error: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }

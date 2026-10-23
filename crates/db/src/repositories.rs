@@ -6990,7 +6990,7 @@ pub mod spot_keywords {
 // ─── Spot Finder: SERP runs, spots, SERP cache (migration 0044, Lot B) ────────
 pub mod spots {
     use super::*;
-    use crate::entities::{Spot, SpotSearchRun};
+    use crate::entities::{Spot, SpotEnrichRun, SpotSearchRun};
     use serde_json::Value;
 
     macro_rules! run_cols {
@@ -7002,7 +7002,15 @@ pub mod spots {
     macro_rules! spot_cols {
         () => {
             "id, organization_id, project_id, domain, keyword_count, best_position, \
-             avg_position, example_url, example_keyword, created_at, updated_at"
+             avg_position, example_url, example_keyword, domain_rank, referring_domains, \
+             spam_score, organic_keywords, organic_traffic, quality_score, enriched_at, \
+             created_at, updated_at"
+        };
+    }
+    macro_rules! enrich_run_cols {
+        () => {
+            "id, organization_id, project_id, status, spots_enriched, provider_queries, \
+             error, created_at, updated_at"
         };
     }
 
@@ -7229,11 +7237,158 @@ pub mod spots {
             "SELECT ",
             spot_cols!(),
             " FROM spots WHERE organization_id = $1 AND project_id = $2 \
-             ORDER BY keyword_count DESC, avg_position ASC NULLS LAST"
+             ORDER BY quality_score DESC NULLS LAST, keyword_count DESC, avg_position ASC NULLS LAST"
         ))
         .bind(scope.organization_id())
         .bind(project_id)
         .fetch_all(pool)
         .await?)
+    }
+
+    // ── Enrichment (Lot C) ─────────────────────────────────────────────────────
+
+    pub async fn enrich_in_flight(
+        pool: &PgPool,
+        scope: &OrgScope,
+        project_id: Uuid,
+    ) -> Result<bool, DbError> {
+        let (n,): (i64,) = sqlx::query_as(
+            "SELECT count(*) FROM spot_enrich_runs \
+             WHERE organization_id = $1 AND project_id = $2 \
+               AND status IN ('queued','running')",
+        )
+        .bind(scope.organization_id())
+        .bind(project_id)
+        .fetch_one(pool)
+        .await?;
+        Ok(n > 0)
+    }
+
+    pub async fn start_enrich(
+        pool: &PgPool,
+        scope: &OrgScope,
+        id: Uuid,
+        project_id: Uuid,
+    ) -> Result<SpotEnrichRun, DbError> {
+        sqlx::query_as::<_, SpotEnrichRun>(concat!(
+            "INSERT INTO spot_enrich_runs (id, organization_id, project_id) \
+             VALUES ($1, $2, $3) RETURNING ",
+            enrich_run_cols!()
+        ))
+        .bind(id)
+        .bind(scope.organization_id())
+        .bind(project_id)
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_insert)
+    }
+
+    pub async fn latest_enrich(
+        pool: &PgPool,
+        scope: &OrgScope,
+        project_id: Uuid,
+    ) -> Result<Option<SpotEnrichRun>, DbError> {
+        Ok(sqlx::query_as::<_, SpotEnrichRun>(concat!(
+            "SELECT ",
+            enrich_run_cols!(),
+            " FROM spot_enrich_runs WHERE organization_id = $1 AND project_id = $2 \
+             ORDER BY created_at DESC LIMIT 1"
+        ))
+        .bind(scope.organization_id())
+        .bind(project_id)
+        .fetch_optional(pool)
+        .await?)
+    }
+
+    pub async fn mark_enrich_running(
+        pool: &PgPool,
+        run_id: Uuid,
+    ) -> Result<Option<SpotEnrichRun>, DbError> {
+        Ok(sqlx::query_as::<_, SpotEnrichRun>(concat!(
+            "UPDATE spot_enrich_runs SET status = 'running' \
+             WHERE id = $1 AND status = 'queued' RETURNING ",
+            enrich_run_cols!()
+        ))
+        .bind(run_id)
+        .fetch_optional(pool)
+        .await?)
+    }
+
+    pub async fn finish_enrich(
+        pool: &PgPool,
+        run_id: Uuid,
+        spots_enriched: i32,
+        provider_queries: i32,
+        error: Option<&str>,
+    ) -> Result<(), DbError> {
+        sqlx::query(
+            "UPDATE spot_enrich_runs SET \
+                status = CASE WHEN $4::text IS NULL THEN 'done' ELSE 'error' END, \
+                spots_enriched = $2, provider_queries = $3, error = $4 \
+             WHERE id = $1",
+        )
+        .bind(run_id)
+        .bind(spots_enriched)
+        .bind(provider_queries)
+        .bind(error)
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    /// Worker-side: the top spots to enrich (by relevance), cross-tenant by the
+    /// trusted (org, project) from the claimed run. Returns (id, domain,
+    /// keyword_count) — the count feeds the relevance signal of the score.
+    pub async fn spots_to_enrich(
+        pool: &PgPool,
+        organization_id: Uuid,
+        project_id: Uuid,
+        limit: i64,
+    ) -> Result<Vec<(Uuid, String, i32)>, DbError> {
+        Ok(sqlx::query_as::<_, (Uuid, String, i32)>(
+            "SELECT id, domain, keyword_count FROM spots \
+             WHERE organization_id = $1 AND project_id = $2 \
+             ORDER BY keyword_count DESC, avg_position ASC NULLS LAST LIMIT $3",
+        )
+        .bind(organization_id)
+        .bind(project_id)
+        .bind(limit.clamp(1, 100))
+        .fetch_all(pool)
+        .await?)
+    }
+
+    /// The metrics + score to write onto a spot (from the provider + core scorer).
+    #[derive(Default)]
+    pub struct SpotMetrics {
+        pub domain_rank: Option<i32>,
+        pub referring_domains: Option<i32>,
+        pub spam_score: Option<i32>,
+        pub organic_keywords: Option<i32>,
+        pub organic_traffic: Option<i64>,
+        pub quality_score: f64,
+    }
+
+    /// Worker-side: write enriched metrics + score onto one spot.
+    pub async fn update_spot_metrics(
+        pool: &PgPool,
+        spot_id: Uuid,
+        m: &SpotMetrics,
+    ) -> Result<(), DbError> {
+        sqlx::query(
+            "UPDATE spots SET domain_rank = $2, referring_domains = $3, spam_score = $4, \
+                organic_keywords = $5, organic_traffic = $6, quality_score = $7, \
+                enriched_at = now() \
+             WHERE id = $1",
+        )
+        .bind(spot_id)
+        .bind(m.domain_rank)
+        .bind(m.referring_domains)
+        .bind(m.spam_score)
+        .bind(m.organic_keywords)
+        .bind(m.organic_traffic)
+        .bind(m.quality_score)
+        .execute(pool)
+        .await?;
+        Ok(())
     }
 }

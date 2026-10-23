@@ -90,9 +90,26 @@ export interface SpotView {
   avg_position: number | null;
   example_url: string | null;
   example_keyword: string | null;
+  domain_rank: number | null;
+  referring_domains: number | null;
+  spam_score: number | null;
+  organic_keywords: number | null;
+  organic_traffic: number | null;
+  quality_score: number | null;
+  enriched: boolean;
+}
+export interface SpotEnrichRunView {
+  id: string;
+  status: "queued" | "running" | "done" | "error";
+  spots_enriched: number;
+  provider_queries: number;
+  error: string | null;
+  created_at: string;
+  updated_at: string;
 }
 export interface SpotsResponse {
   run: SpotRunView | null;
+  enrich_run: SpotEnrichRunView | null;
   spots: SpotView[];
 }
 
@@ -953,6 +970,11 @@ export const orgApi = {
       method: "POST",
       headers: csrfHeader(),
       body: JSON.stringify({ locale }),
+    }),
+  enrichSpots: (org: string, projectId: string) =>
+    request<SpotEnrichRunView>(`/v1/organizations/${org}/projects/${projectId}/spots/enrich`, {
+      method: "POST",
+      headers: csrfHeader(),
     }),
   createProject: (
     org: string,
