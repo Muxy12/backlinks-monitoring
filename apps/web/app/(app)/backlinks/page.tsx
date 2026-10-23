@@ -24,6 +24,18 @@ import "../dashboard/overview.css";
 import "./impact.css";
 import "./backlinks.css";
 
+// Accessible drawer focus: when a drawer opens, move focus into it; when it
+// closes, restore focus to whatever opened it. Pairs with the existing Escape
+// handler + role="dialog"/aria-modal so the drawers are real modal dialogs.
+function useDrawerFocus(open: boolean, ref: { current: HTMLElement | null }) {
+  useEffect(() => {
+    if (!open) return;
+    const opener = document.activeElement as HTMLElement | null;
+    ref.current?.focus();
+    return () => opener?.focus?.();
+  }, [open, ref]);
+}
+
 export default function BacklinksPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -109,6 +121,13 @@ export default function BacklinksPage() {
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [showAdd, showNotifs, selected]);
+  // Focus the open drawer and restore focus to the opener on close (a11y).
+  const addDrawerRef = useRef<HTMLElement | null>(null);
+  const notifsDrawerRef = useRef<HTMLElement | null>(null);
+  const detailDrawerRef = useRef<HTMLElement | null>(null);
+  useDrawerFocus(showAdd, addDrawerRef);
+  useDrawerFocus(showNotifs, notifsDrawerRef);
+  useDrawerFocus(!!selected, detailDrawerRef);
   const [addForm, setAddForm] = useState({
     project_id: "",
     source_url: "",
@@ -1353,6 +1372,7 @@ export default function BacklinksPage() {
             aria-modal="true"
             aria-label="Add backlinks"
             tabIndex={-1}
+            ref={addDrawerRef}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="panel-head">
@@ -1528,6 +1548,7 @@ export default function BacklinksPage() {
             aria-modal="true"
             aria-label="Notifications"
             tabIndex={-1}
+            ref={notifsDrawerRef}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="panel-head">
@@ -1563,6 +1584,7 @@ export default function BacklinksPage() {
             aria-modal="true"
             aria-label="Backlink details"
             tabIndex={-1}
+            ref={detailDrawerRef}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="panel-head">
