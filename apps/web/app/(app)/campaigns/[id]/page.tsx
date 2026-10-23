@@ -1,4 +1,5 @@
 "use client";
+import { PageLoading } from "@/components/PageLoading";
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -114,12 +115,7 @@ export default function CampaignDetailPage() {
     })();
   }, [orgId, campaignId, reloadSummary, reloadTargets, reloadProspects]);
 
-  if (loading)
-    return (
-      <div className="auth-wrap">
-        <p style={{ color: "var(--muted)" }}>Loading…</p>
-      </div>
-    );
+  if (loading) return <PageLoading />;
   if (notFound || !campaign || !orgId)
     return (
       <main className="dash">

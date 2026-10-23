@@ -463,3 +463,24 @@
   .bl-table th:nth-child(5), .bl-table td:nth-child(5) { display: none; }
   .drawer { width: 100%; max-width: 100%; }
 }
+
+/* Shared full-page loading state (components/PageLoading). */
+.page-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 40vh;
+  font-size: 14px;
+}
+.page-loading-spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--primary) 28%, transparent);
+  border-top-color: var(--primary);
+  animation: page-loading-spin 0.7s linear infinite;
+  flex: none;
+}
+@keyframes page-loading-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .page-loading-spinner { animation-duration: 2.4s; } }

@@ -1,4 +1,5 @@
 "use client";
+import { PageLoading } from "@/components/PageLoading";
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -109,7 +110,7 @@ export default function BillingPage() {
     window.location.href = res.data.url;
   }
 
-  if (loading) return <div className="auth-wrap"><p style={{ color: "var(--muted)" }}>Loading…</p></div>;
+  if (loading) return <PageLoading />;
   if (!me) return null;
 
   return (

@@ -1,4 +1,5 @@
 "use client";
+import { PageLoading } from "@/components/PageLoading";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -167,7 +168,7 @@ export default function GraphPage() {
     return m;
   }, [graphData]);
 
-  if (loading) return <div className="auth-wrap"><p style={{ color: "var(--muted)" }}>Loading…</p></div>;
+  if (loading) return <PageLoading />;
   if (!me) return null;
 
   const linkId = (l: { source: unknown; target: unknown }) => {
