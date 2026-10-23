@@ -13,9 +13,9 @@
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--primary);
-  background: var(--primary-weak);
-  border: 1px solid color-mix(in srgb, var(--primary) 26%, transparent);
+  color: var(--primary-press);
+  background: color-mix(in srgb, var(--primary) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary) 30%, transparent);
   padding: 3px 9px;
   border-radius: 999px;
   vertical-align: middle;
@@ -53,7 +53,30 @@
 .admin-tabs button.on { background: var(--surface); color: var(--text); box-shadow: var(--shadow-xs); }
 .admin-tabs button:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
 .admin-tabs .n { font-variant-numeric: tabular-nums; color: var(--muted-2); margin-left: 5px; font-weight: 600; }
-.admin-tabs button.on .n { color: var(--primary); }
+.admin-tabs button.on .n { color: var(--primary-press); }
+
+/* Dark theme brightens --primary; use it (not the darker -press) as the chip
+   text there so the small blue pills keep AA contrast on the dark tint. */
+:root[data-theme="dark"] .admin-tag,
+:root[data-theme="dark"] .abadge.info,
+:root[data-theme="dark"] .plan-chip .pc,
+:root[data-theme="dark"] .ops-row .ops-pill.partial,
+:root[data-theme="dark"] .admin-tabs button.on .n {
+  color: var(--primary);
+}
+
+/* Visually-hidden (screen-reader-only) utility for live announcements. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
 
 .admin-search {
   height: 34px; padding: 0 11px 0 32px; font-size: 13px; color: var(--text);
@@ -78,7 +101,7 @@
 .abadge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex: none; }
 .abadge.ok { color: var(--live); background: color-mix(in srgb, var(--live) 14%, transparent); }
 .abadge.bad { color: var(--lost); background: color-mix(in srgb, var(--lost) 14%, transparent); }
-.abadge.info { color: var(--primary); background: var(--primary-weak); }
+.abadge.info { color: var(--primary-press); background: color-mix(in srgb, var(--primary) 16%, transparent); }
 /* Action label (audit): neutral, no dot. */
 .atag { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: var(--r-xs); background: var(--surface-2); border: 1px solid var(--border); color: var(--muted); font-family: var(--font-mono); white-space: nowrap; }
 
@@ -111,7 +134,7 @@
 .plan-mix { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
 .plan-chip { display: inline-flex; align-items: baseline; gap: 7px; padding: 7px 12px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); box-shadow: var(--shadow-xs); }
 .plan-chip .pn { font-size: 12.5px; font-weight: 600; color: var(--text); }
-.plan-chip .pc { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--primary); }
+.plan-chip .pc { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--primary-press); }
 .plan-chip.muted .pc { color: var(--muted-2); }
 .plan-chip.danger .pc { color: var(--lost); }
 button.plan-chip { font: inherit; cursor: pointer; transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease); }
@@ -127,7 +150,7 @@ button.plan-chip:focus-visible { outline: 2px solid var(--primary); outline-offs
 .ops-row .ops-b { min-width: 0; }
 .ops-row .ops-t { font-size: 13px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 8px; }
 .ops-row .ops-pill { font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--changed); background: color-mix(in srgb, var(--changed) 14%, transparent); border: 1px solid color-mix(in srgb, var(--changed) 32%, transparent); border-radius: 999px; padding: 1px 7px; white-space: nowrap; }
-.ops-row .ops-pill.partial { color: var(--primary); background: var(--primary-weak); border-color: color-mix(in srgb, var(--primary) 30%, transparent); }
+.ops-row .ops-pill.partial { color: var(--primary-press); background: color-mix(in srgb, var(--primary) 16%, transparent); border-color: color-mix(in srgb, var(--primary) 30%, transparent); }
 .ops-row .ops-d { font-size: 12px; color: var(--muted); margin-top: 3px; line-height: 1.4; }
 .ops-gap-foot { font-size: 12px; color: var(--muted-2); margin: -8px 0 20px; }
 .ops-gap-foot a { color: var(--primary); }
