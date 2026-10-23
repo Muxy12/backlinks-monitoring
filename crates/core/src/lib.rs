@@ -15,6 +15,7 @@ pub mod csv_export;
 pub mod csv_import;
 pub mod event;
 pub mod impact;
+pub mod keywords;
 pub mod monitoring;
 pub mod net;
 pub mod observation;
@@ -36,6 +37,7 @@ pub use attention::{
 };
 pub use event::{BacklinkEvent, EventType, change_alert_label};
 pub use impact::{Confidence, SignalState};
+pub use keywords::{KeywordCandidate, candidates_from_h1s, clean_keyword};
 pub use monitoring::{
     MonitoringDecision, MonitoringInputs, MonitoringLevel, MonitoringReason,
     decide as monitoring_decide, frequency_days,

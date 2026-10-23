@@ -50,10 +50,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const isAdmin = !!me?.user.is_admin;
   const campaignsBeta = !!me?.features?.campaigns_beta;
   const linkavista = !!me?.features?.linkavista;
+  const spotFinder = !!me?.features?.spot_finder;
   // Surface extra "Grow" tools only when their feature flags are on.
   const sections = SECTIONS.map((s) => {
     if (s.title !== "Grow") return s;
     const links = [...s.links];
+    if (spotFinder)
+      links.push({ href: "/spots", label: "Spot Finder", icon: "competitors", badge: "BETA" });
     if (campaignsBeta)
       links.push({ href: "/campaigns", label: "Link Building", icon: "campaigns", badge: "BETA" });
     if (linkavista)

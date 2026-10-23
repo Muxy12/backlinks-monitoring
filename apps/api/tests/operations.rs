@@ -55,6 +55,7 @@ async fn bootstrap() -> Option<Session> {
         linkavista_sandbox: true,
         linkavista_base_url: None,
         stripe_tax_enabled: false,
+        spot_finder: false,
     };
     let app = api::app(AppState::new(pool.clone(), cfg));
     let email = format!("ops-{}@example.com", Uuid::now_v7().simple());

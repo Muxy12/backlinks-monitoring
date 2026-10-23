@@ -31,6 +31,7 @@ async fn state() -> Option<AppState> {
         linkavista_sandbox: true,
         linkavista_base_url: None,
         stripe_tax_enabled: false,
+        spot_finder: false,
     };
     Some(AppState::new(db.pool, cfg))
 }

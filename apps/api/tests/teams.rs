@@ -33,6 +33,7 @@ async fn app() -> Option<(axum::Router, db::sqlx::PgPool)> {
             linkavista_sandbox: true,
             linkavista_base_url: None,
             stripe_tax_enabled: false,
+            spot_finder: false,
         },
     ));
     Some((router, pool))
