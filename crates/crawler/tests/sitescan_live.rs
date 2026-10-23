@@ -54,8 +54,13 @@ async fn collects_h1s_from_home_and_one_click_pages() {
     let scan = scan_site(&test_cfg(), &base, 10).await;
 
     // P0 + 2 deduped P1 pages (the #section link is the same page as /guide).
-    assert_eq!(scan.pages_scanned, 3, "home + 2 unique same-site pages");
     let texts: Vec<&str> = scan.h1s.iter().map(|h| h.text.as_str()).collect();
+    let urls: Vec<&str> = scan.h1s.iter().map(|h| h.url.as_str()).collect();
+    assert_eq!(
+        scan.pages_scanned, 3,
+        "home + 2 unique same-site pages; base={base}; pages={}; h1s={texts:?}; urls={urls:?}",
+        scan.pages_scanned
+    );
     assert!(texts.contains(&"Backlink monitoring"));
     assert!(texts.contains(&"Link building guide"));
     assert!(texts.contains(&"Pricing"));
