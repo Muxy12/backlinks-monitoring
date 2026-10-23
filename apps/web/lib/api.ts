@@ -97,6 +97,11 @@ export interface SpotView {
   organic_traffic: number | null;
   quality_score: number | null;
   enriched: boolean;
+  marketplace: string | null;
+  buy_price_cents: number | null;
+  buy_currency: string | null;
+  marketplace_url: string | null;
+  buyable: boolean;
 }
 export interface SpotEnrichRunView {
   id: string;
@@ -107,9 +112,19 @@ export interface SpotEnrichRunView {
   created_at: string;
   updated_at: string;
 }
+export interface SpotMatchRunView {
+  id: string;
+  status: "queued" | "running" | "done" | "error";
+  spots_checked: number;
+  matches_found: number;
+  error: string | null;
+  created_at: string;
+  updated_at: string;
+}
 export interface SpotsResponse {
   run: SpotRunView | null;
   enrich_run: SpotEnrichRunView | null;
+  match_run: SpotMatchRunView | null;
   spots: SpotView[];
 }
 
@@ -973,6 +988,11 @@ export const orgApi = {
     }),
   enrichSpots: (org: string, projectId: string) =>
     request<SpotEnrichRunView>(`/v1/organizations/${org}/projects/${projectId}/spots/enrich`, {
+      method: "POST",
+      headers: csrfHeader(),
+    }),
+  matchSpots: (org: string, projectId: string) =>
+    request<SpotMatchRunView>(`/v1/organizations/${org}/projects/${projectId}/spots/match`, {
       method: "POST",
       headers: csrfHeader(),
     }),

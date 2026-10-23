@@ -15,6 +15,7 @@ pub mod config;
 pub mod discovery;
 pub mod fetch;
 pub mod linkavista;
+pub mod marketplace;
 pub mod matching;
 pub mod metrics;
 pub mod parse;
@@ -23,6 +24,7 @@ pub mod sitescan;
 
 pub use config::CrawlerConfig;
 pub use fetch::{FetchError, FetchOk, FetchOutcome, fetch};
+pub use marketplace::{MarketplaceListing, MarketplaceProvider, providers_from_env};
 pub use matching::{LinkMatch, best_match, evaluate, find_matches};
 pub use metrics::{DomainMetrics, MetricsProvider};
 pub use parse::{ExtractedLink, ParsedPage, parse_page};

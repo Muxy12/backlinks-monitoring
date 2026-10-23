@@ -78,6 +78,12 @@ pub struct SpotView {
     pub organic_traffic: Option<i64>,
     pub quality_score: Option<f64>,
     pub enriched: bool,
+    // Marketplace match (Lot D) — null until matched.
+    pub marketplace: Option<String>,
+    pub buy_price_cents: Option<i64>,
+    pub buy_currency: Option<String>,
+    pub marketplace_url: Option<String>,
+    pub buyable: bool,
 }
 
 impl From<db::entities::Spot> for SpotView {
@@ -97,6 +103,11 @@ impl From<db::entities::Spot> for SpotView {
             organic_traffic: s.organic_traffic,
             quality_score: s.quality_score,
             enriched: s.enriched_at.is_some(),
+            buyable: s.marketplace.is_some(),
+            marketplace: s.marketplace,
+            buy_price_cents: s.buy_price_cents,
+            buy_currency: s.buy_currency,
+            marketplace_url: s.marketplace_url,
         }
     }
 }
@@ -127,9 +138,35 @@ impl From<db::entities::SpotEnrichRun> for EnrichRunView {
 }
 
 #[derive(Serialize)]
+pub struct MatchRunView {
+    pub id: Uuid,
+    pub status: String,
+    pub spots_checked: i32,
+    pub matches_found: i32,
+    pub error: Option<String>,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+impl From<db::entities::SpotMarketplaceRun> for MatchRunView {
+    fn from(r: db::entities::SpotMarketplaceRun) -> Self {
+        MatchRunView {
+            id: r.id,
+            status: r.status,
+            spots_checked: r.spots_checked,
+            matches_found: r.matches_found,
+            error: r.error,
+            created_at: r.created_at.to_rfc3339(),
+            updated_at: r.updated_at.to_rfc3339(),
+        }
+    }
+}
+
+#[derive(Serialize)]
 pub struct SpotsResponse {
     pub run: Option<RunView>,
     pub enrich_run: Option<EnrichRunView>,
+    pub match_run: Option<MatchRunView>,
     pub spots: Vec<SpotView>,
 }
 
@@ -148,10 +185,12 @@ pub async fn list_spots(
 
     let run = spots::latest_run(&state.pool, &scope, project_id).await?;
     let enrich_run = spots::latest_enrich(&state.pool, &scope, project_id).await?;
+    let match_run = spots::latest_match(&state.pool, &scope, project_id).await?;
     let rows = spots::list_spots(&state.pool, &scope, project_id).await?;
     Ok(Json(SpotsResponse {
         run: run.map(RunView::from),
         enrich_run: enrich_run.map(EnrichRunView::from),
+        match_run: match_run.map(MatchRunView::from),
         spots: rows.into_iter().map(SpotView::from).collect(),
     }))
 }
@@ -268,4 +307,56 @@ pub async fn enrich_spots(
     .await?;
 
     Ok((StatusCode::ACCEPTED, Json(EnrichRunView::from(run))))
+}
+
+/// `POST …/projects/{project_id}/spots/match` — cross-reference the spots with
+/// the configured link-buying marketplaces (LinkAvista …) and mark the buyable
+/// ones. Member role. Refused when no marketplace is configured or there are no
+/// spots yet. Catalogue reads don't spend credit.
+pub async fn match_spots(
+    State(state): State<AppState>,
+    Path((org_id, project_id)): Path<(Uuid, Uuid)>,
+    jar: CookieJar,
+    headers: HeaderMap,
+) -> Result<(StatusCode, Json<MatchRunView>), ApiError> {
+    gate(&state)?;
+    let (user, session) = current(&state, &jar).await?;
+    check_csrf(&jar, &headers, &session)?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Member)?;
+    projects::get(&state.pool, &scope, project_id).await?;
+
+    if crate::routes::linkavista_routes::configured(&state.cfg) {
+        // ok: at least one marketplace (LinkAvista) is configured
+    } else {
+        return Err(ApiError::Validation(
+            "no link marketplace is configured (set LINKAVISTA_API_KEY)".into(),
+        ));
+    }
+
+    if spots::match_in_flight(&state.pool, &scope, project_id).await?
+        && let Some(existing) = spots::latest_match(&state.pool, &scope, project_id).await?
+    {
+        return Ok((StatusCode::ACCEPTED, Json(MatchRunView::from(existing))));
+    }
+
+    let some = spots::spots_to_enrich(&state.pool, scope.organization_id(), project_id, 1).await?;
+    if some.is_empty() {
+        return Err(ApiError::Validation(
+            "search for spots before matching marketplaces".into(),
+        ));
+    }
+
+    let run = spots::start_match(&state.pool, &scope, Uuid::now_v7(), project_id).await?;
+    let key = format!("match_marketplaces:{}", run.id);
+    db::repositories::jobs::enqueue(
+        &state.pool,
+        Some(scope.organization_id()),
+        jobs::JobKind::MatchMarketplaces,
+        serde_json::json!({ "run_id": run.id }),
+        Some(&key),
+    )
+    .await?;
+
+    Ok((StatusCode::ACCEPTED, Json(MatchRunView::from(run))))
 }

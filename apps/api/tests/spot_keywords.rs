@@ -476,3 +476,33 @@ async fn enrich_is_gated_and_needs_provider() {
         assert_eq!(st, StatusCode::UNPROCESSABLE_ENTITY);
     }
 }
+
+#[tokio::test]
+async fn marketplace_match_is_gated_and_needs_a_marketplace() {
+    // Gated off → 404.
+    if let Some(s) = bootstrap(false).await {
+        let project = s.new_project("match-off.com").await;
+        let (st, _) = s
+            .send(
+                "POST",
+                format!("/v1/organizations/{}/projects/{project}/spots/match", s.org),
+                None,
+                true,
+            )
+            .await;
+        assert_eq!(st, StatusCode::NOT_FOUND);
+    }
+    // On, but LinkAvista not configured in the test ApiConfig → 422.
+    if let Some(s) = bootstrap(true).await {
+        let project = s.new_project("match-on.com").await;
+        let (st, _) = s
+            .send(
+                "POST",
+                format!("/v1/organizations/{}/projects/{project}/spots/match", s.org),
+                None,
+                true,
+            )
+            .await;
+        assert_eq!(st, StatusCode::UNPROCESSABLE_ENTITY);
+    }
+}

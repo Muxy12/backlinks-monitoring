@@ -272,6 +272,29 @@ pub struct Spot {
     pub organic_traffic: Option<i64>,
     pub quality_score: Option<f64>,
     pub enriched_at: Option<DateTime<Utc>>,
+    // ── Marketplace match (migration 0046, Lot D) — NULL until matched ──
+    pub marketplace: Option<String>,
+    pub marketplace_site_id: Option<i64>,
+    pub buy_price_cents: Option<i64>,
+    pub buy_currency: Option<String>,
+    pub marketplace_url: Option<String>,
+    pub matched_at: Option<DateTime<Utc>>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+/// One Spot Finder marketplace-matching pass for a project (migration 0046, Lot
+/// D): cross-reference spots against link-buying platforms.
+#[derive(Debug, Clone, FromRow)]
+pub struct SpotMarketplaceRun {
+    pub id: Uuid,
+    pub organization_id: Uuid,
+    pub project_id: Uuid,
+    pub status: String,
+    pub spots_checked: i32,
+    pub matches_found: i32,
+    pub provider_queries: i32,
+    pub error: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }

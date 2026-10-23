@@ -39,6 +39,9 @@ pub enum JobKind {
     /// Spot Finder (Lot C): enrich the shortlist of spots with authority/traffic
     /// metrics and compute the quality score. User-initiated, paid (DataForSEO).
     EnrichSpots,
+    /// Spot Finder (Lot D): cross-reference spots with link-buying marketplaces
+    /// (LinkAvista …) and mark the buyable ones. User-initiated.
+    MatchMarketplaces,
 }
 
 impl JobKind {
@@ -54,7 +57,10 @@ impl JobKind {
             JobKind::DigestNotifications | JobKind::CheckWarranties | JobKind::RecomputeUsage => 10,
             // User-initiated Spot Finder work — above plain background crawls so
             // the UI fills promptly, but it does not jump the queue.
-            JobKind::DetectSiteKeywords | JobKind::FindSpots | JobKind::EnrichSpots => 15,
+            JobKind::DetectSiteKeywords
+            | JobKind::FindSpots
+            | JobKind::EnrichSpots
+            | JobKind::MatchMarketplaces => 15,
             JobKind::CheckSourcePage | JobKind::CheckTargetUrl => 0,
             JobKind::RetentionDownsample => -10,
         }
@@ -77,6 +83,7 @@ impl JobKind {
             JobKind::DetectSiteKeywords => "detect_site_keywords",
             JobKind::FindSpots => "find_spots",
             JobKind::EnrichSpots => "enrich_spots",
+            JobKind::MatchMarketplaces => "match_marketplaces",
         }
     }
 }
@@ -101,6 +108,7 @@ impl FromStr for JobKind {
             "detect_site_keywords" => DetectSiteKeywords,
             "find_spots" => FindSpots,
             "enrich_spots" => EnrichSpots,
+            "match_marketplaces" => MatchMarketplaces,
             _ => return Err(()),
         })
     }
@@ -144,6 +152,7 @@ mod tests {
             JobKind::DetectSiteKeywords,
             JobKind::FindSpots,
             JobKind::EnrichSpots,
+            JobKind::MatchMarketplaces,
         ] {
             assert_eq!(k.as_str().parse::<JobKind>(), Ok(k), "round-trip for {k:?}");
         }
