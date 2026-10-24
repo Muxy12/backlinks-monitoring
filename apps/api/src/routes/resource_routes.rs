@@ -1317,7 +1317,8 @@ pub async fn bulk_archive(
             "at most {BULK_MONITORING_MAX} ids per call"
         )));
     }
-    let archived = db::repositories::backlinks::bulk_archive(&state.pool, &scope, &body.ids).await?;
+    let archived =
+        db::repositories::backlinks::bulk_archive(&state.pool, &scope, &body.ids).await?;
     Ok(Json(BulkArchiveResult {
         archived: archived as i64,
     }))
