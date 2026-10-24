@@ -1513,6 +1513,7 @@ export const orgApi = {
       trial_ends_at?: string;
       trial_days_left?: number;
       access_active: boolean;
+      admin_granted: boolean;
     }>(`/v1/organizations/${org}/billing`),
   billingUsage: (org: string) =>
     request<UsageView>(`/v1/organizations/${org}/billing/usage`),

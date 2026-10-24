@@ -38,6 +38,7 @@ export default function BillingPage() {
   const [configured, setConfigured] = useState(false);
   const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null);
   const [accessActive, setAccessActive] = useState(true);
+  const [adminGranted, setAdminGranted] = useState(false);
   const [usage, setUsage] = useState<UsageView | null>(null);
   const [annual, setAnnual] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -55,6 +56,7 @@ export default function BillingPage() {
       setConfigured(s.data.configured);
       setTrialDaysLeft(s.data.trial_days_left ?? null);
       setAccessActive(s.data.access_active);
+      setAdminGranted(s.data.admin_granted);
     }
     if (u.ok) setUsage(u.data);
   }, []);
@@ -234,16 +236,24 @@ export default function BillingPage() {
       </div>
 
       <div style={{ marginTop: 20 }}>
-        <button className="btn" disabled={!configured || !isOwner || busy !== null} onClick={() => void manage()}>
-          {busy === "portal" ? "…" : "Manage billing (invoices, payment method, cancel)"}
-        </button>
-        <p className="muted" style={{ fontSize: 12, marginTop: 8 }}>
-          Opens Stripe’s secure Customer Portal. Available once you have a subscription.
-        </p>
-        {portalMsg && (
-          <p style={{ fontSize: 13, marginTop: 8, color: "var(--lost)" }} role="status">
-            {portalMsg}
+        {adminGranted ? (
+          <p className="muted" style={{ fontSize: 13 }}>
+            Your plan was granted by an administrator — there’s no Stripe billing to manage.
           </p>
+        ) : (
+          <>
+            <button className="btn" disabled={!configured || !isOwner || busy !== null} onClick={() => void manage()}>
+              {busy === "portal" ? "…" : "Manage billing (invoices, payment method, cancel)"}
+            </button>
+            <p className="muted" style={{ fontSize: 12, marginTop: 8 }}>
+              Opens Stripe’s secure Customer Portal. Available once you have a subscription.
+            </p>
+            {portalMsg && (
+              <p style={{ fontSize: 13, marginTop: 8, color: "var(--lost)" }} role="status">
+                {portalMsg}
+              </p>
+            )}
+          </>
         )}
       </div>
 

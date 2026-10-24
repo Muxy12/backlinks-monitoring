@@ -42,6 +42,10 @@ pub struct BillingStatus {
     /// Whether the org may add/monitor right now (active/past_due, or a live
     /// trial). False means the trial expired or the subscription is inactive.
     pub access_active: bool,
+    /// True when the plan was granted by a platform admin (a comped subscription
+    /// with a synthetic customer, no real Stripe customer): the Customer Portal
+    /// doesn't apply, so the UI hides "Manage billing".
+    pub admin_granted: bool,
 }
 
 /// GET current plan/status for the org (+ trial state + whether Stripe is wired).
@@ -67,6 +71,10 @@ pub async fn billing_status(
         (None, None)
     };
     let access_active = matches!(status.as_str(), "active" | "past_due") || trialing_live;
+    let admin_granted = db::repositories::billing::customer_for_org(&state.pool, org_id)
+        .await?
+        .map(|c| c.starts_with("admin:"))
+        .unwrap_or(false);
 
     Ok(Json(BillingStatus {
         plan,
@@ -75,6 +83,7 @@ pub async fn billing_status(
         trial_ends_at,
         trial_days_left,
         access_active,
+        admin_granted,
     }))
 }
 
@@ -208,6 +217,15 @@ pub async fn create_portal(
     let customer = db::repositories::billing::customer_for_org(&state.pool, org_id)
         .await?
         .ok_or_else(|| ApiError::Validation("no subscription yet — subscribe first".into()))?;
+    // Admin-granted (comped) plans carry a synthetic "admin:<org>" customer, not
+    // a real Stripe customer — the portal can't open for them, so say so clearly
+    // instead of forwarding a raw Stripe "No such customer" 400.
+    if customer.starts_with("admin:") {
+        return Err(ApiError::Validation(
+            "This plan was granted by an administrator — there is no Stripe billing to manage."
+                .into(),
+        ));
+    }
     let url = billing::stripe::create_portal_session(
         &secret,
         &customer,
