@@ -7,6 +7,7 @@ import { selectedOrg, setSelectedOrg } from "@/lib/workspace";
 import { ToastHost } from "./toast";
 import { TrialBanner } from "./TrialBanner";
 import { Icon } from "./icons";
+import { NotificationsBell } from "@/components/NotificationsBell";
 import "./dashboard/dashboard.css";
 import "./shell.css";
 
@@ -165,6 +166,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <span className="side-user-name">{me.user.name || me.user.email}</span>
               {me.user.name && <span className="side-user-email">{me.user.email}</span>}
             </span>
+            <NotificationsBell orgId={current?.id ?? null} />
             <button
               className="side-user-logout"
               title="Log out"
