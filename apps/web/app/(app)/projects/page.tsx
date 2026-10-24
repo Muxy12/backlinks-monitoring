@@ -119,7 +119,7 @@ export default function ProjectsPage() {
     if (!orgId) return;
     if (
       !confirm(
-        `Delete project "${p.name}" and ALL its data (backlinks, campaigns, competitors, discovery seeds)?\nThis cannot be undone.`,
+        `Delete domain "${p.name}" and ALL its data (backlinks, campaigns, competitors, discovery seeds)?\nThis cannot be undone.`,
       )
     )
       return;
@@ -139,7 +139,7 @@ export default function ProjectsPage() {
   return (
     <main className="dash">
       <header className="page-head">
-        <h1>Projects</h1>
+        <h1>Domains</h1>
         <p className="muted">The sites you monitor backlinks for.</p>
       </header>
 
@@ -148,9 +148,9 @@ export default function ProjectsPage() {
       ) : (
         <div className="ops-grid">
           <section className="panel">
-            <div className="panel-head"><h2>Projects ({projects.length})</h2></div>
+            <div className="panel-head"><h2>Domains ({projects.length})</h2></div>
             {projects.length === 0 ? (
-              <p className="muted">No projects yet.</p>
+              <p className="muted">No domains yet.</p>
             ) : (
               <table className="bl-table">
                 <thead>
@@ -234,7 +234,7 @@ export default function ProjectsPage() {
           </section>
 
           <section className="panel">
-            <div className="panel-head"><h2>New project</h2></div>
+            <div className="panel-head"><h2>New domain</h2></div>
             <form onSubmit={create} className="ops-form">
               {error && <div className="auth-error" role="alert">{error}</div>}
               <label className="auth-field">
@@ -258,7 +258,7 @@ export default function ProjectsPage() {
                 <span>Check every (hours)</span>
                 <input type="number" min="1" max="4320" value={hours} onChange={(e) => setHours(e.target.value)} />
               </label>
-              <button className="auth-btn" type="submit" disabled={busy}>{busy ? "Creating…" : "Create project"}</button>
+              <button className="auth-btn" type="submit" disabled={busy}>{busy ? "Creating…" : "Create domain"}</button>
             </form>
           </section>
         </div>

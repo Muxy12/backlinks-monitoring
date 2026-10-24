@@ -131,6 +131,18 @@
   outline: 2px solid var(--primary);
   outline-offset: -2px;
 }
+/* "BETA" tag on flagged nav items. Fixed accessible blue in both themes:
+   white on var(--primary) would drop to ~3.5:1 in dark mode (fails AA). */
+.side-badge {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #2f6bff;
+  color: #fff;
+}
 /* Legacy filler: the scrollable .side-nav now provides the gap, so this must
    not grow (it would fight .side-nav for space and un-pin the bottom block). */
 .side-spacer { display: none; }
