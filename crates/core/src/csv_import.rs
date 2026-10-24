@@ -65,6 +65,7 @@ const SOURCE_ALIASES: &[&str] = &[
     "referring page url",
     "referring page",
     "from",
+    "sourceurl", // Majestic
 ];
 const TARGET_ALIASES: &[&str] = &[
     "target url",
@@ -73,9 +74,18 @@ const TARGET_ALIASES: &[&str] = &[
     "link url",
     "destination url",
     "to",
+    "targeturl", // Majestic
 ];
-const ANCHOR_ALIASES: &[&str] = &["anchor", "anchor text", "anchor and backlink"];
+const ANCHOR_ALIASES: &[&str] = &[
+    "anchor",
+    "anchor text",
+    "anchor and backlink",
+    "anchortext", // Majestic
+];
 const REL_ALIASES: &[&str] = &["rel", "rel type", "type", "link type"];
+// A boolean nofollow column (Majestic "FlagNoFollow": 1 = nofollow). Used only
+// when no rel-word column is present.
+const NOFOLLOW_FLAG_ALIASES: &[&str] = &["flagnofollow", "nofollow flag", "no follow"];
 const COST_ALIASES: &[&str] = &["cost", "price", "paid"];
 const CURRENCY_ALIASES: &[&str] = &["currency", "cur"];
 
@@ -115,6 +125,7 @@ pub fn parse_csv(input: &str) -> Result<ParseSummary, String> {
         .ok_or("no target URL column found (e.g. target_url, link URL)")?;
     let anchor_i = find_col(&headers, ANCHOR_ALIASES);
     let rel_i = find_col(&headers, REL_ALIASES);
+    let flag_i = find_col(&headers, NOFOLLOW_FLAG_ALIASES);
     let cost_i = find_col(&headers, COST_ALIASES);
     let cur_i = find_col(&headers, CURRENCY_ALIASES);
 
@@ -154,16 +165,29 @@ pub fn parse_csv(input: &str) -> Result<ParseSummary, String> {
             });
             continue;
         }
-        let rel = get(&rec, rel_i).unwrap_or_default();
-        let rel_type = match normalize_rel(&rel) {
-            Some(r) => r,
-            None => {
-                rows.push(RowResult::Error {
-                    row_number,
-                    message: format!("unknown rel type {rel:?}"),
-                });
-                continue;
+        // rel precedence: an explicit rel-word column, else a nofollow-flag
+        // column (Majestic "FlagNoFollow"), else default dofollow.
+        let rel_type = if rel_i.is_some() {
+            let rel = get(&rec, rel_i).unwrap_or_default();
+            match normalize_rel(&rel) {
+                Some(r) => r,
+                None => {
+                    rows.push(RowResult::Error {
+                        row_number,
+                        message: format!("unknown rel type {rel:?}"),
+                    });
+                    continue;
+                }
             }
+        } else if let Some(fi) = flag_i {
+            let v = rec.get(fi).unwrap_or("").trim().to_ascii_lowercase();
+            if matches!(v.as_str(), "1" | "true" | "yes" | "y") {
+                "nofollow".into()
+            } else {
+                "dofollow".into()
+            }
+        } else {
+            "dofollow".into()
         };
         let cost = get(&rec, cost_i);
         // A cost needs a currency to be meaningful (matches the DB CHECK).
@@ -229,6 +253,22 @@ mod tests {
         assert_eq!(rows[0].source_url, "https://ref.com/p");
         assert_eq!(rows[0].target_url, "https://me.com/z");
         assert_eq!(rows[0].anchor.as_deref(), Some("click here"));
+    }
+
+    #[test]
+    fn matches_majestic_style_headers_with_nofollow_flag() {
+        // Majestic: "SourceURL" / "TargetURL" / "AnchorText" + "FlagNoFollow" (0/1).
+        let csv = "SourceURL,TargetURL,AnchorText,FlagNoFollow\n\
+                   https://ref.com/a,https://me.com/x,great tool,0\n\
+                   https://spam.io/b,https://me.com/y,cheap links,1\n";
+        let s = parse_csv(csv).unwrap();
+        let rows = ok_rows(&s);
+        assert_eq!(rows.len(), 2);
+        assert_eq!(rows[0].source_url, "https://ref.com/a");
+        assert_eq!(rows[0].target_url, "https://me.com/x");
+        assert_eq!(rows[0].anchor.as_deref(), Some("great tool"));
+        assert_eq!(rows[0].rel_type, "dofollow", "FlagNoFollow=0 -> dofollow");
+        assert_eq!(rows[1].rel_type, "nofollow", "FlagNoFollow=1 -> nofollow");
     }
 
     #[test]
