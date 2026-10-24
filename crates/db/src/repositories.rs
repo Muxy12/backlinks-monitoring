@@ -1488,6 +1488,9 @@ pub mod backlinks {
         pub link_format_unset: bool,
         /// Monitoring level (protected/tracked/inventory_only) for the tab filters.
         pub monitoring_level: Option<&'a str>,
+        /// "Likely low-value": restrict to links the footprint auto-tagger
+        /// flagged as a spam/self-built footprint (every category but "earned").
+        pub low_value: bool,
     }
 
     /// Filtered backlink list (§35). Built with sqlx's `QueryBuilder`, so every
@@ -1573,6 +1576,19 @@ pub mod backlinks {
         if let Some(level) = filter.monitoring_level {
             qb.push(" AND monitoring_level = ");
             qb.push_bind(level.to_string());
+        }
+        if filter.low_value {
+            // Links carrying a footprint tag the auto-tagger treats as low-value
+            // (resource_routes::AUTOTAG_TAGS, every category except "earned").
+            // The Rust classifier is the single source of truth; this reads its
+            // output, so run "Detect footprints" first.
+            qb.push(
+                " AND id IN (SELECT bt.backlink_id FROM backlink_tags bt \
+                   JOIN tags t ON t.id = bt.tag_id \
+                   WHERE bt.organization_id = ",
+            );
+            qb.push_bind(scope.organization_id());
+            qb.push(" AND t.name IN ('comment', 'pbn', 'forum-profile', 'self-built'))");
         }
         if filter.acquisition_unset {
             qb.push(" AND acquisition IS NULL");
@@ -1783,6 +1799,26 @@ pub mod backlinks {
         .fetch_optional(pool)
         .await?;
         row.map(|_| ()).ok_or(DbError::NotFound)
+    }
+
+    /// Archive many backlinks at once (tenant-scoped). Only own, not-already-
+    /// archived rows are touched; clears `next_check_at` so the scheduler drops
+    /// them. Returns the number of rows archived. Reversible via `restore`.
+    pub async fn bulk_archive(
+        pool: &PgPool,
+        scope: &OrgScope,
+        ids: &[Uuid],
+    ) -> Result<u64, DbError> {
+        let res = sqlx::query(
+            "UPDATE backlinks SET archived_at = now(), next_check_at = NULL, updated_at = now() \
+             WHERE organization_id = $1 AND id = ANY($2) \
+               AND subject = 'own' AND archived_at IS NULL",
+        )
+        .bind(scope.organization_id())
+        .bind(ids.to_vec())
+        .execute(pool)
+        .await?;
+        Ok(res.rows_affected())
     }
 
     /// One org's warranted links whose warranty lapses on or before `cutoff`

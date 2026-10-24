@@ -60,6 +60,7 @@ export default function BacklinksPage() {
   const [fmtFilter, setFmtFilter] = useState("");
   // Monitoring view (segmented tab) + multi-select for bulk actions.
   const [monitorFilter, setMonitorFilter] = useState(""); // "" | protected | tracked | inventory_only
+  const [lowValue, setLowValue] = useState(false); // footprint-flagged spam/self-built links
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
   const [reloadTick, setReloadTick] = useState(0);
@@ -192,6 +193,7 @@ export default function BacklinksPage() {
           placement: placeFilter || undefined,
           format: fmtFilter || undefined,
           monitoringLevel: monitorFilter || undefined,
+          lowValue: lowValue || undefined,
           limit: pageSize,
           offset: page * pageSize,
         })
@@ -204,13 +206,13 @@ export default function BacklinksPage() {
         });
     }, 200); // debounce the search box
     return () => clearTimeout(t);
-  }, [orgId, projectId, clientFilter, statusFilter, searchQ, tagFilter, periodDays, acqFilter, attrFilter, placeFilter, fmtFilter, monitorFilter, reloadTick, page, pageSize]);
+  }, [orgId, projectId, clientFilter, statusFilter, searchQ, tagFilter, periodDays, acqFilter, attrFilter, placeFilter, fmtFilter, monitorFilter, lowValue, reloadTick, page, pageSize]);
 
   // Any filter (or page-size) change resets to the first page. (The load effect's
   // debounce cleanup cancels the stale-page fetch, so this doesn't double-request.)
   useEffect(() => {
     setPage(0);
-  }, [orgId, projectId, clientFilter, statusFilter, searchQ, tagFilter, periodDays, acqFilter, attrFilter, placeFilter, fmtFilter, monitorFilter, pageSize]);
+  }, [orgId, projectId, clientFilter, statusFilter, searchQ, tagFilter, periodDays, acqFilter, attrFilter, placeFilter, fmtFilter, monitorFilter, lowValue, pageSize]);
 
   // Drop a referring-domain filter that no longer matches the reloaded list.
   useEffect(() => {
@@ -352,6 +354,28 @@ export default function BacklinksPage() {
       return;
     }
     toast(`Updated ${res.data.updated} backlink${res.data.updated === 1 ? "" : "s"}`, "success");
+    setReloadTick((t) => t + 1); // reload (also clears the selection)
+  }
+
+  // Bulk archive the current selection (reversible) — for clearing a triaged
+  // spam/low-value pile out of the active inventory.
+  async function bulkArchive() {
+    if (!orgId || selectedIds.size === 0) return;
+    if (
+      !window.confirm(
+        `Archive ${selectedIds.size} backlink${selectedIds.size === 1 ? "" : "s"}? ` +
+          "They leave your active inventory and stop being checked. You can restore them later.",
+      )
+    )
+      return;
+    setBulkBusy(true);
+    const res = await orgApi.bulkArchiveBacklinks(orgId, [...selectedIds]);
+    setBulkBusy(false);
+    if (!res.ok) {
+      toast(`Archive failed: ${res.detail}`, "error");
+      return;
+    }
+    toast(`Archived ${res.data.archived} backlink${res.data.archived === 1 ? "" : "s"}`, "success");
     setReloadTick((t) => t + 1); // reload (also clears the selection)
   }
 
@@ -710,6 +734,8 @@ export default function BacklinksPage() {
     activeFilters.push({ key: "client", label: `Client: ${clients.find((c) => c.id === clientFilter)?.name ?? "-"}`, clear: () => setClientFilter("") });
   if (tagFilter)
     activeFilters.push({ key: "tag", label: `Tag: ${orgTags.find((t) => t.id === tagFilter)?.name ?? "-"}`, clear: () => setTagFilter("") });
+  if (lowValue)
+    activeFilters.push({ key: "lowvalue", label: "Likely low-value", clear: () => setLowValue(false) });
   if (domainFilter)
     activeFilters.push({ key: "domain", label: `Domain: ${domainFilter}`, clear: () => setDomainFilter("") });
   if (acqFilter)
@@ -725,6 +751,7 @@ export default function BacklinksPage() {
   const clearAllFilters = () => {
     setStatusFilter("");
     setMonitorFilter("");
+    setLowValue(false);
     setSearchQ("");
     setClientFilter("");
     setTagFilter("");
@@ -1138,6 +1165,14 @@ export default function BacklinksPage() {
                   </button>
                 ),
               )}
+              <span style={{ width: 1, alignSelf: "stretch", background: "var(--border)", margin: "2px 4px" }} aria-hidden />
+              <button
+                className={`btn sm${lowValue ? " primary" : ""}`}
+                onClick={() => setLowValue((v) => !v)}
+                title="Links the footprint detector flagged as spam/self-built (comment, PBN, forum profile, self-built). Run “Detect footprints” first."
+              >
+                Likely low-value
+              </button>
             </div>
             {/* Active-filter chips: see what's applied, remove one or clear all */}
             {activeFilters.length > 0 && (
@@ -1183,6 +1218,7 @@ export default function BacklinksPage() {
                   <option value="">Set frequency…</option>
                   {CHECK_FREQUENCY.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                 </select>
+                <button className="btn sm danger" disabled={bulkBusy} onClick={() => void bulkArchive()} title="Archive the selected links (reversible)">Archive</button>
                 <button className="btn sm" disabled={bulkBusy} onClick={() => setSelectedIds(new Set())}>Clear</button>
               </div>
             )}
