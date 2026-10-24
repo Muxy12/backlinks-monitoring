@@ -116,11 +116,8 @@ export default function IntegrationsPage() {
   if (!me) return null;
 
   return (
-    <main className="dash">
-      <header className="page-head">
-        <h1>Integrations</h1>
-        <p className="muted">Connect external data sources that power LinkPulz insights.</p>
-      </header>
+    <>
+      <p className="muted settings-intro">Connect external data sources that power LinkPulz insights.</p>
 
       {!orgId ? (
         <p className="muted">Create a workspace first.</p>
@@ -257,6 +254,6 @@ export default function IntegrationsPage() {
           )}
         </section>
       )}
-    </main>
+    </>
   );
 }
