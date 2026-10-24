@@ -133,20 +133,12 @@ export default function CompetitorsPage() {
 
   async function runImport() {
     if (!orgId || !selected) return;
-    const rows = csv
-      .split(/\r?\n/)
-      .map((l) => l.trim())
-      .filter(Boolean)
-      .map((l) => {
-        const [source_url, target_url, anchor, rel] = l.split(",").map((s) => s?.trim());
-        return { source_url, target_url, anchor, rel };
-      })
-      .filter((r) => r.source_url && r.target_url);
-    if (rows.length === 0) {
-      setImportMsg("Paste rows: source_url,target_url,anchor,rel");
+    if (!csv.trim()) {
+      setImportMsg("Paste a CSV export, including its header row.");
       return;
     }
-    const res = await orgApi.importCompetitorBacklinks(orgId, selected.id, rows);
+    setImportMsg("Importing…");
+    const res = await orgApi.importCompetitorBacklinks(orgId, selected.id, csv);
     if (!res.ok) {
       setImportMsg(res.detail || "Import failed.");
       return;
@@ -227,14 +219,16 @@ export default function CompetitorsPage() {
                 </div>
                 <div style={{ marginBottom: 16 }}>
                   <p className="muted" style={{ marginBottom: 6 }}>
-                    Import discovered backlinks, one per line: <code>source_url,target_url,anchor,rel</code>
+                    Paste a CSV export (<b>Majestic</b>, Ahrefs, Semrush or a generic
+                    <code> source_url,target_url,anchor,rel</code>), <b>including its header row</b> —
+                    columns are matched automatically.
                   </p>
                   <textarea
                     className="bl-search"
-                    style={{ width: "100%", minHeight: 90, fontFamily: "ui-monospace, monospace" }}
+                    style={{ width: "100%", minHeight: 110, fontFamily: "ui-monospace, monospace" }}
                     value={csv}
                     onChange={(e) => setCsv(e.target.value)}
-                    placeholder={`https://news.com/post,https://${selected.normalized_domain}/page,great tool,dofollow`}
+                    placeholder={`SourceURL,TargetURL,AnchorText,FlagNoFollow\nhttps://news.com/post,https://${selected.normalized_domain}/page,great tool,0`}
                   />
                   <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 8, flexWrap: "wrap" }}>
                     <button className="btn primary" onClick={() => void runImport()}>Import</button>
