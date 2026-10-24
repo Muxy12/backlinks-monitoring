@@ -202,6 +202,23 @@
 }
 .side-user-logout:hover { color: var(--text); border-color: var(--border-hover); }
 .side-user-logout:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+/* Notifications bell sits in the user row; match the logout button's size and
+   re-tint the unread badge ring to the sidebar surface (not the page bg). */
+.side-user .bell {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  border-radius: var(--r-sm);
+}
+.side-user .bell:hover { color: var(--text); border-color: var(--border-hover); }
+.side-user .bell-badge { box-shadow: 0 0 0 2px var(--surface); }
 
 /* Workspace switcher (multi-org accounts). */
 .side-switcher {

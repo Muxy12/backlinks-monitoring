@@ -2,11 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { api, orgApi, backlinksExportUrl, type AnchorsView, type AttentionItemView, type BacklinkView, type ClientView, type DashboardResponse, type EventView, type ImpactView, type MeResponse, type NotificationsResponse, type OccurrenceView, type OverviewResponse, type ProjectView, type TagView } from "@/lib/api";
+import { api, orgApi, backlinksExportUrl, type AnchorsView, type AttentionItemView, type BacklinkView, type ClientView, type DashboardResponse, type EventView, type ImpactView, type MeResponse, type OccurrenceView, type OverviewResponse, type ProjectView, type TagView } from "@/lib/api";
 import { BeforeAfterChart } from "@/components/BeforeAfterChart";
 import { GrowthChart } from "@/components/GrowthChart";
 import { AnchorDistribution } from "@/components/AnchorDistribution";
-import { selectedOrg, selectedOrgId } from "@/lib/workspace";
+import { selectedOrgId } from "@/lib/workspace";
 import { statusColor, statusLabel } from "@/lib/status";
 import { ACQUISITION, ATTRIBUTE, PLACEMENT, FORMAT, classLabel } from "@/lib/classification";
 import {
@@ -18,23 +18,12 @@ import {
 } from "@/lib/monitoring";
 import { toast } from "../toast";
 import { Icon } from "../icons";
+import { useDrawerFocus } from "@/lib/useDrawerFocus";
 import "@/app/auth.css";
 import "../dashboard/dashboard.css";
 import "../dashboard/overview.css";
 import "./impact.css";
 import "./backlinks.css";
-
-// Accessible drawer focus: when a drawer opens, move focus into it; when it
-// closes, restore focus to whatever opened it. Pairs with the existing Escape
-// handler + role="dialog"/aria-modal so the drawers are real modal dialogs.
-function useDrawerFocus(open: boolean, ref: { current: HTMLElement | null }) {
-  useEffect(() => {
-    if (!open) return;
-    const opener = document.activeElement as HTMLElement | null;
-    ref.current?.focus();
-    return () => opener?.focus?.();
-  }, [open, ref]);
-}
 
 export default function BacklinksPage() {
   const router = useRouter();
@@ -54,8 +43,6 @@ export default function BacklinksPage() {
   const [t2csv, setT2csv] = useState("");
   const [t2msg, setT2msg] = useState<string | null>(null);
   const [warranties, setWarranties] = useState<BacklinkView[]>([]);
-  const [notifs, setNotifs] = useState<NotificationsResponse | null>(null);
-  const [showNotifs, setShowNotifs] = useState(false);
   const [clients, setClients] = useState<ClientView[]>([]);
   const [orgTags, setOrgTags] = useState<TagView[]>([]);
   const [blTags, setBlTags] = useState<TagView[]>([]);
@@ -110,23 +97,20 @@ export default function BacklinksPage() {
 
   // Close any open drawer (add / notifications / detail) with Escape.
   useEffect(() => {
-    if (!showAdd && !showNotifs && !selected) return;
+    if (!showAdd && !selected) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setShowAdd(false);
-        setShowNotifs(false);
         setSelected(null);
       }
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [showAdd, showNotifs, selected]);
+  }, [showAdd, selected]);
   // Focus the open drawer and restore focus to the opener on close (a11y).
   const addDrawerRef = useRef<HTMLElement | null>(null);
-  const notifsDrawerRef = useRef<HTMLElement | null>(null);
   const detailDrawerRef = useRef<HTMLElement | null>(null);
   useDrawerFocus(showAdd, addDrawerRef);
-  useDrawerFocus(showNotifs, notifsDrawerRef);
   useDrawerFocus(!!selected, detailDrawerRef);
   const [addForm, setAddForm] = useState({
     project_id: "",
@@ -159,11 +143,6 @@ export default function BacklinksPage() {
     });
   }, [router]);
 
-  const loadNotifs = useCallback(async (org: string) => {
-    const res = await orgApi.notifications(org);
-    if (res.ok) setNotifs(res.data);
-  }, []);
-
   const loadOrg = useCallback(
     async (org: string) => {
       const [dash, projs, warr, ov] = await Promise.all([
@@ -183,16 +162,9 @@ export default function BacklinksPage() {
       const [tags, cls] = await Promise.all([orgApi.tags(org), orgApi.clients(org)]);
       if (tags.ok) setOrgTags(tags.data);
       if (cls.ok) setClients(cls.data);
-      await loadNotifs(org);
     },
-    [loadNotifs],
+    [],
   );
-
-  async function markRead(id: string) {
-    if (!orgId) return;
-    const res = await orgApi.markNotificationRead(orgId, id);
-    if (res.ok) await loadNotifs(orgId);
-  }
 
   useEffect(() => {
     if (orgId) void loadOrg(orgId);
@@ -766,20 +738,8 @@ export default function BacklinksPage() {
 
   return (
     <main className="dash">
-      <header className="dash-head">
-        <div className="dash-id">
-          <h1>
-            {selectedOrg(me.organizations)?.name ?? "Dashboard"}
-            {selectedOrg(me.organizations)?.role && <span className="role-pill">{selectedOrg(me.organizations)?.role}</span>}
-          </h1>
-          <p className="muted">{me.user.email}</p>
-        </div>
-        <div className="head-actions">
-          <button className="btn bell" onClick={() => setShowNotifs((v) => !v)} aria-label="Notifications" aria-expanded={showNotifs} aria-haspopup="dialog">
-            <Icon name="bell" size={17} />
-            {notifs && notifs.unread > 0 && <span className="bell-badge">{notifs.unread}</span>}
-          </button>
-        </div>
+      <header className="page-head">
+        <h1>Backlinks</h1>
       </header>
 
       {me.organizations.length === 0 ? (
@@ -1537,42 +1497,6 @@ export default function BacklinksPage() {
                 </form>
               )}
             </div>
-          </aside>
-        </div>
-      )}
-      {showNotifs && (
-        <div className="drawer-backdrop" onClick={() => setShowNotifs(false)}>
-          <aside
-            className="drawer"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Notifications"
-            tabIndex={-1}
-            ref={notifsDrawerRef}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="panel-head">
-              <h2>Notifications</h2>
-              <div className="panel-actions"><a className="btn sm" href="/settings/notifications">Settings</a><button className="btn" onClick={() => setShowNotifs(false)}>Close</button></div>
-            </div>
-            {!notifs || notifs.items.length === 0 ? (
-              <p className="muted">No notifications yet.</p>
-            ) : (
-              <ul className="notif-list">
-                {notifs.items.map((n) => (
-                  <li key={n.id} className={n.read ? "notif read" : "notif"}>
-                    <div>
-                      <div className="notif-title">{n.title}</div>
-                      {n.body && <div className="muted">{n.body}</div>}
-                      <div className="muted mono">{new Date(n.created_at).toLocaleString()}</div>
-                    </div>
-                    {!n.read && (
-                      <button className="btn sm" onClick={() => void markRead(n.id)}>Mark read</button>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
           </aside>
         </div>
       )}
