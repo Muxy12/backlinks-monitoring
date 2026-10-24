@@ -326,9 +326,9 @@ export default function AdminPage() {
   if (loading) {
     return (
       <div className="dash">
-        <div className="page-head">
+        <header className="page-head">
           <h1>Admin</h1>
-        </div>
+        </header>
         <p className="muted" role="status" aria-busy="true">Loading the operator consoleâ¦</p>
       </div>
     );
@@ -337,9 +337,9 @@ export default function AdminPage() {
   if (denied) {
     return (
       <div className="dash">
-        <div className="page-head">
+        <header className="page-head">
           <h1>Admin</h1>
-        </div>
+        </header>
         <div className="panel">
           <p className="muted" style={{ margin: 0 }}>
             This area is for platform operators only.
@@ -387,10 +387,10 @@ export default function AdminPage() {
 
   return (
     <div className="dash">
-      <div className="page-head">
+      <header className="page-head">
         <h1>Admin <span className="admin-tag">Operator</span></h1>
         <span className="muted">Platform backoffice, every workspace and account on this instance.</span>
-      </div>
+      </header>
 
       {stats && (
         <div className="admin-stats">

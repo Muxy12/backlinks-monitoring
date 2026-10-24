@@ -112,22 +112,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     >
       <span className="side-ico"><Icon name={l.icon} /></span>
       {l.label}
-      {l.badge && (
-        <span
-          style={{
-            marginLeft: "auto",
-            fontSize: "9px",
-            fontWeight: 700,
-            letterSpacing: "0.04em",
-            padding: "1px 5px",
-            borderRadius: "999px",
-            background: "#2f6bff",
-            color: "#fff",
-          }}
-        >
-          {l.badge}
-        </span>
-      )}
+      {l.badge && <span className="side-badge">{l.badge}</span>}
     </a>
   );
 

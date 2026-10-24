@@ -530,8 +530,8 @@ export default function BacklinksPage() {
 
   if (loading)
     return (
-      <div className="dash" aria-busy="true" aria-label="Loading dashboard">
-        <div className="page-head"><h1>Dashboard</h1></div>
+      <div className="dash" aria-busy="true" aria-label="Loading backlinks">
+        <header className="page-head"><h1>Backlinks</h1></header>
         <div className="tiles">
           {Array.from({ length: 4 }).map((_, i) => (
             <div className="tile" key={i}><div className="sk-row" style={{ height: 52 }} /></div>
