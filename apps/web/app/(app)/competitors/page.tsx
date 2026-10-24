@@ -34,6 +34,7 @@ export default function CompetitorsPage() {
   const [importMsg, setImportMsg] = useState<string | null>(null);
   const [gap, setGap] = useState<{ source_domain: string; competitor_count: number }[]>([]);
   const [gapMin, setGapMin] = useState(1);
+  const [scanLimit, setScanLimit] = useState(250); // DataForSEO scan size (cost control)
 
   useEffect(() => {
     api.me().then((res) => {
@@ -66,6 +67,13 @@ export default function CompetitorsPage() {
     if (orgId && projectId) void loadCompetitors(orgId, projectId);
   }, [orgId, projectId, loadCompetitors]);
 
+  // Auto-select the first competitor so the backlinks + import panel is visible
+  // on arrival (otherwise it's an easy-to-miss "select one first" blank state).
+  useEffect(() => {
+    if (!selected && competitors.length > 0) void openCompetitor(competitors[0]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [competitors]);
+
   useEffect(() => {
     if (orgId && projectId) {
       orgApi.backlinkGap(orgId, projectId, gapMin).then((r) => {
@@ -87,6 +95,8 @@ export default function CompetitorsPage() {
     }
     setDomain("");
     await loadCompetitors(orgId, projectId);
+    // Open it right away so the import box is visible without a second click.
+    void openCompetitor(res.data);
   }
 
   async function removeCompetitor(id: string) {
@@ -111,8 +121,8 @@ export default function CompetitorsPage() {
 
   async function discoverCompetitor() {
     if (!orgId || !projectId || !selected) return;
-    setImportMsg("Running DataForSEO…");
-    const res = await orgApi.runDiscovery(orgId, projectId, "dataforseo", selected.id);
+    setImportMsg(`Running DataForSEO (up to ${scanLimit} links)…`);
+    const res = await orgApi.runDiscovery(orgId, projectId, "dataforseo", selected.id, scanLimit);
     if (!res.ok) {
       setImportMsg(res.detail || "DataForSEO failed (is it configured?)");
       return;
@@ -228,9 +238,27 @@ export default function CompetitorsPage() {
                   />
                   <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 8, flexWrap: "wrap" }}>
                     <button className="btn primary" onClick={() => void runImport()}>Import</button>
+                    <span style={{ width: 1, alignSelf: "stretch", background: "var(--border)", margin: "0 2px" }} aria-hidden />
+                    <label className="muted" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13 }}>
+                      Scan size
+                      <select
+                        value={scanLimit}
+                        onChange={(e) => setScanLimit(Number(e.target.value))}
+                        title="How many backlinks DataForSEO fetches — more links cost more"
+                      >
+                        <option value={100}>100</option>
+                        <option value={250}>250</option>
+                        <option value={500}>500</option>
+                        <option value={1000}>1000</option>
+                      </select>
+                    </label>
                     <button className="btn sm" onClick={() => void discoverCompetitor()}>Discover via DataForSEO</button>
                     {importMsg && <span className="muted">{importMsg}</span>}
                   </div>
+                  <p className="muted" style={{ fontSize: 12, marginTop: 6 }}>
+                    DataForSEO is paid per scan — more links cost more. The gap only needs referring
+                    domains, so 250–500 is usually plenty. Or paste a free Ahrefs/Semrush export above.
+                  </p>
                 </div>
                 {cbacklinks.length === 0 ? (
                   <p className="muted">No backlinks recorded for this competitor yet.</p>
