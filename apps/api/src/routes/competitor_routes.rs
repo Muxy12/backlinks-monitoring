@@ -156,7 +156,12 @@ pub struct ImportRow {
 
 #[derive(Deserialize)]
 pub struct ImportBody {
+    #[serde(default)]
     pub rows: Vec<ImportRow>,
+    /// Alternatively, a raw CSV export (Majestic / Ahrefs / Semrush / generic),
+    /// parsed server-side with the shared column-mapping parser.
+    #[serde(default)]
+    pub csv: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -186,14 +191,44 @@ pub async fn import_competitor_backlinks(
     scope.require(Role::Member)?;
     let competitor = competitors::get(&state.pool, &scope, competitor_id).await?;
 
+    // Accept either a raw CSV export (parsed with the shared column mapper, so
+    // Majestic / Ahrefs / Semrush / generic headers all work) or pre-structured
+    // rows.
+    let rows: Vec<(String, String, Option<String>, String)> =
+        if let Some(csv) = body.csv.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
+            let parsed = backlio_core::csv_import::parse_csv(csv).map_err(ApiError::Validation)?;
+            parsed
+                .valid()
+                .map(|r| {
+                    (
+                        r.source_url.clone(),
+                        r.target_url.clone(),
+                        r.anchor.clone(),
+                        r.rel_type.clone(),
+                    )
+                })
+                .collect()
+        } else {
+            body.rows
+                .into_iter()
+                .map(|row| {
+                    (
+                        row.source_url,
+                        row.target_url,
+                        row.anchor,
+                        row.rel.unwrap_or_else(|| "dofollow".into()),
+                    )
+                })
+                .collect()
+        };
+
     let mut imported = 0usize;
     let mut new = 0usize;
     let mut skipped = 0usize;
-    for row in body.rows.into_iter().take(5_000) {
-        let rel = row.rel.as_deref().unwrap_or("dofollow");
-        if !is_http(&row.source_url)
-            || !is_http(&row.target_url)
-            || !matches!(rel, "dofollow" | "nofollow" | "sponsored" | "ugc")
+    for (source_url, target_url, anchor, rel) in rows.into_iter().take(5_000) {
+        if !is_http(&source_url)
+            || !is_http(&target_url)
+            || !matches!(rel.as_str(), "dofollow" | "nofollow" | "sponsored" | "ugc")
         {
             skipped += 1;
             continue;
@@ -202,13 +237,10 @@ pub async fn import_competitor_backlinks(
             &state.pool,
             &scope,
             &competitor,
-            row.source_url.trim(),
-            row.target_url.trim(),
-            row.anchor
-                .as_deref()
-                .map(str::trim)
-                .filter(|s| !s.is_empty()),
-            rel,
+            source_url.trim(),
+            target_url.trim(),
+            anchor.as_deref().map(str::trim).filter(|s| !s.is_empty()),
+            &rel,
         )
         .await
         {

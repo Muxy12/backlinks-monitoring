@@ -1151,14 +1151,10 @@ export const orgApi = {
     request<{ source_domain: string; competitor_count: number }[]>(
       `/v1/organizations/${org}/projects/${projectId}/backlink-gap?min=${min}`,
     ),
-  importCompetitorBacklinks: (
-    org: string,
-    competitorId: string,
-    rows: { source_url: string; target_url: string; anchor?: string; rel?: string }[],
-  ) =>
+  importCompetitorBacklinks: (org: string, competitorId: string, csv: string) =>
     request<{ imported: number; new: number; skipped: number }>(
       `/v1/organizations/${org}/competitors/${competitorId}/backlinks/import`,
-      { method: "POST", headers: csrfHeader(), body: JSON.stringify({ rows }) },
+      { method: "POST", headers: csrfHeader(), body: JSON.stringify({ csv }) },
     ),
   archiveBacklink: (org: string, id: string) =>
     request<null>(`/v1/organizations/${org}/backlinks/${id}/archive`, {
