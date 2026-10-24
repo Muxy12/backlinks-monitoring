@@ -49,7 +49,7 @@
 /* The logo lockup has white "Link" text, so it sits on a dark chip to stay
    legible on the sidebar in both themes. */
 .side-logo {
-  height: 22px;
+  height: 40px;
   width: auto;
   flex: none;
   background: #0b1220;
