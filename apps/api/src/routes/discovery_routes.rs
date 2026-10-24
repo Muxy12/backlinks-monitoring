@@ -212,6 +212,18 @@ pub async fn run_discovery(
             new += 1;
         }
     }
+    // Own-domain discovery feeds the project's inventory: flag footprints on the
+    // newly discovered links so the "Likely low-value" filter reflects them
+    // without a manual Detect footprints (best-effort; never fails the scan).
+    if competitor.is_none()
+        && new > 0
+        && let Err(e) =
+            crate::routes::resource_routes::autotag_project_footprints(&state, &scope, project_id)
+                .await
+    {
+        tracing::warn!(error = %e, "auto-tag after discovery failed");
+    }
+
     Ok(Json(RunDiscoveryResult {
         provider: body.provider,
         discovered,
