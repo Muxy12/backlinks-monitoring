@@ -1059,6 +1059,7 @@ export const orgApi = {
       placement?: string;
       format?: string;
       monitoringLevel?: string;
+      lowValue?: boolean;
     },
   ) => {
     const p = new URLSearchParams();
@@ -1075,6 +1076,7 @@ export const orgApi = {
     if (opts.placement) p.set("placement", opts.placement);
     if (opts.format) p.set("format", opts.format);
     if (opts.monitoringLevel) p.set("monitoring_level", opts.monitoringLevel);
+    if (opts.lowValue) p.set("low_value", "1");
     const qs = p.toString();
     return request<BacklinkView[]>(
       `/v1/organizations/${org}/backlinks${qs ? `?${qs}` : ""}`,
@@ -1430,6 +1432,12 @@ export const orgApi = {
       method: "POST",
       headers: csrfHeader(),
       body: JSON.stringify({ ids, ...body }),
+    }),
+  bulkArchiveBacklinks: (org: string, ids: string[]) =>
+    request<{ archived: number }>(`/v1/organizations/${org}/backlinks/bulk-archive`, {
+      method: "POST",
+      headers: csrfHeader(),
+      body: JSON.stringify({ ids }),
     }),
   importCsv: (org: string, projectId: string, csv: string) =>
     request<ImportResult>(`/v1/organizations/${org}/imports`, {

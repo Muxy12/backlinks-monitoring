@@ -216,6 +216,10 @@ pub fn app(state: AppState) -> Router {
             post(routes::resource_routes::bulk_monitoring),
         )
         .route(
+            "/v1/organizations/{org_id}/backlinks/bulk-archive",
+            post(routes::resource_routes::bulk_archive),
+        )
+        .route(
             "/v1/organizations/{org_id}/backlinks/{backlink_id}/check",
             post(routes::resource_routes::check_backlink_now),
         )

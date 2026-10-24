@@ -1284,6 +1284,46 @@ pub async fn bulk_monitoring(
     }))
 }
 
+#[derive(Debug, Deserialize)]
+pub struct BulkArchiveBody {
+    pub ids: Vec<Uuid>,
+}
+
+#[derive(Serialize)]
+pub struct BulkArchiveResult {
+    pub archived: i64,
+}
+
+/// POST …/backlinks/bulk-archive — archive many links at once (§35). Reversible
+/// (each can be restored). Used to clear a triaged spam/low-value pile out of the
+/// active inventory and stop its future checks.
+pub async fn bulk_archive(
+    State(state): State<AppState>,
+    Path(org_id): Path<Uuid>,
+    jar: CookieJar,
+    headers: HeaderMap,
+    Json(body): Json<BulkArchiveBody>,
+) -> Result<Json<BulkArchiveResult>, ApiError> {
+    let (user, session) = current(&state, &jar).await?;
+    check_csrf(&jar, &headers, &session)?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Member)?;
+
+    if body.ids.is_empty() {
+        return Err(ApiError::Validation("no backlink ids provided".into()));
+    }
+    if body.ids.len() > BULK_MONITORING_MAX {
+        return Err(ApiError::Validation(format!(
+            "at most {BULK_MONITORING_MAX} ids per call"
+        )));
+    }
+    let archived =
+        db::repositories::backlinks::bulk_archive(&state.pool, &scope, &body.ids).await?;
+    Ok(Json(BulkArchiveResult {
+        archived: archived as i64,
+    }))
+}
+
 // ─── Bulk create (§35) ────────────────────────────────────────────────────────
 const BULK_MAX: usize = 1000;
 
@@ -1463,6 +1503,9 @@ pub struct ListBacklinksQuery {
     pub format: Option<String>,
     /// Monitoring tab filter: protected / tracked / inventory_only.
     pub monitoring_level: Option<String>,
+    /// "Likely low-value": only links the footprint auto-tagger flagged as a
+    /// spam/self-built footprint (every category but "earned").
+    pub low_value: Option<bool>,
 }
 
 const BACKLINK_STATUSES: &[&str] = &[
@@ -1527,6 +1570,7 @@ pub async fn list_backlinks(
         placement_unset: place_unset,
         link_format_unset: fmt_unset,
         monitoring_level: q.monitoring_level.as_deref(),
+        low_value: q.low_value.unwrap_or(false),
     };
     let rows =
         db::repositories::backlinks::search(&state.pool, &scope, &filter, q.limit.unwrap_or(50))
