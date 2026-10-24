@@ -1432,6 +1432,13 @@ pub async fn bulk_create_backlinks(
         }
     }
 
+    // Flag footprints on the newly pasted links (best-effort; never fails).
+    if created > 0
+        && let Err(e) = autotag_project_footprints(&state, &scope, body.project_id).await
+    {
+        tracing::warn!(error = %e, "auto-tag after bulk create failed");
+    }
+
     Ok(Json(BulkResult {
         total: body.backlinks.len(),
         created,
@@ -2156,6 +2163,14 @@ pub async fn import_csv(
         )
         .await;
     }
+    // Flag footprints on the project's links so the "Likely low-value" filter is
+    // current right after an import (best-effort; never fails the import).
+    if imported > 0
+        && let Err(e) = autotag_project_footprints(&state, &scope, body.project_id).await
+    {
+        tracing::warn!(error = %e, "auto-tag after CSV import failed");
+    }
+
     Ok(Json(ImportResult {
         total: parsed.total,
         imported,
@@ -2251,19 +2266,16 @@ pub struct AutoTagResult {
     pub counts: HashMap<String, usize>,
 }
 
-pub async fn auto_tag_backlinks(
-    State(state): State<AppState>,
-    Path((org_id, project_id)): Path<(Uuid, Uuid)>,
-    jar: CookieJar,
-    headers: HeaderMap,
-) -> Result<Json<AutoTagResult>, ApiError> {
-    let (user, session) = current(&state, &jar).await?;
-    check_csrf(&jar, &headers, &session)?;
-    let scope = authorize_org(&state.pool, user.id, org_id).await?;
-    scope.require(Role::Member)?;
-    projects::get(&state.pool, &scope, project_id).await?; // 404 if not in scope
-
-    let rows = backlinks::list_for_autotag(&state.pool, &scope, project_id).await?;
+/// Classify a project's own backlinks by footprint and attach the category tag.
+/// Idempotent (only adds missing attachments). Shared by the on-demand handler
+/// and the ingestion paths (CSV import, bulk paste, discovery), so newly ingested
+/// links are flagged as soon as they arrive — no manual "Detect footprints".
+pub async fn autotag_project_footprints(
+    state: &AppState,
+    scope: &db::OrgScope,
+    project_id: Uuid,
+) -> Result<AutoTagResult, ApiError> {
+    let rows = backlinks::list_for_autotag(&state.pool, scope, project_id).await?;
 
     // Links-per-domain, to spot sitewide / forum-profile footprints.
     let mut domain_count: HashMap<&str, usize> = HashMap::new();
@@ -2272,13 +2284,13 @@ pub async fn auto_tag_backlinks(
     }
 
     // Get-or-create the category tags (idempotent across re-runs).
-    let existing = tags::list(&state.pool, &scope).await?;
+    let existing = tags::list(&state.pool, scope).await?;
     let mut tag_ids: HashMap<&str, Uuid> = HashMap::new();
     for (name, color) in AUTOTAG_TAGS {
         let id = match existing.iter().find(|t| t.name.eq_ignore_ascii_case(name)) {
             Some(t) => t.id,
             None => {
-                tags::create(&state.pool, &scope, Uuid::now_v7(), name, Some(color))
+                tags::create(&state.pool, scope, Uuid::now_v7(), name, Some(color))
                     .await?
                     .id
             }
@@ -2291,13 +2303,29 @@ pub async fn auto_tag_backlinks(
         let n = *domain_count.get(r.source_domain.as_str()).unwrap_or(&1);
         let cat = classify_footprint(&r.anchor, &r.source_domain, &r.source_url, n);
         if let Some(&tid) = tag_ids.get(cat) {
-            let _ = tags::attach(&state.pool, &scope, r.id, tid).await;
+            let _ = tags::attach(&state.pool, scope, r.id, tid).await;
         }
         *counts.entry(cat.to_string()).or_default() += 1;
     }
 
-    Ok(Json(AutoTagResult {
+    Ok(AutoTagResult {
         total: rows.len(),
         counts,
-    }))
+    })
+}
+
+pub async fn auto_tag_backlinks(
+    State(state): State<AppState>,
+    Path((org_id, project_id)): Path<(Uuid, Uuid)>,
+    jar: CookieJar,
+    headers: HeaderMap,
+) -> Result<Json<AutoTagResult>, ApiError> {
+    let (user, session) = current(&state, &jar).await?;
+    check_csrf(&jar, &headers, &session)?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Member)?;
+    projects::get(&state.pool, &scope, project_id).await?; // 404 if not in scope
+    Ok(Json(
+        autotag_project_footprints(&state, &scope, project_id).await?,
+    ))
 }
