@@ -160,15 +160,12 @@ export default function NotificationSettingsPage() {
     }
   }
 
-  if (loading) return <PageLoading />;
+  if (loading) return <PageLoading wrap={false} />;
   if (!me) return null;
 
   return (
-    <main className="dash">
-      <header className="page-head">
-        <h1>Notification settings</h1>
-        <p className="muted">Choose which changes notify you, and where.</p>
-      </header>
+    <>
+      <p className="muted settings-intro">Choose which changes notify you, and where.</p>
 
       {!orgId ? (
         <p className="muted">Create a workspace first.</p>
@@ -303,6 +300,6 @@ export default function NotificationSettingsPage() {
         </section>
         </>
       )}
-    </main>
+    </>
   );
 }

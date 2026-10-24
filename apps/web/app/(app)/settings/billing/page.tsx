@@ -110,19 +110,16 @@ export default function BillingPage() {
     window.location.href = res.data.url;
   }
 
-  if (loading) return <PageLoading />;
+  if (loading) return <PageLoading wrap={false} />;
   if (!me) return null;
 
   return (
-    <main className="dash">
-      <header className="page-head">
-        <h1>Billing</h1>
-        <p className="muted">
-          Current plan: <b>{plan}</b>
-          {status !== "none" && status !== "active" ? ` (${status})` : ""}.
-          {isOwner ? "" : " Only an owner can change billing."}
-        </p>
-      </header>
+    <>
+      <p className="muted settings-intro">
+        Current plan: <b>{plan}</b>
+        {status !== "none" && status !== "active" ? ` (${status})` : ""}.
+        {isOwner ? "" : " Only an owner can change billing."}
+      </p>
 
       {(status === "trialing" || !accessActive) && (
         <div className={`panel trial-note${!accessActive ? " ended" : ""}`} style={{ marginBottom: 16 }}>
@@ -251,7 +248,7 @@ export default function BillingPage() {
       </div>
 
       <DangerZone email={me.user.email} onDeleted={() => router.push("/login")} />
-    </main>
+    </>
   );
 }
 

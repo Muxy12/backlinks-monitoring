@@ -1,0 +1,35 @@
+/* Settings hub — shared sub-navigation under the "Settings" page head.
+   The three settings pages (notifications, integrations, billing) render as
+   tabs of one hub via (app)/settings/layout.tsx. */
+
+.settings-tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 22px;
+  flex-wrap: wrap;
+}
+.settings-tab {
+  padding: 9px 13px 11px;
+  font-size: 13.5px;
+  font-weight: 550;
+  color: var(--muted);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color var(--t-fast) var(--ease);
+}
+.settings-tab:hover { color: var(--text); }
+.settings-tab.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+  font-weight: 650;
+}
+.settings-tab:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: var(--r-xs);
+}
+
+/* Per-tab intro line (the old per-page subtitle), now sitting under the tabs. */
+.settings-intro { margin: 0 0 18px; }
