@@ -36,7 +36,11 @@ export function AnchorDistribution({ data }: { data: AnchorsView }) {
     );
   }
 
-  const shown = data.categories.filter((c) => c.count > 0);
+  // Bars scale to the largest category (fills the track) for easy length
+  // comparison; the % next to each bar keeps the absolute share honest. Sorted
+  // so the mix reads as a ranking, biggest first.
+  const maxCount = Math.max(...data.categories.map((c) => c.count), 1);
+  const bars = [...data.categories].sort((a, b) => b.count - a.count);
 
   return (
     <section className="dist anchors-dist">
@@ -48,27 +52,28 @@ export function AnchorDistribution({ data }: { data: AnchorsView }) {
         </span>
       </div>
 
-      <div className="dist-bar" role="img" aria-label="Anchor category mix">
-        {shown.map((c) => (
-          <div
-            key={c.slug}
-            className="dist-seg"
-            style={{ flexGrow: c.count, background: CAT_COLOR[c.slug] }}
-            title={`${c.label}: ${c.count} (${fmtPct(c.percent)})`}
-          />
+      <ul className="anchors-bars" aria-label="Anchor category mix">
+        {bars.map((c) => (
+          <li key={c.slug} className="anchors-bar-row">
+            <span className="anchors-bar-cat" style={{ color: CAT_COLOR[c.slug] }}>
+              <span className="legend-dot" />
+              <span style={{ color: "var(--muted)" }}>{c.label}</span>
+            </span>
+            <span className="anchors-bar-track">
+              <span
+                className="anchors-bar-fill"
+                style={{
+                  width: `${c.count > 0 ? Math.max(4, (c.count / maxCount) * 100) : 0}%`,
+                  background: CAT_COLOR[c.slug],
+                }}
+              />
+            </span>
+            <span className="anchors-bar-val">
+              <b>{c.count}</b> <span className="muted">({fmtPct(c.percent)})</span>
+            </span>
+          </li>
         ))}
-      </div>
-
-      <div className="legend">
-        {data.categories.map((c) => (
-          <span key={c.slug} className="legend-item" style={{ color: CAT_COLOR[c.slug] }}>
-            <span className="legend-dot" />
-            <span style={{ color: "var(--muted)" }}>{c.label}</span>
-            <b>{c.count}</b>
-            <span style={{ color: "var(--muted)" }}>({fmtPct(c.percent)})</span>
-          </span>
-        ))}
-      </div>
+      </ul>
 
       {data.over_concentration && (
         <p className="anchors-note" role="note">
