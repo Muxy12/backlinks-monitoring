@@ -440,6 +440,8 @@ pub struct BacklinkView {
     pub purchase_date: Option<String>,
     pub renewal_date: Option<String>,
     pub replacement_eligible: Option<bool>,
+    /// Source page declared `noindex` at the last check (link passes ~no value).
+    pub source_noindex: bool,
 }
 
 impl From<db::entities::Backlink> for BacklinkView {
@@ -506,6 +508,7 @@ impl From<db::entities::Backlink> for BacklinkView {
             purchase_date: b.purchase_date.map(|d| d.to_string()),
             renewal_date: b.renewal_date.map(|d| d.to_string()),
             replacement_eligible: b.replacement_eligible,
+            source_noindex: b.source_robots_noindex,
         }
     }
 }

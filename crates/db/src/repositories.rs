@@ -1183,7 +1183,7 @@ pub mod backlinks {
              acquisition, link_attribute, placement, link_format, \
              monitoring_enabled, monitoring_level, check_frequency, monitoring_reason, \
              monitoring_overridden, commercial_model, order_reference, \
-             purchase_date, renewal_date, replacement_eligible"
+             purchase_date, renewal_date, replacement_eligible, source_robots_noindex"
         };
     }
 
