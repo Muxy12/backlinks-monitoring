@@ -42,6 +42,27 @@ export function AnchorDistribution({ data }: { data: AnchorsView }) {
   const maxCount = Math.max(...data.categories.map((c) => c.count), 1);
   const bars = [...data.categories].sort((a, b) => b.count - a.count);
 
+  // Most-repeated anchors as a donut: the 5 most representative anchors, each
+  // colored by its category, plus a muted "others" rest, as fractions of all
+  // anchored links. The center shows what share those 5 cover.
+  const topAnchors = data.top_anchors.slice(0, 5);
+  const topSum = topAnchors.reduce((s, a) => s + a.count, 0);
+  const othersCount = Math.max(0, data.total - topSum);
+  const top5Pct = data.total > 0 ? (topSum / data.total) * 100 : 0;
+  let acc = 0;
+  const ringStops = [
+    ...topAnchors.map((a) => ({ color: CAT_COLOR[a.slug], value: a.count })),
+    { color: "var(--surface-3)", value: othersCount },
+  ]
+    .filter((s) => s.value > 0)
+    .map((s) => {
+      const from = (acc / data.total) * 360;
+      acc += s.value;
+      const to = (acc / data.total) * 360;
+      return `${s.color} ${from}deg ${to}deg`;
+    })
+    .join(", ");
+
   return (
     <section className="dist anchors-dist">
       <div className="dist-head">
@@ -91,28 +112,35 @@ export function AnchorDistribution({ data }: { data: AnchorsView }) {
         </p>
       )}
 
-      {data.top_anchors.length > 0 && (
+      {topAnchors.length > 0 && (
         <div className="anchors-top">
           <div className="anchors-top-head">Most-repeated anchors</div>
-          <ul className="anchors-list">
-            {data.top_anchors.map((a) => (
-              <li key={`${a.slug}:${a.anchor}`} className="anchors-row">
-                <span
-                  className="anchors-tag"
-                  style={{ color: CAT_COLOR[a.slug] }}
-                  title={a.label}
-                >
-                  <span className="legend-dot" />
-                </span>
-                <span className="anchors-phrase" title={a.anchor}>
-                  {a.anchor}
-                </span>
-                <span className="anchors-count">
-                  {a.count} <span className="muted">({fmtPct(a.percent)})</span>
-                </span>
-              </li>
-            ))}
-          </ul>
+          <div className="anchors-donut">
+            <div
+              className="anchors-donut-ring"
+              style={{ background: `conic-gradient(${ringStops})` }}
+              role="img"
+              aria-label="Share of links covered by the 5 most-repeated anchors"
+            >
+              <span className="anchors-donut-ctr">
+                <b>{fmtPct(top5Pct)}</b>
+                <span>top 5</span>
+              </span>
+            </div>
+            <ul className="anchors-donut-legend">
+              {topAnchors.map((a) => (
+                <li key={`${a.slug}:${a.anchor}`}>
+                  <span className="legend-dot" style={{ background: CAT_COLOR[a.slug] }} />
+                  <span className="adl-phrase" title={`${a.anchor} · ${a.label}`}>
+                    {a.anchor}
+                  </span>
+                  <span className="adl-val">
+                    <b>{a.count}</b> <span className="muted">({fmtPct(a.percent)})</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       )}
 
