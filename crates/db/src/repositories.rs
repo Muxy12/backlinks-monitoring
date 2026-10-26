@@ -1183,7 +1183,8 @@ pub mod backlinks {
              acquisition, link_attribute, placement, link_format, \
              monitoring_enabled, monitoring_level, check_frequency, monitoring_reason, \
              monitoring_overridden, commercial_model, order_reference, \
-             purchase_date, renewal_date, replacement_eligible, source_robots_noindex"
+             purchase_date, renewal_date, replacement_eligible, source_robots_noindex, \
+             source_ip"
         };
     }
 
@@ -1932,6 +1933,9 @@ pub mod monitor {
         pub source_canonical: Option<String>,
         pub source_robots_noindex: bool,
         pub source_http_status: Option<i32>,
+        /// Resolved IP of the source host (None on a failed fetch → the stored
+        /// value is preserved).
+        pub source_ip: Option<String>,
         /// "text" | "image" when a link was detected this cycle, else None.
         pub link_type: Option<String>,
         pub image_alt: Option<String>,
@@ -2042,6 +2046,7 @@ pub mod monitor {
                 link_type = $15, image_alt = $16, \
                 target_http_status = COALESCE($17, target_http_status), \
                 target_final_url = COALESCE($18, target_final_url), \
+                source_ip = COALESCE($19, source_ip), \
                 lost_at = CASE \
                     WHEN $2 = 'lost' THEN COALESCE(lost_at, now()) \
                     WHEN $2 = 'live' THEN NULL \
@@ -2066,6 +2071,7 @@ pub mod monitor {
         .bind(&transition.image_alt)
         .bind(transition.target_http_status)
         .bind(&transition.target_final_url)
+        .bind(&transition.source_ip)
         .execute(&mut *tx)
         .await
         .map_err(DbError::from_insert)?;

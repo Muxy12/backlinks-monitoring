@@ -205,3 +205,11 @@
   vertical-align: 1px;
   white-space: nowrap;
 }
+/* Resolved source IP, shown quietly under the source domain. */
+.src-ip {
+  display: block;
+  margin-top: 1px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--muted);
+}

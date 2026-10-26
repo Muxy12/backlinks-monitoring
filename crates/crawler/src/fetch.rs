@@ -41,6 +41,8 @@ pub struct FetchOk {
     pub duration_ms: u32,
     /// `X-Robots-Tag: noindex` seen on any hop's headers.
     pub header_noindex: bool,
+    /// The resolved IP of the final hop (the source page's host), as a string.
+    pub source_ip: Option<String>,
 }
 
 /// The result of one fetch: an HTTP response (any status), or a failure.
@@ -178,6 +180,7 @@ async fn fetch_inner(cfg: &CrawlerConfig, start_url: &str) -> Result<FetchOk, Fe
             bytes: body.len(),
             duration_ms: started.elapsed().as_millis() as u32,
             header_noindex,
+            source_ip: Some(addr.ip().to_string()),
         });
     }
 

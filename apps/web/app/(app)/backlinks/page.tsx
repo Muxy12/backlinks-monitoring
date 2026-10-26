@@ -1322,6 +1322,11 @@ export default function BacklinksPage() {
                             noindex
                           </span>
                         )}
+                        {b.source_ip && (
+                          <span className="src-ip" title="Resolved IP of the source host at the last check">
+                            {b.source_ip}
+                          </span>
+                        )}
                       </td>
                       <td className="cell-domain target" title={b.target_url}>{b.target_domain}</td>
                       <td className="cell-anchor" title={b.detected_anchor_text ?? b.expected_anchor_text ?? ""}>{b.detected_anchor_text ?? b.expected_anchor_text ?? "-"}</td>
