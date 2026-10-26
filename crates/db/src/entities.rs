@@ -178,6 +178,9 @@ pub struct Backlink {
     pub purchase_date: Option<chrono::NaiveDate>,
     pub renewal_date: Option<chrono::NaiveDate>,
     pub replacement_eligible: Option<bool>,
+    /// Whether the source page declared `noindex` at the last check (so Google
+    /// won't index it — a link from it passes little/no value).
+    pub source_robots_noindex: bool,
 }
 
 /// A referring domain queued for expansion-crawl discovery (spec §21).

@@ -565,6 +565,7 @@ export interface BacklinkView {
   is_ugc?: boolean | null;
   source_http_status?: number | null;
   target_http_status?: number | null;
+  source_noindex?: boolean;
   first_checked_at?: string | null;
   last_seen_at?: string | null;
   last_checked_at?: string | null;

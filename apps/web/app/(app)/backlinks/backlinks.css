@@ -191,3 +191,17 @@
   color: var(--live);
   font-weight: 600;
 }
+/* "noindex" flag on a source domain: the source page is noindexed, so Google
+   won't index it and the link passes little/no value. Caution tint, not red. */
+.noindex-badge {
+  margin-left: 6px;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  padding: 1px 6px;
+  border-radius: 999px;
+  color: var(--changed);
+  background: color-mix(in srgb, var(--changed) 14%, transparent);
+  vertical-align: 1px;
+  white-space: nowrap;
+}

@@ -1312,7 +1312,17 @@ export default function BacklinksPage() {
                       </td>
                       <td><span className="badge" style={{ "--st": statusColor(b.status) } as CSSProperties}><span className="dot" />{statusLabel(b.status)}</span></td>
                       <td>{monitorBadge(b)}</td>
-                      <td className="cell-domain" title={b.source_url}>{b.source_domain}</td>
+                      <td className="cell-domain" title={b.source_url}>
+                        {b.source_domain}
+                        {b.source_noindex && (
+                          <span
+                            className="noindex-badge"
+                            title="Source page is noindexed — Google won't index it, so this link passes little or no value"
+                          >
+                            noindex
+                          </span>
+                        )}
+                      </td>
                       <td className="cell-domain target" title={b.target_url}>{b.target_domain}</td>
                       <td className="cell-anchor" title={b.detected_anchor_text ?? b.expected_anchor_text ?? ""}>{b.detected_anchor_text ?? b.expected_anchor_text ?? "-"}</td>
                       <td>{classChip(b.acquisition)}</td>
