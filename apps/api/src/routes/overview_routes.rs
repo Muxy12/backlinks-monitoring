@@ -308,11 +308,9 @@ pub async fn overview(
                 },
                 subtitle: Some(format!("{} → {}", r.source_domain, r.target_url)),
                 value_at_risk,
-                action: if lost {
-                    "Recover".into()
-                } else {
-                    "Review".into()
-                },
+                // "Review", not "Recover": the lost link is still surfaced, but
+                // link recovery isn't offered as an action.
+                action: "Review".into(),
                 route: if lost {
                     "/backlinks?filter=lost".into()
                 } else {
