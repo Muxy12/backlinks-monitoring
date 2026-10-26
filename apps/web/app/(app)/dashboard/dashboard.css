@@ -215,6 +215,26 @@
 .anchors-count { flex: none; color: var(--text); font-variant-numeric: tabular-nums; }
 .anchors-count .muted { color: var(--muted); }
 .anchors-caveat { margin-top: 14px; font-size: 11.5px; line-height: 1.5; color: var(--muted-2); }
+/* Most-repeated anchors donut: top-5 anchors (colored by category) + a muted
+   rest, center shows the share those 5 cover. */
+.anchors-donut { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; margin-top: 10px; }
+.anchors-donut-ring {
+  position: relative; width: 116px; height: 116px; flex: none; border-radius: 50%;
+  -webkit-mask: radial-gradient(circle, transparent 56%, #000 57%);
+  mask: radial-gradient(circle, transparent 56%, #000 57%);
+}
+.anchors-donut-ctr {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+}
+.anchors-donut-ctr b { font-size: 20px; font-weight: 720; letter-spacing: -0.01em; line-height: 1; }
+.anchors-donut-ctr span { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted-2); margin-top: 3px; }
+.anchors-donut-legend { list-style: none; margin: 0; padding: 0; flex: 1; min-width: 170px; display: flex; flex-direction: column; gap: 8px; }
+.anchors-donut-legend li { display: flex; align-items: center; gap: 9px; font-size: 12.5px; color: var(--muted); }
+.anchors-donut-legend .adl-phrase { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+.anchors-donut-legend .adl-val { flex: none; font-variant-numeric: tabular-nums; }
+.anchors-donut-legend .adl-val b { color: var(--text); font-weight: 650; }
+.anchors-donut-legend .adl-val .muted { color: var(--muted); }
 
 /* ── Panels ─────────────────────────────────────────────────────────────── */
 .panel {
