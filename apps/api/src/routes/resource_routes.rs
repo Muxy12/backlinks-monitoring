@@ -442,6 +442,8 @@ pub struct BacklinkView {
     pub replacement_eligible: Option<bool>,
     /// Source page declared `noindex` at the last check (link passes ~no value).
     pub source_noindex: bool,
+    /// Resolved IP of the source host at the last check.
+    pub source_ip: Option<String>,
 }
 
 impl From<db::entities::Backlink> for BacklinkView {
@@ -509,6 +511,7 @@ impl From<db::entities::Backlink> for BacklinkView {
             renewal_date: b.renewal_date.map(|d| d.to_string()),
             replacement_eligible: b.replacement_eligible,
             source_noindex: b.source_robots_noindex,
+            source_ip: b.source_ip,
         }
     }
 }

@@ -566,6 +566,7 @@ export interface BacklinkView {
   source_http_status?: number | null;
   target_http_status?: number | null;
   source_noindex?: boolean;
+  source_ip?: string | null;
   first_checked_at?: string | null;
   last_seen_at?: string | null;
   last_checked_at?: string | null;

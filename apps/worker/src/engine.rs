@@ -24,6 +24,7 @@ struct FetchMeta {
     duration_ms: Option<i32>,
     bytes: Option<i32>,
     error_kind: Option<String>,
+    source_ip: Option<String>,
 }
 
 /// Check every backlink that shares one source page: fetch + parse **once**,
@@ -140,6 +141,7 @@ pub async fn check_source_group(
             source_canonical: t.detected.canonical.clone(),
             source_robots_noindex: t.detected.noindex,
             source_http_status: meta.source_status,
+            source_ip: meta.source_ip.clone(),
             // Link nature only when we actually detected a link this cycle.
             link_type: t
                 .detected
@@ -207,6 +209,7 @@ fn fetch_meta(outcome: &FetchOutcome) -> FetchMeta {
             } else {
                 Some(format!("http_{}", ok.status))
             },
+            source_ip: ok.source_ip.clone(),
         },
         FetchOutcome::Failed(err) => FetchMeta {
             source_status: None,
@@ -214,6 +217,7 @@ fn fetch_meta(outcome: &FetchOutcome) -> FetchMeta {
             duration_ms: None,
             bytes: None,
             error_kind: Some(format!("{err:?}")),
+            source_ip: None,
         },
     }
 }

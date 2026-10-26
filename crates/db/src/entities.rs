@@ -181,6 +181,8 @@ pub struct Backlink {
     /// Whether the source page declared `noindex` at the last check (so Google
     /// won't index it — a link from it passes little/no value).
     pub source_robots_noindex: bool,
+    /// Resolved IP of the source host at the last check (the final hop's address).
+    pub source_ip: Option<String>,
 }
 
 /// A referring domain queued for expansion-crawl discovery (spec §21).
