@@ -178,12 +178,104 @@ pub fn classify_host(host: &str) -> Result<(), SsrfBlock> {
     Ok(())
 }
 
+// ─── CDN / shared-front detection (for the C-class footprint signal) ─────────
+// A link's source IP is only a useful network-footprint signal when it's the
+// site's *own* hosting. Sites behind a big CDN resolve to the CDN's anycast IPs,
+// so many unrelated, legitimate sites share one /24 there — counting those as a
+// PBN would be wrong. We therefore exclude the dominant CDN ranges before using
+// the C-class. IPv4 only (CDN fronting is overwhelmingly v4; v4-mapped v6 is
+// unwrapped). The list is intentionally short and easy to extend.
+const CDN_V4: &[(Ipv4Addr, u8)] = &[
+    // Cloudflare (cloudflare.com/ips-v4)
+    (Ipv4Addr::new(173, 245, 48, 0), 20),
+    (Ipv4Addr::new(103, 21, 244, 0), 22),
+    (Ipv4Addr::new(103, 22, 200, 0), 22),
+    (Ipv4Addr::new(103, 31, 4, 0), 22),
+    (Ipv4Addr::new(141, 101, 64, 0), 18),
+    (Ipv4Addr::new(108, 162, 192, 0), 18),
+    (Ipv4Addr::new(190, 93, 240, 0), 20),
+    (Ipv4Addr::new(188, 114, 96, 0), 20),
+    (Ipv4Addr::new(197, 234, 240, 0), 22),
+    (Ipv4Addr::new(198, 41, 128, 0), 17),
+    (Ipv4Addr::new(162, 158, 0, 0), 15),
+    (Ipv4Addr::new(104, 16, 0, 0), 13),
+    (Ipv4Addr::new(104, 24, 0, 0), 14),
+    (Ipv4Addr::new(172, 64, 0, 0), 13),
+    (Ipv4Addr::new(131, 0, 72, 0), 22),
+    // Fastly (main anycast ranges)
+    (Ipv4Addr::new(151, 101, 0, 0), 16),
+    (Ipv4Addr::new(146, 75, 0, 0), 16),
+    (Ipv4Addr::new(199, 232, 0, 0), 16),
+    (Ipv4Addr::new(23, 235, 32, 0), 20),
+    (Ipv4Addr::new(43, 249, 72, 0), 22),
+    (Ipv4Addr::new(104, 156, 80, 0), 20),
+];
+
+fn v4_in_cidr(ip: Ipv4Addr, base: Ipv4Addr, prefix: u8) -> bool {
+    let mask: u32 = if prefix == 0 {
+        0
+    } else {
+        u32::MAX << (32 - prefix)
+    };
+    (u32::from(ip) & mask) == (u32::from(base) & mask)
+}
+
+fn as_v4(ip: &str) -> Option<Ipv4Addr> {
+    match ip.parse::<IpAddr>().ok()? {
+        IpAddr::V4(v) => Some(v),
+        IpAddr::V6(v) => v.to_ipv4_mapped(),
+    }
+}
+
+/// Whether an IP belongs to a known CDN / shared-front range (Cloudflare,
+/// Fastly). Such IPs are the CDN's, not the site's host, so they must be
+/// excluded from the shared-IP / C-class footprint signal. Non-IPv4 (and
+/// unparseable) addresses return false.
+pub fn is_cdn_ip(ip: &str) -> bool {
+    match as_v4(ip) {
+        Some(v4) => CDN_V4
+            .iter()
+            .any(|&(base, prefix)| v4_in_cidr(v4, base, prefix)),
+        None => false,
+    }
+}
+
+/// The "C-class" of an IP — its /24 (first three octets, e.g. "93.184.216").
+/// Two sources on the same C-class likely share hosting. `None` for non-IPv4 or
+/// unparseable input.
+pub fn c_class(ip: &str) -> Option<String> {
+    let o = as_v4(ip)?.octets();
+    Some(format!("{}.{}.{}", o[0], o[1], o[2]))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     fn ip(s: &str) -> IpAddr {
         s.parse().unwrap()
+    }
+
+    #[test]
+    fn detects_cdn_ranges() {
+        assert!(is_cdn_ip("104.16.1.1"), "Cloudflare 104.16.0.0/13");
+        assert!(is_cdn_ip("172.67.1.1"), "Cloudflare 172.64.0.0/13");
+        assert!(is_cdn_ip("151.101.1.1"), "Fastly 151.101.0.0/16");
+        assert!(!is_cdn_ip("93.184.216.34"), "example.com is not a CDN");
+        assert!(!is_cdn_ip("8.8.8.8"));
+        assert!(!is_cdn_ip("not-an-ip"));
+    }
+
+    #[test]
+    fn c_class_is_the_first_three_octets() {
+        assert_eq!(c_class("93.184.216.34").as_deref(), Some("93.184.216"));
+        assert_eq!(c_class("93.184.216.9").as_deref(), Some("93.184.216"));
+        assert_eq!(c_class("93.184.217.9").as_deref(), Some("93.184.217"));
+        assert_eq!(
+            c_class("::ffff:93.184.216.34").as_deref(),
+            Some("93.184.216")
+        );
+        assert_eq!(c_class("garbage"), None);
     }
 
     #[test]

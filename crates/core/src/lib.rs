@@ -46,7 +46,9 @@ pub use monitoring::{
     MonitoringDecision, MonitoringInputs, MonitoringLevel, MonitoringReason,
     decide as monitoring_decide, frequency_days,
 };
-pub use net::{SsrfBlock, classify_host, classify_ip, classify_port, classify_scheme};
+pub use net::{
+    SsrfBlock, c_class, classify_host, classify_ip, classify_port, classify_scheme, is_cdn_ip,
+};
 pub use observation::{BlockReason, ConnErrorKind, Detected, Observation};
 pub use outreach::{
     OutreachContext, OutreachDraft, ReclaimPitch, render_draft as outreach_render_draft,
