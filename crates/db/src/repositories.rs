@@ -1624,6 +1624,7 @@ pub mod backlinks {
         pub source_domain: String,
         pub source_url: String,
         pub anchor: String,
+        pub source_ip: Option<String>,
     }
 
     pub async fn list_for_autotag(
@@ -1632,7 +1633,7 @@ pub mod backlinks {
         project_id: Uuid,
     ) -> Result<Vec<AutoTagRow>, DbError> {
         Ok(sqlx::query_as::<_, AutoTagRow>(
-            "SELECT id, source_domain, source_url, \
+            "SELECT id, source_domain, source_url, source_ip, \
                     COALESCE(expected_anchor_text, '') AS anchor \
              FROM backlinks \
              WHERE project_id = $1 AND organization_id = $2 \

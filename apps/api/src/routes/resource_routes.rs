@@ -2223,6 +2223,7 @@ fn classify_footprint(
     domain: &str,
     source_url: &str,
     domain_count: usize,
+    cclass_domains: usize,
 ) -> &'static str {
     let a = anchor.to_lowercase();
     let d = domain.to_lowercase();
@@ -2246,6 +2247,12 @@ fn classify_footprint(
         "seo strateg",
     ];
     if PROMO.iter().any(|k| a.contains(k)) {
+        return "pbn";
+    }
+    // Several DISTINCT domains sharing one non-CDN /24 (C-class) → a network
+    // footprint (classic PBN / link-farm hosting). CDN IPs are excluded upstream,
+    // so this doesn't fire just because sites sit behind Cloudflare/Fastly.
+    if cclass_domains >= 3 {
         return "pbn";
     }
     // Many links from one domain → sitewide / forum profile / signature.
@@ -2289,6 +2296,25 @@ pub async fn autotag_project_footprints(
         *domain_count.entry(r.source_domain.as_str()).or_default() += 1;
     }
 
+    // Distinct domains per non-CDN /24 (C-class), to spot shared-hosting / PBN
+    // network footprints. CDN-fronted IPs (Cloudflare/Fastly) are excluded so a
+    // crowd of unrelated sites behind one CDN isn't mistaken for a network.
+    let mut cclass_domains: HashMap<String, std::collections::HashSet<&str>> = HashMap::new();
+    for r in &rows {
+        let Some(ip) = r.source_ip.as_deref() else {
+            continue;
+        };
+        if backlio_core::is_cdn_ip(ip) {
+            continue;
+        }
+        if let Some(cc) = backlio_core::c_class(ip) {
+            cclass_domains
+                .entry(cc)
+                .or_default()
+                .insert(r.source_domain.as_str());
+        }
+    }
+
     // Get-or-create the category tags (idempotent across re-runs).
     let existing = tags::list(&state.pool, scope).await?;
     let mut tag_ids: HashMap<&str, Uuid> = HashMap::new();
@@ -2307,7 +2333,13 @@ pub async fn autotag_project_footprints(
     let mut counts: HashMap<String, usize> = HashMap::new();
     for r in &rows {
         let n = *domain_count.get(r.source_domain.as_str()).unwrap_or(&1);
-        let cat = classify_footprint(&r.anchor, &r.source_domain, &r.source_url, n);
+        let cc = match r.source_ip.as_deref() {
+            Some(ip) if !backlio_core::is_cdn_ip(ip) => backlio_core::c_class(ip)
+                .and_then(|cc| cclass_domains.get(&cc).map(|s| s.len()))
+                .unwrap_or(0),
+            _ => 0,
+        };
+        let cat = classify_footprint(&r.anchor, &r.source_domain, &r.source_url, n, cc);
         if let Some(&tid) = tag_ids.get(cat) {
             let _ = tags::attach(&state.pool, scope, r.id, tid).await;
         }
