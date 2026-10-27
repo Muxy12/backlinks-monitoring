@@ -16,7 +16,6 @@ export default function robots(): MetadataRoute.Robots {
           "/clients",
           "/competitors",
           "/graph",
-          "/operations",
           "/import",
           "/team",
           "/admin",

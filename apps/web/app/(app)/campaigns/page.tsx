@@ -1,5 +1,6 @@
 "use client";
 import { PageLoading } from "@/components/PageLoading";
+import { PublishersPanel } from "@/components/PublishersPanel";
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -83,6 +84,7 @@ export default function CampaignsPage() {
       {!orgId ? (
         <p className="muted">Create a workspace first.</p>
       ) : (
+        <>
         <div className="ops-grid">
           <section className="panel">
             <div className="panel-head">
@@ -126,6 +128,8 @@ export default function CampaignsPage() {
 
           <NewCampaignForm org={orgId} projects={projects} onCreated={() => void reload(orgId)} />
         </div>
+        <PublishersPanel orgId={orgId} />
+        </>
       )}
     </main>
   );
