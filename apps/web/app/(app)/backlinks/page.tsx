@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api, orgApi, backlinksExportUrl, type AnchorsView, type AttentionItemView, type BacklinkView, type ClientView, type DashboardResponse, type EventView, type ImpactView, type MeResponse, type OccurrenceView, type OverviewResponse, type ProjectView, type TagView } from "@/lib/api";
 import { BeforeAfterChart } from "@/components/BeforeAfterChart";
@@ -942,82 +942,50 @@ export default function BacklinksPage() {
             </section>
           )}
 
-          {distTotal > 0 && (
-            <section className="dist">
-              <div className="dist-head">
-                <h2>Status breakdown</h2>
-                <span className="dist-total">{distTotal} link{distTotal > 1 ? "s" : ""}</span>
-              </div>
-              <div className="dist-bar">
-                {distSegments.map((s) => (
-                  <div
-                    key={s.st}
-                    className="dist-seg"
-                    style={{ flexGrow: s.n, background: statusColor(s.st) }}
-                    title={`${statusLabel(s.st)}: ${s.n}`}
-                  />
-                ))}
-              </div>
-              <div className="legend">
-                {distSegments.map((s) => (
-                  <span key={s.st} className="legend-item" style={{ color: statusColor(s.st) }}>
-                    <span className="legend-dot" />
-                    <span style={{ color: "var(--muted)" }}>{statusLabel(s.st)}</span>
-                    <b>{s.n}</b>
-                  </span>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {summary && (
-            <div className="dist-row">
-              {relSegments.length > 0 && (
-                <section className="dist">
-                  <div className="dist-head">
-                    <h2>Follow ratio</h2>
-                    <span className="dist-total">{relTotal} link{relTotal > 1 ? "s" : ""}</span>
-                  </div>
-                  <div className="dist-bar">
-                    {relSegments.map((s) => (
-                      <div key={s.label} className="dist-seg" style={{ flexGrow: s.n, background: s.color }} title={`${s.label}: ${s.n}`} />
-                    ))}
-                  </div>
-                  <div className="legend">
-                    {relSegments.map((s) => (
-                      <span key={s.label} className="legend-item" style={{ color: s.color }}>
-                        <span className="legend-dot" />
-                        <span style={{ color: "var(--muted)" }}>{s.label}</span>
-                        <b>{s.n}</b>
-                        <span style={{ color: "var(--muted)" }}>({relTotal ? Math.round((s.n / relTotal) * 100) : 0}%)</span>
-                      </span>
-                    ))}
-                  </div>
-                </section>
+          {summary && (distTotal > 0 || relTotal > 0 || typeTotal > 0) && (
+            <div className="dist-row triple">
+              {relTotal > 0 && (
+                <MiniDonut
+                  title="Follow ratio"
+                  head={`${relTotal} link${relTotal > 1 ? "s" : ""}`}
+                  segments={relSegments.map((s) => ({ key: s.label, label: s.label, n: s.n, color: s.color }))}
+                  center={{
+                    value: `${Math.round(((relSegments.find((s) => s.label === "Dofollow")?.n ?? 0) / relTotal) * 100)}%`,
+                    label: "dofollow",
+                  }}
+                />
               )}
-              {typeSegments.length > 0 && (
-                <section className="dist">
-                  <div className="dist-head">
-                    <h2>Link type</h2>
-                    <span className="dist-total">
-                      {typeTotal} tagged · <a href="#" onClick={(e) => { e.preventDefault(); void runAutoTag(); }}>re-tag</a>
-                    </span>
-                  </div>
-                  <div className="dist-bar">
-                    {typeSegments.map((s) => (
-                      <div key={s.label} className="dist-seg" style={{ flexGrow: s.n, background: s.color }} title={`${s.label}: ${s.n}`} />
-                    ))}
-                  </div>
-                  <div className="legend">
-                    {typeSegments.map((s) => (
-                      <span key={s.label} className="legend-item" style={{ color: s.color }}>
-                        <span className="legend-dot" />
-                        <span style={{ color: "var(--muted)" }}>{s.label}</span>
-                        <b>{s.n}</b>
-                      </span>
-                    ))}
-                  </div>
-                </section>
+              {distTotal > 0 && (
+                <MiniDonut
+                  title="Status breakdown"
+                  head={`${distTotal} link${distTotal > 1 ? "s" : ""}`}
+                  segments={distSegments.map((s) => ({
+                    key: s.st,
+                    label: statusLabel(s.st),
+                    n: s.n,
+                    color: statusColor(s.st),
+                  }))}
+                  center={{
+                    value: `${Math.round(((distSegments.find((s) => s.st === "live")?.n ?? 0) / distTotal) * 100)}%`,
+                    label: "live",
+                  }}
+                />
+              )}
+              {typeTotal > 0 && (
+                <MiniDonut
+                  title="Link type"
+                  head={
+                    <>
+                      {typeTotal} tagged ·{" "}
+                      <a href="#" onClick={(e) => { e.preventDefault(); void runAutoTag(); }}>re-tag</a>
+                    </>
+                  }
+                  segments={typeSegments.map((s) => ({ key: s.label, label: s.label, n: s.n, color: s.color }))}
+                  center={{
+                    value: `${Math.round(((typeSegments.find((s) => s.label === "earned")?.n ?? 0) / typeTotal) * 100)}%`,
+                    label: "earned",
+                  }}
+                />
               )}
             </div>
           )}
@@ -2073,6 +2041,66 @@ function httpPair(b: BacklinkView): string {
 function yn(v?: boolean | null): string {
   return v == null ? "-" : v ? "yes" : "no";
 }
+// Compact distribution donut used in the 3-up stats row (follow ratio / status
+// / link type). Conic-gradient ring, center shows the headline share, legend
+// below. Dependency-free, themeable.
+function MiniDonut({
+  title,
+  head,
+  segments,
+  center,
+}: {
+  title: string;
+  head: ReactNode;
+  segments: { key: string; label: string; n: number; color: string }[];
+  center: { value: string; label: string };
+}) {
+  const total = segments.reduce((a, s) => a + s.n, 0);
+  let acc = 0;
+  const stops = segments
+    .filter((s) => s.n > 0)
+    .map((s) => {
+      const from = (acc / total) * 360;
+      acc += s.n;
+      const to = (acc / total) * 360;
+      return `${s.color} ${from}deg ${to}deg`;
+    })
+    .join(", ");
+  return (
+    <section className="dist">
+      <div className="dist-head">
+        <h2>{title}</h2>
+        <span className="dist-total">{head}</span>
+      </div>
+      <div className="mini-donut">
+        <div
+          className="mini-ring"
+          style={{ background: `conic-gradient(${stops})` }}
+          role="img"
+          aria-label={title}
+        >
+          <span className="mini-ctr">
+            <b>{center.value}</b>
+            <span>{center.label}</span>
+          </span>
+        </div>
+        <div className="legend">
+          {segments.map((s) => (
+            <span key={s.key} className="legend-item" style={{ color: s.color }}>
+              <span className="legend-dot" />
+              <span style={{ color: "var(--muted)" }}>{s.label}</span>
+              <b>{s.n}</b>
+              <span style={{ color: "var(--muted)" }}>
+                ({total ? Math.round((s.n / total) * 100) : 0}%)
+              </span>
+            </span>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function RelChips({ b }: { b: BacklinkView }) {
   const rel = b.detected_rel;
   if (!rel || rel.length === 0) {
