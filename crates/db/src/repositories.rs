@@ -5435,15 +5435,23 @@ pub mod notifications {
             previous_data: Option<String>,
             current_data: Option<String>,
             source_domain: String,
+            target_url: String,
+            project_name: String,
+            project_domain: String,
+            client_name: Option<String>,
         }
         let candidates = sqlx::query_as::<_, ChangeEvent>(
             "SELECT e.id AS event_id, e.organization_id, e.backlink_id, \
                     e.event_type::text AS event_type, \
                     e.previous_data #>> '{}' AS previous_data, \
                     e.current_data  #>> '{}' AS current_data, \
-                    b.source_domain \
+                    b.source_domain, b.target_url, \
+                    p.name AS project_name, p.domain AS project_domain, \
+                    cl.name AS client_name \
              FROM backlink_events e \
              JOIN backlinks b ON b.id = e.backlink_id \
+             JOIN projects p ON p.id = b.project_id \
+             LEFT JOIN clients cl ON cl.id = p.client_id \
              WHERE b.subject = 'own' \
                AND e.detected_at >= now() - interval '7 days' \
                AND e.event_type::text IN ('backlink_lost', 'backlink_restored', \
@@ -5466,12 +5474,34 @@ pub mod notifications {
                 continue;
             };
             let title = format!("{label}: {}", c.source_domain);
-            let body = match (c.previous_data.as_deref(), c.current_data.as_deref()) {
+            let change = match (c.previous_data.as_deref(), c.current_data.as_deref()) {
                 (Some(p), Some(n)) => format!("{p} → {n}"),
                 (None, Some(n)) => n.to_string(),
                 (Some(p), None) => p.to_string(),
                 (None, None) => label.to_string(),
             };
+            // The title carries only the source domain, so enrich the body with
+            // which of the owner's sites (project + client) and which page the
+            // backlink pointed to — the alert is otherwise ambiguous across
+            // projects and clients. Lines flow to in-app, email, Slack, webhook.
+            let site = if c.project_name.trim().is_empty()
+                || c.project_name.eq_ignore_ascii_case(&c.project_domain)
+            {
+                c.project_domain.clone()
+            } else {
+                format!("{} ({})", c.project_name, c.project_domain)
+            };
+            let mut body = format!("Site: {site}");
+            if let Some(client) = c.client_name.as_deref() {
+                let client = client.trim();
+                if !client.is_empty() {
+                    body.push_str(&format!("\nClient: {client}"));
+                }
+            }
+            if !c.target_url.trim().is_empty() {
+                body.push_str(&format!("\nPage: {}", c.target_url));
+            }
+            body.push_str(&format!("\n{change}"));
             let dedupe = format!("change:{}", c.event_id);
             let row: Option<(Uuid,)> = sqlx::query_as(
                 "INSERT INTO notifications \
