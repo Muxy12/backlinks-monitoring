@@ -464,6 +464,18 @@
 /* Side-by-side distribution illustrations */
 .dist-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 14px; margin-bottom: 18px; }
 .dist-row .dist { margin-bottom: 0; }
+/* Three compact distribution donuts on one line (follow / status / link type). */
+.dist-row.triple { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+.mini-donut { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.mini-ring {
+  position: relative; width: 92px; height: 92px; flex: none; border-radius: 50%;
+  -webkit-mask: radial-gradient(circle, transparent 55%, #000 56%);
+  mask: radial-gradient(circle, transparent 55%, #000 56%);
+}
+.mini-ctr { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.mini-ctr b { font-size: 19px; font-weight: 720; letter-spacing: -0.01em; line-height: 1; }
+.mini-ctr span { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted-2); margin-top: 2px; }
+.mini-donut .legend { justify-content: center; gap: 6px 12px; }
 .dist-head a { color: var(--primary); font-weight: 550; }
 
 /* Horizontal scroll wrapper for the table on narrow screens */
