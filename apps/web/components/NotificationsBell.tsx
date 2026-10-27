@@ -86,7 +86,11 @@ export function NotificationsBell({ orgId }: { orgId: string | null }) {
                   <li key={n.id} className={n.read ? "notif read" : "notif"}>
                     <div>
                       <div className="notif-title">{n.title}</div>
-                      {n.body && <div className="muted">{n.body}</div>}
+                      {n.body && (
+                        <div className="muted" style={{ whiteSpace: "pre-line" }}>
+                          {n.body}
+                        </div>
+                      )}
                       <div className="muted mono">{new Date(n.created_at).toLocaleString()}</div>
                     </div>
                     {!n.read && (

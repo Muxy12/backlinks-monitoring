@@ -80,7 +80,7 @@ fn alert_email_html(n: &PendingNotification, base: &str) -> String {
         Some(b) if !b.is_empty() => format!(
             "<div style=\"margin:14px 0 0;padding:12px 16px;background:#f6f8fc;border:1px solid #eef2f8;\
 border-radius:10px;font-size:15px;line-height:1.6;color:#334155;word-break:break-word;\">{}</div>",
-            esc(b)
+            esc(b).replace('\n', "<br>")
         ),
         _ => String::new(),
     };
