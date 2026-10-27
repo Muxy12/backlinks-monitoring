@@ -1,4 +1,6 @@
 /* Domains (projects) page — refined full-width table + add/edit modal. */
+/* NOTE: Vercel skips builds whose commit touches no file under apps/web
+   (monorepo "ignored build step"), so changes here must live in this tree. */
 
 .dom-bar {
   display: flex;
