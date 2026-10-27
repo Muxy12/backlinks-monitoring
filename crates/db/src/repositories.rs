@@ -1110,6 +1110,7 @@ pub mod projects {
         name: Option<&str>,
         check_frequency_secs: Option<i64>,
         client: Option<Option<Uuid>>,
+        status: Option<&str>,
     ) -> Result<Project, DbError> {
         let mut qb = sqlx::QueryBuilder::<sqlx::Postgres>::new("UPDATE projects SET ");
         let mut sep = qb.separated(", ");
@@ -1125,6 +1126,11 @@ pub mod projects {
         if let Some(c) = client {
             sep.push("client_id = ");
             sep.push_bind_unseparated(c); // Option<Uuid> binds NULL to clear
+        }
+        if let Some(st) = status {
+            sep.push("status = ");
+            sep.push_bind_unseparated(st);
+            sep.push_unseparated("::project_status");
         }
         qb.push(" WHERE id = ");
         qb.push_bind(id);
@@ -3011,6 +3017,9 @@ pub mod scheduler {
             "SELECT b.id, b.source_url, b.source_url_normalized FROM backlinks b \
              WHERE b.archived_at IS NULL AND b.monitoring_enabled \
                AND b.next_check_at IS NOT NULL AND b.next_check_at <= now() \
+               AND EXISTS ( \
+                   SELECT 1 FROM projects p \
+                   WHERE p.id = b.project_id AND p.status = 'active' ) \
                AND EXISTS ( \
                    SELECT 1 FROM organizations o \
                    JOIN subscriptions s ON s.organization_id = o.id \
