@@ -283,6 +283,8 @@ pub struct UpdateProjectBody {
     /// Reassign (or clear via explicit null) the client (§20).
     #[serde(default, deserialize_with = "de_double_opt")]
     pub client_id: Option<Option<Uuid>>,
+    /// Pause/resume crawling this domain: 'active' | 'paused'.
+    pub status: Option<String>,
 }
 
 pub async fn update_project(
@@ -312,15 +314,31 @@ pub async fn update_project(
         Some(h) => Some(h * 3600),
         None => None,
     };
-    if name.is_none() && secs.is_none() && body.client_id.is_none() {
+    let status = match body.status.as_deref() {
+        Some(s) if !matches!(s, "active" | "paused") => {
+            return Err(ApiError::Validation(
+                "status must be 'active' or 'paused'".into(),
+            ));
+        }
+        other => other,
+    };
+    if name.is_none() && secs.is_none() && body.client_id.is_none() && status.is_none() {
         return Err(ApiError::Validation("nothing to update".into()));
     }
     // A newly-assigned client must be in the org (a null clears, no check).
     if let Some(Some(cid)) = body.client_id {
         clients::get(&state.pool, &scope, cid).await?;
     }
-    let project =
-        projects::update(&state.pool, &scope, project_id, name, secs, body.client_id).await?;
+    let project = projects::update(
+        &state.pool,
+        &scope,
+        project_id,
+        name,
+        secs,
+        body.client_id,
+        status,
+    )
+    .await?;
     Ok(Json(project.into()))
 }
 

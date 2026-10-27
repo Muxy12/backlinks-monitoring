@@ -1,0 +1,97 @@
+/* Domains (projects) page — refined full-width table + add/edit modal. */
+
+.dom-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.dom-table { width: 100%; border-collapse: collapse; }
+.dom-table th {
+  text-align: left;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted-2);
+  font-weight: 700;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.dom-table td { padding: 11px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.dom-table tbody tr:last-child td { border-bottom: 0; }
+.dom-table tbody tr { transition: background var(--t-fast) var(--ease); }
+.dom-table tbody tr:hover { background: var(--surface-2); }
+
+.dom-name { display: flex; align-items: center; gap: 11px; min-width: 0; }
+.dom-fav { width: 32px; height: 32px; border-radius: 8px; flex: none; object-fit: contain; background: var(--surface-3); }
+.dom-fav-fallback {
+  display: grid;
+  place-items: center;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--grad);
+}
+.dom-id { min-width: 0; }
+.dom-id .nm { font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dom-id .dm { font-size: 12px; color: var(--muted); font-family: var(--font-mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.dom-crawl { display: inline-flex; align-items: center; gap: 10px; }
+.dom-crawl-label { font-size: 12.5px; color: var(--text); white-space: nowrap; }
+.dom-crawl-label.paused { color: var(--muted); }
+.dom-toggle {
+  width: 36px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  position: relative;
+  cursor: pointer;
+  flex: none;
+  border: 0;
+  transition: background var(--t-fast) var(--ease);
+}
+.dom-toggle::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  transition: left var(--t-fast) var(--ease);
+}
+.dom-toggle.on { background: var(--live); }
+.dom-toggle.on::after { left: 18px; }
+.dom-toggle:disabled { opacity: 0.55; cursor: default; }
+.dom-toggle:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+.dom-acts { display: flex; gap: 6px; justify-content: flex-end; white-space: nowrap; }
+
+/* Add / edit modal (portaled to <body>). */
+.dom-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(13, 24, 44, 0.5);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-drawer);
+  padding: 20px;
+}
+.dom-modal {
+  width: 420px;
+  max-width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-pop);
+  padding: 22px;
+}
+.dom-modal h2 { font-size: 16px; font-weight: 650; margin: 0 0 16px; }
+.dom-modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }

@@ -1024,7 +1024,12 @@ export const orgApi = {
   updateProject: (
     org: string,
     id: string,
-    body: { name?: string; check_frequency_hours?: number; client_id?: string | null },
+    body: {
+      name?: string;
+      check_frequency_hours?: number;
+      client_id?: string | null;
+      status?: "active" | "paused";
+    },
   ) =>
     request<ProjectView>(`/v1/organizations/${org}/projects/${id}`, {
       method: "PATCH",
