@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { orgApi, type NotificationsResponse } from "@/lib/api";
 import { useDrawerFocus } from "@/lib/useDrawerFocus";
 import { Icon } from "@/app/(app)/icons";
@@ -12,6 +13,11 @@ import { Icon } from "@/app/(app)/icons";
 export function NotificationsBell({ orgId }: { orgId: string | null }) {
   const [notifs, setNotifs] = useState<NotificationsResponse | null>(null);
   const [open, setOpen] = useState(false);
+  // The drawer is portaled to <body> so its position:fixed overlay escapes the
+  // sidebar's stacking context / transform (the sidebar is transformed on mobile,
+  // which would otherwise trap the fixed drawer inside it).
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const drawerRef = useRef<HTMLElement | null>(null);
   useDrawerFocus(open, drawerRef);
 
@@ -52,7 +58,9 @@ export function NotificationsBell({ orgId }: { orgId: string | null }) {
         <Icon name="bell" size={17} />
         {notifs && notifs.unread > 0 && <span className="bell-badge">{notifs.unread}</span>}
       </button>
-      {open && (
+      {mounted &&
+        open &&
+        createPortal(
         <div className="drawer-backdrop" onClick={() => setOpen(false)}>
           <aside
             className="drawer"
@@ -89,8 +97,9 @@ export function NotificationsBell({ orgId }: { orgId: string | null }) {
               </ul>
             )}
           </aside>
-        </div>
-      )}
+        </div>,
+          document.body,
+        )}
     </>
   );
 }
