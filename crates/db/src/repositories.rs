@@ -3545,6 +3545,7 @@ pub mod overview {
                cost::text AS cost, currency, monitoring_level \
              FROM backlinks \
              WHERE organization_id = $1 AND archived_at IS NULL AND subject = 'own' AND tier = 1 \
+               AND monitoring_level = 'protected' \
                AND status IN ('lost','suspected_lost','changed','nofollow','source_error','target_error','redirected') \
              ORDER BY (cost IS NULL), cost DESC LIMIT $2",
         )

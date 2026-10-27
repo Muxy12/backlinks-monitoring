@@ -323,6 +323,11 @@ pub async fn overview(
     // Warranty expiring within the lookahead window.
     let cutoff = chrono::Utc::now().date_naive() + chrono::Duration::days(14);
     for b in backlinks::warranty_expiring_for_org(&state.pool, &scope, cutoff, 5).await? {
+        // Attention is scoped to protected links only (the shared warranty query
+        // is also used elsewhere, so filter here rather than in SQL).
+        if b.monitoring_level != "protected" {
+            continue;
+        }
         let units = money_units(&b.cost);
         let p = attention_priority(AttentionKind::WarrantyExpiring, units > 0);
         let value_at_risk = match (&b.cost, &b.currency) {
