@@ -210,7 +210,7 @@ function OverviewBody({ data, beta }: { data: OverviewResponse; beta: boolean })
           hint={`${s.active_campaigns.active} active · ${s.active_campaigns.draft} draft`}
           accent="var(--violet)"
           icon="campaigns"
-          onClick={() => go(beta ? "/campaigns" : "/operations")}
+          onClick={() => go("/campaigns")}
         />
         <KpiCard
           label="Value at Risk"

@@ -30,7 +30,6 @@ const SECTIONS: { title: string; links: Link[] }[] = [
     title: "Grow",
     links: [
       { href: "/competitors", label: "Competitors", icon: "competitors" },
-      { href: "/operations", label: "Operations", icon: "operations" },
       { href: "/import", label: "Import", icon: "import" },
     ],
   },
