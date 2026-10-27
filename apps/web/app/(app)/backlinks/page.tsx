@@ -84,6 +84,21 @@ export default function BacklinksPage() {
     const mon = searchParams.get("monitoring");
     if (mon && ["protected", "tracked", "inventory_only"].includes(mon)) setMonitorFilter(mon);
   }, [searchParams]);
+
+  // Overview "Review" deep-link: ?focus=<backlink id> opens that link's detail
+  // drawer straight away. The ref guards against re-opening on re-render or after
+  // the user closes the drawer.
+  const focusedRef = useRef<string | null>(null);
+  useEffect(() => {
+    const focus = searchParams.get("focus");
+    if (!focus || !orgId || focusedRef.current === focus) return;
+    focusedRef.current = focus;
+    void orgApi.getBacklink(orgId, focus).then((res) => {
+      if (res.ok) void openDetail(res.data);
+    });
+    // openDetail is a stable (hoisted) component fn; focusedRef prevents re-runs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, orgId]);
   const [page, setPage] = useState(0);
   const [hasNext, setHasNext] = useState(false);
   const [autoTagBusy, setAutoTagBusy] = useState(false);
