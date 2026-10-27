@@ -311,11 +311,8 @@ pub async fn overview(
                 // "Review", not "Recover": the lost link is still surfaced, but
                 // link recovery isn't offered as an action.
                 action: "Review".into(),
-                route: if lost {
-                    "/backlinks?filter=lost".into()
-                } else {
-                    "/backlinks".into()
-                },
+                // Deep-link straight to this link's detail drawer on /backlinks.
+                route: format!("/backlinks?focus={}", r.id),
             },
         });
     }
@@ -346,7 +343,7 @@ pub async fn overview(
                 subtitle: Some(b.source_domain.clone()),
                 value_at_risk,
                 action: "View".into(),
-                route: "/backlinks".into(),
+                route: format!("/backlinks?focus={}", b.id),
             },
         });
     }

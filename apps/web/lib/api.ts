@@ -1084,6 +1084,8 @@ export const orgApi = {
       `/v1/organizations/${org}/backlinks${qs ? `?${qs}` : ""}`,
     );
   },
+  getBacklink: (org: string, id: string) =>
+    request<BacklinkView>(`/v1/organizations/${org}/backlinks/${id}`),
   backlinkEvents: (org: string, id: string) =>
     request<EventView[]>(`/v1/organizations/${org}/backlinks/${id}/events`),
   backlinkOccurrences: (org: string, id: string) =>
