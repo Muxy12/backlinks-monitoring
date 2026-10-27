@@ -168,17 +168,6 @@
 .legend-item { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--muted); }
 .legend-dot { width: 9px; height: 9px; border-radius: 50%; background: currentColor; flex: none; }
 .legend-item b { color: var(--text); font-weight: 650; font-variant-numeric: tabular-nums; }
-/* Labeled horizontal bars — one row per category (label · bar · count & %).
-   Clearer than a single stacked bar: no slice is too small to see, and the
-   numbers sit next to the bar instead of in a separate legend. */
-.anchors-bars { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
-.anchors-bar-row { display: grid; grid-template-columns: 92px 1fr auto; align-items: center; gap: 10px; }
-.anchors-bar-cat { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; white-space: nowrap; }
-.anchors-bar-track { height: 16px; background: var(--surface-3); border-radius: 6px; overflow: hidden; }
-.anchors-bar-fill { display: block; height: 100%; border-radius: 6px; transition: width var(--t-slow) var(--ease); }
-.anchors-bar-val { font-size: 12.5px; color: var(--text); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.anchors-bar-val b { font-weight: 650; }
-.anchors-bar-val .muted { color: var(--muted); }
 
 /* ── Anchor text distribution ───────────────────────────────────────────── */
 .anchors-note {
@@ -441,7 +430,6 @@
 @media (prefers-reduced-motion: reduce) {
   .tile, .dist, .panel, .create-ws, .drawer, .drawer-backdrop, .sk-row { animation: none; }
   .dist-seg { transition: none; }
-  .anchors-bar-fill { transition: none; }
 }
 
 /* ── Sub-stats strips ───────────────────────────────────────────────────── */

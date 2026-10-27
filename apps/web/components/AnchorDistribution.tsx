@@ -36,11 +36,18 @@ export function AnchorDistribution({ data }: { data: AnchorsView }) {
     );
   }
 
-  // Bars scale to the largest category (fills the track) for easy length
-  // comparison; the % next to each bar keeps the absolute share honest. Sorted
-  // so the mix reads as a ranking, biggest first.
-  const maxCount = Math.max(...data.categories.map((c) => c.count), 1);
-  const bars = [...data.categories].sort((a, b) => b.count - a.count);
+  // Category mix as a donut: each category sized by its share of all anchored
+  // links, colored by its token. The legend lists every category.
+  let catAcc = 0;
+  const catStops = data.categories
+    .filter((c) => c.count > 0)
+    .map((c) => {
+      const from = (catAcc / data.total) * 360;
+      catAcc += c.count;
+      const to = (catAcc / data.total) * 360;
+      return `${CAT_COLOR[c.slug]} ${from}deg ${to}deg`;
+    })
+    .join(", ");
 
   // Most-repeated anchors as a donut: the 5 most representative anchors, each
   // colored by its category, plus a muted "others" rest, as fractions of all
@@ -73,28 +80,30 @@ export function AnchorDistribution({ data }: { data: AnchorsView }) {
         </span>
       </div>
 
-      <ul className="anchors-bars" aria-label="Anchor category mix">
-        {bars.map((c) => (
-          <li key={c.slug} className="anchors-bar-row">
-            <span className="anchors-bar-cat" style={{ color: CAT_COLOR[c.slug] }}>
-              <span className="legend-dot" />
-              <span style={{ color: "var(--muted)" }}>{c.label}</span>
-            </span>
-            <span className="anchors-bar-track">
-              <span
-                className="anchors-bar-fill"
-                style={{
-                  width: `${c.count > 0 ? Math.max(4, (c.count / maxCount) * 100) : 0}%`,
-                  background: CAT_COLOR[c.slug],
-                }}
-              />
-            </span>
-            <span className="anchors-bar-val">
-              <b>{c.count}</b> <span className="muted">({fmtPct(c.percent)})</span>
-            </span>
-          </li>
-        ))}
-      </ul>
+      <div className="anchors-donut">
+        <div
+          className="anchors-donut-ring"
+          style={{ background: `conic-gradient(${catStops})` }}
+          role="img"
+          aria-label="Anchor category mix"
+        >
+          <span className="anchors-donut-ctr">
+            <b>{data.total}</b>
+            <span>{data.total > 1 ? "links" : "link"}</span>
+          </span>
+        </div>
+        <ul className="anchors-donut-legend">
+          {data.categories.map((c) => (
+            <li key={c.slug}>
+              <span className="legend-dot" style={{ background: CAT_COLOR[c.slug] }} />
+              <span className="adl-phrase">{c.label}</span>
+              <span className="adl-val">
+                <b>{c.count}</b> <span className="muted">({fmtPct(c.percent)})</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
 
       {data.over_concentration && (
         <p className="anchors-note" role="note">
