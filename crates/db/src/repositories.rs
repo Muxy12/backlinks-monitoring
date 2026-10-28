@@ -5425,6 +5425,13 @@ pub mod notifications {
     /// Cross-tenant tick pass, idempotent: one notification per event
     /// (`dedupe_key = change:<event_id>`). The notifiable set + labels live in
     /// `backlio_core::change_alert_label`. Returns how many were created.
+    ///
+    /// Alerts are **suppressed for links the footprint auto-tagger flagged as
+    /// low-value** (a tag in `resource_routes::AUTOTAG_TAGS` except "earned":
+    /// comment / pbn / forum-profile / self-built) — spam-farm / PBN links flap
+    /// lost↔restored endlessly and are pure noise. Same tag set as the
+    /// "Likely low-value" backlinks filter. The event is still recorded in
+    /// `backlink_events` (history is never destroyed); only the alert is skipped.
     pub async fn create_from_events(pool: &PgPool, limit: i64) -> Result<u64, DbError> {
         #[derive(sqlx::FromRow)]
         struct ChangeEvent {
@@ -5460,6 +5467,12 @@ pub mod notifications {
                    'noindex_detected') \
                AND NOT EXISTS (SELECT 1 FROM notifications n \
                                WHERE n.dedupe_key = 'change:' || e.id::text) \
+               AND NOT EXISTS (SELECT 1 FROM backlink_tags bt \
+                               JOIN tags t ON t.id = bt.tag_id \
+                               WHERE bt.backlink_id = e.backlink_id \
+                                 AND bt.organization_id = e.organization_id \
+                                 AND t.name IN ('comment', 'pbn', 'forum-profile', \
+                                     'self-built')) \
              ORDER BY e.detected_at DESC \
              LIMIT $1",
         )
