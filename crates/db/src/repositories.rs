@@ -5432,6 +5432,14 @@ pub mod notifications {
     /// lost↔restored endlessly and are pure noise. Same tag set as the
     /// "Likely low-value" backlinks filter. The event is still recorded in
     /// `backlink_events` (history is never destroyed); only the alert is skipped.
+    ///
+    /// Lost/restored alerts are ALSO suppressed for **chronic flappers** — a
+    /// non-protected link that logged >= 3 `backlink_lost` events in the trailing
+    /// 30 days. Spam-network sources (URL shorteners, rotating link lists) bounce
+    /// lost<->restored endlessly even when they aren't footprint-tagged; this is a
+    /// classification-independent catch-all. Protected links are exempt (if the
+    /// owner protects a link, instability is itself worth knowing); other event
+    /// types (nofollow, errors, anchor/target changes) still alert regardless.
     pub async fn create_from_events(pool: &PgPool, limit: i64) -> Result<u64, DbError> {
         #[derive(sqlx::FromRow)]
         struct ChangeEvent {
@@ -5473,6 +5481,13 @@ pub mod notifications {
                                  AND bt.organization_id = e.organization_id \
                                  AND t.name IN ('comment', 'pbn', 'forum-profile', \
                                      'self-built')) \
+               AND NOT ( \
+                   e.event_type::text IN ('backlink_lost', 'backlink_restored') \
+                   AND b.monitoring_level IS DISTINCT FROM 'protected' \
+                   AND (SELECT count(*) FROM backlink_events e2 \
+                        WHERE e2.backlink_id = e.backlink_id \
+                          AND e2.event_type = 'backlink_lost' \
+                          AND e2.detected_at >= now() - interval '30 days') >= 3) \
              ORDER BY e.detected_at DESC \
              LIMIT $1",
         )
