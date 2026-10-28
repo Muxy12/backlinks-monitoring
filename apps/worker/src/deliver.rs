@@ -76,6 +76,12 @@ fn alert_style(kind: &str) -> (&'static str, &'static str, &'static str) {
 fn alert_email_html(n: &PendingNotification, base: &str) -> String {
     let (accent, accent_bg, badge) = alert_style(&n.kind);
     let title = esc(&n.title);
+    // Deep-link the CTA to the exact backlink when the alert carries one, so
+    // "View in LinkPulz" opens its detail drawer; otherwise the list.
+    let cta = match n.backlink_id {
+        Some(id) => format!("{base}/backlinks?focus={id}"),
+        None => format!("{base}/backlinks"),
+    };
     let body_block = match &n.body {
         Some(b) if !b.is_empty() => format!(
             "<div style=\"margin:14px 0 0;padding:12px 16px;background:#f6f8fc;border:1px solid #eef2f8;\
@@ -98,7 +104,7 @@ border-radius:10px;font-size:15px;line-height:1.6;color:#334155;word-break:break
 color:{accent};background:{accent_bg};border-radius:999px;padding:4px 12px;margin-bottom:14px;\">{badge}</span>\
 <h1 style=\"margin:0;font-size:20px;line-height:1.3;color:#0f1b2d;\">{title}</h1>\
 {body_block}\
-<a href=\"{base}/backlinks\" style=\"display:inline-block;margin-top:22px;background:#2f6bff;color:#ffffff;\
+<a href=\"{cta}\" style=\"display:inline-block;margin-top:22px;background:#2f6bff;color:#ffffff;\
 text-decoration:none;font-weight:600;font-size:15px;padding:12px 24px;border-radius:10px;\">View in LinkPulz &rarr;</a>\
 </div>\
 <div style=\"padding:18px 28px;border-top:1px solid #eef2f8;font-size:12px;color:#8a94a6;line-height:1.6;\">\
@@ -242,6 +248,7 @@ async fn deliver_digest(
         kind: "digest".into(),
         title: subject,
         body: Some(lines.join("\n")),
+        backlink_id: None,
         created_at: chrono::Utc::now(),
     };
     match deliver_one(cfg, d, &digest).await {
@@ -284,6 +291,7 @@ pub async fn send_test(
         kind: "test".into(),
         title: "LinkPulz test alert".into(),
         body: Some("If you can read this, your alert destination is wired up correctly.".into()),
+        backlink_id: None,
         created_at: chrono::Utc::now(),
     };
     let result = deliver_one(cfg, dest, &test).await;

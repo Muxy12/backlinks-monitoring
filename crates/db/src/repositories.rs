@@ -5727,6 +5727,7 @@ pub mod alerts {
         pub kind: String,
         pub title: String,
         pub body: Option<String>,
+        pub backlink_id: Option<Uuid>,
         pub created_at: DateTime<Utc>,
     }
 
@@ -5737,7 +5738,7 @@ pub mod alerts {
         limit: i64,
     ) -> Result<Vec<PendingNotification>, DbError> {
         Ok(sqlx::query_as::<_, PendingNotification>(
-            "SELECT n.id, n.kind, n.title, n.body, n.created_at \
+            "SELECT n.id, n.kind, n.title, n.body, n.backlink_id, n.created_at \
              FROM notifications n \
              WHERE n.organization_id = $2 \
                AND n.created_at > now() - interval '24 hours' \
