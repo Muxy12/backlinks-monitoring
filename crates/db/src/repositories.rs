@@ -5502,11 +5502,21 @@ pub mod notifications {
                 continue;
             };
             let title = format!("{label}: {}", c.source_domain);
-            let change = match (c.previous_data.as_deref(), c.current_data.as_deref()) {
-                (Some(p), Some(n)) => format!("{p} → {n}"),
-                (None, Some(n)) => n.to_string(),
-                (Some(p), None) => p.to_string(),
-                (None, None) => label.to_string(),
+            let change = if c.event_type == "backlink_restored" {
+                // Restored events store the target URL in current_data (already on
+                // the Page line below), so render a status→status transition
+                // ("lost → live") rather than a confusing status→URL line.
+                match c.previous_data.as_deref() {
+                    Some(p) => format!("{p} → live"),
+                    None => "live".to_string(),
+                }
+            } else {
+                match (c.previous_data.as_deref(), c.current_data.as_deref()) {
+                    (Some(p), Some(n)) => format!("{p} → {n}"),
+                    (None, Some(n)) => n.to_string(),
+                    (Some(p), None) => p.to_string(),
+                    (None, None) => label.to_string(),
+                }
             };
             // The title carries only the source domain, so enrich the body with
             // which of the owner's sites (project + client) and which page the
