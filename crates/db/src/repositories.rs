@@ -8031,4 +8031,148 @@ pub mod geo {
         .await?;
         Ok(())
     }
+
+    /// All tracked GEO queries for a project, newest first.
+    pub async fn list_queries(
+        pool: &PgPool,
+        scope: &OrgScope,
+        project_id: Uuid,
+    ) -> Result<Vec<GeoQuery>, DbError> {
+        let rows = sqlx::query_as::<_, GeoQuery>(
+            "SELECT id, organization_id, project_id, query, locale, engine, enabled, created_at \
+             FROM geo_queries WHERE organization_id = $1 AND project_id = $2 \
+             ORDER BY created_at DESC",
+        )
+        .bind(scope.organization_id())
+        .bind(project_id)
+        .fetch_all(pool)
+        .await?;
+        Ok(rows)
+    }
+
+    /// The enabled queries a refresh should capture.
+    pub async fn enabled_queries(
+        pool: &PgPool,
+        scope: &OrgScope,
+        project_id: Uuid,
+    ) -> Result<Vec<GeoQuery>, DbError> {
+        let rows = sqlx::query_as::<_, GeoQuery>(
+            "SELECT id, organization_id, project_id, query, locale, engine, enabled, created_at \
+             FROM geo_queries \
+             WHERE organization_id = $1 AND project_id = $2 AND enabled = true \
+             ORDER BY created_at",
+        )
+        .bind(scope.organization_id())
+        .bind(project_id)
+        .fetch_all(pool)
+        .await?;
+        Ok(rows)
+    }
+
+    /// Add a tracked query (idempotent on the natural key). Returns the row.
+    pub async fn add_query(
+        pool: &PgPool,
+        scope: &OrgScope,
+        project_id: Uuid,
+        query: &str,
+        locale: &str,
+        engine: &str,
+    ) -> Result<GeoQuery, DbError> {
+        let row = sqlx::query_as::<_, GeoQuery>(
+            "INSERT INTO geo_queries (id, organization_id, project_id, query, locale, engine) \
+             VALUES ($1, $2, $3, $4, $5, $6) \
+             ON CONFLICT (project_id, query, locale, engine) DO UPDATE SET enabled = true \
+             RETURNING id, organization_id, project_id, query, locale, engine, enabled, created_at",
+        )
+        .bind(Uuid::now_v7())
+        .bind(scope.organization_id())
+        .bind(project_id)
+        .bind(query)
+        .bind(locale)
+        .bind(engine)
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_fetch)?;
+        Ok(row)
+    }
+
+    /// Delete a tracked query (tenant-scoped). Cascades its captures/citations.
+    pub async fn delete_query(
+        pool: &PgPool,
+        scope: &OrgScope,
+        query_id: Uuid,
+    ) -> Result<(), DbError> {
+        sqlx::query("DELETE FROM geo_queries WHERE id = $1 AND organization_id = $2")
+            .bind(query_id)
+            .bind(scope.organization_id())
+            .execute(pool)
+            .await?;
+        Ok(())
+    }
+
+    /// How many queries are tracked for a project (the coverage denominator).
+    pub async fn count_queries(
+        pool: &PgPool,
+        scope: &OrgScope,
+        project_id: Uuid,
+    ) -> Result<i64, DbError> {
+        let row: (i64,) = sqlx::query_as(
+            "SELECT count(*)::bigint FROM geo_queries \
+             WHERE organization_id = $1 AND project_id = $2",
+        )
+        .bind(scope.organization_id())
+        .bind(project_id)
+        .fetch_one(pool)
+        .await?;
+        Ok(row.0)
+    }
+
+    /// One row per cited domain for a project, aggregated across all captures,
+    /// with the placeable flag and (when the domain is a known spot) the spot's
+    /// quality signals — everything the GEO score needs. Most-cited first.
+    #[derive(sqlx::FromRow)]
+    pub struct GeoDomainRow {
+        pub cited_domain: String,
+        pub citation_count: i64,
+        pub best_rank: Option<i32>,
+        pub engine_count: i64,
+        pub placeable: bool,
+        pub keyword_count: Option<i32>,
+        pub domain_rank: Option<i32>,
+        pub spam_score: Option<i32>,
+        pub organic_keywords: Option<i32>,
+        pub organic_traffic: Option<i64>,
+    }
+
+    /// Aggregate the project's citations by domain for the GEO view.
+    pub async fn domain_citations(
+        pool: &PgPool,
+        scope: &OrgScope,
+        project_id: Uuid,
+    ) -> Result<Vec<GeoDomainRow>, DbError> {
+        let rows = sqlx::query_as::<_, GeoDomainRow>(
+            "SELECT c.cited_domain, \
+                    count(*)::bigint AS citation_count, \
+                    min(c.rank) AS best_rank, \
+                    count(DISTINCT q.engine)::bigint AS engine_count, \
+                    coalesce(gsl.placeable, false) AS placeable, \
+                    s.keyword_count, s.domain_rank, s.spam_score, \
+                    s.organic_keywords, s.organic_traffic \
+             FROM geo_citations c \
+             JOIN geo_queries q ON q.id = c.geo_query_id \
+             LEFT JOIN geo_spot_links gsl \
+                    ON gsl.project_id = c.project_id AND gsl.cited_domain = c.cited_domain \
+             LEFT JOIN spots s \
+                    ON s.project_id = c.project_id AND s.domain = c.cited_domain \
+             WHERE c.organization_id = $1 AND c.project_id = $2 \
+             GROUP BY c.cited_domain, gsl.placeable, s.keyword_count, s.domain_rank, \
+                      s.spam_score, s.organic_keywords, s.organic_traffic \
+             ORDER BY citation_count DESC, c.cited_domain",
+        )
+        .bind(scope.organization_id())
+        .bind(project_id)
+        .fetch_all(pool)
+        .await?;
+        Ok(rows)
+    }
 }
