@@ -10,6 +10,7 @@ pub mod campaigns_routes;
 pub mod competitor_routes;
 pub mod discovery_routes;
 pub mod feedback_routes;
+pub mod geo_routes;
 pub mod graph_routes;
 pub mod gsc_routes;
 pub mod impact_routes;
