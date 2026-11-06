@@ -4377,6 +4377,94 @@ pub mod billing {
     }
 }
 
+// ─── Acquisition usage metering (discoveries / GEO) for the quota gate (§6) ───
+//
+// Reads/writes the per-period counters on `usage_records` (0050). The period is
+// the current calendar month, so the quota resets monthly. Increments are
+// atomic upserts; reads return 0 when no row exists yet. Monitoring counters
+// live on the same table but are never routed through the quota gate.
+pub mod usage {
+    use super::*;
+
+    // Static SQL per counter (no dynamic string building) so the repo's
+    // SQL-injection audit lint is satisfied by construction. The period is the
+    // current calendar month; increments are atomic upserts.
+
+    /// Discoveries consumed this period (calendar month). 0 if none yet.
+    pub async fn discoveries_this_period(
+        pool: &PgPool,
+        organization_id: Uuid,
+    ) -> Result<i64, DbError> {
+        let row: Option<(i64,)> = sqlx::query_as(
+            "SELECT COALESCE(discoveries, 0)::bigint FROM usage_records \
+             WHERE organization_id = $1 AND period_start = date_trunc('month', now())::date",
+        )
+        .bind(organization_id)
+        .fetch_optional(pool)
+        .await?;
+        Ok(row.map(|(n,)| n).unwrap_or(0))
+    }
+
+    /// GEO captures consumed this period. 0 if none yet. (Wired by the GEO
+    /// pipeline in Phase 2; the counter and helper ship now so the schema and
+    /// metering are ready.)
+    pub async fn geo_queries_this_period(
+        pool: &PgPool,
+        organization_id: Uuid,
+    ) -> Result<i64, DbError> {
+        let row: Option<(i64,)> = sqlx::query_as(
+            "SELECT COALESCE(geo_queries, 0)::bigint FROM usage_records \
+             WHERE organization_id = $1 AND period_start = date_trunc('month', now())::date",
+        )
+        .bind(organization_id)
+        .fetch_optional(pool)
+        .await?;
+        Ok(row.map(|(n,)| n).unwrap_or(0))
+    }
+
+    /// Atomically add `n` discoveries to the current period.
+    pub async fn add_discoveries(
+        pool: &PgPool,
+        organization_id: Uuid,
+        n: i32,
+    ) -> Result<(), DbError> {
+        sqlx::query(
+            "INSERT INTO usage_records (id, organization_id, period_start, discoveries) \
+             VALUES ($1, $2, date_trunc('month', now())::date, $3) \
+             ON CONFLICT (organization_id, period_start) DO UPDATE SET \
+                 discoveries = usage_records.discoveries + EXCLUDED.discoveries, \
+                 recorded_at = now()",
+        )
+        .bind(Uuid::now_v7())
+        .bind(organization_id)
+        .bind(n.max(0))
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    /// Atomically add `n` GEO captures to the current period.
+    pub async fn add_geo_queries(
+        pool: &PgPool,
+        organization_id: Uuid,
+        n: i32,
+    ) -> Result<(), DbError> {
+        sqlx::query(
+            "INSERT INTO usage_records (id, organization_id, period_start, geo_queries) \
+             VALUES ($1, $2, date_trunc('month', now())::date, $3) \
+             ON CONFLICT (organization_id, period_start) DO UPDATE SET \
+                 geo_queries = usage_records.geo_queries + EXCLUDED.geo_queries, \
+                 recorded_at = now()",
+        )
+        .bind(Uuid::now_v7())
+        .bind(organization_id)
+        .bind(n.max(0))
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+}
+
 // ─── Trial lifecycle emails: idempotency + the due-reminder scan (docs/20) ────
 pub mod trial_emails {
     use super::*;

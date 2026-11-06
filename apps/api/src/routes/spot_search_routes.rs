@@ -270,9 +270,14 @@ pub async fn search_spots(
         ));
     }
 
+    // Acquisition quota (§6): a discovery spends provider units, so it is
+    // checked here, at enqueue. Over quota blocks THIS run (429) — it never
+    // deletes data and never touches monitoring. Resets each calendar month.
+    quota_gate(&state, scope.organization_id()).await?;
+
     let run = spots::start_run(&state.pool, &scope, Uuid::now_v7(), project_id, locale).await?;
     let key = format!("find_spots:{}", run.id);
-    db::repositories::jobs::enqueue(
+    let enqueued = db::repositories::jobs::enqueue(
         &state.pool,
         Some(scope.organization_id()),
         jobs::JobKind::FindSpots,
@@ -280,6 +285,10 @@ pub async fn search_spots(
         Some(&key),
     )
     .await?;
+    // Count the run only if a job was actually enqueued (not a dedupe no-op).
+    if enqueued.is_some() {
+        db::repositories::usage::add_discoveries(&state.pool, scope.organization_id(), 1).await?;
+    }
 
     Ok((StatusCode::ACCEPTED, Json(RunView::from(run))))
 }
@@ -322,9 +331,13 @@ pub async fn enrich_spots(
         ));
     }
 
+    // Enrichment is the costliest discovery stage (2 provider calls per spot),
+    // so it is metered against the same discovery quota, checked at enqueue.
+    quota_gate(&state, scope.organization_id()).await?;
+
     let run = spots::start_enrich(&state.pool, &scope, Uuid::now_v7(), project_id).await?;
     let key = format!("enrich_spots:{}", run.id);
-    db::repositories::jobs::enqueue(
+    let enqueued = db::repositories::jobs::enqueue(
         &state.pool,
         Some(scope.organization_id()),
         jobs::JobKind::EnrichSpots,
@@ -332,8 +345,33 @@ pub async fn enrich_spots(
         Some(&key),
     )
     .await?;
+    if enqueued.is_some() {
+        db::repositories::usage::add_discoveries(&state.pool, scope.organization_id(), 1).await?;
+    }
 
     Ok((StatusCode::ACCEPTED, Json(EnrichRunView::from(run))))
+}
+
+/// The enqueue-time discovery quota check, shared by search + enrich. Resolves
+/// the org's plan cap and current-period usage, then the pure
+/// `backlio_core::quota::check`. Over quota → 429 `quota_exceeded`; it never
+/// deletes data and never gates monitoring (§6).
+async fn quota_gate(state: &AppState, organization_id: Uuid) -> Result<(), ApiError> {
+    let spec = db::repositories::billing::plan_for_org(&state.pool, organization_id)
+        .await?
+        .spec();
+    let used = db::repositories::usage::discoveries_this_period(&state.pool, organization_id)
+        .await? as u32;
+    let decision = backlio_core::quota::check(spec.discovery_limit, used, 1);
+    if decision.allowed {
+        Ok(())
+    } else {
+        Err(ApiError::QuotaExceeded(format!(
+            "discovery quota reached for this period ({} of {} used) — it resets next month, or upgrade your plan for more.",
+            decision.used,
+            decision.limit.unwrap_or(0),
+        )))
+    }
 }
 
 /// `POST …/projects/{project_id}/spots/match` — cross-reference the spots with
