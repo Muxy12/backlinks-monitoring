@@ -150,6 +150,37 @@ export interface SpotsResponse {
   spots: SpotView[];
   forums: SpotForumView[];
 }
+// ── GEO pillar ("cited by AI") ──
+export interface GeoQueryView {
+  id: string;
+  query: string;
+  locale: string;
+  engine: string;
+  enabled: boolean;
+}
+export interface GeoQueriesResponse {
+  queries: GeoQueryView[];
+}
+export interface GeoCitationView {
+  domain: string;
+  citation_count: number;
+  best_rank: number | null;
+  engine_count: number;
+  placeable: boolean;
+  score: number;
+  coverage: number;
+  prominence: number;
+  reach: number;
+  quality: number;
+}
+export interface GeoCitationsResponse {
+  query_count: number;
+  domains: GeoCitationView[];
+}
+export interface GeoRefreshView {
+  enqueued: number;
+  remaining: number | null;
+}
 
 // LinkAvista marketplace catalogue (read-only browse, Lot 2). Prices are in EUR
 // cents, excl. VAT, exactly as LinkAvista returns them.
@@ -1025,6 +1056,29 @@ export const orgApi = {
     request<{ prospect_id: string; domain: string }>(
       `/v1/organizations/${org}/projects/${projectId}/spots/${spotId}/to-campaign`,
       { method: "POST", headers: csrfHeader(), body: JSON.stringify({ campaign_id: campaignId }) },
+    ),
+  // ── GEO pillar ("cited by AI") ──
+  geoQueries: (org: string, projectId: string) =>
+    request<GeoQueriesResponse>(`/v1/organizations/${org}/projects/${projectId}/geo/queries`),
+  addGeoQuery: (org: string, projectId: string, query: string, locale?: string) =>
+    request<GeoQueryView>(`/v1/organizations/${org}/projects/${projectId}/geo/queries`, {
+      method: "POST",
+      headers: csrfHeader(),
+      body: JSON.stringify({ query, locale }),
+    }),
+  deleteGeoQuery: (org: string, projectId: string, id: string) =>
+    request<null>(`/v1/organizations/${org}/projects/${projectId}/geo/queries/${id}`, {
+      method: "DELETE",
+      headers: csrfHeader(),
+    }),
+  geoRefresh: (org: string, projectId: string) =>
+    request<GeoRefreshView>(`/v1/organizations/${org}/projects/${projectId}/geo/refresh`, {
+      method: "POST",
+      headers: csrfHeader(),
+    }),
+  geoCitations: (org: string, projectId: string) =>
+    request<GeoCitationsResponse>(
+      `/v1/organizations/${org}/projects/${projectId}/geo/citations`,
     ),
   createProject: (
     org: string,

@@ -13,6 +13,8 @@ import {
   type SpotKeywordView,
   type SpotsResponse,
   type SpotView,
+  type GeoQueryView,
+  type GeoCitationsResponse,
 } from "@/lib/api";
 import { selectedOrgId } from "@/lib/workspace";
 import "@/app/auth.css";
@@ -52,6 +54,12 @@ export default function SpotsPage() {
   const [campaignId, setCampaignId] = useState<string>("");
   const [pushMsg, setPushMsg] = useState<string | null>(null);
   const campaignsBeta = !!me?.features?.campaigns_beta;
+  // GEO pillar ("cited by AI").
+  const [geoQueries, setGeoQueries] = useState<GeoQueryView[]>([]);
+  const [geoCites, setGeoCites] = useState<GeoCitationsResponse | null>(null);
+  const [newGeoQuery, setNewGeoQuery] = useState("");
+  const [geoBusy, setGeoBusy] = useState(false);
+  const [geoErr, setGeoErr] = useState<string | null>(null);
 
   useEffect(() => {
     api.me().then((res) => {
@@ -85,17 +93,31 @@ export default function SpotsPage() {
     if (res.ok) setSpotsData(res.data);
   }, []);
 
+  const loadGeo = useCallback(async (org: string, project: string) => {
+    const [q, c] = await Promise.all([
+      orgApi.geoQueries(org, project),
+      orgApi.geoCitations(org, project),
+    ]);
+    if (q.ok) setGeoQueries(q.data.queries);
+    if (c.ok) setGeoCites(c.data);
+  }, []);
+
   useEffect(() => {
     setData(null);
     setSpotsData(null);
     setFilter("all");
     setPushMsg(null);
     setCampaignId("");
+    setGeoQueries([]);
+    setGeoCites(null);
+    setGeoErr(null);
+    setNewGeoQuery("");
     if (orgId && projectId) {
       void load(orgId, projectId);
       void loadSpots(orgId, projectId);
+      void loadGeo(orgId, projectId);
     }
-  }, [orgId, projectId, load, loadSpots]);
+  }, [orgId, projectId, load, loadSpots, loadGeo]);
 
   useEffect(() => {
     if (!orgId || !projectId || !campaignsBeta) return;
@@ -315,6 +337,44 @@ export default function SpotsPage() {
       );
     }
     return <span className="muted">–</span>;
+  }
+
+  async function addGeoQuery() {
+    if (!orgId || !projectId) return;
+    const query = newGeoQuery.trim();
+    if (!query) return;
+    setGeoErr(null);
+    setGeoBusy(true);
+    const res = await orgApi.addGeoQuery(orgId, projectId, query);
+    setGeoBusy(false);
+    if (!res.ok) {
+      setGeoErr(res.detail || "Could not add the query.");
+      return;
+    }
+    setNewGeoQuery("");
+    await loadGeo(orgId, projectId);
+  }
+
+  async function removeGeoQuery(id: string) {
+    if (!orgId || !projectId) return;
+    const res = await orgApi.deleteGeoQuery(orgId, projectId, id);
+    if (res.ok) await loadGeo(orgId, projectId);
+  }
+
+  async function geoRefresh() {
+    if (!orgId || !projectId) return;
+    setGeoErr(null);
+    setGeoBusy(true);
+    const res = await orgApi.geoRefresh(orgId, projectId);
+    setGeoBusy(false);
+    if (!res.ok) {
+      setGeoErr(res.detail || "Could not start the GEO refresh.");
+      return;
+    }
+    // Captures run in the background; reload the citations shortly.
+    const o = orgId;
+    const p = projectId;
+    setTimeout(() => void loadGeo(o, p), 4000);
   }
 
   function exportSpotsCsv() {
@@ -851,6 +911,117 @@ export default function SpotsPage() {
               </div>
             </section>
           )}
+
+          <section className="panel sf-geo">
+            <h2>
+              GEO — cited by AI <span className="sf-beta">BETA</span>
+            </h2>
+            <p className="muted" style={{ marginBottom: 10 }}>
+              Track which sources AI assistants cite for your queries (Google AI Overviews), and
+              see which cited domains you can actually place a link on. Each refresh uses DataForSEO
+              and counts against your plan&rsquo;s GEO allowance.
+            </p>
+            {geoErr && (
+              <div className="auth-error" role="alert" style={{ marginBottom: 10 }}>
+                {geoErr}
+              </div>
+            )}
+            <form
+              className="sf-add"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void addGeoQuery();
+              }}
+            >
+              <input
+                aria-label="Add a GEO query"
+                value={newGeoQuery}
+                onChange={(e) => setNewGeoQuery(e.target.value)}
+                placeholder="a question your buyers ask an AI…"
+              />
+              <button className="btn sm" type="submit" disabled={geoBusy || !newGeoQuery.trim()}>
+                Add query
+              </button>
+            </form>
+            {geoQueries.length > 0 && (
+              <ul className="sf-list" style={{ marginTop: 10 }}>
+                {geoQueries.map((q) => (
+                  <li key={q.id} className="sf-item">
+                    <div className="sf-item-main">
+                      <span className="mono">{q.query}</span> <span className="sf-tag">{q.locale}</span>
+                    </div>
+                    <button
+                      className="btn sm ghost"
+                      onClick={() => void removeGeoQuery(q.id)}
+                      title="Stop tracking this query"
+                    >
+                      Remove
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="sf-spots-head" style={{ marginTop: 12 }}>
+              <span className="muted">
+                {geoQueries.length} quer{geoQueries.length === 1 ? "y" : "ies"} tracked
+                {geoCites ? ` · ${geoCites.domains.length} cited domain${geoCites.domains.length === 1 ? "" : "s"}` : ""}
+              </span>
+              <button
+                className="btn primary"
+                onClick={() => void geoRefresh()}
+                disabled={geoBusy || geoQueries.length === 0 || !dataforseo}
+              >
+                {geoBusy ? "Refreshing…" : "Refresh AI answers"}
+              </button>
+            </div>
+            {!dataforseo && (
+              <div className="auth-error" role="alert" style={{ marginTop: 10 }}>
+                DataForSEO is not configured on this deployment, so GEO capture is disabled.
+              </div>
+            )}
+            {geoCites && geoCites.domains.length > 0 ? (
+              <div className="bl-scroll" style={{ marginTop: 10 }}>
+                <table className="bl-table sf-spots-table">
+                  <thead>
+                    <tr>
+                      <th title="GEO opportunity score (0–100)">GEO</th>
+                      <th>Domain</th>
+                      <th title="Times cited across your tracked queries">Cited</th>
+                      <th title="Best position among an answer's cited sources">Best rank</th>
+                      <th title="Distinct AI engines that cite it">Engines</th>
+                      <th title="Is there a spot or marketplace offer to place a link?">Placeable</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {geoCites.domains.map((d) => (
+                      <tr key={d.domain}>
+                        <td>
+                          <span className="sf-score">{Math.round(d.score)}</span>
+                        </td>
+                        <td className="mono">{d.domain}</td>
+                        <td>
+                          <b>{d.citation_count}</b>
+                        </td>
+                        <td>{d.best_rank ?? "–"}</td>
+                        <td>{d.engine_count}</td>
+                        <td>
+                          {d.placeable ? (
+                            <span className="sf-buy">placeable</span>
+                          ) : (
+                            <span className="muted">–</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="muted" style={{ marginTop: 10 }}>
+                No AI citations captured yet. Add the queries your buyers ask, then hit Refresh.
+              </p>
+            )}
+          </section>
         </>
       )}
     </main>
