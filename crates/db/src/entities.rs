@@ -303,6 +303,19 @@ pub struct SpotForum {
     pub created_at: DateTime<Utc>,
 }
 
+/// A subscriber API key (migration 0053) — the non-secret fields for the
+/// settings UI. The secret is never stored (only its hash) and never listed.
+#[derive(Debug, Clone, FromRow)]
+pub struct ApiKeyRow {
+    pub id: Uuid,
+    pub name: String,
+    pub prefix: String,
+    pub scopes: Vec<String>,
+    pub last_used_at: Option<DateTime<Utc>>,
+    pub created_at: DateTime<Utc>,
+    pub revoked_at: Option<DateTime<Utc>>,
+}
+
 /// A GEO query we track for a project (migration 0052): the question we ask an
 /// AI engine to see which sources it cites.
 #[derive(Debug, Clone, FromRow)]

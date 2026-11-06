@@ -4,6 +4,7 @@
 pub mod admin_routes;
 pub mod alerts_routes;
 pub mod anchor_routes;
+pub mod api_key_routes;
 pub mod auth_routes;
 pub mod billing_routes;
 pub mod campaigns_routes;

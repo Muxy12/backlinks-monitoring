@@ -385,6 +385,14 @@ pub fn app(state: AppState) -> Router {
             get(routes::geo_routes::list_citations),
         )
         .route(
+            "/v1/organizations/{org_id}/api-keys",
+            get(routes::api_key_routes::list_keys).post(routes::api_key_routes::create_key),
+        )
+        .route(
+            "/v1/organizations/{org_id}/api-keys/{key_id}",
+            axum::routing::delete(routes::api_key_routes::revoke_key),
+        )
+        .route(
             "/v1/organizations/{org_id}/linkavista/sites",
             get(routes::linkavista_routes::list_sites),
         )
