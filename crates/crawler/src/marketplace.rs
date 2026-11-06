@@ -6,7 +6,10 @@
 
 use async_trait::async_trait;
 
-/// A marketplace listing for a domain (the fields a spot surfaces).
+/// A marketplace listing for a domain (the fields a spot surfaces). The terms
+/// beyond price (dofollow / content / indexation / retention) feed the
+/// price-compare view; each is `None` when the source doesn't expose it — we
+/// never fabricate a term.
 #[derive(Debug, Clone)]
 pub struct MarketplaceListing {
     pub site_id: Option<i64>,
@@ -14,6 +17,14 @@ pub struct MarketplaceListing {
     pub price_cents: Option<i64>,
     pub currency: Option<String>,
     pub url: Option<String>,
+    /// Whether the placement is a dofollow link.
+    pub dofollow: Option<bool>,
+    /// Whether article writing is included in the price.
+    pub content_included: Option<bool>,
+    /// Whether the source guarantees the page is indexed.
+    pub indexation_guarantee: Option<bool>,
+    /// Minimum months the link is kept live.
+    pub retention_months: Option<i32>,
 }
 
 #[async_trait]
@@ -22,6 +33,12 @@ pub trait MarketplaceProvider: Send + Sync {
     fn name(&self) -> &'static str;
     /// Look up `domain` in this marketplace's catalogue; `None` if not listed.
     async fn lookup(&self, domain: &str) -> anyhow::Result<Option<MarketplaceListing>>;
+}
+
+/// Whether any marketplace source is configured (so the match flow can gate on
+/// "any source" rather than a specific one).
+pub fn any_configured() -> bool {
+    !providers_from_env().is_empty()
 }
 
 /// Build the configured marketplace providers from env. Currently LinkAvista
@@ -69,6 +86,12 @@ impl MarketplaceProvider for LinkavistaMarketplace {
                     price_cents: pricing.as_ref().and_then(|p| p.price),
                     currency: pricing.and_then(|p| p.currency),
                     url: s.url,
+                    // LinkAvista exposes these via writing_modes/constraints;
+                    // not mapped yet, so left unknown rather than guessed.
+                    dofollow: None,
+                    content_included: None,
+                    indexation_guarantee: None,
+                    retention_months: None,
                 }));
             }
         }

@@ -19,6 +19,7 @@ pub mod forums;
 pub mod geo_score;
 pub mod impact;
 pub mod keywords;
+pub mod marketplace;
 pub mod monitoring;
 pub mod net;
 pub mod observation;

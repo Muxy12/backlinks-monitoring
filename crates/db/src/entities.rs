@@ -303,6 +303,27 @@ pub struct SpotForum {
     pub created_at: DateTime<Utc>,
 }
 
+/// One normalised marketplace offer for a spot (migration 0051): a spot can
+/// carry several, one per source, for price-comparison.
+#[derive(Debug, Clone, FromRow)]
+pub struct MarketplaceOffer {
+    pub id: Uuid,
+    pub organization_id: Uuid,
+    pub project_id: Uuid,
+    pub spot_id: Uuid,
+    pub source_slug: String,
+    pub editor_domain: String,
+    pub site_id: Option<i64>,
+    pub price_cents: Option<i64>,
+    pub currency: Option<String>,
+    pub dofollow: Option<bool>,
+    pub content_included: Option<bool>,
+    pub indexation_guarantee: Option<bool>,
+    pub retention_months: Option<i32>,
+    pub offer_url: Option<String>,
+    pub imported_at: DateTime<Utc>,
+}
+
 /// One Spot Finder marketplace-matching pass for a project (migration 0046, Lot
 /// D): cross-reference spots against link-buying platforms.
 #[derive(Debug, Clone, FromRow)]
