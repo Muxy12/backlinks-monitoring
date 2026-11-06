@@ -7113,7 +7113,6 @@ pub mod spot_keywords {
 pub mod spots {
     use super::*;
     use crate::entities::{Spot, SpotEnrichRun, SpotForum, SpotMarketplaceRun, SpotSearchRun};
-    use serde_json::Value;
 
     macro_rules! run_cols {
         () => {
