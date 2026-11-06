@@ -42,6 +42,10 @@ pub enum JobKind {
     /// Spot Finder (Lot D): cross-reference spots with link-buying marketplaces
     /// (LinkAvista …) and mark the buyable ones. User-initiated.
     MatchMarketplaces,
+    /// GEO pillar (Phase 2): capture one tracked query's AI answer (DataForSEO
+    /// AI Overviews), record the cited sources, and recompute which cited
+    /// domains are placeable. User-initiated, paid (DataForSEO).
+    CaptureGeo,
 }
 
 impl JobKind {
@@ -60,7 +64,8 @@ impl JobKind {
             JobKind::DetectSiteKeywords
             | JobKind::FindSpots
             | JobKind::EnrichSpots
-            | JobKind::MatchMarketplaces => 15,
+            | JobKind::MatchMarketplaces
+            | JobKind::CaptureGeo => 15,
             JobKind::CheckSourcePage | JobKind::CheckTargetUrl => 0,
             JobKind::RetentionDownsample => -10,
         }
@@ -84,6 +89,7 @@ impl JobKind {
             JobKind::FindSpots => "find_spots",
             JobKind::EnrichSpots => "enrich_spots",
             JobKind::MatchMarketplaces => "match_marketplaces",
+            JobKind::CaptureGeo => "capture_geo",
         }
     }
 }
@@ -109,6 +115,7 @@ impl FromStr for JobKind {
             "find_spots" => FindSpots,
             "enrich_spots" => EnrichSpots,
             "match_marketplaces" => MatchMarketplaces,
+            "capture_geo" => CaptureGeo,
             _ => return Err(()),
         })
     }
@@ -153,6 +160,7 @@ mod tests {
             JobKind::FindSpots,
             JobKind::EnrichSpots,
             JobKind::MatchMarketplaces,
+            JobKind::CaptureGeo,
         ] {
             assert_eq!(k.as_str().parse::<JobKind>(), Ok(k), "round-trip for {k:?}");
         }

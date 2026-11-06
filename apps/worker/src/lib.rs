@@ -6,6 +6,7 @@ pub mod deliver;
 pub mod discover;
 pub mod engine;
 pub mod enrich;
+pub mod geo;
 pub mod keywords;
 pub mod marketplace;
 pub mod spots;
@@ -126,6 +127,11 @@ async fn dispatch(ctx: &WorkerCtx, job: &ClaimedJob) -> anyhow::Result<()> {
         JobKind::MatchMarketplaces => {
             let run_id = payload_uuid(&job.payload, "run_id")?;
             marketplace::run_match(&ctx.pool, run_id).await?;
+            Ok(())
+        }
+        JobKind::CaptureGeo => {
+            let geo_query_id = payload_uuid(&job.payload, "geo_query_id")?;
+            geo::run_capture(&ctx.pool, geo_query_id).await?;
             Ok(())
         }
         // Other job types wire in as their handlers land (docs/07 §5).

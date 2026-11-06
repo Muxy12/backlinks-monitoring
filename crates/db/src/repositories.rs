@@ -7918,3 +7918,117 @@ pub mod provider_cache {
         Ok(())
     }
 }
+
+// ── GEO pillar (migration 0052) — captures, citations, placeable recompute ──
+pub mod geo {
+    use super::*;
+    use crate::entities::GeoQuery;
+
+    /// Fetch one tracked GEO query by id, or `None` if it was deleted.
+    pub async fn query_by_id(
+        pool: &PgPool,
+        geo_query_id: Uuid,
+    ) -> Result<Option<GeoQuery>, DbError> {
+        let row = sqlx::query_as::<_, GeoQuery>(
+            "SELECT id, organization_id, project_id, query, locale, engine, enabled, created_at \
+             FROM geo_queries WHERE id = $1",
+        )
+        .bind(geo_query_id)
+        .fetch_optional(pool)
+        .await?;
+        Ok(row)
+    }
+
+    /// A cited source to persist for a capture.
+    pub struct NewCitation<'a> {
+        pub cited_url: &'a str,
+        pub cited_domain: &'a str,
+        pub rank: Option<i32>,
+    }
+
+    /// Record one capture (an engine answer snapshot) and its cited sources, in
+    /// one transaction. Returns the new capture id.
+    pub async fn record_capture(
+        pool: &PgPool,
+        organization_id: Uuid,
+        project_id: Uuid,
+        geo_query_id: Uuid,
+        engine: &str,
+        cache_ref: Option<&str>,
+        citations: &[NewCitation<'_>],
+    ) -> Result<Uuid, DbError> {
+        let mut tx = pool.begin().await?;
+        let capture_id = Uuid::now_v7();
+        sqlx::query(
+            "INSERT INTO geo_captures \
+                 (id, organization_id, project_id, geo_query_id, engine, cache_ref) \
+             VALUES ($1, $2, $3, $4, $5, $6)",
+        )
+        .bind(capture_id)
+        .bind(organization_id)
+        .bind(project_id)
+        .bind(geo_query_id)
+        .bind(engine)
+        .bind(cache_ref)
+        .execute(&mut *tx)
+        .await?;
+        for c in citations {
+            sqlx::query(
+                "INSERT INTO geo_citations \
+                     (id, organization_id, project_id, geo_query_id, capture_id, \
+                      cited_url, cited_domain, rank) \
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+            )
+            .bind(Uuid::now_v7())
+            .bind(organization_id)
+            .bind(project_id)
+            .bind(geo_query_id)
+            .bind(capture_id)
+            .bind(c.cited_url)
+            .bind(c.cited_domain)
+            .bind(c.rank)
+            .execute(&mut *tx)
+            .await?;
+        }
+        tx.commit().await?;
+        Ok(capture_id)
+    }
+
+    /// Recompute, for every domain this project has seen cited, whether it is
+    /// placeable (an open spot or a marketplace offer exists for it) — the
+    /// "actionable" join. One set-based upsert over the project's citations.
+    pub async fn recompute_placeable(
+        pool: &PgPool,
+        organization_id: Uuid,
+        project_id: Uuid,
+    ) -> Result<(), DbError> {
+        sqlx::query(
+            "INSERT INTO geo_spot_links \
+                 (id, organization_id, project_id, cited_domain, spot_id, \
+                  marketplace_offer_id, placeable, reason, updated_at) \
+             SELECT gen_random_uuid(), $1, $2, d.cited_domain, s.id, mo.id, \
+                    (s.id IS NOT NULL OR mo.id IS NOT NULL), \
+                    CASE WHEN s.id IS NOT NULL THEN 'open spot' \
+                         WHEN mo.id IS NOT NULL THEN 'marketplace offer' \
+                         ELSE 'cited only' END, \
+                    now() \
+             FROM (SELECT DISTINCT cited_domain FROM geo_citations \
+                   WHERE organization_id = $1 AND project_id = $2) d \
+             LEFT JOIN LATERAL (SELECT id FROM spots \
+                   WHERE project_id = $2 AND domain = d.cited_domain LIMIT 1) s ON true \
+             LEFT JOIN LATERAL (SELECT id FROM marketplace_offers \
+                   WHERE project_id = $2 AND editor_domain = d.cited_domain LIMIT 1) mo ON true \
+             ON CONFLICT (project_id, cited_domain) DO UPDATE SET \
+                 spot_id = EXCLUDED.spot_id, \
+                 marketplace_offer_id = EXCLUDED.marketplace_offer_id, \
+                 placeable = EXCLUDED.placeable, \
+                 reason = EXCLUDED.reason, \
+                 updated_at = now()",
+        )
+        .bind(organization_id)
+        .bind(project_id)
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+}
