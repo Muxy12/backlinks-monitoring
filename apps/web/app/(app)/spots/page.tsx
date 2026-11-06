@@ -12,6 +12,7 @@ import {
   type SpotKeywordsResponse,
   type SpotKeywordView,
   type SpotsResponse,
+  type SpotView,
 } from "@/lib/api";
 import { selectedOrgId } from "@/lib/workspace";
 import "@/app/auth.css";
@@ -265,6 +266,57 @@ export default function SpotsPage() {
     return `${amount} ${currency ?? "EUR"}`;
   }
 
+  // The "Offers" cell: every marketplace that lists this spot, cheapest first
+  // (price-compare). Falls back to the embedded single offer for API responses
+  // that predate offers[].
+  function renderOffers(s: SpotView) {
+    const offers = s.offers ?? [];
+    if (offers.length > 0) {
+      return (
+        <div className="sf-offers">
+          {offers.map((o, i) => {
+            const price = formatPrice(o.price_cents, o.currency);
+            const follow =
+              o.dofollow == null ? "" : o.dofollow ? " · dofollow" : " · nofollow";
+            const title = `${o.source}${follow}`;
+            return o.url ? (
+              <a
+                key={i}
+                className="sf-buy"
+                href={o.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={title}
+              >
+                {price} ↗
+              </a>
+            ) : (
+              <span key={i} className="sf-buy" title={title}>
+                {price}
+              </span>
+            );
+          })}
+        </div>
+      );
+    }
+    if (s.buyable) {
+      return s.marketplace_url ? (
+        <a
+          className="sf-buy"
+          href={s.marketplace_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={`Buy on ${s.marketplace ?? "marketplace"}`}
+        >
+          {formatPrice(s.buy_price_cents, s.buy_currency)} ↗
+        </a>
+      ) : (
+        <span className="sf-buy">{formatPrice(s.buy_price_cents, s.buy_currency)}</span>
+      );
+    }
+    return <span className="muted">–</span>;
+  }
+
   function exportSpotsCsv() {
     const rows = spotsData?.spots ?? [];
     if (rows.length === 0) return;
@@ -361,8 +413,9 @@ export default function SpotsPage() {
           Spot Finder <span className="sf-beta">BETA</span>
         </h1>
         <p className="muted">
-          Step 1 — Keywords. We read your site’s own headings to suggest the topics you rank around.
-          Review and keep the ones worth prospecting; only kept keywords feed the next step.
+          Find link spots that rank for your topics and sit on sites with real organic traffic —
+          then compare placement prices across marketplaces. Start by reviewing the keywords we
+          detected from your site; only kept keywords feed the search.
         </p>
       </header>
 
@@ -596,8 +649,10 @@ export default function SpotsPage() {
 
               <p className="muted" style={{ marginBottom: 10 }}>
                 For each kept keyword we look up who ranks on Google, then surface the domains that
-                rank for your keywords — relevance-first link prospects. Uses DataForSEO (paid per
-                query); results are cached, so re-running is cheap.
+                rank for your keywords — relevance-first prospects. Enrich adds authority and real
+                organic traffic; Match compares placement prices across every configured
+                marketplace. Uses DataForSEO (paid per query); results are cached, so re-running is
+                cheap.
               </p>
 
               {!dataforseo && (
@@ -694,7 +749,7 @@ export default function SpotsPage() {
                         <th title="Domain authority (DataForSEO rank 0–1000)">DR</th>
                         <th title="Estimated monthly organic traffic">Traffic</th>
                         <th title="Backlink spam score (lower is better)">Spam</th>
-                        <th>Buy</th>
+                        <th title="Placements available, cheapest first">Offers</th>
                         <th>Example</th>
                         {campaignsBeta && <th></th>}
                       </tr>
@@ -717,27 +772,7 @@ export default function SpotsPage() {
                           <td>{s.domain_rank ?? "–"}</td>
                           <td>{s.organic_traffic != null ? s.organic_traffic.toLocaleString() : "–"}</td>
                           <td>{s.spam_score ?? "–"}</td>
-                          <td>
-                            {s.buyable ? (
-                              s.marketplace_url ? (
-                                <a
-                                  className="sf-buy"
-                                  href={s.marketplace_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  title={`Buy on ${s.marketplace}`}
-                                >
-                                  {formatPrice(s.buy_price_cents, s.buy_currency)} ↗
-                                </a>
-                              ) : (
-                                <span className="sf-buy">
-                                  {formatPrice(s.buy_price_cents, s.buy_currency)}
-                                </span>
-                              )
-                            ) : (
-                              <span className="muted">–</span>
-                            )}
-                          </td>
+                          <td>{renderOffers(s)}</td>
                           <td className="sf-example">
                             {s.example_url ? (
                               <a href={s.example_url} target="_blank" rel="noopener noreferrer" title={s.example_url}>
