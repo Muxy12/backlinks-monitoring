@@ -61,6 +61,34 @@ impl From<db::entities::SpotSearchRun> for RunView {
     }
 }
 
+/// One marketplace offer for a spot (price-compare). A spot may carry several.
+#[derive(Serialize)]
+pub struct OfferView {
+    pub source: String,
+    pub price_cents: Option<i64>,
+    pub currency: Option<String>,
+    pub dofollow: Option<bool>,
+    pub content_included: Option<bool>,
+    pub indexation_guarantee: Option<bool>,
+    pub retention_months: Option<i32>,
+    pub url: Option<String>,
+}
+
+impl From<db::entities::MarketplaceOffer> for OfferView {
+    fn from(o: db::entities::MarketplaceOffer) -> Self {
+        OfferView {
+            source: o.source_slug,
+            price_cents: o.price_cents,
+            currency: o.currency,
+            dofollow: o.dofollow,
+            content_included: o.content_included,
+            indexation_guarantee: o.indexation_guarantee,
+            retention_months: o.retention_months,
+            url: o.offer_url,
+        }
+    }
+}
+
 #[derive(Serialize)]
 pub struct SpotView {
     pub id: Uuid,
@@ -84,6 +112,9 @@ pub struct SpotView {
     pub buy_currency: Option<String>,
     pub marketplace_url: Option<String>,
     pub buyable: bool,
+    /// All marketplace offers for this spot (cheapest first), for price-compare.
+    /// The embedded `marketplace`/`buy_*` fields above mirror the cheapest one.
+    pub offers: Vec<OfferView>,
 }
 
 impl From<db::entities::Spot> for SpotView {
@@ -108,6 +139,7 @@ impl From<db::entities::Spot> for SpotView {
             buy_price_cents: s.buy_price_cents,
             buy_currency: s.buy_currency,
             marketplace_url: s.marketplace_url,
+            offers: Vec::new(),
         }
     }
 }
@@ -212,11 +244,31 @@ pub async fn list_spots(
     let match_run = spots::latest_match(&state.pool, &scope, project_id).await?;
     let rows = spots::list_spots(&state.pool, &scope, project_id).await?;
     let forums = spots::list_forums(&state.pool, &scope, project_id).await?;
+
+    // Attach each spot's marketplace offers (price-compare), grouped by spot.
+    let offers = spots::offers_for_project(&state.pool, &scope, project_id).await?;
+    let mut by_spot: std::collections::HashMap<Uuid, Vec<OfferView>> =
+        std::collections::HashMap::new();
+    for o in offers {
+        by_spot
+            .entry(o.spot_id)
+            .or_default()
+            .push(OfferView::from(o));
+    }
+    let spots: Vec<SpotView> = rows
+        .into_iter()
+        .map(|s| {
+            let mut v = SpotView::from(s);
+            v.offers = by_spot.remove(&v.id).unwrap_or_default();
+            v
+        })
+        .collect();
+
     Ok(Json(SpotsResponse {
         run: run.map(RunView::from),
         enrich_run: enrich_run.map(EnrichRunView::from),
         match_run: match_run.map(MatchRunView::from),
-        spots: rows.into_iter().map(SpotView::from).collect(),
+        spots,
         forums: forums.into_iter().map(ForumView::from).collect(),
     }))
 }

@@ -7711,6 +7711,85 @@ pub mod spots {
         Ok(())
     }
 
+    /// A normalised marketplace offer to persist for a spot (migration 0051).
+    pub struct NewOffer<'a> {
+        pub source_slug: &'a str,
+        pub editor_domain: &'a str,
+        pub site_id: Option<i64>,
+        pub price_cents: Option<i64>,
+        pub currency: Option<&'a str>,
+        pub dofollow: Option<bool>,
+        pub content_included: Option<bool>,
+        pub indexation_guarantee: Option<bool>,
+        pub retention_months: Option<i32>,
+        pub offer_url: Option<&'a str>,
+    }
+
+    /// Replace a spot's offers with the ones just found (price-compare rows).
+    /// Delete-then-insert in one transaction so a re-match is atomic.
+    pub async fn replace_spot_offers(
+        pool: &PgPool,
+        organization_id: Uuid,
+        project_id: Uuid,
+        spot_id: Uuid,
+        offers: &[NewOffer<'_>],
+    ) -> Result<(), DbError> {
+        let mut tx = pool.begin().await?;
+        sqlx::query("DELETE FROM marketplace_offers WHERE spot_id = $1")
+            .bind(spot_id)
+            .execute(&mut *tx)
+            .await?;
+        for o in offers {
+            sqlx::query(
+                "INSERT INTO marketplace_offers \
+                    (id, organization_id, project_id, spot_id, source_slug, editor_domain, \
+                     site_id, price_cents, currency, dofollow, content_included, \
+                     indexation_guarantee, retention_months, offer_url) \
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)",
+            )
+            .bind(Uuid::now_v7())
+            .bind(organization_id)
+            .bind(project_id)
+            .bind(spot_id)
+            .bind(o.source_slug)
+            .bind(o.editor_domain)
+            .bind(o.site_id)
+            .bind(o.price_cents)
+            .bind(o.currency)
+            .bind(o.dofollow)
+            .bind(o.content_included)
+            .bind(o.indexation_guarantee)
+            .bind(o.retention_months)
+            .bind(o.offer_url)
+            .execute(&mut *tx)
+            .await?;
+        }
+        tx.commit().await?;
+        Ok(())
+    }
+
+    /// All marketplace offers for a project's spots, cheapest first (priced
+    /// before unpriced). The API groups these by `spot_id` for the compare view.
+    pub async fn offers_for_project(
+        pool: &PgPool,
+        scope: &OrgScope,
+        project_id: Uuid,
+    ) -> Result<Vec<crate::entities::MarketplaceOffer>, DbError> {
+        let rows = sqlx::query_as::<_, crate::entities::MarketplaceOffer>(
+            "SELECT id, organization_id, project_id, spot_id, source_slug, editor_domain, \
+                    site_id, price_cents, currency, dofollow, content_included, \
+                    indexation_guarantee, retention_months, offer_url, imported_at \
+             FROM marketplace_offers \
+             WHERE organization_id = $1 AND project_id = $2 \
+             ORDER BY spot_id, (price_cents IS NULL), price_cents ASC",
+        )
+        .bind(scope.organization_id())
+        .bind(project_id)
+        .fetch_all(pool)
+        .await?;
+        Ok(rows)
+    }
+
     // ── Forums & communities (Lot E) ───────────────────────────────────────────
 
     /// A forum/community page to persist (from the SERP run).
