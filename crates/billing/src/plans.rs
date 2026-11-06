@@ -31,6 +31,13 @@ pub struct PlanSpec {
     pub project_limit: Option<u32>,
     /// Team seats included (owner counts as a seat). `None` = unlimited.
     pub seat_limit: Option<u32>,
+    /// Discovery runs allowed per billing period (acquisition quota). Each run
+    /// spends provider units, so this is finite on every plan — it is the
+    /// margin guard (docs/product/21 §6). `None` would mean unlimited.
+    pub discovery_limit: Option<u32>,
+    /// GEO captures (AI-Overview lookups) allowed per period (acquisition
+    /// quota). Finite on every plan for the same reason. `None` = unlimited.
+    pub geo_query_limit: Option<u32>,
     /// How often this plan's backlinks are monitored.
     pub monitoring_interval_hours: u32,
     /// Highlighted as "Most popular" on the pricing page.
@@ -50,6 +57,8 @@ impl Plan {
                 backlink_limit: Some(500),
                 project_limit: Some(3),
                 seat_limit: Some(1),
+                discovery_limit: Some(20),
+                geo_query_limit: Some(50),
                 monitoring_interval_hours: 48,
                 most_popular: false,
             },
@@ -62,6 +71,8 @@ impl Plan {
                 backlink_limit: Some(2_500),
                 project_limit: Some(10),
                 seat_limit: Some(3),
+                discovery_limit: Some(100),
+                geo_query_limit: Some(300),
                 monitoring_interval_hours: 48,
                 most_popular: true,
             },
@@ -74,6 +85,8 @@ impl Plan {
                 backlink_limit: Some(5_000),
                 project_limit: Some(25),
                 seat_limit: Some(5),
+                discovery_limit: Some(300),
+                geo_query_limit: Some(1_000),
                 monitoring_interval_hours: 48,
                 most_popular: false,
             },
@@ -86,6 +99,8 @@ impl Plan {
                 backlink_limit: Some(15_000),
                 project_limit: Some(75),
                 seat_limit: Some(15),
+                discovery_limit: Some(1_000),
+                geo_query_limit: Some(3_000),
                 monitoring_interval_hours: 48,
                 most_popular: false,
             },
@@ -142,6 +157,25 @@ mod tests {
         assert_eq!(Plan::Agency.spec().backlink_limit, Some(15_000));
         assert_eq!(Plan::Agency.spec().project_limit, Some(75));
         assert_eq!(Plan::Agency.spec().seat_limit, Some(15));
+    }
+
+    #[test]
+    fn acquisition_quotas_are_finite_and_increase_with_tier() {
+        // Finite on every plan — the margin guard (§6) requires a bound so
+        // provider_cost(plan) < price(plan). "Unlimited" (None) is never used.
+        let mut last_disc = 0;
+        let mut last_geo = 0;
+        for p in Plan::ALL {
+            let s = p.spec();
+            let disc = s.discovery_limit.expect("discovery quota must be finite");
+            let geo = s.geo_query_limit.expect("geo quota must be finite");
+            assert!(disc > last_disc, "discovery quota increases by tier");
+            assert!(geo > last_geo, "geo quota increases by tier");
+            // GEO lookups are cheaper per unit, so the allowance is larger.
+            assert!(geo >= disc, "geo allowance is at least the discovery one");
+            last_disc = disc;
+            last_geo = geo;
+        }
     }
 
     #[test]

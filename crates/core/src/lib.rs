@@ -24,6 +24,7 @@ pub mod net;
 pub mod observation;
 pub mod outreach;
 pub mod outreach_schedule;
+pub mod quota;
 pub mod reclamation;
 pub mod scoring;
 pub mod spot_score;
@@ -61,6 +62,7 @@ pub use outreach::{
     OutreachContext, OutreachDraft, ReclaimPitch, render_draft as outreach_render_draft,
 };
 pub use outreach_schedule::{DispatchAction, decide as outreach_decide};
+pub use quota::{QuotaDecision, QuotaKind, check as quota_check, would_allow as quota_would_allow};
 pub use reclamation::ReclaimAngle;
 pub use scoring::{ProspectScore, ProspectSignals, score_prospect};
 pub use spot_score::{SpotScore, SpotSignals, score as spot_score};
