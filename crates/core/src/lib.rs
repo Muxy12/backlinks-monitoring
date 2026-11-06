@@ -13,8 +13,10 @@ pub mod anchors;
 pub mod attention;
 pub mod csv_export;
 pub mod csv_import;
+pub mod decline;
 pub mod event;
 pub mod forums;
+pub mod geo_score;
 pub mod impact;
 pub mod keywords;
 pub mod monitoring;
@@ -38,8 +40,13 @@ pub use anchors::{
 pub use attention::{
     AttentionKind, Priority, priority as attention_priority, sort_key as attention_sort_key,
 };
+pub use decline::{
+    DeclineAssessment, HealthFlag, TrafficSample, assess as decline_assess, decline_flag,
+    is_suspect,
+};
 pub use event::{BacklinkEvent, EventType, change_alert_label};
 pub use forums::{ForumKind, forum_kind, is_forum};
+pub use geo_score::{GeoScore, GeoSignals, score as geo_score};
 pub use impact::{Confidence, SignalState};
 pub use keywords::{KeywordCandidate, candidates_from_h1s, clean_keyword};
 pub use monitoring::{
