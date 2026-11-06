@@ -1,8 +1,10 @@
 //! Spot Finder SERP run (Lot B). For each KEPT keyword of a project, ask who
 //! ranks (DataForSEO, paid), aggregate the ranking domains into spots, and store
 //! them. Cost is controlled two ways: only kept keywords are queried (capped),
-//! and an org-scoped cache skips keywords looked up recently.
+//! and the mutualised cross-tenant `provider_cache` skips any keyword+locale
+//! looked up recently by ANY workspace (the margin lever, §6).
 
+use backlio_core::provider_cache as cache_keys;
 use backlio_core::{SerpHit, aggregate_spots, forum_kind, site_host};
 use crawler::serp::{Locale, SerpProvider, SerpResult};
 use std::collections::HashMap;
@@ -14,15 +16,13 @@ const MAX_FORUMS: usize = 50;
 const MAX_KEYWORDS: i64 = 50;
 /// Organic depth requested per keyword.
 const SERP_DEPTH: usize = 20;
-/// Reuse a cached SERP for a keyword+locale for this many days.
-const CACHE_DAYS: i64 = 14;
 /// Max spots stored per project (already ranked strongest-first).
 const MAX_SPOTS: usize = 100;
 
 /// Run one SERP search (job `find_spots`). Claims the run, queries the kept
 /// keywords (cache-first), aggregates, and replaces the project's spots.
 pub async fn run_search(pool: &sqlx::PgPool, run_id: Uuid) -> anyhow::Result<()> {
-    use db::repositories::{projects, spots};
+    use db::repositories::{projects, provider_cache, spots};
 
     let Some(run) = spots::mark_run_running(pool, run_id).await? else {
         return Ok(());
@@ -53,16 +53,26 @@ pub async fn run_search(pool: &sqlx::PgPool, run_id: Uuid) -> anyhow::Result<()>
     let mut keywords_queried = 0i32;
 
     for keyword in &keywords {
-        let key = keyword.to_lowercase();
-        // Cache-first: a fresh cached SERP for this keyword+locale avoids a bill.
+        // Cache-first: a fresh cached SERP for this keyword+locale avoids a
+        // bill — and the cache is shared across every workspace (§6).
+        let cache_key = cache_keys::serp_key(keyword, &run.locale);
         let results: Vec<SerpResult> =
-            match spots::cache_get(pool, org, &key, &run.locale, CACHE_DAYS).await? {
+            match provider_cache::get(pool, cache_keys::SERP, &cache_key).await? {
                 Some(v) => serde_json::from_value(v).unwrap_or_default(),
                 None => match provider.organic(keyword, locale, SERP_DEPTH).await {
                     Ok(r) => {
                         serp_queries += 1;
                         let v = serde_json::to_value(&r)?;
-                        spots::cache_put(pool, org, &key, &run.locale, &v).await?;
+                        provider_cache::put(
+                            pool,
+                            cache_keys::SERP,
+                            &cache_key,
+                            Some(run.locale.as_str()),
+                            &v,
+                            1,
+                            cache_keys::SERP_TTL_SECS,
+                        )
+                        .await?;
                         r
                     }
                     Err(e) => {

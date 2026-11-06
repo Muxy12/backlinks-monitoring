@@ -98,9 +98,7 @@ pub fn score(s: &GeoSignals) -> GeoScore {
     // Prominence: being cited first is worth most; it decays with depth and is
     // 0 past PROMINENCE_DEPTH. No capture → 0 (we don't assume a good position).
     let prominence = match s.best_rank {
-        Some(rank) if rank >= 1 => {
-            (1.0 - (rank as f64 - 1.0) / PROMINENCE_DEPTH).clamp(0.0, 1.0)
-        }
+        Some(rank) if rank >= 1 => (1.0 - (rank as f64 - 1.0) / PROMINENCE_DEPTH).clamp(0.0, 1.0),
         _ => 0.0,
     };
 
@@ -111,10 +109,8 @@ pub fn score(s: &GeoSignals) -> GeoScore {
     let SpotScore { total: q, .. } = spot_score(&s.domain);
     let quality = (q / 100.0).clamp(0.0, 1.0);
 
-    let blended = W_COVERAGE * coverage
-        + W_PROMINENCE * prominence
-        + W_REACH * reach
-        + W_QUALITY * quality;
+    let blended =
+        W_COVERAGE * coverage + W_PROMINENCE * prominence + W_REACH * reach + W_QUALITY * quality;
 
     // Actionability gate: keep un-placeable citations, but rank them below ones
     // we can act on. Applied as a factor, not a weight, so it stays legible.

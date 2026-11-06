@@ -7113,7 +7113,6 @@ pub mod spot_keywords {
 pub mod spots {
     use super::*;
     use crate::entities::{Spot, SpotEnrichRun, SpotForum, SpotMarketplaceRun, SpotSearchRun};
-    use serde_json::Value;
 
     macro_rules! run_cols {
         () => {
@@ -7259,54 +7258,6 @@ pub mod spots {
         .fetch_all(pool)
         .await?;
         Ok(rows.into_iter().map(|(k,)| k).collect())
-    }
-
-    // ── SERP cache (org-scoped) ─────────────────────────────────────────────────
-
-    /// Fresh cached results for a keyword+locale, or `None` if absent or stale.
-    pub async fn cache_get(
-        pool: &PgPool,
-        organization_id: Uuid,
-        keyword_normalized: &str,
-        locale: &str,
-        max_age_days: i64,
-    ) -> Result<Option<Value>, DbError> {
-        let row: Option<(Value,)> = sqlx::query_as(
-            "SELECT results FROM serp_cache \
-             WHERE organization_id = $1 AND keyword_normalized = $2 AND locale = $3 \
-               AND fetched_at > now() - make_interval(days => $4)",
-        )
-        .bind(organization_id)
-        .bind(keyword_normalized)
-        .bind(locale)
-        .bind(max_age_days.max(0) as f64)
-        .fetch_optional(pool)
-        .await?;
-        Ok(row.map(|(v,)| v))
-    }
-
-    /// Store/refresh cached results for a keyword+locale.
-    pub async fn cache_put(
-        pool: &PgPool,
-        organization_id: Uuid,
-        keyword_normalized: &str,
-        locale: &str,
-        results: &Value,
-    ) -> Result<(), DbError> {
-        sqlx::query(
-            "INSERT INTO serp_cache (id, organization_id, keyword_normalized, locale, results) \
-             VALUES ($1, $2, $3, $4, $5) \
-             ON CONFLICT (organization_id, keyword_normalized, locale) \
-             DO UPDATE SET results = EXCLUDED.results, fetched_at = now()",
-        )
-        .bind(Uuid::now_v7())
-        .bind(organization_id)
-        .bind(keyword_normalized)
-        .bind(locale)
-        .bind(results)
-        .execute(pool)
-        .await?;
-        Ok(())
     }
 
     // ── Spots ────────────────────────────────────────────────────────────────
@@ -7734,5 +7685,69 @@ pub mod spots {
         .bind(project_id)
         .fetch_all(pool)
         .await?)
+    }
+}
+
+// ── Provider cache (cross-tenant, mutualised — the margin lever, §6) ─────────
+//
+// One cache in front of every paid provider call (SERP / metrics / AI
+// Overviews), keyed by (provider, cache_key) with no organization id, so a hit
+// serves every workspace for 0 provider units. Payloads are public provider
+// data — never store tenant PII here. Canonical keys + TTLs come from
+// `backlio_core::provider_cache`; see migration 0049.
+pub mod provider_cache {
+    use super::*;
+    use serde_json::Value;
+
+    /// A fresh cached payload for `(provider, cache_key)`, or `None` if absent
+    /// or expired. On a hit the row's `hits` counter is bumped in the same
+    /// statement, so the units saved by the cache stay observable.
+    pub async fn get(
+        pool: &PgPool,
+        provider: &str,
+        cache_key: &str,
+    ) -> Result<Option<Value>, DbError> {
+        let row: Option<(Value,)> = sqlx::query_as(
+            "UPDATE provider_cache SET hits = hits + 1 \
+             WHERE provider = $1 AND cache_key = $2 AND expires_at > now() \
+             RETURNING payload",
+        )
+        .bind(provider)
+        .bind(cache_key)
+        .fetch_optional(pool)
+        .await?;
+        Ok(row.map(|(v,)| v))
+    }
+
+    /// Store/refresh a payload with a TTL (seconds) and the provider units the
+    /// fetch spent. Resets `hits` on refresh. Never store tenant PII.
+    pub async fn put(
+        pool: &PgPool,
+        provider: &str,
+        cache_key: &str,
+        locale: Option<&str>,
+        payload: &Value,
+        cost_units: i32,
+        ttl_secs: i64,
+    ) -> Result<(), DbError> {
+        sqlx::query(
+            "INSERT INTO provider_cache \
+                 (id, provider, cache_key, locale, payload, cost_units, hits, fetched_at, expires_at) \
+             VALUES ($1, $2, $3, $4, $5, $6, 0, now(), now() + make_interval(secs => $7)) \
+             ON CONFLICT (provider, cache_key) DO UPDATE SET \
+                 locale = EXCLUDED.locale, payload = EXCLUDED.payload, \
+                 cost_units = EXCLUDED.cost_units, hits = 0, \
+                 fetched_at = now(), expires_at = EXCLUDED.expires_at",
+        )
+        .bind(Uuid::now_v7())
+        .bind(provider)
+        .bind(cache_key)
+        .bind(locale)
+        .bind(payload)
+        .bind(cost_units)
+        .bind(ttl_secs.max(0) as f64)
+        .execute(pool)
+        .await?;
+        Ok(())
     }
 }

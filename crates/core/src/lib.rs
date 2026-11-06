@@ -24,6 +24,7 @@ pub mod net;
 pub mod observation;
 pub mod outreach;
 pub mod outreach_schedule;
+pub mod provider_cache;
 pub mod quota;
 pub mod reclamation;
 pub mod scoring;
