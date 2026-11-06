@@ -5,8 +5,9 @@
 //! and env-gated on the same `DATAFORSEO_LOGIN`/`DATAFORSEO_PASSWORD`.
 
 /// Metrics for one domain. Each field is best-effort — `None` when the provider
-/// didn't return it — so a partial result still enriches what it can.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+/// didn't return it — so a partial result still enriches what it can. Serde so
+/// it can round-trip through the mutualised `provider_cache` as jsonb.
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct DomainMetrics {
     /// DataForSEO rank, 0..=1000 (authority).
     pub domain_rank: Option<i32>,

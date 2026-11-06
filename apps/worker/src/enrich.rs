@@ -3,6 +3,7 @@
 //! metrics (DataForSEO) and compute the explainable quality score. Only the
 //! shortlist is enriched, so the cost stays bounded.
 
+use backlio_core::provider_cache as cache_keys;
 use backlio_core::{SpotSignals, spot_score};
 use crawler::metrics::MetricsProvider;
 use uuid::Uuid;
@@ -12,7 +13,7 @@ const TOP_SPOTS: i64 = 30;
 
 /// Run one enrichment pass (job `enrich_spots`).
 pub async fn run_enrich(pool: &sqlx::PgPool, run_id: Uuid) -> anyhow::Result<()> {
-    use db::repositories::spots;
+    use db::repositories::{provider_cache, spots};
 
     let Some(run) = spots::mark_enrich_running(pool, run_id).await? else {
         return Ok(());
@@ -46,17 +47,43 @@ pub async fn run_enrich(pool: &sqlx::PgPool, run_id: Uuid) -> anyhow::Result<()>
     let mut enriched = 0i32;
     let mut provider_queries = 0i32;
     for (spot_id, domain, keyword_count) in targets {
-        let metrics = match provider.domain_metrics(&domain).await {
-            Ok(m) => m,
-            Err(e) => {
-                let msg = format!("{e}");
-                spots::finish_enrich(pool, run_id, enriched, provider_queries, Some(msg.as_str()))
+        // Cache-first: domain metrics are global (not locale-scoped) and shared
+        // across every workspace, so a domain enriched for one tenant serves the
+        // rest for 0 provider units (§6). A miss does the two DataForSEO calls.
+        let cache_key = cache_keys::metrics_key(&domain);
+        let metrics = match provider_cache::get(pool, cache_keys::METRICS, &cache_key).await? {
+            Some(v) => serde_json::from_value(v).unwrap_or_default(),
+            None => match provider.domain_metrics(&domain).await {
+                Ok(m) => {
+                    // Two provider calls per domain (backlinks summary + labs).
+                    provider_queries += 2;
+                    let v = serde_json::to_value(&m)?;
+                    provider_cache::put(
+                        pool,
+                        cache_keys::METRICS,
+                        &cache_key,
+                        None,
+                        &v,
+                        2,
+                        cache_keys::METRICS_TTL_SECS,
+                    )
                     .await?;
-                return Ok(());
-            }
+                    m
+                }
+                Err(e) => {
+                    let msg = format!("{e}");
+                    spots::finish_enrich(
+                        pool,
+                        run_id,
+                        enriched,
+                        provider_queries,
+                        Some(msg.as_str()),
+                    )
+                    .await?;
+                    return Ok(());
+                }
+            },
         };
-        // Two provider calls per domain (backlinks summary + labs overview).
-        provider_queries += 2;
 
         let signals = SpotSignals {
             keyword_count: keyword_count.max(0) as u32,
