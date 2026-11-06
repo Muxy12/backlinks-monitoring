@@ -82,6 +82,16 @@ export interface SpotRunView {
   created_at: string;
   updated_at: string;
 }
+export interface OfferView {
+  source: string;
+  price_cents: number | null;
+  currency: string | null;
+  dofollow: boolean | null;
+  content_included: boolean | null;
+  indexation_guarantee: boolean | null;
+  retention_months: number | null;
+  url: string | null;
+}
 export interface SpotView {
   id: string;
   domain: string;
@@ -102,6 +112,10 @@ export interface SpotView {
   buy_currency: string | null;
   marketplace_url: string | null;
   buyable: boolean;
+  // All marketplace offers for this spot, cheapest first (price-compare). The
+  // legacy single fields above mirror the cheapest one. May be absent on older
+  // API responses.
+  offers?: OfferView[];
 }
 export interface SpotEnrichRunView {
   id: string;

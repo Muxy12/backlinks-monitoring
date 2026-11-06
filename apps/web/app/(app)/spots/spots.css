@@ -291,3 +291,10 @@
 a.sf-buy:hover {
   text-decoration: underline;
 }
+/* Price-compare: every marketplace offer for a spot, stacked cheapest-first. */
+.sf-offers {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
