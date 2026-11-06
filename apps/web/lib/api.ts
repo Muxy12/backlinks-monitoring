@@ -181,6 +181,27 @@ export interface GeoRefreshView {
   enqueued: number;
   remaining: number | null;
 }
+// ── Subscriber API keys (MCP / keyed REST) ──
+export interface ApiKeyView {
+  id: string;
+  name: string;
+  prefix: string;
+  scopes: string[];
+  last_used_at: string | null;
+  created_at: string;
+  revoked_at: string | null;
+}
+export interface ApiKeysResponse {
+  keys: ApiKeyView[];
+}
+export interface CreatedKey {
+  id: string;
+  name: string;
+  prefix: string;
+  scopes: string[];
+  // The full secret — returned once, on creation.
+  secret: string;
+}
 
 // LinkAvista marketplace catalogue (read-only browse, Lot 2). Prices are in EUR
 // cents, excl. VAT, exactly as LinkAvista returns them.
@@ -1080,6 +1101,19 @@ export const orgApi = {
     request<GeoCitationsResponse>(
       `/v1/organizations/${org}/projects/${projectId}/geo/citations`,
     ),
+  // ── Subscriber API keys (MCP / keyed REST) ──
+  apiKeys: (org: string) => request<ApiKeysResponse>(`/v1/organizations/${org}/api-keys`),
+  createApiKey: (org: string, name: string, scopes?: string[]) =>
+    request<CreatedKey>(`/v1/organizations/${org}/api-keys`, {
+      method: "POST",
+      headers: csrfHeader(),
+      body: JSON.stringify({ name, scopes }),
+    }),
+  revokeApiKey: (org: string, id: string) =>
+    request<null>(`/v1/organizations/${org}/api-keys/${id}`, {
+      method: "DELETE",
+      headers: csrfHeader(),
+    }),
   createProject: (
     org: string,
     body: { name: string; domain: string; check_frequency_hours?: number; client_id?: string },
