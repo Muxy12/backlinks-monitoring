@@ -76,3 +76,42 @@ pub async fn authorize_org(
         }
     }
 }
+
+/// A verified subscriber-API-key context: the tenant scope the key acts in plus
+/// the scopes it was granted. The key's hash is the proof of org membership
+/// (the equivalent of `authorize_org` for the keyed REST/MCP surface).
+pub struct ApiKeyContext {
+    pub scope: OrgScope,
+    /// The granted scope strings (e.g. `read:portfolio`); tool/endpoint-level.
+    pub scopes: Vec<String>,
+}
+
+/// Authenticate an API key by its SHA-256 hash and mint an [`OrgScope`] for its
+/// organization, recording the use. `NotFound` when the key is unknown or
+/// revoked, `Suspended` when the org is frozen. The minted scope carries
+/// `Role::Member`; the key's own `scopes` gate what it may do (never a raw role
+/// from the client). Reads the key fresh every call, so a revoke takes effect
+/// on the next request.
+pub async fn authorize_api_key(pool: &PgPool, key_hash: &[u8]) -> Result<ApiKeyContext, DbError> {
+    let row: Option<(Uuid, Vec<String>, bool)> = sqlx::query_as(
+        "UPDATE api_keys k SET last_used_at = now() \
+         FROM organizations o \
+         WHERE k.key_hash = $1 AND k.revoked_at IS NULL AND o.id = k.organization_id \
+         RETURNING k.organization_id, k.scopes, (o.suspended_at IS NOT NULL)",
+    )
+    .bind(key_hash)
+    .fetch_optional(pool)
+    .await?;
+
+    match row {
+        None => Err(DbError::NotFound),
+        Some((_, _, suspended)) if suspended => Err(DbError::Suspended),
+        Some((organization_id, scopes, _)) => Ok(ApiKeyContext {
+            scope: OrgScope {
+                organization_id,
+                role: Role::Member,
+            },
+            scopes,
+        }),
+    }
+}

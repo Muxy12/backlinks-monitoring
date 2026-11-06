@@ -17,7 +17,7 @@ pub use config::DbConfig;
 pub use entities::{Backlink, BacklinkEvent, Client, Organization, Project, Session, User};
 pub use error::DbError;
 pub use pool::{Db, build_pool};
-pub use scope::{OrgScope, authorize_org};
+pub use scope::{ApiKeyContext, OrgScope, authorize_api_key, authorize_org};
 
 /// Re-export so downstream crates use one sqlx version.
 pub use sqlx;
