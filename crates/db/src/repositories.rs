@@ -8176,3 +8176,88 @@ pub mod geo {
         Ok(rows)
     }
 }
+
+// ── Subscriber API keys (migration 0053) — MCP + keyed REST auth ─────────────
+pub mod api_keys {
+    use super::*;
+    use crate::entities::ApiKeyRow;
+
+    /// Store a new key (only its hash + prefix + scopes). Returns the row id.
+    pub async fn create(
+        pool: &PgPool,
+        organization_id: Uuid,
+        name: &str,
+        prefix: &str,
+        key_hash: &[u8],
+        scopes: &[String],
+    ) -> Result<Uuid, DbError> {
+        let id = Uuid::now_v7();
+        sqlx::query(
+            "INSERT INTO api_keys (id, organization_id, name, key_hash, prefix, scopes) \
+             VALUES ($1, $2, $3, $4, $5, $6)",
+        )
+        .bind(id)
+        .bind(organization_id)
+        .bind(name)
+        .bind(key_hash)
+        .bind(prefix)
+        .bind(scopes)
+        .execute(pool)
+        .await?;
+        Ok(id)
+    }
+
+    /// An org's keys (non-secret fields), newest first.
+    pub async fn list(pool: &PgPool, scope: &OrgScope) -> Result<Vec<ApiKeyRow>, DbError> {
+        let rows = sqlx::query_as::<_, ApiKeyRow>(
+            "SELECT id, name, prefix, scopes, last_used_at, created_at, revoked_at \
+             FROM api_keys WHERE organization_id = $1 ORDER BY created_at DESC",
+        )
+        .bind(scope.organization_id())
+        .fetch_all(pool)
+        .await?;
+        Ok(rows)
+    }
+
+    /// Revoke a key (tenant-scoped). Idempotent — a revoked key stays revoked.
+    pub async fn revoke(pool: &PgPool, scope: &OrgScope, id: Uuid) -> Result<(), DbError> {
+        sqlx::query(
+            "UPDATE api_keys SET revoked_at = now() \
+             WHERE id = $1 AND organization_id = $2 AND revoked_at IS NULL",
+        )
+        .bind(id)
+        .bind(scope.organization_id())
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    /// The identity a verified Bearer key resolves to.
+    pub struct AuthedKey {
+        pub id: Uuid,
+        pub organization_id: Uuid,
+        pub scopes: Vec<String>,
+    }
+
+    /// Look up a live (non-revoked) key by its SHA-256 hash and record the use.
+    /// `None` when absent or revoked. The hash is of 256 bits of entropy, so the
+    /// indexed equality is an exact, safe match.
+    pub async fn authenticate(
+        pool: &PgPool,
+        key_hash: &[u8],
+    ) -> Result<Option<AuthedKey>, DbError> {
+        let row: Option<(Uuid, Uuid, Vec<String>)> = sqlx::query_as(
+            "UPDATE api_keys SET last_used_at = now() \
+             WHERE key_hash = $1 AND revoked_at IS NULL \
+             RETURNING id, organization_id, scopes",
+        )
+        .bind(key_hash)
+        .fetch_optional(pool)
+        .await?;
+        Ok(row.map(|(id, organization_id, scopes)| AuthedKey {
+            id,
+            organization_id,
+            scopes,
+        }))
+    }
+}
