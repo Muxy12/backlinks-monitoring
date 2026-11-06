@@ -303,6 +303,20 @@ pub struct SpotForum {
     pub created_at: DateTime<Utc>,
 }
 
+/// A GEO query we track for a project (migration 0052): the question we ask an
+/// AI engine to see which sources it cites.
+#[derive(Debug, Clone, FromRow)]
+pub struct GeoQuery {
+    pub id: Uuid,
+    pub organization_id: Uuid,
+    pub project_id: Uuid,
+    pub query: String,
+    pub locale: String,
+    pub engine: String,
+    pub enabled: bool,
+    pub created_at: DateTime<Utc>,
+}
+
 /// One normalised marketplace offer for a spot (migration 0051): a spot can
 /// carry several, one per source, for price-comparison.
 #[derive(Debug, Clone, FromRow)]
