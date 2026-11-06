@@ -95,7 +95,7 @@ pub async fn mcp(
 ) -> Response {
     let ctx = match authenticate(&state, &headers).await {
         Ok(c) => c,
-        Err(resp) => return resp,
+        Err(resp) => return *resp,
     };
 
     let id = body.get("id").cloned().unwrap_or(Value::Null);
@@ -138,7 +138,10 @@ pub async fn mcp(
 
 // ── Auth ─────────────────────────────────────────────────────────────────────
 
-async fn authenticate(state: &AppState, headers: &HeaderMap) -> Result<ApiKeyContext, Response> {
+async fn authenticate(
+    state: &AppState,
+    headers: &HeaderMap,
+) -> Result<ApiKeyContext, Box<Response>> {
     let token = headers
         .get("authorization")
         .and_then(|v| v.to_str().ok())
@@ -151,21 +154,25 @@ async fn authenticate(state: &AppState, headers: &HeaderMap) -> Result<ApiKeyCon
     let hash = auth::hash_api_key(token);
     match authorize_api_key(&state.pool, &hash).await {
         Ok(ctx) => Ok(ctx),
-        Err(DbError::Suspended) => Err((
-            StatusCode::FORBIDDEN,
-            Json(json!({ "error": "organization suspended" })),
-        )
-            .into_response()),
+        Err(DbError::Suspended) => Err(Box::new(
+            (
+                StatusCode::FORBIDDEN,
+                Json(json!({ "error": "organization suspended" })),
+            )
+                .into_response(),
+        )),
         _ => Err(unauthorized()),
     }
 }
 
-fn unauthorized() -> Response {
-    (
-        StatusCode::UNAUTHORIZED,
-        Json(json!({ "error": "a valid lp_live_ API key is required" })),
+fn unauthorized() -> Box<Response> {
+    Box::new(
+        (
+            StatusCode::UNAUTHORIZED,
+            Json(json!({ "error": "a valid lp_live_ API key is required" })),
+        )
+            .into_response(),
     )
-        .into_response()
 }
 
 // ── JSON-RPC envelopes ─────────────────────────────────────────────────────
