@@ -10,6 +10,7 @@ import "./settings.css";
 const TABS = [
   { href: "/settings/notifications", label: "Notifications" },
   { href: "/settings/integrations", label: "Integrations" },
+  { href: "/settings/api-keys", label: "API keys" },
   { href: "/settings/billing", label: "Billing" },
 ];
 
