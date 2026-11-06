@@ -392,6 +392,9 @@ pub fn app(state: AppState) -> Router {
             "/v1/organizations/{org_id}/api-keys/{key_id}",
             axum::routing::delete(routes::api_key_routes::revoke_key),
         )
+        // MCP server — JSON-RPC over POST /mcp, authenticated by an lp_live_ key
+        // (org comes from the key, so this sits outside /v1/organizations).
+        .route("/mcp", post(routes::mcp_routes::mcp))
         .route(
             "/v1/organizations/{org_id}/linkavista/sites",
             get(routes::linkavista_routes::list_sites),
