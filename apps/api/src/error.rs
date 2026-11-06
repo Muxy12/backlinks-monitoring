@@ -24,6 +24,8 @@ pub enum ApiError {
     RegistrationClosed,
     #[error("plan limit reached")]
     PlanLimit(String),
+    #[error("quota exceeded")]
+    QuotaExceeded(String),
     #[error("rate limited")]
     RateLimited { retry_after_secs: u64 },
     #[error("service busy")]
@@ -59,6 +61,11 @@ impl ApiError {
                 "Registration is currently closed while we finish getting ready.".into(),
             ),
             ApiError::PlanLimit(d) => (StatusCode::PAYMENT_REQUIRED, "plan_limit", d.clone()),
+            // Per-period acquisition quota (discoveries/GEO). Distinct from the
+            // standing plan ceiling (402) and from request rate-limiting.
+            ApiError::QuotaExceeded(d) => {
+                (StatusCode::TOO_MANY_REQUESTS, "quota_exceeded", d.clone())
+            }
             ApiError::RateLimited { .. } => (
                 StatusCode::TOO_MANY_REQUESTS,
                 "rate_limited",
