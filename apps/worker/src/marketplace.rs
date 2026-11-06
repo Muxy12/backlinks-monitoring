@@ -83,7 +83,7 @@ pub async fn run_match(pool: &sqlx::PgPool, run_id: Uuid) -> anyhow::Result<()> 
         let mut offers: Vec<spots::NewOffer> = Vec::with_capacity(listings.len());
         for (name, l) in &listings {
             offers.push(spots::NewOffer {
-                source_slug: *name,
+                source_slug: name,
                 editor_domain: domain.as_str(),
                 site_id: l.site_id,
                 price_cents: l.price_cents,
@@ -114,7 +114,7 @@ pub async fn run_match(pool: &sqlx::PgPool, run_id: Uuid) -> anyhow::Result<()> 
                     pool,
                     spot_id,
                     &spots::SpotMarketplace {
-                        marketplace: Some(*name),
+                        marketplace: Some(name),
                         site_id: l.site_id,
                         price_cents: l.price_cents,
                         currency: l.currency.as_deref(),
