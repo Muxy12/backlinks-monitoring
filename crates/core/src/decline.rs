@@ -100,8 +100,7 @@ pub fn assess(prior: &TrafficSample, current: &TrafficSample) -> DeclineAssessme
     );
     let keywords_down = kw_change.is_some_and(|c| c <= KEYWORDS_DROP_CORROBORATING);
 
-    let declining = change <= DECLINE_ALONE
-        || (change <= DECLINE_CORROBORATED && keywords_down);
+    let declining = change <= DECLINE_ALONE || (change <= DECLINE_CORROBORATED && keywords_down);
 
     if declining {
         reasons.push("organic traffic falling");
@@ -145,7 +144,9 @@ pub fn is_suspect(s: &TrafficSample) -> bool {
     if traffic < SUSPECT_MIN_TRAFFIC {
         return false;
     }
-    let keywords_thin = s.organic_keywords.is_some_and(|k| k <= SUSPECT_MAX_KEYWORDS);
+    let keywords_thin = s
+        .organic_keywords
+        .is_some_and(|k| k <= SUSPECT_MAX_KEYWORDS);
     let links_thin = s.referring_domains.is_some_and(|r| r == 0);
     // Require a thin keyword signal; the thin-links signal corroborates it. We
     // only assert "suspect" when at least the keyword side is both present and
@@ -186,7 +187,10 @@ mod tests {
         let a = assess(&sample(10_000, 500, 300), &sample(10_200, 510, 300));
         assert_eq!(a.flag, HealthFlag::Healthy);
         assert!(a.traffic_change.unwrap() > 0.0);
-        assert!(!decline_flag(&sample(10_000, 500, 300), &sample(10_200, 510, 300)));
+        assert!(!decline_flag(
+            &sample(10_000, 500, 300),
+            &sample(10_200, 510, 300)
+        ));
     }
 
     #[test]
