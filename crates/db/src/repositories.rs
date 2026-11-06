@@ -4386,48 +4386,23 @@ pub mod billing {
 pub mod usage {
     use super::*;
 
-    async fn count(pool: &PgPool, organization_id: Uuid, column: &str) -> Result<i64, DbError> {
-        // `column` is a fixed internal literal ("discoveries"|"geo_queries"),
-        // never user input, so interpolating it is safe.
-        let sql = format!(
-            "SELECT COALESCE({column}, 0)::bigint FROM usage_records \
-             WHERE organization_id = $1 AND period_start = date_trunc('month', now())::date"
-        );
-        let row: Option<(i64,)> = sqlx::query_as(&sql)
-            .bind(organization_id)
-            .fetch_optional(pool)
-            .await?;
-        Ok(row.map(|(n,)| n).unwrap_or(0))
-    }
-
-    async fn add(
-        pool: &PgPool,
-        organization_id: Uuid,
-        column: &str,
-        n: i32,
-    ) -> Result<(), DbError> {
-        let sql = format!(
-            "INSERT INTO usage_records (id, organization_id, period_start, {column}) \
-             VALUES ($1, $2, date_trunc('month', now())::date, $3) \
-             ON CONFLICT (organization_id, period_start) \
-             DO UPDATE SET {column} = usage_records.{column} + EXCLUDED.{column}, \
-                           recorded_at = now()"
-        );
-        sqlx::query(&sql)
-            .bind(Uuid::now_v7())
-            .bind(organization_id)
-            .bind(n.max(0))
-            .execute(pool)
-            .await?;
-        Ok(())
-    }
+    // Static SQL per counter (no dynamic string building) so the repo's
+    // SQL-injection audit lint is satisfied by construction. The period is the
+    // current calendar month; increments are atomic upserts.
 
     /// Discoveries consumed this period (calendar month). 0 if none yet.
     pub async fn discoveries_this_period(
         pool: &PgPool,
         organization_id: Uuid,
     ) -> Result<i64, DbError> {
-        count(pool, organization_id, "discoveries").await
+        let row: Option<(i64,)> = sqlx::query_as(
+            "SELECT COALESCE(discoveries, 0)::bigint FROM usage_records \
+             WHERE organization_id = $1 AND period_start = date_trunc('month', now())::date",
+        )
+        .bind(organization_id)
+        .fetch_optional(pool)
+        .await?;
+        Ok(row.map(|(n,)| n).unwrap_or(0))
     }
 
     /// GEO captures consumed this period. 0 if none yet. (Wired by the GEO
@@ -4437,7 +4412,14 @@ pub mod usage {
         pool: &PgPool,
         organization_id: Uuid,
     ) -> Result<i64, DbError> {
-        count(pool, organization_id, "geo_queries").await
+        let row: Option<(i64,)> = sqlx::query_as(
+            "SELECT COALESCE(geo_queries, 0)::bigint FROM usage_records \
+             WHERE organization_id = $1 AND period_start = date_trunc('month', now())::date",
+        )
+        .bind(organization_id)
+        .fetch_optional(pool)
+        .await?;
+        Ok(row.map(|(n,)| n).unwrap_or(0))
     }
 
     /// Atomically add `n` discoveries to the current period.
@@ -4446,7 +4428,19 @@ pub mod usage {
         organization_id: Uuid,
         n: i32,
     ) -> Result<(), DbError> {
-        add(pool, organization_id, "discoveries", n).await
+        sqlx::query(
+            "INSERT INTO usage_records (id, organization_id, period_start, discoveries) \
+             VALUES ($1, $2, date_trunc('month', now())::date, $3) \
+             ON CONFLICT (organization_id, period_start) DO UPDATE SET \
+                 discoveries = usage_records.discoveries + EXCLUDED.discoveries, \
+                 recorded_at = now()",
+        )
+        .bind(Uuid::now_v7())
+        .bind(organization_id)
+        .bind(n.max(0))
+        .execute(pool)
+        .await?;
+        Ok(())
     }
 
     /// Atomically add `n` GEO captures to the current period.
@@ -4455,7 +4449,19 @@ pub mod usage {
         organization_id: Uuid,
         n: i32,
     ) -> Result<(), DbError> {
-        add(pool, organization_id, "geo_queries", n).await
+        sqlx::query(
+            "INSERT INTO usage_records (id, organization_id, period_start, geo_queries) \
+             VALUES ($1, $2, date_trunc('month', now())::date, $3) \
+             ON CONFLICT (organization_id, period_start) DO UPDATE SET \
+                 geo_queries = usage_records.geo_queries + EXCLUDED.geo_queries, \
+                 recorded_at = now()",
+        )
+        .bind(Uuid::now_v7())
+        .bind(organization_id)
+        .bind(n.max(0))
+        .execute(pool)
+        .await?;
+        Ok(())
     }
 }
 
