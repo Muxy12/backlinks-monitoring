@@ -360,8 +360,8 @@ async fn quota_gate(state: &AppState, organization_id: Uuid) -> Result<(), ApiEr
     let spec = db::repositories::billing::plan_for_org(&state.pool, organization_id)
         .await?
         .spec();
-    let used =
-        db::repositories::usage::discoveries_this_period(&state.pool, organization_id).await? as u32;
+    let used = db::repositories::usage::discoveries_this_period(&state.pool, organization_id)
+        .await? as u32;
     let decision = backlio_core::quota::check(spec.discovery_limit, used, 1);
     if decision.allowed {
         Ok(())
