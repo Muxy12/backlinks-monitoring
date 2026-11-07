@@ -41,6 +41,19 @@ async function lpMcp(method, params) {
   return body.result;
 }
 
+/** The active tab's URL + bare domain (requires the "tabs" permission). */
+async function lpActiveTab() {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const url = tab && tab.url ? tab.url : "";
+  let domain = "";
+  try {
+    domain = new URL(url).hostname.replace(/^www\./, "").toLowerCase();
+  } catch {
+    /* non-web tab (chrome://, etc.) */
+  }
+  return { url, domain };
+}
+
 /** Call a tool and parse its JSON text content. */
 async function lpTool(name, args) {
   const result = await lpMcp("tools/call", { name, arguments: args || {} });

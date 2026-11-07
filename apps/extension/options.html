@@ -23,6 +23,10 @@
       <input id="key" type="password" placeholder="lp_live_…" autocomplete="off" />
       <label class="field" for="base">Base URL</label>
       <input id="base" type="url" placeholder="https://linkpulz.com" />
+      <label class="field" for="project">Default project (for "Monitor this link")</label>
+      <select id="project" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--fg);">
+        <option value="">— none —</option>
+      </select>
       <div style="margin-top: 12px; display: flex; gap: 8px; align-items: center;">
         <button id="save" class="btn">Save &amp; test</button>
         <span id="status" class="muted"></span>
