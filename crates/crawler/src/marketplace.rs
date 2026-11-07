@@ -14,7 +14,8 @@ pub struct CatalogueQuery {
     pub search: Option<String>,
     /// Market/language, e.g. `fr` | `en`.
     pub locale: Option<String>,
-    /// Minimum domain authority/rank to include.
+    /// Minimum authority to include, on the normalized 0–1000 scale (each
+    /// adapter converts to its own source's units).
     pub min_domain_rank: Option<i32>,
     /// Maximum placement price (minor units).
     pub max_price_cents: Option<i64>,
@@ -34,7 +35,8 @@ pub struct CatalogueSpot {
     pub currency: Option<String>,
     pub offer_url: Option<String>,
     pub site_id: Option<i64>,
-    /// Authority metric as the source reports it (scale varies by source).
+    /// Authority, normalized by each adapter to a 0–1000 (DataForSEO-style)
+    /// scale so scoring is consistent across sources and with SERP spots.
     pub domain_rank: Option<i32>,
     pub referring_domains: Option<i32>,
     pub organic_traffic: Option<i64>,
@@ -156,7 +158,9 @@ impl MarketplaceProvider for LinkavistaMarketplace {
             .list_sites(&crate::linkavista::SiteQuery {
                 search: q.search.clone(),
                 language: q.locale.clone(),
-                da_min: q.min_domain_rank.map(|v| v.max(0) as u32),
+                // `min_domain_rank` is the source-agnostic 0–1000 scale; LinkAvista's
+                // DA filter is 0–100, so scale it back down.
+                da_min: q.min_domain_rank.map(|v| (v / 10).max(0) as u32),
                 price_max_cents: q.max_price_cents.map(|v| v.max(0) as u64),
                 per_page: Some(q.limit.clamp(1, 100) as u32),
                 ..Default::default()
@@ -175,7 +179,13 @@ impl MarketplaceProvider for LinkavistaMarketplace {
                     currency: pricing.and_then(|p| p.currency),
                     offer_url: s.url,
                     site_id: Some(s.id),
-                    domain_rank: metrics.as_ref().and_then(|m| m.da).map(|v| v as i32),
+                    // Normalize LinkAvista's DA (0–100) to the 0–1000 scale that
+                    // `core::spot_score` expects, so authority is weighted the same
+                    // for marketplace and SERP spots.
+                    domain_rank: metrics
+                        .as_ref()
+                        .and_then(|m| m.da)
+                        .map(|da| (da * 10).clamp(0, 1000) as i32),
                     referring_domains: metrics.as_ref().and_then(|m| m.rd).map(|v| v as i32),
                     organic_traffic: metrics.as_ref().and_then(|m| m.total_traffic),
                     theme: s.theme,
