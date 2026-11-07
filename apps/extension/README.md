@@ -15,19 +15,23 @@ and never leaves your browser.
 3. Open the extension's **options** (or click *Settings* in the popup), paste the
    key, and **Save & test**. The base URL defaults to `https://linkpulz.com`.
 
-## What it shows (v1)
+## What it shows
 
+- **This page**: the active tab's domain, whether it's buyable across your
+  marketplaces and at what price (`lookup_marketplace`), and a one-click
+  **"Monitor this link"** (`monitor_url`) once you pick a default project.
 - **Portfolio**: live vs at-risk monitored links (`portfolio_health`).
 - **Usage**: plan + discoveries / GEO queries this period (`usage`).
 - **Projects**: your target sites (`list_projects`).
 
-All read-only, all via MCP `tools/call`.
+All via MCP `tools/call`. Only `monitor_url` writes (adds a monitored backlink);
+it needs a key with the **`write:portfolio`** scope and a default project set in
+options. Everything else is read-only.
 
 ## Roadmap
 
-- v2: on a publisher page, show the LinkPulz score for that domain and a
-  one-click **"Monitor this link"** (needs a small MCP tool to score/monitor an
-  arbitrary URL for a project).
+- An optional on-page badge (content script) instead of the popup "This page"
+  card, for users who want it always visible.
 - Packaging for the Chrome Web Store once the flows settle.
 
 ## Notes

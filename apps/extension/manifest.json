@@ -8,6 +8,6 @@
     "default_title": "LinkPulz"
   },
   "options_page": "options.html",
-  "permissions": ["storage"],
+  "permissions": ["storage", "tabs"],
   "host_permissions": ["https://linkpulz.com/*"]
 }
