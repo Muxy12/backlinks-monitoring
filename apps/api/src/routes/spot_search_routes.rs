@@ -554,3 +554,59 @@ pub async fn spot_to_campaign(
         Json(serde_json::json!({ "prospect_id": prospect.id, "domain": prospect.domain })),
     ))
 }
+
+/// `POST …/projects/{project_id}/spots/discover-marketplace` — marketplace-first
+/// discovery: browse the configured marketplaces' catalogues for the project's
+/// kept keywords and persist the buyable sites as spots. Member role. Catalogue
+/// reads don't spend provider credit, so this is not quota-gated.
+pub async fn discover_marketplace_spots(
+    State(state): State<AppState>,
+    Path((org_id, project_id)): Path<(Uuid, Uuid)>,
+    jar: CookieJar,
+    headers: HeaderMap,
+    Json(body): Json<SearchBody>,
+) -> Result<(StatusCode, Json<RunView>), ApiError> {
+    gate(&state)?;
+    let (user, session) = current(&state, &jar).await?;
+    check_csrf(&jar, &headers, &session)?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Member)?;
+    projects::get(&state.pool, &scope, project_id).await?;
+
+    if !crawler::marketplace::any_configured() {
+        return Err(ApiError::Validation(
+            "no link marketplace is configured".into(),
+        ));
+    }
+
+    // One run at a time per project: return the in-flight one if present.
+    if spots::search_in_flight(&state.pool, &scope, project_id).await?
+        && let Some(existing) = spots::latest_run(&state.pool, &scope, project_id).await?
+    {
+        return Ok((StatusCode::ACCEPTED, Json(RunView::from(existing))));
+    }
+
+    let kept = spots::kept_keywords(&state.pool, scope.organization_id(), project_id, 1).await?;
+    if kept.is_empty() {
+        return Err(ApiError::Validation(
+            "keep at least one keyword before discovering marketplace spots".into(),
+        ));
+    }
+
+    let locale = match body.locale.as_deref() {
+        Some("en") => "en",
+        _ => "fr",
+    };
+    let run = spots::start_run(&state.pool, &scope, Uuid::now_v7(), project_id, locale).await?;
+    let key = format!("discover_marketplace:{}", run.id);
+    db::repositories::jobs::enqueue(
+        &state.pool,
+        Some(scope.organization_id()),
+        jobs::JobKind::DiscoverMarketplaceSpots,
+        serde_json::json!({ "run_id": run.id }),
+        Some(&key),
+    )
+    .await?;
+
+    Ok((StatusCode::ACCEPTED, Json(RunView::from(run))))
+}

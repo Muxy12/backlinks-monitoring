@@ -365,6 +365,10 @@ pub fn app(state: AppState) -> Router {
             post(routes::spot_search_routes::match_spots),
         )
         .route(
+            "/v1/organizations/{org_id}/projects/{project_id}/spots/discover-marketplace",
+            post(routes::spot_search_routes::discover_marketplace_spots),
+        )
+        .route(
             "/v1/organizations/{org_id}/projects/{project_id}/spots/{spot_id}/to-campaign",
             post(routes::spot_search_routes::spot_to_campaign),
         )

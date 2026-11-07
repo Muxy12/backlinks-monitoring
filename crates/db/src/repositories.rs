@@ -7396,6 +7396,92 @@ pub mod spots {
         Ok(())
     }
 
+    /// A spot sourced from a marketplace catalogue (migration 0051/0052 model):
+    /// the buyable site, its metrics + computed quality, and the single offer it
+    /// came from. Unlike SERP spots these carry no ranking position.
+    pub struct NewCatalogueSpot<'a> {
+        pub domain: &'a str,
+        /// How many of the project's keywords surfaced this domain (relevance).
+        pub keyword_count: i32,
+        pub example_keyword: Option<&'a str>,
+        pub domain_rank: Option<i32>,
+        pub referring_domains: Option<i32>,
+        pub organic_traffic: Option<i64>,
+        pub quality_score: f64,
+        pub source_slug: &'a str,
+        pub price_cents: Option<i64>,
+        pub currency: Option<&'a str>,
+        pub offer_url: Option<&'a str>,
+        pub site_id: Option<i64>,
+    }
+
+    /// Replace a project's spots with catalogue-sourced ones (marketplace-first
+    /// discovery). Each spot is written already-enriched (metrics + quality) with
+    /// its marketplace offer cached on the row AND a normalised `marketplace_offers`
+    /// row. One transaction; deleting the old spots cascades their offers.
+    pub async fn replace_catalogue_spots(
+        pool: &PgPool,
+        organization_id: Uuid,
+        project_id: Uuid,
+        spots: &[NewCatalogueSpot<'_>],
+    ) -> Result<(), DbError> {
+        let mut tx = pool.begin().await?;
+        sqlx::query("DELETE FROM spots WHERE organization_id = $1 AND project_id = $2")
+            .bind(organization_id)
+            .bind(project_id)
+            .execute(&mut *tx)
+            .await?;
+        for s in spots {
+            let spot_id: (Uuid,) = sqlx::query_as(
+                "INSERT INTO spots \
+                    (id, organization_id, project_id, domain, keyword_count, example_url, \
+                     example_keyword, domain_rank, referring_domains, organic_traffic, \
+                     quality_score, enriched_at, marketplace, marketplace_site_id, \
+                     buy_price_cents, buy_currency, marketplace_url, matched_at) \
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, now(), $12, $13, \
+                         $14, $15, $6, now()) \
+                 RETURNING id",
+            )
+            .bind(Uuid::now_v7())
+            .bind(organization_id)
+            .bind(project_id)
+            .bind(s.domain)
+            .bind(s.keyword_count)
+            .bind(s.offer_url)
+            .bind(s.example_keyword)
+            .bind(s.domain_rank)
+            .bind(s.referring_domains)
+            .bind(s.organic_traffic)
+            .bind(s.quality_score)
+            .bind(s.source_slug)
+            .bind(s.site_id)
+            .bind(s.price_cents)
+            .bind(s.currency)
+            .fetch_one(&mut *tx)
+            .await?;
+            sqlx::query(
+                "INSERT INTO marketplace_offers \
+                    (id, organization_id, project_id, spot_id, source_slug, editor_domain, \
+                     site_id, price_cents, currency, offer_url) \
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
+            )
+            .bind(Uuid::now_v7())
+            .bind(organization_id)
+            .bind(project_id)
+            .bind(spot_id.0)
+            .bind(s.source_slug)
+            .bind(s.domain)
+            .bind(s.site_id)
+            .bind(s.price_cents)
+            .bind(s.currency)
+            .bind(s.offer_url)
+            .execute(&mut *tx)
+            .await?;
+        }
+        tx.commit().await?;
+        Ok(())
+    }
+
     /// One spot by id, tenant-scoped. `NotFound` if not in the org.
     pub async fn get(pool: &PgPool, scope: &OrgScope, id: Uuid) -> Result<Spot, DbError> {
         sqlx::query_as::<_, Spot>(concat!(

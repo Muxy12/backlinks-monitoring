@@ -46,6 +46,11 @@ pub enum JobKind {
     /// AI Overviews), record the cited sources, and recompute which cited
     /// domains are placeable. User-initiated, paid (DataForSEO).
     CaptureGeo,
+    /// Marketplace-first discovery: browse the configured marketplaces' catalogues
+    /// for a project's kept keywords, rank by relevance + quality, and persist the
+    /// buyable sites as spots with their offers. User-initiated; catalogue reads
+    /// don't spend credit.
+    DiscoverMarketplaceSpots,
 }
 
 impl JobKind {
@@ -65,7 +70,8 @@ impl JobKind {
             | JobKind::FindSpots
             | JobKind::EnrichSpots
             | JobKind::MatchMarketplaces
-            | JobKind::CaptureGeo => 15,
+            | JobKind::CaptureGeo
+            | JobKind::DiscoverMarketplaceSpots => 15,
             JobKind::CheckSourcePage | JobKind::CheckTargetUrl => 0,
             JobKind::RetentionDownsample => -10,
         }
@@ -90,6 +96,7 @@ impl JobKind {
             JobKind::EnrichSpots => "enrich_spots",
             JobKind::MatchMarketplaces => "match_marketplaces",
             JobKind::CaptureGeo => "capture_geo",
+            JobKind::DiscoverMarketplaceSpots => "discover_marketplace_spots",
         }
     }
 }
@@ -116,6 +123,7 @@ impl FromStr for JobKind {
             "enrich_spots" => EnrichSpots,
             "match_marketplaces" => MatchMarketplaces,
             "capture_geo" => CaptureGeo,
+            "discover_marketplace_spots" => DiscoverMarketplaceSpots,
             _ => return Err(()),
         })
     }
@@ -161,6 +169,7 @@ mod tests {
             JobKind::EnrichSpots,
             JobKind::MatchMarketplaces,
             JobKind::CaptureGeo,
+            JobKind::DiscoverMarketplaceSpots,
         ] {
             assert_eq!(k.as_str().parse::<JobKind>(), Ok(k), "round-trip for {k:?}");
         }
