@@ -26,7 +26,10 @@ pub mod sitescan;
 pub use config::CrawlerConfig;
 pub use fetch::{FetchError, FetchOk, FetchOutcome, fetch};
 pub use geo::{Citation, GeoProvider, parse_citations};
-pub use marketplace::{MarketplaceListing, MarketplaceProvider, providers_from_env};
+pub use marketplace::{
+    CatalogueQuery, CatalogueSpot, MarketplaceListing, MarketplaceProvider, any_configured,
+    providers_from_env, search_all,
+};
 pub use matching::{LinkMatch, best_match, evaluate, find_matches};
 pub use metrics::{DomainMetrics, MetricsProvider};
 pub use parse::{ExtractedLink, ParsedPage, parse_page};
