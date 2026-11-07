@@ -443,10 +443,10 @@ pub async fn match_spots(
     scope.require(Role::Member)?;
     projects::get(&state.pool, &scope, project_id).await?;
 
-    // At least one marketplace (LinkAvista today) must be configured.
-    if !crate::routes::linkavista_routes::configured(&state.cfg) {
+    // At least one marketplace source must be configured (any provider).
+    if !crawler::marketplace::any_configured() {
         return Err(ApiError::Validation(
-            "no link marketplace is configured (set LINKAVISTA_API_KEY)".into(),
+            "no link marketplace is configured".into(),
         ));
     }
 
