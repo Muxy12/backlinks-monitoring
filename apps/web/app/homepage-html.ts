@@ -318,13 +318,13 @@ const MAIN = `${QUIZ_STYLE}
 <section class="hero" aria-labelledby="h1">
   <div class="wrap grid">
     <div>
-      <h1 id="h1">Backlink monitoring with automated alerts</h1>
-      <p class="lead">Track your backlinks. Detect changes. Stay in control of your SEO. LinkPulz monitors new and lost backlinks, tracks dofollow and nofollow changes, analyzes competitor backlinks, and alerts you the moment something important changes.</p>
+      <h1 id="h1">Find link placements across marketplaces — then monitor every link you build</h1>
+      <p class="lead">LinkPulz helps you discover relevant link spots on the marketplaces you already use, compare their placement prices side by side, and then monitor every link you build. New and lost links, dofollow and nofollow changes, redirects — tracked on a schedule you set, with automated alerts the moment something changes.</p>
       <ul class="check">
-        <li>Track new and lost backlinks</li>
-        <li>Monitor dofollow and nofollow changes</li>
-        <li>Analyze competitor backlinks</li>
-        <li>Get automated email, Slack and webhook alerts</li>
+        <li>Discover relevant link spots across your marketplaces</li>
+        <li>Compare placement prices side by side</li>
+        <li>Monitor every link you build — new, lost, nofollow, redirects</li>
+        <li>Import existing backlinks from CSV or Excel, or add them by hand</li>
       </ul>
       <div class="cta-row">
         <a class="btn" href="/register">Start your free trial</a>
@@ -610,6 +610,8 @@ const MAIN = `${QUIZ_STYLE}
       <p class="lead">A link isn't just "there" or "gone". LinkPulz tracks every way a link can quietly stop working, and the opportunities around it.</p>
     </div>
     <div class="cards">
+      <div class="card"><div class="ic">◎</div><h3>Discover link spots</h3><p>Browse your link marketplaces for sites relevant to your topics — the buyable placements, with their metrics.</p></div>
+      <div class="card"><div class="ic">€</div><h3>Compare placement prices</h3><p>See every marketplace's offer for a site side by side, so you buy the right placement at the right price.</p></div>
       <div class="card"><div class="ic">+</div><h3>Monitor new backlinks</h3><p>Keep track of newly identified links and watch how your backlink portfolio evolves.</p></div>
       <div class="card"><div class="ic">✕</div><h3>Detect lost backlinks</h3><p>Know when a monitored link disappears so you can investigate and decide whether recovery is possible.</p></div>
       <div class="card"><div class="ic">404</div><h3>Find broken backlinks</h3><p>Spot linking pages that return a 404 or 5xx, and links that now redirect elsewhere, on both source and destination.</p></div>
