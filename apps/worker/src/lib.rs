@@ -9,6 +9,7 @@ pub mod enrich;
 pub mod geo;
 pub mod keywords;
 pub mod marketplace;
+pub mod marketplace_discovery;
 pub mod spots;
 
 use backlio_core::TransitionPolicy;
@@ -132,6 +133,11 @@ async fn dispatch(ctx: &WorkerCtx, job: &ClaimedJob) -> anyhow::Result<()> {
         JobKind::CaptureGeo => {
             let geo_query_id = payload_uuid(&job.payload, "geo_query_id")?;
             geo::run_capture(&ctx.pool, geo_query_id).await?;
+            Ok(())
+        }
+        JobKind::DiscoverMarketplaceSpots => {
+            let run_id = payload_uuid(&job.payload, "run_id")?;
+            marketplace_discovery::run_discovery(&ctx.pool, run_id).await?;
             Ok(())
         }
         // Other job types wire in as their handlers land (docs/07 §5).
