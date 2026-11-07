@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="popup.css" />
+    <title>LinkPulz — settings</title>
+    <style>
+      body { width: 420px; }
+      label.field { display: block; margin: 10px 0 4px; color: var(--muted); font-size: 12px; }
+      input { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--fg); }
+      .ok { color: #8fe0a8; }
+    </style>
+  </head>
+  <body>
+    <header><strong>LinkPulz settings</strong></header>
+    <div class="card">
+      <p class="muted">
+        Create a key in LinkPulz under <em>Settings → API keys</em> (read-only scopes are enough),
+        then paste it here. It is stored only in your browser.
+      </p>
+      <label class="field" for="key">API key (lp_live_…)</label>
+      <input id="key" type="password" placeholder="lp_live_…" autocomplete="off" />
+      <label class="field" for="base">Base URL</label>
+      <input id="base" type="url" placeholder="https://linkpulz.com" />
+      <div style="margin-top: 12px; display: flex; gap: 8px; align-items: center;">
+        <button id="save" class="btn">Save &amp; test</button>
+        <span id="status" class="muted"></span>
+      </div>
+    </div>
+    <script src="lp.js"></script>
+    <script src="options.js"></script>
+  </body>
+</html>

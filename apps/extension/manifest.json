@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "LinkPulz",
+  "version": "0.1.0",
+  "description": "Your LinkPulz link portfolio, usage and alerts at a glance — powered by your workspace API key.",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "LinkPulz"
+  },
+  "options_page": "options.html",
+  "permissions": ["storage"],
+  "host_permissions": ["https://linkpulz.com/*"]
+}

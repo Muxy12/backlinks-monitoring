@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="popup.css" />
+    <title>LinkPulz</title>
+  </head>
+  <body>
+    <header>
+      <strong>LinkPulz</strong>
+      <a id="open-options" href="#">Settings</a>
+    </header>
+
+    <div id="needs-key" class="hidden card">
+      <p>Add your workspace API key to get started.</p>
+      <button id="to-options" class="btn">Open settings</button>
+    </div>
+
+    <div id="error" class="hidden error" role="alert"></div>
+
+    <div id="content" class="hidden">
+      <section class="card">
+        <h2>Portfolio</h2>
+        <div class="stats">
+          <div><span id="live" class="num">–</span><label>Live</label></div>
+          <div><span id="atrisk" class="num warn">–</span><label>At risk</label></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Usage this period</h2>
+        <p class="muted" id="plan">—</p>
+        <ul id="usage" class="rows"></ul>
+      </section>
+
+      <section class="card">
+        <h2>Projects</h2>
+        <ul id="projects" class="rows"><li class="muted">Loading…</li></ul>
+      </section>
+    </div>
+
+    <footer class="muted">Read-only · uses your lp_live_ key via the MCP API</footer>
+
+    <script src="lp.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>
