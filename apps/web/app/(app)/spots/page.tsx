@@ -13,6 +13,7 @@ import {
   type SpotKeywordView,
   type SpotsResponse,
   type SpotView,
+  type SpotRunView,
   type GeoQueryView,
   type GeoCitationsResponse,
 } from "@/lib/api";
@@ -210,6 +211,29 @@ export default function SpotsPage() {
     await load(orgId, projectId);
   }
 
+  function applyRun(res: { data: SpotRunView }) {
+    setSpotsData((d) => ({
+      run: res.data,
+      enrich_run: d?.enrich_run ?? null,
+      match_run: d?.match_run ?? null,
+      spots: d?.spots ?? [],
+      forums: d?.forums ?? [],
+    }));
+  }
+
+  async function discoverMarketplace() {
+    if (!orgId || !projectId) return;
+    setSpotsErr(null);
+    setSpotsBusy(true);
+    const res = await orgApi.discoverMarketplaceSpots(orgId, projectId, locale);
+    setSpotsBusy(false);
+    if (!res.ok) {
+      setSpotsErr(res.detail || "Could not start marketplace discovery.");
+      return;
+    }
+    applyRun(res);
+  }
+
   async function search() {
     if (!orgId || !projectId) return;
     setSpotsErr(null);
@@ -220,13 +244,7 @@ export default function SpotsPage() {
       setSpotsErr(res.detail || "Could not start the search.");
       return;
     }
-    setSpotsData((d) => ({
-      run: res.data,
-      enrich_run: d?.enrich_run ?? null,
-      match_run: d?.match_run ?? null,
-      spots: d?.spots ?? [],
-      forums: d?.forums ?? [],
-    }));
+    applyRun(res);
   }
 
   async function enrich() {
@@ -473,9 +491,9 @@ export default function SpotsPage() {
           Spot Finder <span className="sf-beta">BETA</span>
         </h1>
         <p className="muted">
-          Find link spots that rank for your topics and sit on sites with real organic traffic —
-          then compare placement prices across marketplaces. Start by reviewing the keywords we
-          detected from your site; only kept keywords feed the search.
+          Find buyable link spots across your marketplaces, relevant to your topics — compare their
+          prices, buy, then monitor what you built. Start by reviewing the keywords we detected from
+          your site; only kept keywords feed the discovery.
         </p>
       </header>
 
@@ -683,10 +701,11 @@ export default function SpotsPage() {
                   </select>
                   <button
                     className="btn primary"
-                    onClick={() => void search()}
-                    disabled={spotsBusy || busyRun || counts.kept === 0 || !dataforseo}
+                    onClick={() => void discoverMarketplace()}
+                    disabled={spotsBusy || busyRun || counts.kept === 0 || !marketplace}
+                    title="Browse your link marketplaces for sites relevant to your kept keywords"
                   >
-                    {searching ? "Searching…" : "Find spots"}
+                    {searching ? "Discovering…" : "Discover from marketplaces"}
                   </button>
                   <button
                     className="btn sm"
@@ -700,19 +719,27 @@ export default function SpotsPage() {
                     className="btn sm"
                     onClick={() => void match()}
                     disabled={spotsBusy || busyRun || (spotsData?.spots.length ?? 0) === 0 || !marketplace}
-                    title="Check which spots can be bought on your link marketplaces"
+                    title="Compare prices for these spots across your configured marketplaces"
                   >
-                    {matching ? "Matching…" : "Match marketplaces"}
+                    {matching ? "Matching…" : "Compare prices"}
+                  </button>
+                  <button
+                    className="btn sm ghost"
+                    onClick={() => void search()}
+                    disabled={spotsBusy || busyRun || counts.kept === 0 || !dataforseo}
+                    title="Secondary: discover spots from Google rankings (SERP) instead of marketplaces"
+                  >
+                    {searching ? "Searching…" : "Find via Google (SERP)"}
                   </button>
                 </div>
               </div>
 
               <p className="muted" style={{ marginBottom: 10 }}>
-                For each kept keyword we look up who ranks on Google, then surface the domains that
-                rank for your keywords — relevance-first prospects. Enrich adds authority and real
-                organic traffic; Match compares placement prices across every configured
-                marketplace. Uses DataForSEO (paid per query); results are cached, so re-running is
-                cheap.
+                We browse your configured link marketplaces for sites relevant to your kept
+                keywords — the buyable spots, with their price and metrics. Enrich adds authority and
+                real organic traffic; Compare prices lines up every marketplace&rsquo;s offer. Then
+                buy, and add the link to monitoring. (Finding via Google rankings is available as a
+                secondary source and uses DataForSEO.)
               </p>
 
               {!dataforseo && (
