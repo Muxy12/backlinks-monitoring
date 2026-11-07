@@ -134,7 +134,7 @@ export default function SpotsPage() {
   const enriching = enrichRun?.status === "queued" || enrichRun?.status === "running";
   const matching = matchRun?.status === "queued" || matchRun?.status === "running";
   const busyRun = searching || enriching || matching;
-  const linkavista = !!me?.features?.linkavista;
+  const marketplace = !!me?.features?.marketplace;
   useEffect(() => {
     if (!orgId || !projectId || !busyRun) return;
     const t = setTimeout(() => void loadSpots(orgId, projectId), 3000);
@@ -699,7 +699,7 @@ export default function SpotsPage() {
                   <button
                     className="btn sm"
                     onClick={() => void match()}
-                    disabled={spotsBusy || busyRun || (spotsData?.spots.length ?? 0) === 0 || !linkavista}
+                    disabled={spotsBusy || busyRun || (spotsData?.spots.length ?? 0) === 0 || !marketplace}
                     title="Check which spots can be bought on your link marketplaces"
                   >
                     {matching ? "Matching…" : "Match marketplaces"}

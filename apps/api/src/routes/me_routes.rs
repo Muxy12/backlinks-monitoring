@@ -31,6 +31,10 @@ pub struct Features {
     pub gsc: bool,
     /// LinkAvista marketplace integration is configured (catalogue + ordering).
     pub linkavista: bool,
+    /// Any link marketplace source is configured — the source-agnostic flag the
+    /// UI should gate the "buy / match / compare offers" actions on (supersedes
+    /// gating on `linkavista` specifically).
+    pub marketplace: bool,
     /// Spot Finder BETA (keyword-based prospecting) is enabled for this deployment.
     pub spot_finder: bool,
     /// DataForSEO (SERP lookup) is configured — the UI can enable/disable the
@@ -71,6 +75,7 @@ pub async fn me(
             // The whole Impact UI keys off this flag.
             gsc: crate::routes::gsc_routes::configured(),
             linkavista: crate::routes::linkavista_routes::configured(&state.cfg),
+            marketplace: crawler::marketplace::any_configured(),
             spot_finder: state.cfg.spot_finder,
             dataforseo: crawler::serp::SerpProvider::from_env().is_some(),
         },

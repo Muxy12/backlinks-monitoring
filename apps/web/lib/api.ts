@@ -42,6 +42,7 @@ export interface Features {
   campaigns_beta: boolean;
   gsc?: boolean;
   linkavista?: boolean;
+  marketplace?: boolean;
   spot_finder?: boolean;
   dataforseo?: boolean;
 }
