@@ -28,7 +28,7 @@ pub use fetch::{FetchError, FetchOk, FetchOutcome, fetch};
 pub use geo::{Citation, GeoProvider, parse_citations};
 pub use marketplace::{
     CatalogueQuery, CatalogueSpot, MarketplaceListing, MarketplaceProvider, any_configured,
-    providers_from_env, search_all,
+    lookup_all, providers_from_env, search_all,
 };
 pub use matching::{LinkMatch, best_match, evaluate, find_matches};
 pub use metrics::{DomainMetrics, MetricsProvider};

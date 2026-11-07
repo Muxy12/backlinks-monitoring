@@ -78,6 +78,16 @@ const TOOLS: &[(&str, &str, &str)] = &[
         "read:marketplace",
         "Marketplace offers for a spot's domain (args: project_id, domain).",
     ),
+    (
+        "lookup_marketplace",
+        "read:marketplace",
+        "Live check: is a domain buyable across your marketplaces, at what price (arg: domain).",
+    ),
+    (
+        "monitor_url",
+        "write:portfolio",
+        "Start monitoring a link (args: project_id, source_url, target_url?).",
+    ),
 ];
 
 fn tool_scope(name: &str) -> Option<&'static str> {
@@ -385,6 +395,97 @@ async fn call_tool(
                 .map(OfferView::from)
                 .collect::<Vec<_>>();
             Ok(json!(matched))
+        }
+        "lookup_marketplace" => {
+            let domain = args
+                .get("domain")
+                .and_then(|v| v.as_str())
+                .map(|s| s.trim())
+                .filter(|s| !s.is_empty())
+                .ok_or_else(|| ToolError::BadArgs("missing `domain`".into()))?;
+            let hits = crawler::marketplace::lookup_all(domain).await;
+            Ok(json!(
+                hits.into_iter()
+                    .map(|(source, l)| json!({
+                        "source": source,
+                        "price_cents": l.price_cents,
+                        "currency": l.currency,
+                        "url": l.url,
+                        "dofollow": l.dofollow,
+                        "site_id": l.site_id,
+                    }))
+                    .collect::<Vec<_>>()
+            ))
+        }
+        "monitor_url" => {
+            let project_id = arg_uuid(&args, "project_id")?;
+            let source_url = args
+                .get("source_url")
+                .and_then(|v| v.as_str())
+                .map(str::trim)
+                .filter(|s| s.starts_with("http://") || s.starts_with("https://"))
+                .ok_or_else(|| ToolError::BadArgs("`source_url` must be an http(s) URL".into()))?;
+            // The project must be in the key's workspace.
+            repo::projects::get(pool, scope, project_id).await?;
+            let target_url = match args
+                .get("target_url")
+                .and_then(|v| v.as_str())
+                .map(str::trim)
+            {
+                Some(u) if u.starts_with("http://") || u.starts_with("https://") => u.to_string(),
+                Some(_) => {
+                    return Err(ToolError::BadArgs(
+                        "`target_url` must be an http(s) URL".into(),
+                    ));
+                }
+                None => {
+                    let domain =
+                        repo::projects::domain_by_id(pool, scope.organization_id(), project_id)
+                            .await?
+                            .ok_or(ToolError::NotFound)?;
+                    format!("https://{domain}")
+                }
+            };
+            // Plan cap (same rule as the app's add flow).
+            let plan = repo::billing::plan_for_org(pool, scope.organization_id()).await?;
+            let current = repo::backlinks::count_active(pool, scope).await? as u32;
+            if !billing::Entitlements::new(plan)
+                .can_add_backlinks(current, 1)
+                .is_allowed()
+            {
+                return Err(ToolError::BadArgs(
+                    "plan limit of monitored backlinks reached".into(),
+                ));
+            }
+            let decision = backlio_core::monitoring::decide(backlio_core::MonitoringInputs {
+                acquisition: None,
+                has_cost: false,
+                under_warranty: false,
+                subject: "own",
+                tier: 1,
+            });
+            let (mon_enabled, mon_level, mon_reason) =
+                crate::routes::resource_routes::resolve_monitoring(&decision, Some(true));
+            let new = repo::backlinks::NewBacklink {
+                project_id,
+                campaign_id: None,
+                publisher_id: None,
+                source_url,
+                target_url: target_url.as_str(),
+                expected_anchor_text: None,
+                expected_rel_type: "dofollow",
+                cost: None,
+                currency: None,
+                warranty_type: "none",
+                warranty_value: None,
+                warranty_expiration: None,
+                monitoring_enabled: mon_enabled,
+                monitoring_level: mon_level,
+                monitoring_reason: mon_reason,
+                check_frequency: None,
+            };
+            let backlink = repo::backlinks::create(pool, scope, Uuid::now_v7(), new).await?;
+            Ok(json!({ "backlink_id": backlink.id, "target_url": target_url }))
         }
         _ => Err(ToolError::NotFound),
     }
