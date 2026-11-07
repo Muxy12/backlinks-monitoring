@@ -373,6 +373,10 @@ pub fn app(state: AppState) -> Router {
             post(routes::spot_search_routes::spot_to_campaign),
         )
         .route(
+            "/v1/organizations/{org_id}/projects/{project_id}/spots/{spot_id}/monitor",
+            post(routes::spot_search_routes::monitor_spot),
+        )
+        .route(
             "/v1/organizations/{org_id}/projects/{project_id}/geo/queries",
             get(routes::geo_routes::list_queries).post(routes::geo_routes::add_query),
         )
