@@ -285,6 +285,19 @@ export default function SpotsPage() {
     }));
   }
 
+  async function monitorSpot(spotId: string) {
+    if (!orgId || !projectId) return;
+    setPushMsg(null);
+    const res = await orgApi.monitorSpot(orgId, projectId, spotId);
+    if (!res.ok) {
+      setSpotsErr(res.detail || "Could not add the link to monitoring.");
+      return;
+    }
+    setPushMsg(
+      "Added to monitoring — set the exact published article URL in Backlinks once the link is live.",
+    );
+  }
+
   async function pushToCampaign(spotId: string, domain: string) {
     if (!orgId || !projectId || !campaignId) return;
     setPushMsg(null);
@@ -838,6 +851,7 @@ export default function SpotsPage() {
                         <th title="Backlink spam score (lower is better)">Spam</th>
                         <th title="Placements available, cheapest first">Offers</th>
                         <th>Example</th>
+                        <th></th>
                         {campaignsBeta && <th></th>}
                       </tr>
                     </thead>
@@ -868,6 +882,15 @@ export default function SpotsPage() {
                             ) : (
                               (s.example_keyword ?? "-")
                             )}
+                          </td>
+                          <td>
+                            <button
+                              className="btn sm"
+                              title="Bought this link? Add it to monitoring (set the article URL once it's live)"
+                              onClick={() => void monitorSpot(s.id)}
+                            >
+                              Monitor
+                            </button>
                           </td>
                           {campaignsBeta && (
                             <td>

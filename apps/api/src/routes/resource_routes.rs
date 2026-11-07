@@ -34,7 +34,7 @@ async fn enforce_active_access(state: &AppState, scope: &db::OrgScope) -> Result
 
 /// Enforce the org's plan backlink cap before adding `count` (§39). Existing
 /// links are never touched; only new adds over the cap are blocked.
-async fn enforce_backlink_quota(
+pub(crate) async fn enforce_backlink_quota(
     state: &AppState,
     scope: &db::OrgScope,
     count: u32,
@@ -839,7 +839,7 @@ pub struct CreateBacklinkBody {
 
 /// Apply the UI's explicit monitor choice on top of the automatic policy
 /// `decision`. Returns (enabled, level, reason).
-fn resolve_monitoring(
+pub(crate) fn resolve_monitoring(
     decision: &backlio_core::MonitoringDecision,
     monitor: Option<bool>,
 ) -> (bool, &'static str, Option<&'static str>) {

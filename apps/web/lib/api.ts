@@ -1084,6 +1084,11 @@ export const orgApi = {
       `/v1/organizations/${org}/projects/${projectId}/spots/${spotId}/to-campaign`,
       { method: "POST", headers: csrfHeader(), body: JSON.stringify({ campaign_id: campaignId }) },
     ),
+  monitorSpot: (org: string, projectId: string, spotId: string) =>
+    request<{ backlink_id: string; source_url: string; target_url: string }>(
+      `/v1/organizations/${org}/projects/${projectId}/spots/${spotId}/monitor`,
+      { method: "POST", headers: csrfHeader() },
+    ),
   // ── GEO pillar ("cited by AI") ──
   geoQueries: (org: string, projectId: string) =>
     request<GeoQueriesResponse>(`/v1/organizations/${org}/projects/${projectId}/geo/queries`),

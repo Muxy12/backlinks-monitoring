@@ -610,3 +610,85 @@ pub async fn discover_marketplace_spots(
 
     Ok((StatusCode::ACCEPTED, Json(RunView::from(run))))
 }
+
+/// `POST …/projects/{project_id}/spots/{spot_id}/monitor` — the buy→monitor
+/// bridge: turn a (bought) marketplace spot into a monitored backlink in one
+/// click. Source = the editor site (edit to the published article URL once
+/// live), target = the project's domain, cost carried from the spot's offer.
+/// Member role.
+pub async fn monitor_spot(
+    State(state): State<AppState>,
+    Path((org_id, project_id, spot_id)): Path<(Uuid, Uuid, Uuid)>,
+    jar: CookieJar,
+    headers: HeaderMap,
+) -> Result<(StatusCode, Json<serde_json::Value>), ApiError> {
+    gate(&state)?;
+    let (user, session) = current(&state, &jar).await?;
+    check_csrf(&jar, &headers, &session)?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Member)?;
+    projects::get(&state.pool, &scope, project_id).await?;
+
+    let spot = spots::get(&state.pool, &scope, spot_id).await?;
+    let domain =
+        db::repositories::projects::domain_by_id(&state.pool, scope.organization_id(), project_id)
+            .await?
+            .ok_or(ApiError::NotFound)?;
+
+    // Respect the plan's monitored-link cap (like the manual add).
+    crate::routes::resource_routes::enforce_backlink_quota(&state, &scope, 1).await?;
+
+    let source_url = format!("https://{}", spot.domain);
+    let target_url = format!("https://{domain}");
+    let cost_str = spot
+        .buy_price_cents
+        .map(|c| format!("{:.2}", c as f64 / 100.0));
+    let currency = spot.buy_currency.clone();
+
+    // A purchased link has an economic reason, so it is monitored.
+    let decision = backlio_core::monitoring::decide(backlio_core::MonitoringInputs {
+        acquisition: None,
+        has_cost: spot.buy_price_cents.unwrap_or(0) > 0,
+        under_warranty: false,
+        subject: "own",
+        tier: 1,
+    });
+    let (mon_enabled, mon_level, mon_reason) =
+        crate::routes::resource_routes::resolve_monitoring(&decision, Some(true));
+
+    let new = db::repositories::backlinks::NewBacklink {
+        project_id,
+        campaign_id: None,
+        publisher_id: None,
+        source_url: source_url.as_str(),
+        target_url: target_url.as_str(),
+        expected_anchor_text: None,
+        expected_rel_type: "dofollow",
+        cost: cost_str.as_deref(),
+        currency: currency.as_deref(),
+        warranty_type: "none",
+        warranty_value: None,
+        warranty_expiration: None,
+        monitoring_enabled: mon_enabled,
+        monitoring_level: mon_level,
+        monitoring_reason: mon_reason,
+        check_frequency: None,
+    };
+    let backlink = db::repositories::backlinks::create(&state.pool, &scope, Uuid::now_v7(), new)
+        .await
+        .map_err(|e| match e {
+            db::DbError::Config(_) => {
+                ApiError::Validation("could not build a URL for the link".into())
+            }
+            other => other.into(),
+        })?;
+
+    Ok((
+        StatusCode::CREATED,
+        Json(serde_json::json!({
+            "backlink_id": backlink.id,
+            "source_url": source_url,
+            "target_url": target_url,
+        })),
+    ))
+}
