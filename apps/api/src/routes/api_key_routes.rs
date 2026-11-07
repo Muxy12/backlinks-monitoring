@@ -20,6 +20,7 @@ use uuid::Uuid;
 /// narrow what the user can already do; these map to the MCP tools' scopes.
 const VALID_SCOPES: &[&str] = &[
     "read:portfolio",
+    "write:portfolio",
     "read:discovery",
     "write:discovery",
     "read:geo",

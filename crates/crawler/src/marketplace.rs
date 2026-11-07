@@ -89,6 +89,19 @@ pub async fn search_all(q: &CatalogueQuery) -> Vec<CatalogueSpot> {
     out
 }
 
+/// Point-lookup `domain` across every configured marketplace — is this exact site
+/// buyable, and at what price? Best-effort (a source that errors is skipped).
+/// Returns one `(source, listing)` per marketplace that lists it.
+pub async fn lookup_all(domain: &str) -> Vec<(String, MarketplaceListing)> {
+    let mut out = Vec::new();
+    for p in providers_from_env() {
+        if let Ok(Some(listing)) = p.lookup(domain).await {
+            out.push((p.name().to_string(), listing));
+        }
+    }
+    out
+}
+
 /// Whether any marketplace source is configured (so the match flow can gate on
 /// "any source" rather than a specific one).
 pub fn any_configured() -> bool {
