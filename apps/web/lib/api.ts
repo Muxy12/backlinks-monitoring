@@ -1064,6 +1064,11 @@ export const orgApi = {
       headers: csrfHeader(),
       body: JSON.stringify({ locale }),
     }),
+  discoverMarketplaceSpots: (org: string, projectId: string, locale: string) =>
+    request<SpotRunView>(
+      `/v1/organizations/${org}/projects/${projectId}/spots/discover-marketplace`,
+      { method: "POST", headers: csrfHeader(), body: JSON.stringify({ locale }) },
+    ),
   enrichSpots: (org: string, projectId: string) =>
     request<SpotEnrichRunView>(`/v1/organizations/${org}/projects/${projectId}/spots/enrich`, {
       method: "POST",
