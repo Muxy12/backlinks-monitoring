@@ -22,9 +22,7 @@ type Link = { href: string; label: string; icon: string; badge?: string };
 const SECTIONS: { title: string; links: Link[] }[] = [
   {
     title: "Acquire",
-    links: [
-      { href: "/competitors", label: "Competitors", icon: "competitors" },
-    ],
+    links: [],
   },
   {
     title: "Monitor",
@@ -51,22 +49,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const [me, setMe] = useState<MeResponse | null>(null);
   const isAdmin = !!me?.user.is_admin;
-  const campaignsBeta = !!me?.features?.campaigns_beta;
-  const linkavista = !!me?.features?.linkavista;
   const spotFinder = !!me?.features?.spot_finder;
-  // Lead "Acquire" with the discovery funnel when its sources are configured:
-  // Spot Finder (find buyable spots across marketplaces) and the Marketplace
-  // catalogue head the section; Link Building (still beta) trails Competitors.
+  // "Acquire" holds the Spot Finder (the single acquisition surface) when the
+  // feature is enabled; the section is dropped when it has no links.
   const sections = SECTIONS.map((s) => {
     if (s.title !== "Acquire") return s;
-    const lead: Link[] = [];
-    if (spotFinder) lead.push({ href: "/spots", label: "Spot Finder", icon: "signal" });
-    if (linkavista) lead.push({ href: "/linkavista", label: "Marketplace", icon: "tag" });
-    const tail: Link[] = [];
-    if (campaignsBeta)
-      tail.push({ href: "/campaigns", label: "Link Building", icon: "campaigns", badge: "BETA" });
-    return { ...s, links: [...lead, ...s.links, ...tail] };
-  });
+    const links: Link[] = [];
+    if (spotFinder) links.push({ href: "/spots", label: "Spot Finder", icon: "signal" });
+    return { ...s, links };
+  }).filter((s) => s.links.length > 0);
   const orgs = me?.organizations ?? [];
   const current = selectedOrg(orgs);
   const workspace = current?.name ?? null;
