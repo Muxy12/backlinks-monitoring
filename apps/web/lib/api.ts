@@ -1023,6 +1023,13 @@ export const orgApi = {
     }),
   projects: (org: string) => request<ProjectView[]>(`/v1/organizations/${org}/projects`),
   // ── Spot Finder: keyword detection & review (Lot A) ──
+  // URL-first front door: resolve-or-create the project for a site's domain and
+  // start a detection scan of it, from a bare URL. Returns the project to select.
+  analyzeUrl: (org: string, url: string) =>
+    request<{ project_id: string; created: boolean; scan: SpotScanView }>(
+      `/v1/organizations/${org}/analyze`,
+      { method: "POST", headers: csrfHeader(), body: JSON.stringify({ url }) },
+    ),
   spotKeywords: (org: string, projectId: string) =>
     request<SpotKeywordsResponse>(`/v1/organizations/${org}/projects/${projectId}/keywords`),
   detectSpotKeywords: (org: string, projectId: string) =>

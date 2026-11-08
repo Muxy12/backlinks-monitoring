@@ -47,6 +47,9 @@ export default function SpotsPage() {
   // Lot B — spots (SERP search over the kept keywords).
   const [spotsData, setSpotsData] = useState<SpotsResponse | null>(null);
   const [locale, setLocale] = useState("fr");
+  // URL-first front door: type a site URL → resolve/create its project → scan.
+  const [analyzeInput, setAnalyzeInput] = useState("");
+  const [analyzing, setAnalyzing] = useState(false);
   const [spotsBusy, setSpotsBusy] = useState(false);
   const [spotsErr, setSpotsErr] = useState<string | null>(null);
   const dataforseo = !!me?.features?.dataforseo;
@@ -150,6 +153,32 @@ export default function SpotsPage() {
     const t = setTimeout(() => void load(orgId, projectId), 2500);
     return () => clearTimeout(t);
   }, [orgId, projectId, scanning, data, load]);
+
+  // The URL-first entry: analyze a site by URL alone. Resolves (or creates) its
+  // project server-side and starts the detection scan, then selects it so the
+  // detected topics + discovery flow below take over.
+  async function analyze(e?: FormEvent) {
+    e?.preventDefault();
+    if (!orgId) return;
+    const url = analyzeInput.trim();
+    if (!url) return;
+    setErr(null);
+    setAnalyzing(true);
+    const res = await orgApi.analyzeUrl(orgId, url);
+    setAnalyzing(false);
+    if (!res.ok) {
+      setErr(res.detail || "Could not analyze that URL.");
+      return;
+    }
+    // Refresh the picker if a new project was created, then select it.
+    if (res.data.created || !projects.some((p) => p.id === res.data.project_id)) {
+      const pl = await orgApi.projects(orgId);
+      if (pl.ok) setProjects(pl.data);
+    }
+    setData({ scan: res.data.scan, keywords: [] });
+    setProjectId(res.data.project_id);
+    setAnalyzeInput("");
+  }
 
   async function detect() {
     if (!orgId || !projectId) return;
@@ -504,9 +533,9 @@ export default function SpotsPage() {
           Spot Finder <span className="sf-beta">BETA</span>
         </h1>
         <p className="muted">
-          Find buyable link spots across your marketplaces, relevant to your topics — compare their
-          prices, buy, then monitor what you built. Start by reviewing the keywords we detected from
-          your site; only kept keywords feed the discovery.
+          Enter your site URL — we read its topics, then find buyable link spots that rank on the
+          same themes, scored and price-compared across your marketplaces. Buy, then monitor what you
+          built.
         </p>
       </header>
 
@@ -514,6 +543,40 @@ export default function SpotsPage() {
         <p className="muted">Create a workspace first.</p>
       ) : (
         <>
+          <section className="panel">
+            <div className="panel-head">
+              <h2>Analyze a site</h2>
+            </div>
+            <p className="muted" style={{ marginBottom: 12 }}>
+              Paste any site URL. We resolve it to a project, read its themes, then surface the link
+              spots that rank on those topics — scored, with prices compared across your
+              marketplaces.
+            </p>
+            <form onSubmit={analyze} style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+              <input
+                type="text"
+                inputMode="url"
+                placeholder="yoursite.com"
+                value={analyzeInput}
+                onChange={(e) => setAnalyzeInput(e.target.value)}
+                aria-label="Site URL to analyze"
+                style={{ flex: "1 1 260px", minWidth: 220, padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--fg)" }}
+              />
+              <select aria-label="Market" value={locale} onChange={(e) => setLocale(e.target.value)}>
+                <option value="fr">France · Français</option>
+                <option value="en">English</option>
+              </select>
+              <button className="btn primary" type="submit" disabled={analyzing || !analyzeInput.trim()}>
+                {analyzing ? "Analyzing…" : "Analyze"}
+              </button>
+            </form>
+            {err && (
+              <div className="auth-error" role="alert" style={{ marginTop: 12 }}>
+                {err}
+              </div>
+            )}
+          </section>
+
           <section className="panel">
             <div className="panel-head">
               <h2>Detect from your site</h2>

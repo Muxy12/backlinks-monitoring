@@ -1139,6 +1139,28 @@ pub mod projects {
         .await?)
     }
 
+    /// Resolve an active project by its domain (case-insensitive), for the
+    /// URL-first "analyze" front door — so re-analyzing a site reuses its
+    /// project instead of creating a duplicate. `None` if none matches.
+    pub async fn find_by_domain(
+        pool: &PgPool,
+        scope: &OrgScope,
+        domain: &str,
+    ) -> Result<Option<Project>, DbError> {
+        Ok(sqlx::query_as::<_, Project>(
+            "SELECT id, organization_id, client_id, name, domain, \
+                    EXTRACT(EPOCH FROM default_check_frequency)::bigint AS check_frequency_secs, \
+                    timezone, status::text AS status, created_at, updated_at, archived_at \
+             FROM projects \
+             WHERE organization_id = $1 AND lower(domain) = lower($2) AND archived_at IS NULL \
+             ORDER BY created_at LIMIT 1",
+        )
+        .bind(scope.organization_id())
+        .bind(domain)
+        .fetch_optional(pool)
+        .await?)
+    }
+
     /// Active (non-archived) project count for the org — for plan-limit checks.
     pub async fn count(pool: &PgPool, scope: &OrgScope) -> Result<i64, DbError> {
         let (n,): (i64,) = sqlx::query_as(
