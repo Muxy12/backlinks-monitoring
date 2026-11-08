@@ -105,15 +105,43 @@ pub async fn run_search(pool: &sqlx::PgPool, run_id: Uuid) -> anyhow::Result<()>
 
     let aggregated = aggregate_spots(&hits, &own_domain);
     let top = &aggregated[..aggregated.len().min(MAX_SPOTS)];
+
+    // Best (position, ranking page) per (spot host, keyword) from the raw hits —
+    // the ground truth the thematic scores (PTA/PTP) are computed from.
+    let mut per_kw: HashMap<(String, String), (i32, String)> = HashMap::new();
+    for h in &hits {
+        let host = site_host(&h.domain);
+        per_kw
+            .entry((host, h.keyword.clone()))
+            .and_modify(|e| {
+                if h.rank < e.0 {
+                    *e = (h.rank, h.url.clone());
+                }
+            })
+            .or_insert((h.rank, h.url.clone()));
+    }
+
     let new_spots: Vec<spots::NewSpot> = top
         .iter()
-        .map(|a| spots::NewSpot {
-            domain: &a.domain,
-            keyword_count: a.keyword_count as i32,
-            best_position: Some(a.best_position),
-            avg_position: Some(a.avg_position),
-            example_url: Some(&a.example_url),
-            example_keyword: Some(&a.example_keyword),
+        .map(|a| {
+            let positions = per_kw
+                .iter()
+                .filter(|((host, _), _)| host == &a.domain)
+                .map(|((_, kw), (rank, url))| spots::NewSpotPosition {
+                    keyword: kw.clone(),
+                    position: *rank,
+                    page_url: Some(url.clone()),
+                })
+                .collect();
+            spots::NewSpot {
+                domain: &a.domain,
+                keyword_count: a.keyword_count as i32,
+                best_position: Some(a.best_position),
+                avg_position: Some(a.avg_position),
+                example_url: Some(&a.example_url),
+                example_keyword: Some(&a.example_keyword),
+                positions,
+            }
         })
         .collect();
     spots::replace_spots(pool, org, project, &new_spots).await?;
