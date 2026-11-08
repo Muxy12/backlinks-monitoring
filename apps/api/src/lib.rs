@@ -286,6 +286,10 @@ pub fn app(state: AppState) -> Router {
             get(routes::gsc_routes::sites),
         )
         .route(
+            "/v1/organizations/{org_id}/projects/{project_id}/positioned-keywords",
+            get(routes::gsc_routes::positioned_keywords),
+        )
+        .route(
             "/v1/organizations/{org_id}/projects/{project_id}/gsc/site",
             post(routes::gsc_routes::set_site),
         )

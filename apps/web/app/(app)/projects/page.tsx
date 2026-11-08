@@ -11,6 +11,7 @@ import {
   type MeResponse,
   type ProjectView,
   type SiteAnalysis,
+  type PositionedKeyword,
 } from "@/lib/api";
 import { selectedOrgId } from "@/lib/workspace";
 import "@/app/auth.css";
@@ -77,6 +78,7 @@ export default function ProjectsPage() {
   // Site-analysis drawer.
   const [anProject, setAnProject] = useState<ProjectView | null>(null);
   const [an, setAn] = useState<SiteAnalysis | null>(null);
+  const [anPos, setAnPos] = useState<PositionedKeyword[] | null>(null);
   const [anBusy, setAnBusy] = useState(false);
   const [anForm, setAnForm] = useState({
     theme: "",
@@ -219,8 +221,12 @@ export default function ProjectsPage() {
   function openAnalysis(p: ProjectView) {
     setAnProject(p);
     setAn(null);
+    setAnPos(null);
     setAnForm({ theme: "", sub_themes: "", products: "", keywords: "", summary: "" });
-    if (orgId) void loadAnalysis(orgId, p.id);
+    if (orgId) {
+      void loadAnalysis(orgId, p.id);
+      void orgApi.positionedKeywords(orgId, p.id).then((r) => setAnPos(r.ok ? r.data : []));
+    }
   }
 
   async function runAnalysis() {
@@ -514,6 +520,46 @@ export default function ProjectsPage() {
                 </p>
               </div>
             )}
+
+            <div style={{ marginTop: 18, borderTop: "1px solid var(--border)", paddingTop: 14 }}>
+              <div style={{ fontWeight: 700, marginBottom: 6 }}>
+                Positioned keywords{" "}
+                <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>
+                  · real Google positions (GSC)
+                </span>
+              </div>
+              {anPos == null ? (
+                <p className="muted" style={{ fontSize: 13 }}>
+                  Loading…
+                </p>
+              ) : anPos.length === 0 ? (
+                <p className="muted" style={{ fontSize: 13 }}>
+                  No Search Console data. Connect Google Search Console in Settings → Integrations to
+                  see the keywords your site really ranks for.
+                </p>
+              ) : (
+                <table className="dom-table" style={{ marginTop: 6 }}>
+                  <thead>
+                    <tr>
+                      <th>Keyword</th>
+                      <th>Pos</th>
+                      <th>Impr.</th>
+                      <th>Clicks</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {anPos.map((k, i) => (
+                      <tr key={i}>
+                        <td>{k.query}</td>
+                        <td className="mono">{k.position}</td>
+                        <td className="mono">{k.impressions.toLocaleString()}</td>
+                        <td className="mono">{k.clicks.toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
           </aside>
         </div>
       )}

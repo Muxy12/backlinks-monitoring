@@ -901,6 +901,12 @@ export interface OverviewActivity {
   backlink_id: string;
   detected_at: string;
 }
+export interface PositionedKeyword {
+  query: string;
+  position: number;
+  impressions: number;
+  clicks: number;
+}
 export interface SiteAnalysis {
   status: string;
   source: string | null;
@@ -1092,6 +1098,12 @@ export const orgApi = {
     }),
   siteAnalysis: (org: string, projectId: string) =>
     request<SiteAnalysis | null>(`/v1/organizations/${org}/projects/${projectId}/analysis`),
+  // Real Google positions from GSC (detected vs positioned). Empty when GSC is
+  // not connected for the site.
+  positionedKeywords: (org: string, projectId: string) =>
+    request<PositionedKeyword[]>(
+      `/v1/organizations/${org}/projects/${projectId}/positioned-keywords`,
+    ),
   updateSiteAnalysis: (
     org: string,
     projectId: string,
