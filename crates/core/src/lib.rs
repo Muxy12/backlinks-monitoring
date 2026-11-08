@@ -33,6 +33,7 @@ pub mod spot_score;
 pub mod spots;
 pub mod state_machine;
 pub mod status;
+pub mod thematic_score;
 pub mod url_normalize;
 pub mod warranty;
 
@@ -69,6 +70,7 @@ pub use reclamation::ReclaimAngle;
 pub use scoring::{ProspectScore, ProspectSignals, score_prospect};
 pub use spot_score::{SpotScore, SpotSignals, score as spot_score};
 pub use spots::{AggregatedSpot, SerpHit, aggregate_spots, is_blocked_domain, site_host};
+pub use thematic_score::{Grade, SpotGradeInput, ThematicScore, grade_set, thematic_score};
 pub use state_machine::{BacklinkState, DetectedFields, Transition, TransitionPolicy, transition};
 pub use status::{BacklinkStatus, RelSet, RelType};
 pub use url_normalize::{NormalizeOptions, host_of, normalize};
