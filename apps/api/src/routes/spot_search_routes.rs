@@ -633,6 +633,133 @@ pub async fn get_purchase_campaign(
     }))
 }
 
+fn valid_campaign_status(s: &str) -> bool {
+    matches!(s, "draft" | "ready" | "ordering" | "published" | "done")
+}
+fn valid_item_status(s: &str) -> bool {
+    matches!(s, "todo" | "ordered" | "published" | "problem")
+}
+
+#[derive(Deserialize)]
+pub struct UpdateCampaignBody {
+    pub name: String,
+    pub status: String,
+    pub budget_cents: Option<i64>,
+}
+
+/// `PATCH …/purchase-campaigns/{campaign_id}` — name / status / budget. Member.
+pub async fn update_purchase_campaign(
+    State(state): State<AppState>,
+    Path((org_id, project_id, campaign_id)): Path<(Uuid, Uuid, Uuid)>,
+    jar: CookieJar,
+    headers: HeaderMap,
+    Json(body): Json<UpdateCampaignBody>,
+) -> Result<Json<PurchaseCampaignView>, ApiError> {
+    gate(&state)?;
+    let (user, session) = current(&state, &jar).await?;
+    check_csrf(&jar, &headers, &session)?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Member)?;
+    let name = body.name.trim();
+    if name.is_empty() || name.len() > 200 {
+        return Err(ApiError::Validation("name must be 1–200 characters".into()));
+    }
+    if !valid_campaign_status(&body.status) {
+        return Err(ApiError::Validation("invalid campaign status".into()));
+    }
+    // Ensure the campaign is in this project.
+    purchase_campaigns::get(&state.pool, &scope, campaign_id)
+        .await?
+        .filter(|c| c.project_id == project_id)
+        .ok_or(ApiError::NotFound)?;
+    let c = purchase_campaigns::update_campaign(
+        &state.pool,
+        &scope,
+        campaign_id,
+        name,
+        &body.status,
+        body.budget_cents,
+    )
+    .await?
+    .ok_or(ApiError::NotFound)?;
+    Ok(Json(PurchaseCampaignView::from(c)))
+}
+
+/// `DELETE …/purchase-campaigns/{campaign_id}` — delete a campaign. Member.
+pub async fn delete_purchase_campaign(
+    State(state): State<AppState>,
+    Path((org_id, project_id, campaign_id)): Path<(Uuid, Uuid, Uuid)>,
+    jar: CookieJar,
+    headers: HeaderMap,
+) -> Result<StatusCode, ApiError> {
+    gate(&state)?;
+    let (user, session) = current(&state, &jar).await?;
+    check_csrf(&jar, &headers, &session)?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Member)?;
+    purchase_campaigns::get(&state.pool, &scope, campaign_id)
+        .await?
+        .filter(|c| c.project_id == project_id)
+        .ok_or(ApiError::NotFound)?;
+    purchase_campaigns::delete_campaign(&state.pool, &scope, campaign_id).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+#[derive(Deserialize)]
+pub struct UpdateItemBody {
+    pub status: String,
+    pub target_url: Option<String>,
+    pub anchor: Option<String>,
+    pub price_cents: Option<i64>,
+}
+
+/// `PATCH …/purchase-campaigns/{campaign_id}/items/{item_id}` — order lifecycle
+/// (status, target URL, anchor, price). Member role.
+pub async fn update_campaign_item(
+    State(state): State<AppState>,
+    Path((org_id, _project_id, _campaign_id, item_id)): Path<(Uuid, Uuid, Uuid, Uuid)>,
+    jar: CookieJar,
+    headers: HeaderMap,
+    Json(body): Json<UpdateItemBody>,
+) -> Result<Json<PurchaseCampaignItemView>, ApiError> {
+    gate(&state)?;
+    let (user, session) = current(&state, &jar).await?;
+    check_csrf(&jar, &headers, &session)?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Member)?;
+    if !valid_item_status(&body.status) {
+        return Err(ApiError::Validation("invalid item status".into()));
+    }
+    let it = purchase_campaigns::update_item(
+        &state.pool,
+        &scope,
+        item_id,
+        &body.status,
+        body.target_url.as_deref(),
+        body.anchor.as_deref(),
+        body.price_cents,
+    )
+    .await?
+    .ok_or(ApiError::NotFound)?;
+    Ok(Json(PurchaseCampaignItemView::from(it)))
+}
+
+/// `DELETE …/purchase-campaigns/{campaign_id}/items/{item_id}` — remove an item.
+pub async fn delete_campaign_item(
+    State(state): State<AppState>,
+    Path((org_id, _project_id, _campaign_id, item_id)): Path<(Uuid, Uuid, Uuid, Uuid)>,
+    jar: CookieJar,
+    headers: HeaderMap,
+) -> Result<StatusCode, ApiError> {
+    gate(&state)?;
+    let (user, session) = current(&state, &jar).await?;
+    check_csrf(&jar, &headers, &session)?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Member)?;
+    purchase_campaigns::delete_item(&state.pool, &scope, item_id).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
 #[derive(Serialize)]
 pub struct AcquisitionSummaryView {
     pub sites_analyzed: i64,

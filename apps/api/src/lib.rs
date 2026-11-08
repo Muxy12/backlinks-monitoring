@@ -392,7 +392,14 @@ pub fn app(state: AppState) -> Router {
         )
         .route(
             "/v1/organizations/{org_id}/projects/{project_id}/purchase-campaigns/{campaign_id}",
-            get(routes::spot_search_routes::get_purchase_campaign),
+            get(routes::spot_search_routes::get_purchase_campaign)
+                .patch(routes::spot_search_routes::update_purchase_campaign)
+                .delete(routes::spot_search_routes::delete_purchase_campaign),
+        )
+        .route(
+            "/v1/organizations/{org_id}/projects/{project_id}/purchase-campaigns/{campaign_id}/items/{item_id}",
+            axum::routing::patch(routes::spot_search_routes::update_campaign_item)
+                .delete(routes::spot_search_routes::delete_campaign_item),
         )
         .route(
             "/v1/organizations/{org_id}/projects/{project_id}/spots/{spot_id}/orders",

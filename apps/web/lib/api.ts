@@ -1133,6 +1133,37 @@ export const orgApi = {
     request<PurchaseCampaignDetail>(
       `/v1/organizations/${org}/projects/${projectId}/purchase-campaigns/${id}`,
     ),
+  updatePurchaseCampaign: (
+    org: string,
+    projectId: string,
+    id: string,
+    body: { name: string; status: string; budget_cents?: number | null },
+  ) =>
+    request<PurchaseCampaign>(
+      `/v1/organizations/${org}/projects/${projectId}/purchase-campaigns/${id}`,
+      { method: "PATCH", headers: csrfHeader(), body: JSON.stringify(body) },
+    ),
+  deletePurchaseCampaign: (org: string, projectId: string, id: string) =>
+    request<null>(`/v1/organizations/${org}/projects/${projectId}/purchase-campaigns/${id}`, {
+      method: "DELETE",
+      headers: csrfHeader(),
+    }),
+  updateCampaignItem: (
+    org: string,
+    projectId: string,
+    campaignId: string,
+    itemId: string,
+    body: { status: string; target_url?: string | null; anchor?: string | null; price_cents?: number | null },
+  ) =>
+    request<PurchaseCampaignItem>(
+      `/v1/organizations/${org}/projects/${projectId}/purchase-campaigns/${campaignId}/items/${itemId}`,
+      { method: "PATCH", headers: csrfHeader(), body: JSON.stringify(body) },
+    ),
+  deleteCampaignItem: (org: string, projectId: string, campaignId: string, itemId: string) =>
+    request<null>(
+      `/v1/organizations/${org}/projects/${projectId}/purchase-campaigns/${campaignId}/items/${itemId}`,
+      { method: "DELETE", headers: csrfHeader() },
+    ),
   // AI site analysis (refonte P2): trigger / read / edit a project's semantic profile.
   analyzeSite: (org: string, projectId: string) =>
     request<SiteAnalysis>(`/v1/organizations/${org}/projects/${projectId}/analyze-site`, {

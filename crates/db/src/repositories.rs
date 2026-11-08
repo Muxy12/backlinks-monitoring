@@ -9068,4 +9068,92 @@ pub mod purchase_campaigns {
         .fetch_all(pool)
         .await?)
     }
+
+    /// Update a campaign's name / status / budget, tenant-scoped. `None` if gone.
+    pub async fn update_campaign(
+        pool: &PgPool,
+        scope: &OrgScope,
+        id: Uuid,
+        name: &str,
+        status: &str,
+        budget_cents: Option<i64>,
+    ) -> Result<Option<PurchaseCampaign>, DbError> {
+        let updated: Option<(Uuid,)> = sqlx::query_as(
+            "UPDATE purchase_campaigns \
+             SET name = $3, status = $4, budget_cents = $5, updated_at = now() \
+             WHERE organization_id = $1 AND id = $2 RETURNING id",
+        )
+        .bind(scope.organization_id())
+        .bind(id)
+        .bind(name)
+        .bind(status)
+        .bind(budget_cents)
+        .fetch_optional(pool)
+        .await
+        .map_err(DbError::from_insert)?;
+        match updated {
+            Some(_) => get(pool, scope, id).await,
+            None => Ok(None),
+        }
+    }
+
+    /// Delete a campaign (items cascade), tenant-scoped. NotFound if gone.
+    pub async fn delete_campaign(pool: &PgPool, scope: &OrgScope, id: Uuid) -> Result<(), DbError> {
+        let r =
+            sqlx::query("DELETE FROM purchase_campaigns WHERE organization_id = $1 AND id = $2")
+                .bind(scope.organization_id())
+                .bind(id)
+                .execute(pool)
+                .await?;
+        if r.rows_affected() == 0 {
+            return Err(DbError::NotFound);
+        }
+        Ok(())
+    }
+
+    /// Update one campaign item's editable fields (order lifecycle), tenant-scoped.
+    pub async fn update_item(
+        pool: &PgPool,
+        scope: &OrgScope,
+        item_id: Uuid,
+        status: &str,
+        target_url: Option<&str>,
+        anchor: Option<&str>,
+        price_cents: Option<i64>,
+    ) -> Result<Option<PurchaseCampaignItem>, DbError> {
+        Ok(sqlx::query_as::<_, PurchaseCampaignItem>(
+            "UPDATE purchase_campaign_items \
+             SET status = $3, target_url = $4, anchor = $5, price_cents = $6, updated_at = now() \
+             WHERE organization_id = $1 AND id = $2 \
+             RETURNING id, spot_id, domain, price_cents, currency, source_slug, target_url, \
+                       anchor, status, created_at, updated_at",
+        )
+        .bind(scope.organization_id())
+        .bind(item_id)
+        .bind(status)
+        .bind(target_url)
+        .bind(anchor)
+        .bind(price_cents)
+        .fetch_optional(pool)
+        .await?)
+    }
+
+    /// Remove one item from a campaign, tenant-scoped. NotFound if gone.
+    pub async fn delete_item(
+        pool: &PgPool,
+        scope: &OrgScope,
+        item_id: Uuid,
+    ) -> Result<(), DbError> {
+        let r = sqlx::query(
+            "DELETE FROM purchase_campaign_items WHERE organization_id = $1 AND id = $2",
+        )
+        .bind(scope.organization_id())
+        .bind(item_id)
+        .execute(pool)
+        .await?;
+        if r.rows_affected() == 0 {
+            return Err(DbError::NotFound);
+        }
+        Ok(())
+    }
 }

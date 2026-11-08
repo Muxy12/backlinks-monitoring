@@ -607,6 +607,55 @@ export default function SpotsPage() {
     if (r.ok) setCampDetail(r.data);
   }
 
+  function reloadCampList() {
+    if (orgId && projectId)
+      void orgApi.listPurchaseCampaigns(orgId, projectId).then((r) => setCampList(r.ok ? r.data : []));
+  }
+  async function setItemStatus(item: PurchaseCampaignDetail["items"][number], status: string) {
+    if (!orgId || !projectId || !campDetail) return;
+    const r = await orgApi.updateCampaignItem(orgId, projectId, campDetail.campaign.id, item.id, {
+      status,
+      target_url: item.target_url,
+      anchor: item.anchor,
+      price_cents: item.price_cents,
+    });
+    if (r.ok) {
+      setCampDetail((d) =>
+        d ? { ...d, items: d.items.map((x) => (x.id === item.id ? r.data : x)) } : d,
+      );
+      reloadCampList();
+    }
+  }
+  async function removeCampaignItem(itemId: string) {
+    if (!orgId || !projectId || !campDetail) return;
+    const r = await orgApi.deleteCampaignItem(orgId, projectId, campDetail.campaign.id, itemId);
+    if (r.ok) {
+      void openCampaign(campDetail.campaign.id);
+      reloadCampList();
+    }
+  }
+  async function setCampaignStatus(status: string) {
+    if (!orgId || !projectId || !campDetail) return;
+    const r = await orgApi.updatePurchaseCampaign(orgId, projectId, campDetail.campaign.id, {
+      name: campDetail.campaign.name,
+      status,
+      budget_cents: campDetail.campaign.budget_cents,
+    });
+    if (r.ok) {
+      setCampDetail((d) => (d ? { ...d, campaign: r.data } : d));
+      reloadCampList();
+    }
+  }
+  async function deleteCampaign() {
+    if (!orgId || !projectId || !campDetail) return;
+    if (!confirm(`Delete campaign “${campDetail.campaign.name}”?`)) return;
+    const r = await orgApi.deletePurchaseCampaign(orgId, projectId, campDetail.campaign.id);
+    if (r.ok) {
+      setCampDetail(null);
+      reloadCampList();
+    }
+  }
+
   function openDetail(s: SpotView) {
     setDetail(s);
     setDetailTab("keywords");
@@ -1856,18 +1905,30 @@ export default function SpotsPage() {
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
               <h2 style={{ margin: 0, fontSize: 18 }}>{campDetail.campaign.name}</h2>
-              <button className="btn sm" onClick={() => setCampDetail(null)}>Close</button>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button className="btn sm danger" onClick={() => void deleteCampaign()}>Delete</button>
+                <button className="btn sm" onClick={() => setCampDetail(null)}>Close</button>
+              </div>
             </div>
-            <div className="muted" style={{ display: "flex", gap: 16, marginTop: 8, flexWrap: "wrap" }}>
-              <span>Status: {campDetail.campaign.status}</span>
-              <span>{campDetail.campaign.item_count} spots</span>
-              <span>
+            <div style={{ display: "flex", gap: 16, marginTop: 8, flexWrap: "wrap", alignItems: "center" }}>
+              <label className="muted" style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                Status
+                <select value={campDetail.campaign.status} onChange={(e) => void setCampaignStatus(e.target.value)}>
+                  <option value="draft">Draft</option>
+                  <option value="ready">Ready</option>
+                  <option value="ordering">Ordering</option>
+                  <option value="published">Published</option>
+                  <option value="done">Done</option>
+                </select>
+              </label>
+              <span className="muted">{campDetail.campaign.item_count} spots</span>
+              <span className="muted">
                 Planned <b style={{ color: "var(--text)" }}>{formatPrice(campDetail.campaign.planned_cents, "EUR")}</b>
               </span>
             </div>
             <table className="bl-table" style={{ marginTop: 14 }}>
               <thead>
-                <tr><th>Domain</th><th>Price</th><th>Marketplace</th><th>Status</th></tr>
+                <tr><th>Domain</th><th>Price</th><th>Marketplace</th><th>Status</th><th></th></tr>
               </thead>
               <tbody>
                 {campDetail.items.map((it) => (
@@ -1875,16 +1936,26 @@ export default function SpotsPage() {
                     <td className="mono">{it.domain}</td>
                     <td className="mono">{it.price_cents != null ? formatPrice(it.price_cents, it.currency ?? "EUR") : "—"}</td>
                     <td>{it.source_slug ?? "—"}</td>
-                    <td>{it.status}</td>
+                    <td>
+                      <select value={it.status} onChange={(e) => void setItemStatus(it, e.target.value)} aria-label="Item status">
+                        <option value="todo">To do</option>
+                        <option value="ordered">Ordered</option>
+                        <option value="published">Published</option>
+                        <option value="problem">Problem</option>
+                      </select>
+                    </td>
+                    <td>
+                      <button className="btn sm danger" title="Remove from campaign" onClick={() => void removeCampaignItem(it.id)}>×</button>
+                    </td>
                   </tr>
                 ))}
                 {campDetail.items.length === 0 && (
-                  <tr><td colSpan={4} className="muted">No spots in this campaign.</td></tr>
+                  <tr><td colSpan={5} className="muted">No spots in this campaign.</td></tr>
                 )}
               </tbody>
             </table>
             <p className="muted" style={{ fontSize: 11, marginTop: 10 }}>
-              Per-spot ordering &amp; status management comes next (Phase 4).
+              Track each spot's order status here. Direct API ordering (LinkAvista…) comes next.
             </p>
           </aside>
         </div>
