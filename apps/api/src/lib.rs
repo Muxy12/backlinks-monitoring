@@ -331,6 +331,10 @@ pub fn app(state: AppState) -> Router {
             post(routes::discovery_routes::run_discovery),
         )
         .route(
+            "/v1/organizations/{org_id}/analyze",
+            post(routes::spot_keyword_routes::analyze_url),
+        )
+        .route(
             "/v1/organizations/{org_id}/projects/{project_id}/keywords",
             get(routes::spot_keyword_routes::list_keywords)
                 .post(routes::spot_keyword_routes::add_keyword),

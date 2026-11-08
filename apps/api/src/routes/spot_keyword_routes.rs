@@ -12,6 +12,7 @@
 //! the surface (surfaced via `me.features.spot_finder`).
 
 use crate::error::ApiError;
+use crate::routes::resource_routes::enforce_active_access;
 use crate::session::{check_csrf, current};
 use crate::state::{ApiConfig, AppState};
 use axum::Json;
@@ -159,6 +160,111 @@ pub async fn detect_keywords(
     .await?;
 
     Ok((StatusCode::ACCEPTED, Json(ScanView::from(scan))))
+}
+
+#[derive(Deserialize)]
+pub struct AnalyzeBody {
+    /// A site URL or bare domain, e.g. `monsite.com` or `https://monsite.com/x`.
+    pub url: String,
+}
+
+#[derive(Serialize)]
+pub struct AnalyzeView {
+    pub project_id: Uuid,
+    /// True when a new project was created for this domain (vs. reusing one).
+    pub created: bool,
+    pub scan: ScanView,
+}
+
+/// `POST …/organizations/{org_id}/analyze` — the URL-first front door
+/// (Référencime-style "new campaign"). Resolves (or creates) the project for the
+/// site's domain, then starts a keyword-detection scan of it. The client polls
+/// the scan, auto-keeps the detected topics and triggers marketplace discovery —
+/// URL in, scored spots out. Member role; detection is free (crawls own site).
+pub async fn analyze_url(
+    State(state): State<AppState>,
+    Path(org_id): Path<Uuid>,
+    jar: CookieJar,
+    headers: HeaderMap,
+    Json(body): Json<AnalyzeBody>,
+) -> Result<(StatusCode, Json<AnalyzeView>), ApiError> {
+    gate(&state)?;
+    let (user, session) = current(&state, &jar).await?;
+    check_csrf(&jar, &headers, &session)?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Member)?;
+
+    // Accept a bare domain by giving host parsing a scheme to work with.
+    let raw = body.url.trim();
+    if raw.is_empty() {
+        return Err(ApiError::Validation("enter a site URL".into()));
+    }
+    let with_scheme = if raw.contains("://") {
+        raw.to_string()
+    } else {
+        format!("https://{raw}")
+    };
+    let host = backlio_core::host_of(&with_scheme)
+        .filter(|h| h.contains('.'))
+        .ok_or_else(|| ApiError::Validation("enter a valid site URL".into()))?;
+
+    // Resolve-or-create the project for this domain, so re-analyzing reuses it.
+    let (project, created) = match projects::find_by_domain(&state.pool, &scope, &host).await? {
+        Some(p) => (p, false),
+        None => {
+            enforce_active_access(&state, &scope).await?;
+            let plan =
+                db::repositories::billing::plan_for_org(&state.pool, scope.organization_id())
+                    .await?;
+            let current = projects::count(&state.pool, &scope).await? as u32;
+            if let billing::AddOutcome::OverLimit { limit, .. } =
+                billing::Entitlements::new(plan).can_add_project(current)
+            {
+                return Err(ApiError::PlanLimit(format!(
+                    "plan limit of {limit} projects reached — upgrade to analyze another site"
+                )));
+            }
+            let p = projects::create(
+                &state.pool,
+                &scope,
+                Uuid::now_v7(),
+                &host,
+                &host,
+                24 * 7 * 3600,
+                None,
+            )
+            .await?;
+            (p, true)
+        }
+    };
+
+    // Start (or reuse) a detection scan of the site — one at a time per project.
+    let scan = if spot_keywords::scan_in_flight(&state.pool, &scope, project.id).await?
+        && let Some(existing) = spot_keywords::latest_scan(&state.pool, &scope, project.id).await?
+    {
+        existing
+    } else {
+        let s = spot_keywords::start_scan(&state.pool, &scope, Uuid::now_v7(), project.id).await?;
+        let key = format!("detect_site_keywords:{}", s.id);
+        db::repositories::jobs::enqueue(
+            &state.pool,
+            Some(scope.organization_id()),
+            jobs::JobKind::DetectSiteKeywords,
+            serde_json::json!({ "scan_id": s.id }),
+            Some(&key),
+        )
+        .await?;
+        s
+    };
+
+    Ok((
+        StatusCode::ACCEPTED,
+        Json(AnalyzeView {
+            project_id: project.id,
+            created,
+            scan: ScanView::from(scan),
+        }),
+    ))
 }
 
 #[derive(Deserialize)]

@@ -21,7 +21,10 @@ use uuid::Uuid;
 /// Reject the request when the workspace has no active paid access — an expired
 /// trial or an inactive/canceled subscription (docs/20). Existing data is kept;
 /// only new paid actions are blocked.
-async fn enforce_active_access(state: &AppState, scope: &db::OrgScope) -> Result<(), ApiError> {
+pub(crate) async fn enforce_active_access(
+    state: &AppState,
+    scope: &db::OrgScope,
+) -> Result<(), ApiError> {
     if db::repositories::billing::is_access_active(&state.pool, scope.organization_id()).await? {
         Ok(())
     } else {
