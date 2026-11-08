@@ -862,6 +862,20 @@ pub mod orgs {
         .map_err(DbError::from_fetch)
     }
 
+    /// The org owner's email (earliest owner member), for worker-side
+    /// notifications. `None` if the org has no owner row.
+    pub async fn owner_email(pool: &PgPool, org_id: Uuid) -> Result<Option<String>, DbError> {
+        let row: Option<(String,)> = sqlx::query_as(
+            "SELECT u.email FROM organization_members m JOIN users u ON u.id = m.user_id \
+             WHERE m.organization_id = $1 AND m.role = 'owner' \
+             ORDER BY u.created_at LIMIT 1",
+        )
+        .bind(org_id)
+        .fetch_optional(pool)
+        .await?;
+        Ok(row.map(|(e,)| e))
+    }
+
     /// Every org a user belongs to, with their role — the `/me` org list.
     pub async fn list_for_user(
         pool: &PgPool,

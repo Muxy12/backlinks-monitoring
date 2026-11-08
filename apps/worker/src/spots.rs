@@ -199,5 +199,28 @@ pub async fn run_search(pool: &sqlx::PgPool, run_id: Uuid) -> anyhow::Result<()>
         None,
     )
     .await?;
+
+    // "Your ranking is ready" — notify the org owner once the spot ranking is
+    // built. Best-effort and env-gated (Resend): a mail failure never fails the
+    // run. Only when the run actually produced a ranking.
+    if !new_spots.is_empty()
+        && let Ok(Some(to)) = db::repositories::orgs::owner_email(pool, org).await
+    {
+        let app_url = std::env::var("APP_URL")
+            .ok()
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| "https://linkpulz.com".to_string());
+        let subject = format!("Your link-spot ranking for {own_domain} is ready");
+        let text = format!(
+            "We finished analysing {own_domain}.\n\n\
+             {count} link spots are ranked by how well they fit your topics, with their \
+             marketplace prices to compare.\n\n\
+             See your ranking: {app_url}/spots\n",
+            count = new_spots.len(),
+        );
+        if let Err(e) = notifications::resend::send_email(&to, &subject, &text).await {
+            tracing::warn!("ranking-ready email failed: {e}");
+        }
+    }
     Ok(())
 }
