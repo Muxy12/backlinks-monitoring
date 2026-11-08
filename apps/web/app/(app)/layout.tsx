@@ -16,20 +16,21 @@ import "./shell.css";
 // desktop, a slide-in drawer on mobile, so pages only render their own title
 // and content, never the nav.
 type Link = { href: string; label: string; icon: string; badge?: string };
-// Sidebar information architecture, marketplace-first: lead with acquisition
-// (find link spots across marketplaces → compare → buy), then monitoring, then
-// workspace admin. Discovery surfaces are flag-gated and spliced in below.
+// Sidebar IA for the AI link-building platform (refonte): lead with the
+// acquisition funnel (my sites → find spots → campaigns), then monitoring, then
+// workspace. Only real pages are linked; flag-gated surfaces are spliced below.
 const SECTIONS: { title: string; links: Link[] }[] = [
   {
     title: "Acquire",
-    links: [],
+    links: [
+      { href: "/projects", label: "My sites", icon: "projects" },
+    ],
   },
   {
     title: "Monitor",
     links: [
-      { href: "/dashboard", label: "Overview", icon: "dashboard" },
+      { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
       { href: "/backlinks", label: "Backlinks", icon: "link" },
-      { href: "/projects", label: "Domains", icon: "projects" },
       { href: "/graph", label: "Graph", icon: "graph" },
       { href: "/import", label: "Import", icon: "import" },
     ],
@@ -50,14 +51,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [me, setMe] = useState<MeResponse | null>(null);
   const isAdmin = !!me?.user.is_admin;
   const spotFinder = !!me?.features?.spot_finder;
-  // "Acquire" holds the Spot Finder (the single acquisition surface) when the
-  // feature is enabled; the section is dropped when it has no links.
+  const campaignsBeta = !!me?.features?.campaigns_beta;
+  // "Acquire" = My sites → Spot Finder → Campaigns (the flag-gated funnel steps
+  // splice in after My sites, in funnel order).
   const sections = SECTIONS.map((s) => {
     if (s.title !== "Acquire") return s;
-    const links: Link[] = [];
+    const links = [...s.links];
     if (spotFinder) links.push({ href: "/spots", label: "Spot Finder", icon: "signal" });
+    if (campaignsBeta)
+      links.push({ href: "/campaigns", label: "Campaigns", icon: "campaigns", badge: "BETA" });
     return { ...s, links };
-  }).filter((s) => s.links.length > 0);
+  });
   const orgs = me?.organizations ?? [];
   const current = selectedOrg(orgs);
   const workspace = current?.name ?? null;
