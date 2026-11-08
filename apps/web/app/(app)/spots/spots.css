@@ -602,3 +602,61 @@ a.sf-buy:hover {
   font-size: 11px;
   color: var(--muted);
 }
+
+/* ── Analyze hero (front door) ─────────────────────────────────────────── */
+.sf-analyze {
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--primary) 6%, transparent),
+      color-mix(in srgb, var(--violet) 6%, transparent)
+    ),
+    var(--surface);
+}
+.sf-analyze-form {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+.sf-analyze-field {
+  position: relative;
+  flex: 1 1 280px;
+  display: flex;
+  align-items: center;
+}
+.sf-analyze-field svg {
+  position: absolute;
+  left: 13px;
+  color: var(--muted);
+  pointer-events: none;
+}
+.sf-analyze-input {
+  width: 100%;
+  height: 46px;
+  padding: 0 14px 0 40px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 15px;
+}
+.sf-analyze-input::placeholder {
+  color: var(--muted-2);
+}
+.sf-analyze-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-weak);
+}
+.sf-analyze-market {
+  height: 46px;
+  border-radius: var(--r-md);
+}
+.sf-analyze-btn {
+  height: 46px;
+  padding: 0 24px;
+  font-size: 15px;
+  font-weight: 700;
+}
