@@ -14,6 +14,7 @@ import {
   type SpotsResponse,
   type SpotView,
   type SpotKeywordPosition,
+  type SpotOrder,
   type ProjectOverview,
   type SpotRunView,
   type GeoQueryView,
@@ -137,7 +138,10 @@ export default function SpotsPage() {
   // Spot detail drawer.
   const [detail, setDetail] = useState<SpotView | null>(null);
   const [detailKw, setDetailKw] = useState<SpotKeywordPosition[] | null>(null);
-  const [detailTab, setDetailTab] = useState<"keywords" | "prices">("keywords");
+  const [detailOrders, setDetailOrders] = useState<SpotOrder[] | null>(null);
+  const [detailTab, setDetailTab] = useState<"keywords" | "prices" | "orders">("keywords");
+  // New-order form (order-tracking tab).
+  const [orderForm, setOrderForm] = useState({ platform: "", target_url: "", price: "" });
   const [spotsBusy, setSpotsBusy] = useState(false);
   const [spotsErr, setSpotsErr] = useState<string | null>(null);
   const dataforseo = !!me?.features?.dataforseo;
@@ -505,10 +509,53 @@ export default function SpotsPage() {
     setDetail(s);
     setDetailTab("keywords");
     setDetailKw(null);
+    setDetailOrders(null);
+    setOrderForm({ platform: "", target_url: "", price: "" });
     if (orgId && projectId) {
       void orgApi.spotKeywordPositions(orgId, projectId, s.id).then((res) => {
         setDetailKw(res.ok ? res.data : []);
       });
+      void orgApi.spotOrders(orgId, projectId, s.id).then((res) => {
+        setDetailOrders(res.ok ? res.data : []);
+      });
+    }
+  }
+
+  async function addOrder() {
+    if (!orgId || !projectId || !detail) return;
+    const price = orderForm.price.trim();
+    const res = await orgApi.createSpotOrder(orgId, projectId, detail.id, {
+      status: "todo",
+      platform: orderForm.platform.trim() || null,
+      target_url: orderForm.target_url.trim() || null,
+      price_cents: price ? Math.round(parseFloat(price) * 100) : null,
+      currency: "EUR",
+    });
+    if (res.ok) {
+      setDetailOrders((o) => [...(o ?? []), res.data]);
+      setOrderForm({ platform: "", target_url: "", price: "" });
+    } else {
+      setSpotsErr(res.detail || "Could not add the order.");
+    }
+  }
+  async function setOrderStatus(order: SpotOrder, status: string) {
+    if (!orgId || !projectId || !detail) return;
+    const res = await orgApi.updateSpotOrder(orgId, projectId, detail.id, order.id, {
+      status,
+      platform: order.platform,
+      target_url: order.target_url,
+      price_cents: order.price_cents,
+      currency: order.currency,
+    });
+    if (res.ok) {
+      setDetailOrders((o) => (o ?? []).map((x) => (x.id === order.id ? res.data : x)));
+    }
+  }
+  async function removeOrder(orderId: string) {
+    if (!orgId || !projectId || !detail) return;
+    const res = await orgApi.deleteSpotOrder(orgId, projectId, detail.id, orderId);
+    if (res.ok) {
+      setDetailOrders((o) => (o ?? []).filter((x) => x.id !== orderId));
     }
   }
 
@@ -1533,6 +1580,9 @@ export default function SpotsPage() {
               <TabBtn active={detailTab === "prices"} onClick={() => setDetailTab("prices")}>
                 Prices per platform
               </TabBtn>
+              <TabBtn active={detailTab === "orders"} onClick={() => setDetailTab("orders")}>
+                Order tracking{detailOrders && detailOrders.length > 0 ? ` (${detailOrders.length})` : ""}
+              </TabBtn>
             </div>
 
             {detailTab === "keywords" ? (
@@ -1563,27 +1613,95 @@ export default function SpotsPage() {
                   </tbody>
                 </table>
               )
-            ) : (detail.offers?.length ?? 0) === 0 ? (
-              <p className="muted" style={{ marginTop: 12 }}>
-                No marketplace offers for this spot yet — run “Compare prices”.
-              </p>
+            ) : detailTab === "prices" ? (
+              (detail.offers?.length ?? 0) === 0 ? (
+                <p className="muted" style={{ marginTop: 12 }}>
+                  No marketplace offers for this spot yet — run “Compare prices”.
+                </p>
+              ) : (
+                <table className="bl-table" style={{ marginTop: 12 }}>
+                  <thead>
+                    <tr><th>Platform</th><th>Price</th><th></th></tr>
+                  </thead>
+                  <tbody>
+                    {detail.offers!.map((o, i) => (
+                      <tr key={i}>
+                        <td>{o.source}</td>
+                        <td className="mono">
+                          {o.price_cents != null ? `${(o.price_cents / 100).toLocaleString()} ${o.currency ?? "EUR"}` : "n/a"}
+                        </td>
+                        <td>{o.url ? <a href={o.url} target="_blank" rel="noopener noreferrer">Buy ↗</a> : null}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )
             ) : (
-              <table className="bl-table" style={{ marginTop: 12 }}>
-                <thead>
-                  <tr><th>Platform</th><th>Price</th><th></th></tr>
-                </thead>
-                <tbody>
-                  {detail.offers!.map((o, i) => (
-                    <tr key={i}>
-                      <td>{o.source}</td>
-                      <td className="mono">
-                        {o.price_cents != null ? `${(o.price_cents / 100).toLocaleString()} ${o.currency ?? "EUR"}` : "n/a"}
-                      </td>
-                      <td>{o.url ? <a href={o.url} target="_blank" rel="noopener noreferrer">Buy ↗</a> : null}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <div style={{ marginTop: 12 }}>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginBottom: 12 }}>
+                  <input
+                    placeholder="Platform"
+                    value={orderForm.platform}
+                    onChange={(e) => setOrderForm((f) => ({ ...f, platform: e.target.value }))}
+                    style={{ width: 120, padding: "6px 8px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--fg)" }}
+                  />
+                  <input
+                    placeholder="Target URL"
+                    value={orderForm.target_url}
+                    onChange={(e) => setOrderForm((f) => ({ ...f, target_url: e.target.value }))}
+                    style={{ flex: "1 1 160px", padding: "6px 8px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--fg)" }}
+                  />
+                  <input
+                    placeholder="€"
+                    inputMode="decimal"
+                    value={orderForm.price}
+                    onChange={(e) => setOrderForm((f) => ({ ...f, price: e.target.value }))}
+                    style={{ width: 70, padding: "6px 8px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--fg)" }}
+                  />
+                  <button className="btn sm primary" onClick={() => void addOrder()}>Add</button>
+                </div>
+                {detailOrders == null ? (
+                  <p className="muted">Loading…</p>
+                ) : detailOrders.length === 0 ? (
+                  <p className="muted">No orders yet. Track what you ordered, where and for how much.</p>
+                ) : (
+                  <table className="bl-table">
+                    <thead>
+                      <tr><th>Status</th><th>Platform</th><th>Target</th><th>Price</th><th></th></tr>
+                    </thead>
+                    <tbody>
+                      {detailOrders.map((o) => (
+                        <tr key={o.id}>
+                          <td>
+                            <select
+                              value={o.status}
+                              onChange={(e) => void setOrderStatus(o, e.target.value)}
+                              aria-label="Order status"
+                            >
+                              <option value="todo">To do</option>
+                              <option value="in_progress">In progress</option>
+                              <option value="done">Done</option>
+                              <option value="problem">Problem</option>
+                            </select>
+                          </td>
+                          <td>{o.platform ?? "—"}</td>
+                          <td className="sf-example">
+                            {o.target_url ? (
+                              <a href={o.target_url} target="_blank" rel="noopener noreferrer" title={o.target_url}>link ↗</a>
+                            ) : "—"}
+                          </td>
+                          <td className="mono">
+                            {o.price_cents != null ? `${(o.price_cents / 100).toLocaleString()} ${o.currency ?? "EUR"}` : "—"}
+                          </td>
+                          <td>
+                            <button className="btn sm danger" title="Delete order" onClick={() => void removeOrder(o.id)}>×</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
             )}
 
             <div style={{ marginTop: 18 }}>

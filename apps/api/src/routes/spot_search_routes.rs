@@ -357,6 +357,136 @@ pub async fn spot_keyword_positions(
 }
 
 #[derive(Serialize)]
+pub struct SpotOrderView {
+    pub id: Uuid,
+    pub spot_id: Uuid,
+    pub status: String,
+    pub platform: Option<String>,
+    pub target_url: Option<String>,
+    pub price_cents: Option<i64>,
+    pub currency: Option<String>,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+impl From<db::repositories::spots::SpotOrderRow> for SpotOrderView {
+    fn from(r: db::repositories::spots::SpotOrderRow) -> Self {
+        SpotOrderView {
+            id: r.id,
+            spot_id: r.spot_id,
+            status: r.status,
+            platform: r.platform,
+            target_url: r.target_url,
+            price_cents: r.price_cents,
+            currency: r.currency,
+            created_at: r.created_at.to_rfc3339(),
+            updated_at: r.updated_at.to_rfc3339(),
+        }
+    }
+}
+
+#[derive(Deserialize)]
+pub struct OrderBody {
+    pub status: Option<String>,
+    pub platform: Option<String>,
+    pub target_url: Option<String>,
+    pub price_cents: Option<i64>,
+    pub currency: Option<String>,
+}
+
+fn valid_order_status(s: &str) -> bool {
+    matches!(s, "todo" | "in_progress" | "done" | "problem")
+}
+
+/// `GET …/spots/{spot_id}/orders` — the orders logged against a spot. Viewer.
+pub async fn list_spot_orders(
+    State(state): State<AppState>,
+    Path((org_id, project_id, spot_id)): Path<(Uuid, Uuid, Uuid)>,
+    jar: CookieJar,
+) -> Result<Json<Vec<SpotOrderView>>, ApiError> {
+    gate(&state)?;
+    let (user, _s) = current(&state, &jar).await?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Viewer)?;
+    projects::get(&state.pool, &scope, project_id).await?;
+    let rows = spots::list_orders_for_spot(&state.pool, &scope, spot_id).await?;
+    Ok(Json(rows.into_iter().map(SpotOrderView::from).collect()))
+}
+
+/// `POST …/spots/{spot_id}/orders` — log a new order for a spot. Member.
+pub async fn create_spot_order(
+    State(state): State<AppState>,
+    Path((org_id, project_id, spot_id)): Path<(Uuid, Uuid, Uuid)>,
+    jar: CookieJar,
+    headers: HeaderMap,
+    Json(body): Json<OrderBody>,
+) -> Result<(StatusCode, Json<SpotOrderView>), ApiError> {
+    gate(&state)?;
+    let (user, session) = current(&state, &jar).await?;
+    check_csrf(&jar, &headers, &session)?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Member)?;
+    projects::get(&state.pool, &scope, project_id).await?;
+    let status = body.status.as_deref().unwrap_or("todo");
+    if !valid_order_status(status) {
+        return Err(ApiError::Validation("invalid order status".into()));
+    }
+    let o = db::repositories::spots::NewSpotOrder {
+        status,
+        platform: body.platform.as_deref(),
+        target_url: body.target_url.as_deref(),
+        price_cents: body.price_cents,
+        currency: body.currency.as_deref(),
+    };
+    let row = spots::create_order(&state.pool, &scope, project_id, spot_id, &o).await?;
+    Ok((StatusCode::CREATED, Json(SpotOrderView::from(row))))
+}
+
+/// `PATCH …/spots/{spot_id}/orders/{order_id}` — replace an order's fields. Member.
+pub async fn update_spot_order(
+    State(state): State<AppState>,
+    Path((org_id, _project_id, _spot_id, order_id)): Path<(Uuid, Uuid, Uuid, Uuid)>,
+    jar: CookieJar,
+    headers: HeaderMap,
+    Json(body): Json<OrderBody>,
+) -> Result<Json<SpotOrderView>, ApiError> {
+    gate(&state)?;
+    let (user, session) = current(&state, &jar).await?;
+    check_csrf(&jar, &headers, &session)?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Member)?;
+    let status = body.status.as_deref().unwrap_or("todo");
+    if !valid_order_status(status) {
+        return Err(ApiError::Validation("invalid order status".into()));
+    }
+    let o = db::repositories::spots::NewSpotOrder {
+        status,
+        platform: body.platform.as_deref(),
+        target_url: body.target_url.as_deref(),
+        price_cents: body.price_cents,
+        currency: body.currency.as_deref(),
+    };
+    let row = spots::update_order(&state.pool, &scope, order_id, &o).await?;
+    Ok(Json(SpotOrderView::from(row)))
+}
+
+/// `DELETE …/spots/{spot_id}/orders/{order_id}` — remove an order. Member.
+pub async fn delete_spot_order(
+    State(state): State<AppState>,
+    Path((org_id, _project_id, _spot_id, order_id)): Path<(Uuid, Uuid, Uuid, Uuid)>,
+    jar: CookieJar,
+    headers: HeaderMap,
+) -> Result<StatusCode, ApiError> {
+    gate(&state)?;
+    let (user, session) = current(&state, &jar).await?;
+    check_csrf(&jar, &headers, &session)?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Member)?;
+    spots::delete_order(&state.pool, &scope, order_id).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+#[derive(Serialize)]
 pub struct ProjectOverviewView {
     pub id: Uuid,
     pub name: String,
