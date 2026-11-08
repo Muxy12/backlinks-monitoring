@@ -48,6 +48,15 @@ ALTER TABLE projects
     ADD COLUMN IF NOT EXISTS serp_locale text NOT NULL DEFAULT 'en';
 
 -- All rows carry the non-blank default 'en', so the check validates immediately.
-ALTER TABLE projects
-    ADD CONSTRAINT projects_serp_locale_not_blank
-        CHECK (length(btrim(serp_locale)) > 0);
+-- IDEMPOTENT: guarded so a prod where serp_locale (and its constraint) was
+-- hand-applied before version 49 was recorded does not abort on "already exists".
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'projects_serp_locale_not_blank'
+    ) THEN
+        ALTER TABLE projects
+            ADD CONSTRAINT projects_serp_locale_not_blank
+                CHECK (length(btrim(serp_locale)) > 0);
+    END IF;
+END $$;
