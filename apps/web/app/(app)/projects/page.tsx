@@ -4,7 +4,14 @@ import { PageLoading } from "@/components/PageLoading";
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { api, orgApi, type ClientView, type MeResponse, type ProjectView } from "@/lib/api";
+import {
+  api,
+  orgApi,
+  type ClientView,
+  type MeResponse,
+  type ProjectView,
+  type SiteAnalysis,
+} from "@/lib/api";
 import { selectedOrgId } from "@/lib/workspace";
 import "@/app/auth.css";
 import "../dashboard/dashboard.css";
@@ -67,6 +74,17 @@ export default function ProjectsPage() {
   const [fHours, setFHours] = useState("168");
   const [busy, setBusy] = useState(false);
   const [mounted, setMounted] = useState(false);
+  // Site-analysis drawer.
+  const [anProject, setAnProject] = useState<ProjectView | null>(null);
+  const [an, setAn] = useState<SiteAnalysis | null>(null);
+  const [anBusy, setAnBusy] = useState(false);
+  const [anForm, setAnForm] = useState({
+    theme: "",
+    sub_themes: "",
+    products: "",
+    keywords: "",
+    summary: "",
+  });
 
   useEffect(() => setMounted(true), []);
 
@@ -183,15 +201,73 @@ export default function ProjectsPage() {
     void load(orgId);
   }
 
+  const loadAnalysis = useCallback(async (org: string, projectId: string) => {
+    const res = await orgApi.siteAnalysis(org, projectId);
+    if (!res.ok) return;
+    setAn(res.data);
+    if (res.data) {
+      setAnForm({
+        theme: res.data.theme ?? "",
+        sub_themes: res.data.sub_themes.join(", "),
+        products: res.data.products.join(", "),
+        keywords: res.data.keywords.join(", "),
+        summary: res.data.summary ?? "",
+      });
+    }
+  }, []);
+
+  function openAnalysis(p: ProjectView) {
+    setAnProject(p);
+    setAn(null);
+    setAnForm({ theme: "", sub_themes: "", products: "", keywords: "", summary: "" });
+    if (orgId) void loadAnalysis(orgId, p.id);
+  }
+
+  async function runAnalysis() {
+    if (!orgId || !anProject) return;
+    setAnBusy(true);
+    const res = await orgApi.analyzeSite(orgId, anProject.id);
+    setAnBusy(false);
+    if (res.ok) setAn(res.data);
+  }
+
+  async function saveAnalysis() {
+    if (!orgId || !anProject) return;
+    const toList = (s: string) =>
+      s
+        .split(",")
+        .map((x) => x.trim())
+        .filter(Boolean);
+    setAnBusy(true);
+    const res = await orgApi.updateSiteAnalysis(orgId, anProject.id, {
+      theme: anForm.theme.trim() || null,
+      sub_themes: toList(anForm.sub_themes),
+      products: toList(anForm.products),
+      keywords: toList(anForm.keywords),
+      summary: anForm.summary.trim() || null,
+    });
+    setAnBusy(false);
+    if (res.ok) setAn(res.data);
+  }
+
+  useEffect(() => {
+    if (!orgId || !anProject) return;
+    if (an?.status !== "queued" && an?.status !== "running") return;
+    const t = setInterval(() => void loadAnalysis(orgId, anProject.id), 3000);
+    return () => clearInterval(t);
+  }, [orgId, anProject, an?.status, loadAnalysis]);
+
   if (loading) return <PageLoading />;
   if (!me) return null;
+
+  const anRunning = an?.status === "queued" || an?.status === "running";
 
   return (
     <main className="dash">
       <div className="dom-bar">
         <header className="page-head" style={{ marginBottom: 0 }}>
-          <h1>Domains</h1>
-          <p className="muted">The sites you monitor backlinks for.</p>
+          <h1>My sites</h1>
+          <p className="muted">Your sites — monitored, and analysed for link-building topics.</p>
         </header>
         {orgId && (
           <button className="btn primary" onClick={openAdd}>
@@ -269,6 +345,9 @@ export default function ProjectsPage() {
                       </td>
                       <td>
                         <div className="dom-acts">
+                          <button className="btn sm" onClick={() => openAnalysis(p)}>
+                            Analysis
+                          </button>
                           <button className="btn sm" onClick={() => openEdit(p)}>
                             Edit
                           </button>
@@ -358,6 +437,86 @@ export default function ProjectsPage() {
           </div>,
           document.body,
         )}
+
+      {anProject && (
+        <div
+          onClick={() => setAnProject(null)}
+          style={{ position: "fixed", inset: 0, background: "rgba(5,10,25,.45)", zIndex: 60, display: "flex", justifyContent: "flex-end" }}
+        >
+          <aside
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Analysis for ${anProject.domain}`}
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: "min(560px, 100%)", height: "100%", overflowY: "auto", background: "var(--surface)", borderLeft: "1px solid var(--border)", padding: 22 }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+              <h2 className="mono" style={{ margin: 0, fontSize: 18 }}>{anProject.domain}</h2>
+              <button className="btn sm" onClick={() => setAnProject(null)}>Close</button>
+            </div>
+            <p className="muted" style={{ marginTop: 6 }}>AI analysis of your site's topics — editable.</p>
+
+            <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 12, flexWrap: "wrap" }}>
+              <button className="btn primary" disabled={anBusy || anRunning} onClick={() => void runAnalysis()}>
+                {anRunning ? "Analyzing…" : an && an.status === "done" ? "Re-analyze" : "Analyze"}
+              </button>
+              {an?.source && (
+                <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 12, fontWeight: 700, background: an.source === "ai" ? "var(--primary-weak)" : "var(--surface-2)", color: an.source === "ai" ? "var(--primary-press)" : "var(--muted)" }}>
+                  {an.source === "ai" ? "AI" : "Heuristic"}
+                </span>
+              )}
+              {an?.language && <span className="muted">· {an.language}</span>}
+              {an?.edited && <span className="muted">· edited</span>}
+            </div>
+
+            {anRunning && <p className="muted" style={{ marginTop: 12 }}>Reading your site…</p>}
+            {an?.status === "error" && (
+              <div className="auth-error" role="alert" style={{ marginTop: 12 }}>{an.error ?? "Analysis failed."}</div>
+            )}
+            {!an && !anRunning && (
+              <p className="muted" style={{ marginTop: 12 }}>Not analysed yet — click Analyze to read your site's topics.</p>
+            )}
+
+            {an && an.status === "done" && (
+              <div style={{ marginTop: 16, display: "grid", gap: 12 }}>
+                {[
+                  ["Theme", "theme", false],
+                  ["Sub-themes (comma-separated)", "sub_themes", false],
+                  ["Products / services (comma-separated)", "products", false],
+                  ["Detected keywords (comma-separated)", "keywords", false],
+                  ["Summary", "summary", true],
+                ].map(([label, key, multi]) => (
+                  <label key={key as string} style={{ display: "grid", gap: 4, fontSize: 12, color: "var(--muted)" }}>
+                    {label as string}
+                    {multi ? (
+                      <textarea
+                        rows={3}
+                        value={anForm[key as keyof typeof anForm]}
+                        onChange={(e) => setAnForm((f) => ({ ...f, [key as string]: e.target.value }))}
+                        style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--fg)", font: "inherit" }}
+                      />
+                    ) : (
+                      <input
+                        value={anForm[key as keyof typeof anForm]}
+                        onChange={(e) => setAnForm((f) => ({ ...f, [key as string]: e.target.value }))}
+                        style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--fg)" }}
+                      />
+                    )}
+                  </label>
+                ))}
+                <div>
+                  <button className="btn primary" disabled={anBusy} onClick={() => void saveAnalysis()}>
+                    {anBusy ? "Saving…" : "Save"}
+                  </button>
+                </div>
+                <p className="muted" style={{ fontSize: 11 }}>
+                  Detected topics — not verified Google positions.
+                </p>
+              </div>
+            )}
+          </aside>
+        </div>
+      )}
     </main>
   );
 }

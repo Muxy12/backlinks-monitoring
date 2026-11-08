@@ -901,6 +901,19 @@ export interface OverviewActivity {
   backlink_id: string;
   detected_at: string;
 }
+export interface SiteAnalysis {
+  status: string;
+  source: string | null;
+  language: string | null;
+  theme: string | null;
+  sub_themes: string[];
+  products: string[];
+  keywords: string[];
+  summary: string | null;
+  edited: boolean;
+  error: string | null;
+  updated_at: string;
+}
 export interface AcquisitionSummary {
   sites_analyzed: number;
   spots_found: number;
@@ -1071,6 +1084,30 @@ export const orgApi = {
   // "My analyses" cards: every analyzed site with its spot count + in-flight state.
   spotOverview: (org: string) =>
     request<ProjectOverview[]>(`/v1/organizations/${org}/spot-overview`),
+  // AI site analysis (refonte P2): trigger / read / edit a project's semantic profile.
+  analyzeSite: (org: string, projectId: string) =>
+    request<SiteAnalysis>(`/v1/organizations/${org}/projects/${projectId}/analyze-site`, {
+      method: "POST",
+      headers: csrfHeader(),
+    }),
+  siteAnalysis: (org: string, projectId: string) =>
+    request<SiteAnalysis | null>(`/v1/organizations/${org}/projects/${projectId}/analysis`),
+  updateSiteAnalysis: (
+    org: string,
+    projectId: string,
+    body: {
+      theme?: string | null;
+      sub_themes: string[];
+      products: string[];
+      keywords: string[];
+      summary?: string | null;
+    },
+  ) =>
+    request<SiteAnalysis>(`/v1/organizations/${org}/projects/${projectId}/analysis`, {
+      method: "PATCH",
+      headers: csrfHeader(),
+      body: JSON.stringify(body),
+    }),
   // URL-first front door: resolve-or-create the project for a site's domain and
   // start a detection scan of it, from a bare URL. Returns the project to select.
   analyzeUrl: (org: string, url: string) =>

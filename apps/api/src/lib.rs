@@ -357,7 +357,8 @@ pub fn app(state: AppState) -> Router {
         )
         .route(
             "/v1/organizations/{org_id}/projects/{project_id}/analysis",
-            get(routes::spot_keyword_routes::get_analysis),
+            get(routes::spot_keyword_routes::get_analysis)
+                .patch(routes::spot_keyword_routes::update_analysis),
         )
         .route(
             "/v1/organizations/{org_id}/projects/{project_id}/keywords/bulk-status",
