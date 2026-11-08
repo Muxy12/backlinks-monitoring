@@ -2,6 +2,7 @@
 //! it. The loop claims jobs with FOR UPDATE SKIP LOCKED, dispatches by type,
 //! and completes/retries/reaps — long-running, NOT on Vercel (ADR-0002).
 
+pub mod analysis;
 pub mod deliver;
 pub mod discover;
 pub mod engine;
@@ -113,6 +114,12 @@ async fn dispatch(ctx: &WorkerCtx, job: &ClaimedJob) -> anyhow::Result<()> {
         JobKind::DetectSiteKeywords => {
             let scan_id = payload_uuid(&job.payload, "scan_id")?;
             keywords::run_detection(&ctx.pool, &ctx.crawler, scan_id).await?;
+            Ok(())
+        }
+        JobKind::AnalyzeSite => {
+            let org = payload_uuid(&job.payload, "org_id")?;
+            let project = payload_uuid(&job.payload, "project_id")?;
+            analysis::run_analysis(&ctx.pool, &ctx.crawler, org, project).await?;
             Ok(())
         }
         JobKind::FindSpots => {

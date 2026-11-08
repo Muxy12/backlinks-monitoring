@@ -352,6 +352,14 @@ pub fn app(state: AppState) -> Router {
             post(routes::spot_keyword_routes::detect_keywords),
         )
         .route(
+            "/v1/organizations/{org_id}/projects/{project_id}/analyze-site",
+            post(routes::spot_keyword_routes::analyze_site),
+        )
+        .route(
+            "/v1/organizations/{org_id}/projects/{project_id}/analysis",
+            get(routes::spot_keyword_routes::get_analysis),
+        )
+        .route(
             "/v1/organizations/{org_id}/projects/{project_id}/keywords/bulk-status",
             post(routes::spot_keyword_routes::bulk_status),
         )

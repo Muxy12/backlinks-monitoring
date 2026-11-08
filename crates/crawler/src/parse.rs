@@ -110,6 +110,12 @@ pub struct ParsedPage {
     /// the Spot Finder keyword detector (Lot A) — the topical headings of the
     /// user's own pages seed keyword candidates.
     pub h1s: Vec<String>,
+    /// `<title>` text, whitespace-collapsed (site analysis, refonte P2).
+    pub title: Option<String>,
+    /// `<meta name="description">` content (site analysis, refonte P2).
+    pub meta_description: Option<String>,
+    /// `<html lang>` primary language tag, lowercased (site analysis, refonte P2).
+    pub lang: Option<String>,
 }
 
 fn sel(cache: &'static OnceLock<Selector>, s: &str) -> &'static Selector {
@@ -231,6 +237,31 @@ pub fn parse_page(html: &str) -> ParsedPage {
         })
         .collect();
 
+    // Site-analysis metadata (refonte P2): title, meta description, html lang.
+    static TITLE: OnceLock<Selector> = OnceLock::new();
+    static DESC: OnceLock<Selector> = OnceLock::new();
+    static HTML: OnceLock<Selector> = OnceLock::new();
+    let collapse = |s: &str| s.split_whitespace().collect::<Vec<_>>().join(" ");
+    let title = doc
+        .select(sel(&TITLE, "title"))
+        .next()
+        .map(|e| collapse(&e.text().collect::<String>()))
+        .filter(|s| !s.is_empty());
+    let meta_description = doc
+        .select(sel(&DESC, "meta[name=\"description\"][content]"))
+        .next()
+        .and_then(|e| e.value().attr("content"))
+        .map(collapse)
+        .filter(|s| !s.is_empty());
+    let lang = doc
+        .select(sel(&HTML, "html[lang]"))
+        .next()
+        .and_then(|e| e.value().attr("lang"))
+        .map(|s| s.trim().to_ascii_lowercase())
+        .filter(|s| !s.is_empty())
+        .map(|s| s.split('-').next().unwrap_or("").to_string())
+        .filter(|s| !s.is_empty());
+
     ParsedPage {
         base_href,
         canonical,
@@ -238,6 +269,9 @@ pub fn parse_page(html: &str) -> ParsedPage {
         robots_nofollow,
         links,
         h1s,
+        title,
+        meta_description,
+        lang,
     }
 }
 

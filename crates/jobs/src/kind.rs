@@ -33,6 +33,9 @@ pub enum JobKind {
     /// Spot Finder (Lot A): crawl a project's own site (P0 + P1) and extract
     /// `<h1>` keyword candidates. User-initiated, so it sits above background work.
     DetectSiteKeywords,
+    /// Refonte P2: crawl a project's site and build its AI/heuristic semantic
+    /// profile (theme, sub-themes, language, products, keywords). User-initiated.
+    AnalyzeSite,
     /// Spot Finder (Lot B): run the SERP lookup over the kept keywords and
     /// aggregate ranking domains into spots. User-initiated, paid (DataForSEO).
     FindSpots,
@@ -67,6 +70,7 @@ impl JobKind {
             // User-initiated Spot Finder work — above plain background crawls so
             // the UI fills promptly, but it does not jump the queue.
             JobKind::DetectSiteKeywords
+            | JobKind::AnalyzeSite
             | JobKind::FindSpots
             | JobKind::EnrichSpots
             | JobKind::MatchMarketplaces
@@ -92,6 +96,7 @@ impl JobKind {
             JobKind::RecomputeUsage => "recompute_usage",
             JobKind::RetentionDownsample => "retention_downsample",
             JobKind::DetectSiteKeywords => "detect_site_keywords",
+            JobKind::AnalyzeSite => "analyze_site",
             JobKind::FindSpots => "find_spots",
             JobKind::EnrichSpots => "enrich_spots",
             JobKind::MatchMarketplaces => "match_marketplaces",
@@ -119,6 +124,7 @@ impl FromStr for JobKind {
             "recompute_usage" => RecomputeUsage,
             "retention_downsample" => RetentionDownsample,
             "detect_site_keywords" => DetectSiteKeywords,
+            "analyze_site" => AnalyzeSite,
             "find_spots" => FindSpots,
             "enrich_spots" => EnrichSpots,
             "match_marketplaces" => MatchMarketplaces,
