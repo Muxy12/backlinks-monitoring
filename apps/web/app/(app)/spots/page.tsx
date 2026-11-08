@@ -30,47 +30,53 @@ type Filter = "all" | "candidate" | "kept" | "rejected";
 
 // Price/performance grade (from the API: pepite|a_plus|a|b|c|unrated).
 const GRADE_ORDER = ["pepite", "a_plus", "a", "b", "c"] as const;
-const GRADE_META: Record<string, { label: string; bg: string; fg: string }> = {
-  pepite: { label: "Pépite", bg: "#f4e4b0", fg: "#6b4e00" },
-  a_plus: { label: "A+", bg: "#cdeccf", fg: "#1c5c27" },
-  a: { label: "A", bg: "#d9eecf", fg: "#2e5e23" },
-  b: { label: "B", bg: "#dfe6f2", fg: "#33467a" },
-  c: { label: "C", bg: "#f3dede", fg: "#7a2e2e" },
-  unrated: { label: "—", bg: "var(--border)", fg: "var(--muted)" },
+const GRADE_LABEL: Record<string, string> = {
+  pepite: "Pépite",
+  a_plus: "A+",
+  a: "A",
+  b: "B",
+  c: "C",
+  unrated: "—",
 };
 function GradeBadge({ grade }: { grade?: string }) {
-  const m = GRADE_META[grade ?? "unrated"] ?? GRADE_META.unrated;
-  return (
-    <span
-      style={{
-        display: "inline-block",
-        minWidth: 34,
-        textAlign: "center",
-        padding: "2px 8px",
-        borderRadius: 999,
-        fontSize: 12,
-        fontWeight: 700,
-        background: m.bg,
-        color: m.fg,
-      }}
-    >
-      {m.label}
-    </span>
-  );
+  const g = grade ?? "unrated";
+  return <span className={`sf-grade g-${g}`}>{GRADE_LABEL[g] ?? "—"}</span>;
 }
-// A 0–100 thematic score as a coloured number (green = strong, red = weak).
-function ScoreNum({ v }: { v?: number }) {
-  if (v == null) return <span className="muted">–</span>;
-  const h = Math.round((v / 100) * 120); // 0 = red, 120 = green
+// A 0–100 thematic score as a circular gauge (green = strong, red = weak),
+// Référencime-style — the ring colour tracks the value, the number sits inside.
+function ScoreDonut({ v, size = 40 }: { v?: number; size?: number }) {
+  if (v == null) return <span className="sf-donut-empty">–</span>;
+  const val = Math.max(0, Math.min(100, v));
+  const stroke = 4;
+  const r = (size - stroke) / 2;
+  const circ = 2 * Math.PI * r;
+  const hue = Math.round((val / 100) * 125); // 0 = red → 125 = green
+  const color = `hsl(${hue} 62% 44%)`;
   return (
-    <span style={{ fontWeight: 700, color: `hsl(${h} 55% 42%)` }}>{Math.round(v)}</span>
+    <svg className="sf-donut" width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--surface-3)" strokeWidth={stroke} />
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={r}
+        fill="none"
+        stroke={color}
+        strokeWidth={stroke}
+        strokeLinecap="round"
+        strokeDasharray={`${(circ * val) / 100} ${circ}`}
+        transform={`rotate(-90 ${size / 2} ${size / 2})`}
+      />
+      <text x="50%" y="50%" dominantBaseline="central" textAnchor="middle" fontSize={size * 0.33} fontWeight={700} fill="var(--text)">
+        {Math.round(val)}
+      </text>
+    </svg>
   );
 }
 function Stat({ label, v }: { label: string; v?: number | null }) {
   return (
-    <div>
-      <div style={{ fontWeight: 700 }}>{v != null ? v.toLocaleString() : "–"}</div>
-      <div className="muted" style={{ fontSize: 11 }}>{label}</div>
+    <div className="sf-metric">
+      <b>{v != null ? v.toLocaleString() : "–"}</b>
+      <span>{label}</span>
     </div>
   );
 }
@@ -84,19 +90,7 @@ function TabBtn({
   children: ReactNode;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{
-        background: "none",
-        border: "none",
-        borderBottom: active ? "2px solid var(--link, #3b6cff)" : "2px solid transparent",
-        color: active ? "var(--fg)" : "var(--muted)",
-        fontWeight: 700,
-        padding: "8px 10px",
-        cursor: "pointer",
-      }}
-    >
+    <button type="button" onClick={onClick} className={`sf-tab${active ? " active" : ""}`}>
       {children}
     </button>
   );
@@ -870,34 +864,31 @@ export default function SpotsPage() {
                 <h2>My analyses</h2>
                 <span className="muted">{overview.length} site{overview.length === 1 ? "" : "s"}</span>
               </div>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))",
-                  gap: 12,
-                }}
-              >
+              <div className="sf-cards">
                 {overview.map((o) => (
-                  <div
-                    key={o.id}
-                    style={{
-                      border: o.id === projectId ? "1px solid var(--link, #3b6cff)" : "1px solid var(--border)",
-                      borderRadius: 12,
-                      padding: 14,
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: 10,
-                    }}
-                  >
-                    <div>
-                      <div className="mono" style={{ fontWeight: 700, wordBreak: "break-all" }}>{o.domain}</div>
-                      <div className="muted" style={{ fontSize: 12 }}>
-                        {o.spots} spot{o.spots === 1 ? "" : "s"}
+                  <div key={o.id} className={`sf-card${o.id === projectId ? " active" : ""}`}>
+                    <div className="sf-card-top">
+                      <img
+                        className="sf-card-fav"
+                        src={`https://www.google.com/s2/favicons?sz=64&domain=${o.domain}`}
+                        alt=""
+                        width={20}
+                        height={20}
+                        loading="lazy"
+                      />
+                      <div style={{ minWidth: 0 }}>
+                        <div className="sf-card-domain mono" title={o.domain}>{o.domain}</div>
+                        <div className="sf-card-sub">
+                          {o.spots} spot{o.spots === 1 ? "" : "s"}
+                        </div>
                       </div>
                     </div>
                     {o.analyzing ? (
-                      <button className="btn" disabled style={{ display: "flex", gap: 8, justifyContent: "center", alignItems: "center" }}>
-                        <span className="sf-spinner" aria-hidden="true" /> Analyzing…
+                      <button className="btn sf-card-cta" disabled>
+                        &nbsp;
+                        <span className="sf-card-progress">
+                          <span className="sf-spinner" aria-hidden="true" /> Analyzing…
+                        </span>
                       </button>
                     ) : (
                       <button className="btn primary" onClick={() => setProjectId(o.id)}>
@@ -1235,43 +1226,27 @@ export default function SpotsPage() {
                     </p>
                   )}
                   {hasThematic && (
-                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "0 0 10px" }}>
-                      {GRADE_ORDER.map((g) => {
-                        const on = gradeFilter.has(g);
-                        const m = GRADE_META[g];
-                        return (
-                          <button
-                            key={g}
-                            type="button"
-                            aria-pressed={on}
-                            onClick={() =>
-                              setGradeFilter((prev) => {
-                                const next = new Set(prev);
-                                if (next.has(g)) next.delete(g);
-                                else next.add(g);
-                                return next;
-                              })
-                            }
-                            title={`Show ${m.label} spots`}
-                            style={{
-                              padding: "3px 10px",
-                              borderRadius: 999,
-                              border: "1px solid var(--border)",
-                              fontSize: 12,
-                              fontWeight: 700,
-                              cursor: "pointer",
-                              background: on ? m.bg : "transparent",
-                              color: on ? m.fg : "var(--muted)",
-                              opacity: on ? 1 : 0.6,
-                            }}
-                          >
-                            {m.label}
-                          </button>
-                        );
-                      })}
-                      <span className="muted" style={{ alignSelf: "center", fontSize: 12 }}>
-                        {rankedSpots.length} shown
-                      </span>
+                    <div className="sf-grade-chips">
+                      {GRADE_ORDER.map((g) => (
+                        <button
+                          key={g}
+                          type="button"
+                          aria-pressed={gradeFilter.has(g)}
+                          className={`sf-grade-chip g-${g}`}
+                          title={`Show ${GRADE_LABEL[g]} spots`}
+                          onClick={() =>
+                            setGradeFilter((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(g)) next.delete(g);
+                              else next.add(g);
+                              return next;
+                            })
+                          }
+                        >
+                          {GRADE_LABEL[g]}
+                        </button>
+                      ))}
+                      <span className="sf-grade-count">{rankedSpots.length} shown</span>
                     </div>
                   )}
                   <div className="bl-scroll">
@@ -1302,9 +1277,9 @@ export default function SpotsPage() {
                     <tbody>
                       {rankedSpots.map((s, i) => (
                         <tr key={s.id}>
-                          {hasThematic && <td className="mono">{i + 1}</td>}
-                          {hasThematic && <td><ScoreNum v={s.current_perf} /></td>}
-                          {hasThematic && <td><ScoreNum v={s.potential_perf} /></td>}
+                          {hasThematic && <td className="sf-rank">{i + 1}</td>}
+                          {hasThematic && <td><ScoreDonut v={s.current_perf} size={34} /></td>}
+                          {hasThematic && <td><ScoreDonut v={s.potential_perf} size={34} /></td>}
                           {hasThematic && <td><GradeBadge grade={s.grade} /></td>}
                           <td>
                             {s.quality_score != null ? (
@@ -1316,17 +1291,9 @@ export default function SpotsPage() {
                           <td className="mono">
                             <button
                               type="button"
+                              className="sf-domain-btn"
                               title="Open spot detail"
                               onClick={() => openDetail(s)}
-                              style={{
-                                font: "inherit",
-                                background: "none",
-                                border: "none",
-                                padding: 0,
-                                color: "var(--link, #3b6cff)",
-                                cursor: "pointer",
-                                textDecoration: "underline",
-                              }}
                             >
                               {s.domain}
                             </button>
@@ -1548,32 +1515,15 @@ export default function SpotsPage() {
       )}
 
       {detail && (
-        <div
-          onClick={() => setDetail(null)}
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,.4)",
-            zIndex: 50,
-            display: "flex",
-            justifyContent: "flex-end",
-          }}
-        >
+        <div className="sf-drawer-backdrop" onClick={() => setDetail(null)}>
           <aside
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
             aria-label={`Spot detail for ${detail.domain}`}
-            style={{
-              width: "min(560px, 100%)",
-              height: "100%",
-              overflowY: "auto",
-              background: "var(--panel, var(--bg))",
-              borderLeft: "1px solid var(--border)",
-              padding: 20,
-            }}
+            className="sf-drawer"
           >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+            <div className="sf-drawer-head">
               <h2 className="mono" style={{ margin: 0, fontSize: 18 }}>{detail.domain}</h2>
               <button className="btn sm" onClick={() => setDetail(null)}>Close</button>
             </div>
@@ -1584,20 +1534,24 @@ export default function SpotsPage() {
               )}
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 16 }}>
-              <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 12 }}>
-                <div style={{ fontSize: 22 }}><ScoreNum v={detail.current_perf} /></div>
-                <div style={{ fontWeight: 700, fontSize: 13 }}>Current thematic perf</div>
-                <div className="muted" style={{ fontSize: 11 }}>what it already weighs across your topic</div>
+            <div className="sf-drawer-scores">
+              <div className="sf-drawer-score">
+                <ScoreDonut v={detail.current_perf} size={54} />
+                <div>
+                  <div className="t">Current thematic perf</div>
+                  <div className="d">what it already weighs across your topic</div>
+                </div>
               </div>
-              <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 12 }}>
-                <div style={{ fontSize: 22 }}><ScoreNum v={detail.potential_perf} /></div>
-                <div style={{ fontWeight: 700, fontSize: 13 }}>Potential thematic perf</div>
-                <div className="muted" style={{ fontSize: 11 }}>quality of its positions where it ranks</div>
+              <div className="sf-drawer-score">
+                <ScoreDonut v={detail.potential_perf} size={54} />
+                <div>
+                  <div className="t">Potential thematic perf</div>
+                  <div className="d">quality of its positions where it ranks</div>
+                </div>
               </div>
             </div>
 
-            <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 14 }}>
+            <div className="sf-drawer-metrics">
               <Stat label="DR" v={detail.domain_rank} />
               <Stat label="Ref. domains" v={detail.referring_domains} />
               <Stat label="Traffic/mo" v={detail.organic_traffic} />
@@ -1605,7 +1559,7 @@ export default function SpotsPage() {
               <Stat label="Ranked kw" v={detail.ranked_keywords} />
             </div>
 
-            <div style={{ display: "flex", gap: 6, marginTop: 18, borderBottom: "1px solid var(--border)" }}>
+            <div className="sf-tabs" style={{ marginTop: 18 }}>
               <TabBtn active={detailTab === "keywords"} onClick={() => setDetailTab("keywords")}>
                 Keywords positioned
               </TabBtn>

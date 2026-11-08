@@ -298,3 +298,307 @@ a.sf-buy:hover {
   gap: 4px;
   align-items: flex-start;
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Netlinking view (Référencime-style): score donuts, grades, cards, drawer.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* Circular score gauge (PTA/PTP). Colour comes from the inline stroke. */
+.sf-donut {
+  display: inline-block;
+  vertical-align: middle;
+}
+.sf-donut text {
+  font-family: var(--font-sans, inherit);
+}
+.sf-donut-empty {
+  color: var(--muted);
+}
+
+/* Price/performance grade badge. */
+.sf-grade {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 38px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.g-pepite {
+  background: #fbeec3;
+  color: #8a6400;
+  border-color: #efd793;
+}
+.g-a_plus {
+  background: color-mix(in srgb, var(--live) 16%, transparent);
+  color: var(--live);
+}
+.g-a {
+  background: color-mix(in srgb, var(--live) 10%, transparent);
+  color: var(--live);
+}
+.g-b {
+  background: var(--primary-weak);
+  color: var(--primary-press);
+}
+.g-c {
+  background: color-mix(in srgb, var(--lost) 12%, transparent);
+  color: var(--lost);
+}
+.g-unrated {
+  background: var(--surface-2);
+  color: var(--muted);
+}
+:root[data-theme="dark"] .g-b {
+  color: var(--primary);
+}
+:root[data-theme="dark"] .g-pepite {
+  background: color-mix(in srgb, #e3b43a 22%, transparent);
+  color: #f3d281;
+  border-color: color-mix(in srgb, #e3b43a 35%, transparent);
+}
+
+/* Grade filter chips (toggle the badge look when pressed). */
+.sf-grade-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 2px 0 12px;
+}
+.sf-grade-chip {
+  padding: 4px 13px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition:
+    background 0.12s ease,
+    color 0.12s ease,
+    border-color 0.12s ease;
+}
+.sf-grade-chip:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+.sf-grade-chip[aria-pressed="true"] {
+  border-color: transparent;
+}
+.sf-grade-chip.g-pepite[aria-pressed="true"] {
+  background: #fbeec3;
+  color: #8a6400;
+}
+.sf-grade-chip.g-a_plus[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--live) 16%, transparent);
+  color: var(--live);
+}
+.sf-grade-chip.g-a[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--live) 10%, transparent);
+  color: var(--live);
+}
+.sf-grade-chip.g-b[aria-pressed="true"] {
+  background: var(--primary-weak);
+  color: var(--primary-press);
+}
+.sf-grade-chip.g-c[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--lost) 12%, transparent);
+  color: var(--lost);
+}
+.sf-grade-count {
+  align-self: center;
+  font-size: 12px;
+  color: var(--muted);
+  margin-left: 2px;
+}
+
+/* Clickable domain in the table. */
+.sf-domain-btn {
+  font: inherit;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--primary);
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+}
+.sf-domain-btn:hover {
+  text-decoration: underline;
+}
+
+/* Rank cell. */
+.sf-rank {
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+/* ── "My analyses" cards ───────────────────────────────────────────────── */
+.sf-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(236px, 1fr));
+  gap: 12px;
+}
+.sf-card {
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--surface);
+  transition:
+    border-color 0.12s ease,
+    box-shadow 0.12s ease;
+}
+.sf-card:hover {
+  border-color: var(--border-strong);
+}
+.sf-card.active {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary);
+}
+.sf-card-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.sf-card-fav {
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  flex: none;
+  background: var(--surface-2);
+}
+.sf-card-domain {
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sf-card-sub {
+  font-size: 12px;
+  color: var(--muted);
+}
+/* The CTA doubles as a progress bar while a site is analysing. */
+.sf-card-cta {
+  position: relative;
+  overflow: hidden;
+}
+.sf-card-progress {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: inherit;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 13px;
+}
+.sf-card-progress::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 40%;
+  background: var(--primary-weak);
+  animation: sf-indeterminate 1.3s ease-in-out infinite;
+}
+@keyframes sf-indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(350%);
+  }
+}
+
+/* ── Spot detail drawer ────────────────────────────────────────────────── */
+.sf-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 10, 25, 0.45);
+  z-index: 60;
+  display: flex;
+  justify-content: flex-end;
+}
+.sf-drawer {
+  width: min(580px, 100%);
+  height: 100%;
+  overflow-y: auto;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  padding: 22px;
+  animation: sf-slide-in 0.16s ease;
+}
+@keyframes sf-slide-in {
+  from {
+    transform: translateX(16px);
+    opacity: 0.6;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+.sf-drawer-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.sf-drawer-scores {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 16px;
+}
+.sf-drawer-score {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 12px 14px;
+}
+.sf-drawer-score .t {
+  font-weight: 700;
+  font-size: 13px;
+}
+.sf-drawer-score .d {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 1px;
+}
+.sf-drawer-metrics {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.sf-metric b {
+  display: block;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+.sf-metric span {
+  font-size: 11px;
+  color: var(--muted);
+}
