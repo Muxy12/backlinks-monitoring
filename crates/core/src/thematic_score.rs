@@ -228,9 +228,9 @@ mod tests {
         let g = grade_set(&spots);
         assert_eq!(g[0], Grade::Pepite); // top 2%, floor cleared
         assert_eq!(g[99], Grade::C); // worst quartile
-        assert!(g.iter().any(|&x| x == Grade::APlus));
-        assert!(g.iter().any(|&x| x == Grade::A));
-        assert!(g.iter().any(|&x| x == Grade::B));
+        assert!(g.contains(&Grade::APlus));
+        assert!(g.contains(&Grade::A));
+        assert!(g.contains(&Grade::B));
     }
 
     #[test]
