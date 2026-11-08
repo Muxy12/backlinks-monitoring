@@ -356,6 +356,41 @@ pub async fn spot_keyword_positions(
     ))
 }
 
+#[derive(Serialize)]
+pub struct ProjectOverviewView {
+    pub id: Uuid,
+    pub name: String,
+    pub domain: String,
+    pub spots: i64,
+    /// A detection or SERP/discovery run is currently in flight.
+    pub analyzing: bool,
+}
+
+/// `GET …/spot-overview` — the org's analyzed sites (project + spot count +
+/// in-flight status) for the "My analyses" cards. Any member may read.
+pub async fn spot_overview(
+    State(state): State<AppState>,
+    Path(org_id): Path<Uuid>,
+    jar: CookieJar,
+) -> Result<Json<Vec<ProjectOverviewView>>, ApiError> {
+    gate(&state)?;
+    let (user, _s) = current(&state, &jar).await?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Viewer)?;
+    let rows = spots::projects_overview(&state.pool, &scope).await?;
+    Ok(Json(
+        rows.into_iter()
+            .map(|r| ProjectOverviewView {
+                id: r.id,
+                name: r.name,
+                domain: r.domain,
+                spots: r.spots,
+                analyzing: r.analyzing,
+            })
+            .collect(),
+    ))
+}
+
 #[derive(Deserialize)]
 pub struct SearchBody {
     /// Locale for the SERP lookup: fr | en. Defaults to fr.
