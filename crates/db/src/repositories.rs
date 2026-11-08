@@ -8858,6 +8858,38 @@ pub mod website_analyses {
         Ok(())
     }
 
+    /// User edit: replace the editable fields and flag the row as corrected.
+    /// Tenant-scoped; `None` if the project has no analysis yet.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn set_edits(
+        pool: &PgPool,
+        scope: &OrgScope,
+        project_id: Uuid,
+        theme: Option<&str>,
+        sub_themes: &[String],
+        products: &[String],
+        keywords: &[String],
+        summary: Option<&str>,
+    ) -> Result<Option<WebsiteAnalysis>, DbError> {
+        Ok(sqlx::query_as::<_, WebsiteAnalysis>(
+            "UPDATE website_analyses \
+             SET theme = $3, sub_themes = $4, products = $5, keywords = $6, summary = $7, \
+                 edited = true, updated_at = now() \
+             WHERE organization_id = $1 AND project_id = $2 \
+             RETURNING id, project_id, status, source, language, theme, sub_themes, products, \
+                       keywords, summary, edited, error, created_at, updated_at",
+        )
+        .bind(scope.organization_id())
+        .bind(project_id)
+        .bind(theme)
+        .bind(sub_themes)
+        .bind(products)
+        .bind(keywords)
+        .bind(summary)
+        .fetch_optional(pool)
+        .await?)
+    }
+
     /// Worker-side: mark the analysis as failed.
     pub async fn set_error(pool: &PgPool, project_id: Uuid, msg: &str) -> Result<(), DbError> {
         sqlx::query(

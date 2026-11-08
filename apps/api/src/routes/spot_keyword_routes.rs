@@ -279,6 +279,7 @@ pub struct AnalysisView {
     pub keywords: Vec<String>,
     pub summary: Option<String>,
     pub edited: bool,
+    pub error: Option<String>,
     pub updated_at: String,
 }
 
@@ -294,6 +295,7 @@ impl From<website_analyses::WebsiteAnalysis> for AnalysisView {
             keywords: a.keywords,
             summary: a.summary,
             edited: a.edited,
+            error: a.error,
             updated_at: a.updated_at.to_rfc3339(),
         }
     }
@@ -341,6 +343,48 @@ pub async fn get_analysis(
     projects::get(&state.pool, &scope, project_id).await?;
     let a = website_analyses::get_by_project(&state.pool, &scope, project_id).await?;
     Ok(Json(a.map(AnalysisView::from)))
+}
+
+#[derive(Deserialize)]
+pub struct AnalysisEditBody {
+    pub theme: Option<String>,
+    #[serde(default)]
+    pub sub_themes: Vec<String>,
+    #[serde(default)]
+    pub products: Vec<String>,
+    #[serde(default)]
+    pub keywords: Vec<String>,
+    pub summary: Option<String>,
+}
+
+/// `PATCH …/projects/{project_id}/analysis` — save the user's corrections to the
+/// detected profile. Member role; `NotFound` if the site was never analysed.
+pub async fn update_analysis(
+    State(state): State<AppState>,
+    Path((org_id, project_id)): Path<(Uuid, Uuid)>,
+    jar: CookieJar,
+    headers: HeaderMap,
+    Json(body): Json<AnalysisEditBody>,
+) -> Result<Json<AnalysisView>, ApiError> {
+    gate(&state)?;
+    let (user, session) = current(&state, &jar).await?;
+    check_csrf(&jar, &headers, &session)?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Member)?;
+    projects::get(&state.pool, &scope, project_id).await?;
+    let a = website_analyses::set_edits(
+        &state.pool,
+        &scope,
+        project_id,
+        body.theme.as_deref(),
+        &body.sub_themes,
+        &body.products,
+        &body.keywords,
+        body.summary.as_deref(),
+    )
+    .await?
+    .ok_or(ApiError::NotFound)?;
+    Ok(Json(AnalysisView::from(a)))
 }
 
 #[derive(Deserialize)]
