@@ -7674,6 +7674,34 @@ pub mod spots {
         .await?)
     }
 
+    /// One keyword a spot ranks for, for the spot-detail "keywords positioned"
+    /// tab: the term, its best organic rank, the ranking page and monthly volume.
+    #[derive(Debug, Clone, sqlx::FromRow)]
+    pub struct SpotKeywordPositionRow {
+        pub keyword: String,
+        pub position: i32,
+        pub page_url: Option<String>,
+        pub search_volume: Option<i32>,
+    }
+
+    /// The keyword positions of a single spot, best rank first, tenant-scoped.
+    pub async fn keyword_positions_for_spot(
+        pool: &PgPool,
+        scope: &OrgScope,
+        spot_id: Uuid,
+    ) -> Result<Vec<SpotKeywordPositionRow>, DbError> {
+        Ok(sqlx::query_as::<_, SpotKeywordPositionRow>(
+            "SELECT keyword, position, page_url, search_volume \
+             FROM spot_keyword_positions \
+             WHERE organization_id = $1 AND spot_id = $2 \
+             ORDER BY position ASC",
+        )
+        .bind(scope.organization_id())
+        .bind(spot_id)
+        .fetch_all(pool)
+        .await?)
+    }
+
     /// Count of the project's kept keywords — the size of the thematic map, i.e.
     /// the denominator for the current-thematic (PTA) score.
     pub async fn kept_keyword_count(

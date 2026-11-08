@@ -1,7 +1,7 @@
 "use client";
 import { PageLoading } from "@/components/PageLoading";
 
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import {
   api,
@@ -13,6 +13,7 @@ import {
   type SpotKeywordView,
   type SpotsResponse,
   type SpotView,
+  type SpotKeywordPosition,
   type SpotRunView,
   type GeoQueryView,
   type GeoCitationsResponse,
@@ -63,6 +64,41 @@ function ScoreNum({ v }: { v?: number }) {
     <span style={{ fontWeight: 700, color: `hsl(${h} 55% 42%)` }}>{Math.round(v)}</span>
   );
 }
+function Stat({ label, v }: { label: string; v?: number | null }) {
+  return (
+    <div>
+      <div style={{ fontWeight: 700 }}>{v != null ? v.toLocaleString() : "–"}</div>
+      <div className="muted" style={{ fontSize: 11 }}>{label}</div>
+    </div>
+  );
+}
+function TabBtn({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        background: "none",
+        border: "none",
+        borderBottom: active ? "2px solid var(--link, #3b6cff)" : "2px solid transparent",
+        color: active ? "var(--fg)" : "var(--muted)",
+        fontWeight: 700,
+        padding: "8px 10px",
+        cursor: "pointer",
+      }}
+    >
+      {children}
+    </button>
+  );
+}
 
 // Spot Finder — Step 1: keyword detection & review (Lot A). We crawl the user's
 // own site (homepage + pages one click away), extract the <h1> headings as
@@ -95,6 +131,10 @@ export default function SpotsPage() {
   const [gradeFilter, setGradeFilter] = useState<Set<string>>(
     () => new Set(GRADE_ORDER),
   );
+  // Spot detail drawer.
+  const [detail, setDetail] = useState<SpotView | null>(null);
+  const [detailKw, setDetailKw] = useState<SpotKeywordPosition[] | null>(null);
+  const [detailTab, setDetailTab] = useState<"keywords" | "prices">("keywords");
   const [spotsBusy, setSpotsBusy] = useState(false);
   const [spotsErr, setSpotsErr] = useState<string | null>(null);
   const dataforseo = !!me?.features?.dataforseo;
@@ -430,6 +470,17 @@ export default function SpotsPage() {
     setPushMsg(
       "Added to monitoring — set the exact published article URL in Backlinks once the link is live.",
     );
+  }
+
+  function openDetail(s: SpotView) {
+    setDetail(s);
+    setDetailTab("keywords");
+    setDetailKw(null);
+    if (orgId && projectId) {
+      void orgApi.spotKeywordPositions(orgId, projectId, s.id).then((res) => {
+        setDetailKw(res.ok ? res.data : []);
+      });
+    }
   }
 
   async function pushToCampaign(spotId: string, domain: string) {
@@ -1108,7 +1159,24 @@ export default function SpotsPage() {
                               <span className="muted">–</span>
                             )}
                           </td>
-                          <td className="mono">{s.domain}</td>
+                          <td className="mono">
+                            <button
+                              type="button"
+                              title="Open spot detail"
+                              onClick={() => openDetail(s)}
+                              style={{
+                                font: "inherit",
+                                background: "none",
+                                border: "none",
+                                padding: 0,
+                                color: "var(--link, #3b6cff)",
+                                cursor: "pointer",
+                                textDecoration: "underline",
+                              }}
+                            >
+                              {s.domain}
+                            </button>
+                          </td>
                           <td>
                             <b>{s.keyword_count}</b>
                           </td>
@@ -1323,6 +1391,131 @@ export default function SpotsPage() {
             )}
           </section>
         </>
+      )}
+
+      {detail && (
+        <div
+          onClick={() => setDetail(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,.4)",
+            zIndex: 50,
+            display: "flex",
+            justifyContent: "flex-end",
+          }}
+        >
+          <aside
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Spot detail for ${detail.domain}`}
+            style={{
+              width: "min(560px, 100%)",
+              height: "100%",
+              overflowY: "auto",
+              background: "var(--panel, var(--bg))",
+              borderLeft: "1px solid var(--border)",
+              padding: 20,
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+              <h2 className="mono" style={{ margin: 0, fontSize: 18 }}>{detail.domain}</h2>
+              <button className="btn sm" onClick={() => setDetail(null)}>Close</button>
+            </div>
+            <div style={{ marginTop: 8, display: "flex", gap: 10, alignItems: "center" }}>
+              <GradeBadge grade={detail.grade} />
+              {detail.marketplace_url && (
+                <a href={detail.marketplace_url} target="_blank" rel="noopener noreferrer">Buy ↗</a>
+              )}
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 16 }}>
+              <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 12 }}>
+                <div style={{ fontSize: 22 }}><ScoreNum v={detail.current_perf} /></div>
+                <div style={{ fontWeight: 700, fontSize: 13 }}>Current thematic perf</div>
+                <div className="muted" style={{ fontSize: 11 }}>what it already weighs across your topic</div>
+              </div>
+              <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 12 }}>
+                <div style={{ fontSize: 22 }}><ScoreNum v={detail.potential_perf} /></div>
+                <div style={{ fontWeight: 700, fontSize: 13 }}>Potential thematic perf</div>
+                <div className="muted" style={{ fontSize: 11 }}>quality of its positions where it ranks</div>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 14 }}>
+              <Stat label="DR" v={detail.domain_rank} />
+              <Stat label="Ref. domains" v={detail.referring_domains} />
+              <Stat label="Traffic/mo" v={detail.organic_traffic} />
+              <Stat label="Spam" v={detail.spam_score} />
+              <Stat label="Ranked kw" v={detail.ranked_keywords} />
+            </div>
+
+            <div style={{ display: "flex", gap: 6, marginTop: 18, borderBottom: "1px solid var(--border)" }}>
+              <TabBtn active={detailTab === "keywords"} onClick={() => setDetailTab("keywords")}>
+                Keywords positioned
+              </TabBtn>
+              <TabBtn active={detailTab === "prices"} onClick={() => setDetailTab("prices")}>
+                Prices per platform
+              </TabBtn>
+            </div>
+
+            {detailTab === "keywords" ? (
+              detailKw == null ? (
+                <p className="muted" style={{ marginTop: 12 }}>Loading…</p>
+              ) : detailKw.length === 0 ? (
+                <p className="muted" style={{ marginTop: 12 }}>
+                  No ranked keywords captured for this spot yet — run “Find via Google (SERP)”.
+                </p>
+              ) : (
+                <table className="bl-table" style={{ marginTop: 12 }}>
+                  <thead>
+                    <tr><th>Keyword</th><th>Pos</th><th>Vol/mo</th><th>Page</th></tr>
+                  </thead>
+                  <tbody>
+                    {detailKw.map((k, i) => (
+                      <tr key={i}>
+                        <td>{k.keyword}</td>
+                        <td className="mono">{k.position}</td>
+                        <td className="mono">{k.search_volume != null ? k.search_volume.toLocaleString() : "–"}</td>
+                        <td className="sf-example">
+                          {k.page_url ? (
+                            <a href={k.page_url} target="_blank" rel="noopener noreferrer" title={k.page_url}>page ↗</a>
+                          ) : "–"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )
+            ) : (detail.offers?.length ?? 0) === 0 ? (
+              <p className="muted" style={{ marginTop: 12 }}>
+                No marketplace offers for this spot yet — run “Compare prices”.
+              </p>
+            ) : (
+              <table className="bl-table" style={{ marginTop: 12 }}>
+                <thead>
+                  <tr><th>Platform</th><th>Price</th><th></th></tr>
+                </thead>
+                <tbody>
+                  {detail.offers!.map((o, i) => (
+                    <tr key={i}>
+                      <td>{o.source}</td>
+                      <td className="mono">
+                        {o.price_cents != null ? `${(o.price_cents / 100).toLocaleString()} ${o.currency ?? "EUR"}` : "n/a"}
+                      </td>
+                      <td>{o.url ? <a href={o.url} target="_blank" rel="noopener noreferrer">Buy ↗</a> : null}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+
+            <div style={{ marginTop: 18 }}>
+              <button className="btn" onClick={() => void monitorSpot(detail.id)}>Monitor this link</button>
+            </div>
+          </aside>
+        </div>
       )}
     </main>
   );

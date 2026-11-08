@@ -93,6 +93,12 @@ export interface OfferView {
   retention_months: number | null;
   url: string | null;
 }
+export interface SpotKeywordPosition {
+  keyword: string;
+  position: number;
+  page_url: string | null;
+  search_volume: number | null;
+}
 export interface SpotView {
   id: string;
   domain: string;
@@ -1038,6 +1044,11 @@ export const orgApi = {
     ),
   spotKeywords: (org: string, projectId: string) =>
     request<SpotKeywordsResponse>(`/v1/organizations/${org}/projects/${projectId}/keywords`),
+  // The keywords a single spot ranks for (position, page, volume) — spot detail.
+  spotKeywordPositions: (org: string, projectId: string, spotId: string) =>
+    request<SpotKeywordPosition[]>(
+      `/v1/organizations/${org}/projects/${projectId}/spots/${spotId}/keywords`,
+    ),
   detectSpotKeywords: (org: string, projectId: string) =>
     request<SpotScanView>(`/v1/organizations/${org}/projects/${projectId}/keywords/detect`, {
       method: "POST",

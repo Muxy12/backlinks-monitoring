@@ -322,6 +322,40 @@ pub async fn list_spots(
     }))
 }
 
+#[derive(Serialize)]
+pub struct KeywordPositionView {
+    pub keyword: String,
+    pub position: i32,
+    pub page_url: Option<String>,
+    pub search_volume: Option<i32>,
+}
+
+/// `GET …/projects/{project_id}/spots/{spot_id}/keywords` — the keywords a spot
+/// ranks for (position, ranking page, monthly volume), best rank first, for the
+/// spot-detail "keywords positioned" tab. Any member may read.
+pub async fn spot_keyword_positions(
+    State(state): State<AppState>,
+    Path((org_id, project_id, spot_id)): Path<(Uuid, Uuid, Uuid)>,
+    jar: CookieJar,
+) -> Result<Json<Vec<KeywordPositionView>>, ApiError> {
+    gate(&state)?;
+    let (user, _s) = current(&state, &jar).await?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Viewer)?;
+    projects::get(&state.pool, &scope, project_id).await?;
+    let rows = spots::keyword_positions_for_spot(&state.pool, &scope, spot_id).await?;
+    Ok(Json(
+        rows.into_iter()
+            .map(|r| KeywordPositionView {
+                keyword: r.keyword,
+                position: r.position,
+                page_url: r.page_url,
+                search_volume: r.search_volume,
+            })
+            .collect(),
+    ))
+}
+
 #[derive(Deserialize)]
 pub struct SearchBody {
     /// Locale for the SERP lookup: fr | en. Defaults to fr.

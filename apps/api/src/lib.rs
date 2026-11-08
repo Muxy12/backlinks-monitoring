@@ -361,6 +361,10 @@ pub fn app(state: AppState) -> Router {
             post(routes::spot_search_routes::search_spots),
         )
         .route(
+            "/v1/organizations/{org_id}/projects/{project_id}/spots/{spot_id}/keywords",
+            get(routes::spot_search_routes::spot_keyword_positions),
+        )
+        .route(
             "/v1/organizations/{org_id}/projects/{project_id}/spots/enrich",
             post(routes::spot_search_routes::enrich_spots),
         )
