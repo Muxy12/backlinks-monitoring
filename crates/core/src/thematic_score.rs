@@ -138,7 +138,11 @@ pub fn grade_set(spots: &[SpotGradeInput]) -> Vec<Grade> {
         let floor_ok = (s.distinct_pages >= 3 || s.current >= 60.0) && s.potential >= 40.0;
         out[i] = if pct < 0.25 {
             if floor_ok {
-                if pct < 0.02 { Grade::Pepite } else { Grade::APlus }
+                if pct < 0.02 {
+                    Grade::Pepite
+                } else {
+                    Grade::APlus
+                }
             } else {
                 // Best value but fails the quality floor — not A+ material.
                 Grade::A
@@ -195,13 +199,18 @@ mod tests {
     }
 
     fn inp(current: f64, potential: f64, price: Option<i64>, pages: u32) -> SpotGradeInput {
-        SpotGradeInput { current, potential, price_cents: price, distinct_pages: pages }
+        SpotGradeInput {
+            current,
+            potential,
+            price_cents: price,
+            distinct_pages: pages,
+        }
     }
 
     #[test]
     fn unpriced_or_unperforming_is_unrated() {
         let g = grade_set(&[
-            inp(50.0, 50.0, None, 3),   // no price
+            inp(50.0, 50.0, None, 3),      // no price
             inp(0.0, 0.0, Some(10000), 3), // no performance
         ]);
         assert_eq!(g[0], Grade::Unrated);

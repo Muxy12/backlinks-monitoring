@@ -70,9 +70,9 @@ pub use reclamation::ReclaimAngle;
 pub use scoring::{ProspectScore, ProspectSignals, score_prospect};
 pub use spot_score::{SpotScore, SpotSignals, score as spot_score};
 pub use spots::{AggregatedSpot, SerpHit, aggregate_spots, is_blocked_domain, site_host};
-pub use thematic_score::{Grade, SpotGradeInput, ThematicScore, grade_set, thematic_score};
 pub use state_machine::{BacklinkState, DetectedFields, Transition, TransitionPolicy, transition};
 pub use status::{BacklinkStatus, RelSet, RelType};
+pub use thematic_score::{Grade, SpotGradeInput, ThematicScore, grade_set, thematic_score};
 pub use url_normalize::{NormalizeOptions, host_of, normalize};
 pub use warranty::{
     WarrantyStatus, WarrantyType, expiration as warranty_expiration, status as warranty_status,
