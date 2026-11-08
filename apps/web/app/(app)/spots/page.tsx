@@ -144,6 +144,17 @@ export default function SpotsPage() {
   const [campaignId, setCampaignId] = useState<string>("");
   const [pushMsg, setPushMsg] = useState<string | null>(null);
   const campaignsBeta = !!me?.features?.campaigns_beta;
+  // Phase 3: multi-select spots → selection bar (budget, savings, bulk actions).
+  const [selected, setSelected] = useState<Set<string>>(() => new Set());
+  const [selBusy, setSelBusy] = useState(false);
+  function toggleSelected(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
   // GEO pillar ("cited by AI").
   const [geoQueries, setGeoQueries] = useState<GeoQueryView[]>([]);
   const [geoCites, setGeoCites] = useState<GeoCitationsResponse | null>(null);
@@ -531,6 +542,35 @@ export default function SpotsPage() {
     );
   }
 
+  async function monitorSelected(ids: string[]) {
+    if (!orgId || !projectId || ids.length === 0) return;
+    setSelBusy(true);
+    setPushMsg(null);
+    let ok = 0;
+    for (const id of ids) {
+      const r = await orgApi.monitorSpot(orgId, projectId, id);
+      if (r.ok) ok += 1;
+    }
+    setSelBusy(false);
+    setSelected(new Set());
+    setPushMsg(`Added ${ok} spot${ok === 1 ? "" : "s"} to monitoring.`);
+  }
+
+  async function addSelectedToCampaign(ids: string[]) {
+    if (!orgId || !projectId || !campaignId || ids.length === 0) return;
+    setSelBusy(true);
+    setPushMsg(null);
+    let ok = 0;
+    for (const id of ids) {
+      const r = await orgApi.spotToCampaign(orgId, projectId, id, campaignId);
+      if (r.ok) ok += 1;
+    }
+    setSelBusy(false);
+    setSelected(new Set());
+    const camp = campaigns.find((c) => c.id === campaignId);
+    setPushMsg(`Added ${ok} spot${ok === 1 ? "" : "s"} to ${camp?.name ?? "the campaign"}.`);
+  }
+
   function openDetail(s: SpotView) {
     setDetail(s);
     setDetailTab("keywords");
@@ -774,6 +814,17 @@ export default function SpotsPage() {
   const hasThematic = (spotsData?.spots ?? []).some(
     (s) => (s.ranked_keywords ?? 0) > 0,
   );
+
+  // Selection summary: budget (sum of cheapest offers) + potential savings
+  // (price spread on spots offered by more than one marketplace).
+  const selectedSpots = (spotsData?.spots ?? []).filter((s) => selected.has(s.id));
+  const selBudget = selectedSpots.reduce((sum, s) => sum + (s.buy_price_cents ?? 0), 0);
+  const selSavings = selectedSpots.reduce((sum, s) => {
+    const prices = (s.offers ?? [])
+      .map((o) => o.price_cents)
+      .filter((p): p is number => p != null);
+    return prices.length > 1 ? sum + (Math.max(...prices) - Math.min(...prices)) : sum;
+  }, 0);
 
   function scanStatusLine(): string {
     if (!scan) return "No detection run yet. Detect keywords to scan your site’s headings.";
@@ -1259,6 +1310,20 @@ export default function SpotsPage() {
                   <table className="bl-table sf-spots-table">
                     <thead>
                       <tr>
+                        <th style={{ width: 28 }}>
+                          <input
+                            type="checkbox"
+                            aria-label="Select all shown spots"
+                            checked={rankedSpots.length > 0 && rankedSpots.every((s) => selected.has(s.id))}
+                            onChange={(e) =>
+                              setSelected(
+                                e.target.checked
+                                  ? new Set(rankedSpots.map((s) => s.id))
+                                  : new Set(),
+                              )
+                            }
+                          />
+                        </th>
                         {hasThematic && <th title="Rank by current thematic performance">#</th>}
                         {hasThematic && (
                           <th title="Current thematic performance — how much it already weighs across your whole topic">PTA</th>
@@ -1283,6 +1348,14 @@ export default function SpotsPage() {
                     <tbody>
                       {rankedSpots.map((s, i) => (
                         <tr key={s.id}>
+                          <td>
+                            <input
+                              type="checkbox"
+                              aria-label={`Select ${s.domain}`}
+                              checked={selected.has(s.id)}
+                              onChange={() => toggleSelected(s.id)}
+                            />
+                          </td>
                           {hasThematic && <td className="sf-rank">{i + 1}</td>}
                           {hasThematic && <td><ScoreDonut v={s.current_perf} size={34} /></td>}
                           {hasThematic && <td><ScoreDonut v={s.potential_perf} size={34} /></td>}
@@ -1700,6 +1773,73 @@ export default function SpotsPage() {
               <button className="btn" onClick={() => void monitorSpot(detail.id)}>Monitor this link</button>
             </div>
           </aside>
+        </div>
+      )}
+      {selected.size > 0 && (
+        <div
+          style={{
+            position: "fixed",
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 40,
+            background: "var(--surface)",
+            borderTop: "1px solid var(--border)",
+            boxShadow: "0 -2px 14px rgba(5,10,25,.08)",
+            padding: "12px 20px",
+            display: "flex",
+            gap: 16,
+            alignItems: "center",
+            flexWrap: "wrap",
+          }}
+        >
+          <strong>
+            {selected.size} spot{selected.size === 1 ? "" : "s"} selected
+          </strong>
+          <span className="muted">
+            Budget <b style={{ color: "var(--text)" }}>{formatPrice(selBudget, "EUR")}</b>
+          </span>
+          {selSavings > 0 && (
+            <span className="muted">
+              Potential savings{" "}
+              <b style={{ color: "var(--live)" }}>{formatPrice(selSavings, "EUR")}</b>
+            </span>
+          )}
+          <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            {campaignsBeta && campaigns.length > 0 && (
+              <>
+                <select
+                  value={campaignId}
+                  onChange={(e) => setCampaignId(e.target.value)}
+                  aria-label="Target campaign"
+                >
+                  <option value="">Campaign…</option>
+                  {campaigns.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  className="btn sm"
+                  disabled={selBusy || !campaignId}
+                  onClick={() => void addSelectedToCampaign([...selected])}
+                >
+                  Add to campaign
+                </button>
+              </>
+            )}
+            <button
+              className="btn sm primary"
+              disabled={selBusy}
+              onClick={() => void monitorSelected([...selected])}
+            >
+              {selBusy ? "Working…" : "Monitor selected"}
+            </button>
+            <button className="btn sm ghost" disabled={selBusy} onClick={() => setSelected(new Set())}>
+              Clear
+            </button>
+          </div>
         </div>
       )}
     </main>
