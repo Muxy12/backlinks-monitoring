@@ -115,6 +115,13 @@ pub struct SpotView {
     /// All marketplace offers for this spot (cheapest first), for price-compare.
     /// The embedded `marketplace`/`buy_*` fields above mirror the cheapest one.
     pub offers: Vec<OfferView>,
+    // Thematic-performance scores (Netlinking view), computed from the spot's
+    // persisted SERP positions on the project's keywords. `grade` is relative to
+    // the whole set (pepite|a_plus|a|b|c|unrated).
+    pub current_perf: f64,
+    pub potential_perf: f64,
+    pub ranked_keywords: i32,
+    pub grade: String,
 }
 
 impl From<db::entities::Spot> for SpotView {
@@ -140,6 +147,10 @@ impl From<db::entities::Spot> for SpotView {
             buy_currency: s.buy_currency,
             marketplace_url: s.marketplace_url,
             offers: Vec::new(),
+            current_perf: 0.0,
+            potential_perf: 0.0,
+            ranked_keywords: 0,
+            grade: "unrated".to_string(),
         }
     }
 }
@@ -255,7 +266,7 @@ pub async fn list_spots(
             .or_default()
             .push(OfferView::from(o));
     }
-    let spots: Vec<SpotView> = rows
+    let mut spots: Vec<SpotView> = rows
         .into_iter()
         .map(|s| {
             let mut v = SpotView::from(s);
@@ -263,6 +274,44 @@ pub async fn list_spots(
             v
         })
         .collect();
+
+    // Thematic-performance scores (PTA/PTP) + the relative price/perf grade,
+    // from the persisted SERP positions (migration 0054). PTA weighs across the
+    // whole kept-keyword set; the grade is quartile-ranked across these spots.
+    let positions = spots::positions_for_project(&state.pool, &scope, project_id).await?;
+    let total_kw = spots::kept_keyword_count(&state.pool, &scope, project_id).await? as u32;
+    let mut pos_by_spot: std::collections::HashMap<Uuid, Vec<i32>> =
+        std::collections::HashMap::new();
+    let mut pages_by_spot: std::collections::HashMap<Uuid, std::collections::HashSet<String>> =
+        std::collections::HashMap::new();
+    for p in positions {
+        pos_by_spot.entry(p.spot_id).or_default().push(p.position);
+        if let Some(u) = p.page_url {
+            pages_by_spot.entry(p.spot_id).or_default().insert(u);
+        }
+    }
+    for v in &mut spots {
+        let ps = pos_by_spot.get(&v.id).map(Vec::as_slice).unwrap_or(&[]);
+        let sc = backlio_core::thematic_score(ps, total_kw);
+        v.current_perf = sc.current;
+        v.potential_perf = sc.potential;
+        v.ranked_keywords = ps.len() as i32;
+    }
+    let grade_inputs: Vec<backlio_core::SpotGradeInput> = spots
+        .iter()
+        .map(|v| backlio_core::SpotGradeInput {
+            current: v.current_perf,
+            potential: v.potential_perf,
+            price_cents: v.buy_price_cents,
+            distinct_pages: pages_by_spot
+                .get(&v.id)
+                .map(|s| s.len() as u32)
+                .unwrap_or(0),
+        })
+        .collect();
+    for (v, g) in spots.iter_mut().zip(backlio_core::grade_set(&grade_inputs)) {
+        v.grade = g.as_str().to_string();
+    }
 
     Ok(Json(SpotsResponse {
         run: run.map(RunView::from),
