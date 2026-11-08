@@ -386,6 +386,15 @@ pub fn app(state: AppState) -> Router {
             get(routes::spot_search_routes::spot_keyword_positions),
         )
         .route(
+            "/v1/organizations/{org_id}/projects/{project_id}/purchase-campaigns",
+            get(routes::spot_search_routes::list_purchase_campaigns)
+                .post(routes::spot_search_routes::create_purchase_campaign),
+        )
+        .route(
+            "/v1/organizations/{org_id}/projects/{project_id}/purchase-campaigns/{campaign_id}",
+            get(routes::spot_search_routes::get_purchase_campaign),
+        )
+        .route(
             "/v1/organizations/{org_id}/projects/{project_id}/spots/{spot_id}/orders",
             get(routes::spot_search_routes::list_spot_orders)
                 .post(routes::spot_search_routes::create_spot_order),

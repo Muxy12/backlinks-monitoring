@@ -20,7 +20,7 @@ use axum::http::{HeaderMap, StatusCode};
 use axum_extra::extract::cookie::CookieJar;
 use common::Role;
 use db::authorize_org;
-use db::repositories::{projects, spots};
+use db::repositories::{projects, purchase_campaigns, spots};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -484,6 +484,153 @@ pub async fn delete_spot_order(
     scope.require(Role::Member)?;
     spots::delete_order(&state.pool, &scope, order_id).await?;
     Ok(StatusCode::NO_CONTENT)
+}
+
+#[derive(Serialize)]
+pub struct PurchaseCampaignView {
+    pub id: Uuid,
+    pub project_id: Uuid,
+    pub name: String,
+    pub status: String,
+    pub budget_cents: Option<i64>,
+    pub item_count: i64,
+    pub planned_cents: i64,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+impl From<purchase_campaigns::PurchaseCampaign> for PurchaseCampaignView {
+    fn from(c: purchase_campaigns::PurchaseCampaign) -> Self {
+        PurchaseCampaignView {
+            id: c.id,
+            project_id: c.project_id,
+            name: c.name,
+            status: c.status,
+            budget_cents: c.budget_cents,
+            item_count: c.item_count,
+            planned_cents: c.planned_cents,
+            created_at: c.created_at.to_rfc3339(),
+            updated_at: c.updated_at.to_rfc3339(),
+        }
+    }
+}
+
+#[derive(Serialize)]
+pub struct PurchaseCampaignItemView {
+    pub id: Uuid,
+    pub domain: String,
+    pub price_cents: Option<i64>,
+    pub currency: Option<String>,
+    pub source_slug: Option<String>,
+    pub target_url: Option<String>,
+    pub anchor: Option<String>,
+    pub status: String,
+}
+
+impl From<purchase_campaigns::PurchaseCampaignItem> for PurchaseCampaignItemView {
+    fn from(i: purchase_campaigns::PurchaseCampaignItem) -> Self {
+        PurchaseCampaignItemView {
+            id: i.id,
+            domain: i.domain,
+            price_cents: i.price_cents,
+            currency: i.currency,
+            source_slug: i.source_slug,
+            target_url: i.target_url,
+            anchor: i.anchor,
+            status: i.status,
+        }
+    }
+}
+
+#[derive(Serialize)]
+pub struct PurchaseCampaignDetail {
+    pub campaign: PurchaseCampaignView,
+    pub items: Vec<PurchaseCampaignItemView>,
+}
+
+#[derive(Deserialize)]
+pub struct CreateCampaignBody {
+    pub name: String,
+    pub budget_cents: Option<i64>,
+    #[serde(default)]
+    pub spot_ids: Vec<Uuid>,
+}
+
+/// `POST …/projects/{project_id}/purchase-campaigns` — create a buy campaign from
+/// selected spots (snapshotted). Member role.
+pub async fn create_purchase_campaign(
+    State(state): State<AppState>,
+    Path((org_id, project_id)): Path<(Uuid, Uuid)>,
+    jar: CookieJar,
+    headers: HeaderMap,
+    Json(body): Json<CreateCampaignBody>,
+) -> Result<(StatusCode, Json<PurchaseCampaignView>), ApiError> {
+    gate(&state)?;
+    let (user, session) = current(&state, &jar).await?;
+    check_csrf(&jar, &headers, &session)?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Member)?;
+    projects::get(&state.pool, &scope, project_id).await?;
+    let name = body.name.trim();
+    if name.is_empty() || name.len() > 200 {
+        return Err(ApiError::Validation("name must be 1–200 characters".into()));
+    }
+    let snaps =
+        purchase_campaigns::snapshot_spots(&state.pool, &scope, project_id, &body.spot_ids).await?;
+    let id = purchase_campaigns::create(
+        &state.pool,
+        &scope,
+        project_id,
+        name,
+        body.budget_cents,
+        &snaps,
+    )
+    .await?;
+    let c = purchase_campaigns::get(&state.pool, &scope, id)
+        .await?
+        .ok_or(ApiError::Internal)?;
+    Ok((StatusCode::CREATED, Json(PurchaseCampaignView::from(c))))
+}
+
+/// `GET …/projects/{project_id}/purchase-campaigns` — list. Viewer role.
+pub async fn list_purchase_campaigns(
+    State(state): State<AppState>,
+    Path((org_id, project_id)): Path<(Uuid, Uuid)>,
+    jar: CookieJar,
+) -> Result<Json<Vec<PurchaseCampaignView>>, ApiError> {
+    gate(&state)?;
+    let (user, _s) = current(&state, &jar).await?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Viewer)?;
+    let rows = purchase_campaigns::list(&state.pool, &scope, project_id).await?;
+    Ok(Json(
+        rows.into_iter().map(PurchaseCampaignView::from).collect(),
+    ))
+}
+
+/// `GET …/projects/{project_id}/purchase-campaigns/{campaign_id}` — campaign +
+/// its items. Viewer role.
+pub async fn get_purchase_campaign(
+    State(state): State<AppState>,
+    Path((org_id, project_id, campaign_id)): Path<(Uuid, Uuid, Uuid)>,
+    jar: CookieJar,
+) -> Result<Json<PurchaseCampaignDetail>, ApiError> {
+    gate(&state)?;
+    let (user, _s) = current(&state, &jar).await?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Viewer)?;
+    let c = purchase_campaigns::get(&state.pool, &scope, campaign_id)
+        .await?
+        .filter(|c| c.project_id == project_id)
+        .ok_or(ApiError::NotFound)?;
+    let items = purchase_campaigns::items(&state.pool, &scope, campaign_id).await?;
+    Ok(Json(PurchaseCampaignDetail {
+        campaign: PurchaseCampaignView::from(c),
+        items: items
+            .into_iter()
+            .map(PurchaseCampaignItemView::from)
+            .collect(),
+    }))
 }
 
 #[derive(Serialize)]

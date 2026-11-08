@@ -8903,3 +8903,169 @@ pub mod website_analyses {
         Ok(())
     }
 }
+
+// ─── Purchase campaigns (refonte P3, migration 0057) ─────────────────────────
+pub mod purchase_campaigns {
+    use super::*;
+
+    #[derive(Debug, Clone, sqlx::FromRow)]
+    pub struct PurchaseCampaign {
+        pub id: Uuid,
+        pub project_id: Uuid,
+        pub name: String,
+        pub status: String,
+        pub budget_cents: Option<i64>,
+        pub item_count: i64,
+        pub planned_cents: i64,
+        pub created_at: DateTime<Utc>,
+        pub updated_at: DateTime<Utc>,
+    }
+
+    #[derive(Debug, Clone, sqlx::FromRow)]
+    pub struct PurchaseCampaignItem {
+        pub id: Uuid,
+        pub spot_id: Option<Uuid>,
+        pub domain: String,
+        pub price_cents: Option<i64>,
+        pub currency: Option<String>,
+        pub source_slug: Option<String>,
+        pub target_url: Option<String>,
+        pub anchor: Option<String>,
+        pub status: String,
+        pub created_at: DateTime<Utc>,
+        pub updated_at: DateTime<Utc>,
+    }
+
+    /// One spot to seed a campaign item, snapshotted from the spot row.
+    #[derive(Debug, Clone, sqlx::FromRow)]
+    pub struct SpotSnapshot {
+        pub spot_id: Uuid,
+        pub domain: String,
+        pub price_cents: Option<i64>,
+        pub currency: Option<String>,
+        pub source_slug: Option<String>,
+    }
+
+    /// Snapshot the given spots (tenant + project scoped) to seed campaign items.
+    pub async fn snapshot_spots(
+        pool: &PgPool,
+        scope: &OrgScope,
+        project_id: Uuid,
+        spot_ids: &[Uuid],
+    ) -> Result<Vec<SpotSnapshot>, DbError> {
+        Ok(sqlx::query_as::<_, SpotSnapshot>(
+            "SELECT id AS spot_id, domain, buy_price_cents AS price_cents, \
+                    buy_currency AS currency, marketplace AS source_slug \
+             FROM spots \
+             WHERE organization_id = $1 AND project_id = $2 AND id = ANY($3)",
+        )
+        .bind(scope.organization_id())
+        .bind(project_id)
+        .bind(spot_ids)
+        .fetch_all(pool)
+        .await?)
+    }
+
+    /// Create a campaign and seed its items from the snapshots, in one tx.
+    pub async fn create(
+        pool: &PgPool,
+        scope: &OrgScope,
+        project_id: Uuid,
+        name: &str,
+        budget_cents: Option<i64>,
+        items: &[SpotSnapshot],
+    ) -> Result<Uuid, DbError> {
+        let mut tx = pool.begin().await?;
+        let campaign_id = Uuid::now_v7();
+        sqlx::query(
+            "INSERT INTO purchase_campaigns (id, organization_id, project_id, name, budget_cents) \
+             VALUES ($1, $2, $3, $4, $5)",
+        )
+        .bind(campaign_id)
+        .bind(scope.organization_id())
+        .bind(project_id)
+        .bind(name)
+        .bind(budget_cents)
+        .execute(&mut *tx)
+        .await
+        .map_err(DbError::from_insert)?;
+        for it in items {
+            sqlx::query(
+                "INSERT INTO purchase_campaign_items \
+                    (id, organization_id, campaign_id, spot_id, domain, price_cents, currency, source_slug) \
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT (campaign_id, spot_id) DO NOTHING",
+            )
+            .bind(Uuid::now_v7())
+            .bind(scope.organization_id())
+            .bind(campaign_id)
+            .bind(it.spot_id)
+            .bind(&it.domain)
+            .bind(it.price_cents)
+            .bind(it.currency.as_deref())
+            .bind(it.source_slug.as_deref())
+            .execute(&mut *tx)
+            .await?;
+        }
+        tx.commit().await?;
+        Ok(campaign_id)
+    }
+
+    /// Campaigns for a project, newest first.
+    pub async fn list(
+        pool: &PgPool,
+        scope: &OrgScope,
+        project_id: Uuid,
+    ) -> Result<Vec<PurchaseCampaign>, DbError> {
+        Ok(sqlx::query_as::<_, PurchaseCampaign>(
+            "SELECT c.id, c.project_id, c.name, c.status, c.budget_cents, \
+                (SELECT count(*) FROM purchase_campaign_items i WHERE i.campaign_id = c.id)::bigint AS item_count, \
+                (SELECT COALESCE(sum(i.price_cents), 0) FROM purchase_campaign_items i WHERE i.campaign_id = c.id)::bigint AS planned_cents, \
+                c.created_at, c.updated_at \
+             FROM purchase_campaigns c \
+             WHERE c.organization_id = $1 AND c.project_id = $2 \
+             ORDER BY c.created_at DESC",
+        )
+        .bind(scope.organization_id())
+        .bind(project_id)
+        .fetch_all(pool)
+        .await?)
+    }
+
+    /// One campaign by id, tenant-scoped.
+    pub async fn get(
+        pool: &PgPool,
+        scope: &OrgScope,
+        id: Uuid,
+    ) -> Result<Option<PurchaseCampaign>, DbError> {
+        Ok(sqlx::query_as::<_, PurchaseCampaign>(
+            "SELECT c.id, c.project_id, c.name, c.status, c.budget_cents, \
+                (SELECT count(*) FROM purchase_campaign_items i WHERE i.campaign_id = c.id)::bigint AS item_count, \
+                (SELECT COALESCE(sum(i.price_cents), 0) FROM purchase_campaign_items i WHERE i.campaign_id = c.id)::bigint AS planned_cents, \
+                c.created_at, c.updated_at \
+             FROM purchase_campaigns c \
+             WHERE c.organization_id = $1 AND c.id = $2",
+        )
+        .bind(scope.organization_id())
+        .bind(id)
+        .fetch_optional(pool)
+        .await?)
+    }
+
+    /// The items of a campaign, oldest first.
+    pub async fn items(
+        pool: &PgPool,
+        scope: &OrgScope,
+        campaign_id: Uuid,
+    ) -> Result<Vec<PurchaseCampaignItem>, DbError> {
+        Ok(sqlx::query_as::<_, PurchaseCampaignItem>(
+            "SELECT id, spot_id, domain, price_cents, currency, source_slug, target_url, anchor, \
+                    status, created_at, updated_at \
+             FROM purchase_campaign_items \
+             WHERE organization_id = $1 AND campaign_id = $2 ORDER BY created_at",
+        )
+        .bind(scope.organization_id())
+        .bind(campaign_id)
+        .fetch_all(pool)
+        .await?)
+    }
+}
