@@ -117,6 +117,12 @@ export interface SpotView {
   // legacy single fields above mirror the cheapest one. May be absent on older
   // API responses.
   offers?: OfferView[];
+  // Thematic-performance scores (Netlinking view), from the spot's SERP
+  // positions. grade is relative to the set: pepite|a_plus|a|b|c|unrated.
+  current_perf?: number;
+  potential_perf?: number;
+  ranked_keywords?: number;
+  grade?: string;
 }
 export interface SpotEnrichRunView {
   id: string;

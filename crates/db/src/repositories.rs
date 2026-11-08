@@ -7649,6 +7649,49 @@ pub mod spots {
         .await?)
     }
 
+    /// One persisted SERP position (migration 0054), for computing the thematic
+    /// scores: which spot, at what rank, on which page.
+    #[derive(Debug, Clone, sqlx::FromRow)]
+    pub struct SpotPositionRow {
+        pub spot_id: Uuid,
+        pub position: i32,
+        pub page_url: Option<String>,
+    }
+
+    /// Every stored keyword position for a project's spots, tenant-scoped.
+    pub async fn positions_for_project(
+        pool: &PgPool,
+        scope: &OrgScope,
+        project_id: Uuid,
+    ) -> Result<Vec<SpotPositionRow>, DbError> {
+        Ok(sqlx::query_as::<_, SpotPositionRow>(
+            "SELECT spot_id, position, page_url FROM spot_keyword_positions \
+             WHERE organization_id = $1 AND project_id = $2",
+        )
+        .bind(scope.organization_id())
+        .bind(project_id)
+        .fetch_all(pool)
+        .await?)
+    }
+
+    /// Count of the project's kept keywords — the size of the thematic map, i.e.
+    /// the denominator for the current-thematic (PTA) score.
+    pub async fn kept_keyword_count(
+        pool: &PgPool,
+        scope: &OrgScope,
+        project_id: Uuid,
+    ) -> Result<i64, DbError> {
+        let (n,): (i64,) = sqlx::query_as(
+            "SELECT count(*)::bigint FROM spot_keywords \
+             WHERE organization_id = $1 AND project_id = $2 AND status = 'kept'",
+        )
+        .bind(scope.organization_id())
+        .bind(project_id)
+        .fetch_one(pool)
+        .await?;
+        Ok(n)
+    }
+
     // ── Enrichment (Lot C) ─────────────────────────────────────────────────────
 
     pub async fn enrich_in_flight(
