@@ -280,7 +280,8 @@ pub async fn list_spots(
     // whole kept-keyword set; the grade is quartile-ranked across these spots.
     let positions = spots::positions_for_project(&state.pool, &scope, project_id).await?;
     let total_kw = spots::kept_keyword_count(&state.pool, &scope, project_id).await? as u32;
-    let mut pos_by_spot: std::collections::HashMap<Uuid, Vec<i32>> = std::collections::HashMap::new();
+    let mut pos_by_spot: std::collections::HashMap<Uuid, Vec<i32>> =
+        std::collections::HashMap::new();
     let mut pages_by_spot: std::collections::HashMap<Uuid, std::collections::HashSet<String>> =
         std::collections::HashMap::new();
     for p in positions {
@@ -302,7 +303,10 @@ pub async fn list_spots(
             current: v.current_perf,
             potential: v.potential_perf,
             price_cents: v.buy_price_cents,
-            distinct_pages: pages_by_spot.get(&v.id).map(|s| s.len() as u32).unwrap_or(0),
+            distinct_pages: pages_by_spot
+                .get(&v.id)
+                .map(|s| s.len() as u32)
+                .unwrap_or(0),
         })
         .collect();
     for (v, g) in spots.iter_mut().zip(backlio_core::grade_set(&grade_inputs)) {
