@@ -487,6 +487,34 @@ pub async fn delete_spot_order(
 }
 
 #[derive(Serialize)]
+pub struct AcquisitionSummaryView {
+    pub sites_analyzed: i64,
+    pub spots_found: i64,
+    pub backlinks_monitored: i64,
+    pub spend_cents: i64,
+}
+
+/// `GET …/acquisition-summary` — the dashboard's acquisition-funnel headline
+/// counts (refonte P1.2). Any member may read; not gated on the Spot Finder
+/// flag (the counts are harmless and monitoring is always on).
+pub async fn acquisition_summary(
+    State(state): State<AppState>,
+    Path(org_id): Path<Uuid>,
+    jar: CookieJar,
+) -> Result<Json<AcquisitionSummaryView>, ApiError> {
+    let (user, _s) = current(&state, &jar).await?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Viewer)?;
+    let s = spots::acquisition_summary(&state.pool, &scope).await?;
+    Ok(Json(AcquisitionSummaryView {
+        sites_analyzed: s.sites_analyzed,
+        spots_found: s.spots_found,
+        backlinks_monitored: s.backlinks_monitored,
+        spend_cents: s.spend_cents,
+    }))
+}
+
+#[derive(Serialize)]
 pub struct ProjectOverviewView {
     pub id: Uuid,
     pub name: String,

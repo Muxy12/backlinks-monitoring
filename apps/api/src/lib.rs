@@ -339,6 +339,10 @@ pub fn app(state: AppState) -> Router {
             get(routes::spot_search_routes::spot_overview),
         )
         .route(
+            "/v1/organizations/{org_id}/acquisition-summary",
+            get(routes::spot_search_routes::acquisition_summary),
+        )
+        .route(
             "/v1/organizations/{org_id}/projects/{project_id}/keywords",
             get(routes::spot_keyword_routes::list_keywords)
                 .post(routes::spot_keyword_routes::add_keyword),
