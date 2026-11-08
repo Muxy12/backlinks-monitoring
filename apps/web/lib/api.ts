@@ -907,6 +907,31 @@ export interface PositionedKeyword {
   impressions: number;
   clicks: number;
 }
+export interface PurchaseCampaign {
+  id: string;
+  project_id: string;
+  name: string;
+  status: string;
+  budget_cents: number | null;
+  item_count: number;
+  planned_cents: number;
+  created_at: string;
+  updated_at: string;
+}
+export interface PurchaseCampaignItem {
+  id: string;
+  domain: string;
+  price_cents: number | null;
+  currency: string | null;
+  source_slug: string | null;
+  target_url: string | null;
+  anchor: string | null;
+  status: string;
+}
+export interface PurchaseCampaignDetail {
+  campaign: PurchaseCampaign;
+  items: PurchaseCampaignItem[];
+}
 export interface SiteAnalysis {
   status: string;
   source: string | null;
@@ -1090,6 +1115,24 @@ export const orgApi = {
   // "My analyses" cards: every analyzed site with its spot count + in-flight state.
   spotOverview: (org: string) =>
     request<ProjectOverview[]>(`/v1/organizations/${org}/spot-overview`),
+  // Purchase campaigns (refonte P3): baskets of selected spots to buy.
+  listPurchaseCampaigns: (org: string, projectId: string) =>
+    request<PurchaseCampaign[]>(
+      `/v1/organizations/${org}/projects/${projectId}/purchase-campaigns`,
+    ),
+  createPurchaseCampaign: (
+    org: string,
+    projectId: string,
+    body: { name: string; budget_cents?: number | null; spot_ids: string[] },
+  ) =>
+    request<PurchaseCampaign>(
+      `/v1/organizations/${org}/projects/${projectId}/purchase-campaigns`,
+      { method: "POST", headers: csrfHeader(), body: JSON.stringify(body) },
+    ),
+  purchaseCampaign: (org: string, projectId: string, id: string) =>
+    request<PurchaseCampaignDetail>(
+      `/v1/organizations/${org}/projects/${projectId}/purchase-campaigns/${id}`,
+    ),
   // AI site analysis (refonte P2): trigger / read / edit a project's semantic profile.
   analyzeSite: (org: string, projectId: string) =>
     request<SiteAnalysis>(`/v1/organizations/${org}/projects/${projectId}/analyze-site`, {

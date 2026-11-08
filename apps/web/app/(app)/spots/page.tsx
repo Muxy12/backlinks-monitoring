@@ -16,6 +16,8 @@ import {
   type SpotKeywordPosition,
   type SpotOrder,
   type ProjectOverview,
+  type PurchaseCampaign,
+  type PurchaseCampaignDetail,
   type SpotRunView,
   type GeoQueryView,
   type GeoCitationsResponse,
@@ -147,6 +149,9 @@ export default function SpotsPage() {
   // Phase 3: multi-select spots → selection bar (budget, savings, bulk actions).
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [selBusy, setSelBusy] = useState(false);
+  // Purchase campaigns (buy baskets).
+  const [campList, setCampList] = useState<PurchaseCampaign[]>([]);
+  const [campDetail, setCampDetail] = useState<PurchaseCampaignDetail | null>(null);
   function toggleSelected(id: string) {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -240,6 +245,7 @@ export default function SpotsPage() {
       void load(orgId, projectId);
       void loadSpots(orgId, projectId);
       void loadGeo(orgId, projectId);
+      void orgApi.listPurchaseCampaigns(orgId, projectId).then((r) => setCampList(r.ok ? r.data : []));
     }
   }, [orgId, projectId, load, loadSpots, loadGeo]);
 
@@ -569,6 +575,36 @@ export default function SpotsPage() {
     setSelected(new Set());
     const camp = campaigns.find((c) => c.id === campaignId);
     setPushMsg(`Added ${ok} spot${ok === 1 ? "" : "s"} to ${camp?.name ?? "the campaign"}.`);
+  }
+
+  async function createCampaignFromSelection(ids: string[]) {
+    if (!orgId || !projectId || ids.length === 0) return;
+    const name = window.prompt("Name this purchase campaign", "New campaign");
+    if (!name || !name.trim()) return;
+    setSelBusy(true);
+    setPushMsg(null);
+    const res = await orgApi.createPurchaseCampaign(orgId, projectId, {
+      name: name.trim(),
+      spot_ids: ids,
+    });
+    setSelBusy(false);
+    if (!res.ok) {
+      setSpotsErr(res.detail || "Could not create the campaign.");
+      return;
+    }
+    setSelected(new Set());
+    setPushMsg(`Campaign “${res.data.name}” created with ${res.data.item_count} spot(s).`);
+    void orgApi
+      .listPurchaseCampaigns(orgId, projectId)
+      .then((r) => setCampList(r.ok ? r.data : []));
+    void openCampaign(res.data.id);
+  }
+
+  async function openCampaign(id: string) {
+    if (!orgId || !projectId) return;
+    setCampDetail(null);
+    const r = await orgApi.purchaseCampaign(orgId, projectId, id);
+    if (r.ok) setCampDetail(r.data);
   }
 
   function openDetail(s: SpotView) {
@@ -954,6 +990,37 @@ export default function SpotsPage() {
                     )}
                   </div>
                 ))}
+              </div>
+            </section>
+          )}
+
+          {campList.length > 0 && (
+            <section className="panel">
+              <div className="panel-head">
+                <h2>Purchase campaigns</h2>
+                <span className="muted">{campList.length}</span>
+              </div>
+              <div className="bl-scroll">
+                <table className="bl-table">
+                  <thead>
+                    <tr><th>Name</th><th>Status</th><th>Spots</th><th>Planned</th><th></th></tr>
+                  </thead>
+                  <tbody>
+                    {campList.map((c) => (
+                      <tr key={c.id}>
+                        <td>{c.name}</td>
+                        <td>{c.status}</td>
+                        <td className="mono">{c.item_count}</td>
+                        <td className="mono">{formatPrice(c.planned_cents, "EUR")}</td>
+                        <td>
+                          <button className="btn sm" onClick={() => void openCampaign(c.id)}>
+                            View
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </section>
           )}
@@ -1775,6 +1842,54 @@ export default function SpotsPage() {
           </aside>
         </div>
       )}
+      {campDetail && (
+        <div
+          onClick={() => setCampDetail(null)}
+          style={{ position: "fixed", inset: 0, background: "rgba(5,10,25,.45)", zIndex: 60, display: "flex", justifyContent: "flex-end" }}
+        >
+          <aside
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Campaign ${campDetail.campaign.name}`}
+            style={{ width: "min(620px, 100%)", height: "100%", overflowY: "auto", background: "var(--surface)", borderLeft: "1px solid var(--border)", padding: 22 }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+              <h2 style={{ margin: 0, fontSize: 18 }}>{campDetail.campaign.name}</h2>
+              <button className="btn sm" onClick={() => setCampDetail(null)}>Close</button>
+            </div>
+            <div className="muted" style={{ display: "flex", gap: 16, marginTop: 8, flexWrap: "wrap" }}>
+              <span>Status: {campDetail.campaign.status}</span>
+              <span>{campDetail.campaign.item_count} spots</span>
+              <span>
+                Planned <b style={{ color: "var(--text)" }}>{formatPrice(campDetail.campaign.planned_cents, "EUR")}</b>
+              </span>
+            </div>
+            <table className="bl-table" style={{ marginTop: 14 }}>
+              <thead>
+                <tr><th>Domain</th><th>Price</th><th>Marketplace</th><th>Status</th></tr>
+              </thead>
+              <tbody>
+                {campDetail.items.map((it) => (
+                  <tr key={it.id}>
+                    <td className="mono">{it.domain}</td>
+                    <td className="mono">{it.price_cents != null ? formatPrice(it.price_cents, it.currency ?? "EUR") : "—"}</td>
+                    <td>{it.source_slug ?? "—"}</td>
+                    <td>{it.status}</td>
+                  </tr>
+                ))}
+                {campDetail.items.length === 0 && (
+                  <tr><td colSpan={4} className="muted">No spots in this campaign.</td></tr>
+                )}
+              </tbody>
+            </table>
+            <p className="muted" style={{ fontSize: 11, marginTop: 10 }}>
+              Per-spot ordering &amp; status management comes next (Phase 4).
+            </p>
+          </aside>
+        </div>
+      )}
+
       {selected.size > 0 && (
         <div
           style={{
@@ -1832,9 +1947,16 @@ export default function SpotsPage() {
             <button
               className="btn sm primary"
               disabled={selBusy}
+              onClick={() => void createCampaignFromSelection([...selected])}
+            >
+              {selBusy ? "Working…" : "Create campaign"}
+            </button>
+            <button
+              className="btn sm"
+              disabled={selBusy}
               onClick={() => void monitorSelected([...selected])}
             >
-              {selBusy ? "Working…" : "Monitor selected"}
+              Monitor selected
             </button>
             <button className="btn sm ghost" disabled={selBusy} onClick={() => setSelected(new Set())}>
               Clear
