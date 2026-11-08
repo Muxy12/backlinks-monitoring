@@ -93,6 +93,13 @@ export interface OfferView {
   retention_months: number | null;
   url: string | null;
 }
+export interface ProjectOverview {
+  id: string;
+  name: string;
+  domain: string;
+  spots: number;
+  analyzing: boolean;
+}
 export interface SpotKeywordPosition {
   keyword: string;
   position: number;
@@ -1035,6 +1042,9 @@ export const orgApi = {
     }),
   projects: (org: string) => request<ProjectView[]>(`/v1/organizations/${org}/projects`),
   // ── Spot Finder: keyword detection & review (Lot A) ──
+  // "My analyses" cards: every analyzed site with its spot count + in-flight state.
+  spotOverview: (org: string) =>
+    request<ProjectOverview[]>(`/v1/organizations/${org}/spot-overview`),
   // URL-first front door: resolve-or-create the project for a site's domain and
   // start a detection scan of it, from a bare URL. Returns the project to select.
   analyzeUrl: (org: string, url: string) =>

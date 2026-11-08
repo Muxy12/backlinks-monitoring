@@ -14,6 +14,7 @@ import {
   type SpotsResponse,
   type SpotView,
   type SpotKeywordPosition,
+  type ProjectOverview,
   type SpotRunView,
   type GeoQueryView,
   type GeoCitationsResponse,
@@ -131,6 +132,8 @@ export default function SpotsPage() {
   const [gradeFilter, setGradeFilter] = useState<Set<string>>(
     () => new Set(GRADE_ORDER),
   );
+  // "My analyses" cards (every analyzed site + its state).
+  const [overview, setOverview] = useState<ProjectOverview[]>([]);
   // Spot detail drawer.
   const [detail, setDetail] = useState<SpotView | null>(null);
   const [detailKw, setDetailKw] = useState<SpotKeywordPosition[] | null>(null);
@@ -171,6 +174,29 @@ export default function SpotsPage() {
       }
     });
   }, [orgId]);
+
+  // "My analyses" cards: load once per org…
+  useEffect(() => {
+    if (!orgId) return;
+    let alive = true;
+    orgApi.spotOverview(orgId).then((r) => {
+      if (alive && r.ok) setOverview(r.data);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [orgId]);
+  // …and poll while any site is still analyzing.
+  const anyAnalyzing = overview.some((o) => o.analyzing);
+  useEffect(() => {
+    if (!orgId || !anyAnalyzing) return;
+    const t = setInterval(() => {
+      orgApi.spotOverview(orgId).then((r) => {
+        if (r.ok) setOverview(r.data);
+      });
+    }, 4000);
+    return () => clearInterval(t);
+  }, [orgId, anyAnalyzing]);
 
   const load = useCallback(async (org: string, project: string) => {
     const res = await orgApi.spotKeywords(org, project);
@@ -269,6 +295,9 @@ export default function SpotsPage() {
     setData({ scan: res.data.scan, keywords: [] });
     setProjectId(pid);
     setAnalyzeInput("");
+    void orgApi.spotOverview(orgId).then((r) => {
+      if (r.ok) setOverview(r.data);
+    });
 
     try {
       // 1 — wait for the detection scan (reads the site's own topics).
@@ -755,6 +784,52 @@ export default function SpotsPage() {
               </div>
             )}
           </section>
+
+          {overview.length > 0 && (
+            <section className="panel">
+              <div className="panel-head">
+                <h2>My analyses</h2>
+                <span className="muted">{overview.length} site{overview.length === 1 ? "" : "s"}</span>
+              </div>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))",
+                  gap: 12,
+                }}
+              >
+                {overview.map((o) => (
+                  <div
+                    key={o.id}
+                    style={{
+                      border: o.id === projectId ? "1px solid var(--link, #3b6cff)" : "1px solid var(--border)",
+                      borderRadius: 12,
+                      padding: 14,
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 10,
+                    }}
+                  >
+                    <div>
+                      <div className="mono" style={{ fontWeight: 700, wordBreak: "break-all" }}>{o.domain}</div>
+                      <div className="muted" style={{ fontSize: 12 }}>
+                        {o.spots} spot{o.spots === 1 ? "" : "s"}
+                      </div>
+                    </div>
+                    {o.analyzing ? (
+                      <button className="btn" disabled style={{ display: "flex", gap: 8, justifyContent: "center", alignItems: "center" }}>
+                        <span className="sf-spinner" aria-hidden="true" /> Analyzing…
+                      </button>
+                    ) : (
+                      <button className="btn primary" onClick={() => setProjectId(o.id)}>
+                        See spots{o.spots > 0 ? ` (${o.spots})` : ""}
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
           <section className="panel">
             <div className="panel-head">

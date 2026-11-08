@@ -7674,6 +7674,41 @@ pub mod spots {
         .await?)
     }
 
+    /// One analyzed site for the "My analyses" cards: its project, how many
+    /// spots it has, and whether an analysis (detection or SERP/discovery run)
+    /// is currently in flight.
+    #[derive(Debug, Clone, sqlx::FromRow)]
+    pub struct ProjectSpotOverview {
+        pub id: Uuid,
+        pub name: String,
+        pub domain: String,
+        pub spots: i64,
+        pub analyzing: bool,
+    }
+
+    /// Every active project with its spot count and in-flight status, newest
+    /// first — the "My analyses" grid.
+    pub async fn projects_overview(
+        pool: &PgPool,
+        scope: &OrgScope,
+    ) -> Result<Vec<ProjectSpotOverview>, DbError> {
+        Ok(sqlx::query_as::<_, ProjectSpotOverview>(
+            "SELECT p.id, p.name, p.domain, \
+               (SELECT count(*) FROM spots s WHERE s.project_id = p.id)::bigint AS spots, \
+               (EXISTS (SELECT 1 FROM spot_keyword_scans k \
+                   WHERE k.project_id = p.id AND k.status IN ('queued','running')) \
+                OR EXISTS (SELECT 1 FROM spot_search_runs r \
+                   WHERE r.project_id = p.id AND r.status IN ('queued','running'))) AS analyzing \
+             FROM projects p \
+             WHERE p.organization_id = $1 AND p.archived_at IS NULL \
+             ORDER BY p.created_at DESC \
+             LIMIT 200",
+        )
+        .bind(scope.organization_id())
+        .fetch_all(pool)
+        .await?)
+    }
+
     /// One keyword a spot ranks for, for the spot-detail "keywords positioned"
     /// tab: the term, its best organic rank, the ranking page and monthly volume.
     #[derive(Debug, Clone, sqlx::FromRow)]
