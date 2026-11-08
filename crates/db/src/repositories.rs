@@ -8750,3 +8750,111 @@ pub mod api_keys {
         }))
     }
 }
+
+// ─── AI site analysis (refonte P2, migration 0056) ───────────────────────────
+pub mod website_analyses {
+    use super::*;
+
+    #[derive(Debug, Clone, sqlx::FromRow)]
+    pub struct WebsiteAnalysis {
+        pub id: Uuid,
+        pub project_id: Uuid,
+        pub status: String,
+        pub source: Option<String>,
+        pub language: Option<String>,
+        pub theme: Option<String>,
+        pub sub_themes: Vec<String>,
+        pub products: Vec<String>,
+        pub keywords: Vec<String>,
+        pub summary: Option<String>,
+        pub edited: bool,
+        pub error: Option<String>,
+        pub created_at: DateTime<Utc>,
+        pub updated_at: DateTime<Utc>,
+    }
+
+    /// The analysis for a project, tenant-scoped. `None` if never analysed.
+    pub async fn get_by_project(
+        pool: &PgPool,
+        scope: &OrgScope,
+        project_id: Uuid,
+    ) -> Result<Option<WebsiteAnalysis>, DbError> {
+        Ok(sqlx::query_as::<_, WebsiteAnalysis>(
+            "SELECT id, project_id, status, source, language, theme, sub_themes, products, \
+                    keywords, summary, edited, error, created_at, updated_at \
+             FROM website_analyses WHERE organization_id = $1 AND project_id = $2",
+        )
+        .bind(scope.organization_id())
+        .bind(project_id)
+        .fetch_optional(pool)
+        .await?)
+    }
+
+    /// Create the analysis row, or reset it to `queued` for a re-run (clears the
+    /// previous error but keeps the last result visible until the run completes).
+    pub async fn upsert_queued(
+        pool: &PgPool,
+        scope: &OrgScope,
+        project_id: Uuid,
+    ) -> Result<WebsiteAnalysis, DbError> {
+        sqlx::query_as::<_, WebsiteAnalysis>(
+            "INSERT INTO website_analyses (id, organization_id, project_id, status) \
+             VALUES ($1, $2, $3, 'queued') \
+             ON CONFLICT (project_id) DO UPDATE SET status = 'queued', error = NULL, updated_at = now() \
+             RETURNING id, project_id, status, source, language, theme, sub_themes, products, \
+                       keywords, summary, edited, error, created_at, updated_at",
+        )
+        .bind(Uuid::now_v7())
+        .bind(scope.organization_id())
+        .bind(project_id)
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_insert)
+    }
+
+    /// Worker-side: store a finished analysis result (status → done).
+    #[allow(clippy::too_many_arguments)]
+    pub async fn set_result(
+        pool: &PgPool,
+        project_id: Uuid,
+        source: &str,
+        language: Option<&str>,
+        theme: Option<&str>,
+        sub_themes: &[String],
+        products: &[String],
+        keywords: &[String],
+        summary: Option<&str>,
+    ) -> Result<(), DbError> {
+        sqlx::query(
+            "UPDATE website_analyses \
+             SET status = 'done', source = $2, language = $3, theme = $4, sub_themes = $5, \
+                 products = $6, keywords = $7, summary = $8, edited = false, error = NULL, \
+                 updated_at = now() \
+             WHERE project_id = $1",
+        )
+        .bind(project_id)
+        .bind(source)
+        .bind(language)
+        .bind(theme)
+        .bind(sub_themes)
+        .bind(products)
+        .bind(keywords)
+        .bind(summary)
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    /// Worker-side: mark the analysis as failed.
+    pub async fn set_error(pool: &PgPool, project_id: Uuid, msg: &str) -> Result<(), DbError> {
+        sqlx::query(
+            "UPDATE website_analyses SET status = 'error', error = $2, updated_at = now() \
+             WHERE project_id = $1",
+        )
+        .bind(project_id)
+        .bind(msg)
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+}
