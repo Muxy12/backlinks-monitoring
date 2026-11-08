@@ -7700,6 +7700,35 @@ pub mod spots {
         pub analyzing: bool,
     }
 
+    /// Acquisition-funnel headline counts for the dashboard (refonte P1.2):
+    /// sites analysed, spots found, backlinks monitored, and tracked spend.
+    #[derive(Debug, Clone, sqlx::FromRow)]
+    pub struct AcquisitionSummary {
+        pub sites_analyzed: i64,
+        pub spots_found: i64,
+        pub backlinks_monitored: i64,
+        pub spend_cents: i64,
+    }
+
+    pub async fn acquisition_summary(
+        pool: &PgPool,
+        scope: &OrgScope,
+    ) -> Result<AcquisitionSummary, DbError> {
+        sqlx::query_as::<_, AcquisitionSummary>(
+            "SELECT \
+               (SELECT count(DISTINCT project_id) FROM spot_keyword_scans \
+                  WHERE organization_id = $1 AND status = 'done')::bigint AS sites_analyzed, \
+               (SELECT count(*) FROM spots WHERE organization_id = $1)::bigint AS spots_found, \
+               (SELECT count(*) FROM backlinks WHERE organization_id = $1)::bigint AS backlinks_monitored, \
+               (SELECT COALESCE(sum(price_cents), 0) FROM spot_orders \
+                  WHERE organization_id = $1)::bigint AS spend_cents",
+        )
+        .bind(scope.organization_id())
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_fetch)
+    }
+
     /// Every active project with its spot count and in-flight status, newest
     /// first — the "My analyses" grid.
     pub async fn projects_overview(

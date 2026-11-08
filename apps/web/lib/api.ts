@@ -901,6 +901,12 @@ export interface OverviewActivity {
   backlink_id: string;
   detected_at: string;
 }
+export interface AcquisitionSummary {
+  sites_analyzed: number;
+  spots_found: number;
+  backlinks_monitored: number;
+  spend_cents: number;
+}
 export interface OverviewResponse {
   summary: OverviewSummary;
   attention: AttentionItemView[];
@@ -1040,6 +1046,8 @@ export const orgApi = {
     request<OverviewResponse>(
       `/v1/organizations/${org}/overview${range ? `?range=${range}` : ""}`,
     ),
+  acquisitionSummary: (org: string) =>
+    request<AcquisitionSummary>(`/v1/organizations/${org}/acquisition-summary`),
   // ── Google Search Console (Post-Link Impact foundation) ──
   gscStatus: (org: string, projectId: string) =>
     request<GscStatus>(`/v1/organizations/${org}/projects/${projectId}/gsc/status`),

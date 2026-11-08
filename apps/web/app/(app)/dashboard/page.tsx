@@ -8,6 +8,7 @@ import {
   type AttentionItemView,
   type MeResponse,
   type OverviewResponse,
+  type AcquisitionSummary,
 } from "@/lib/api";
 import { selectedOrg, selectedOrgId } from "@/lib/workspace";
 import { stageLabel } from "@/lib/campaigns";
@@ -50,6 +51,7 @@ export default function OverviewPage() {
   const [orgId, setOrgId] = useState<string | null>(null);
   const [range, setRange] = useState("30d");
   const [data, setData] = useState<OverviewResponse | null>(null);
+  const [acq, setAcq] = useState<AcquisitionSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [tourRun, setTourRun] = useState(false);
@@ -84,6 +86,7 @@ export default function OverviewPage() {
     } else {
       setError(true);
     }
+    orgApi.acquisitionSummary(org).then((s) => setAcq(s.ok ? s.data : null));
   }, []);
 
   useEffect(() => {
@@ -111,7 +114,7 @@ export default function OverviewPage() {
     <main className="dash">
       <header className="ov-head">
         <div>
-          <h1>Overview</h1>
+          <h1>Dashboard</h1>
           <p className="ov-sub">
             Your link-building performance at a glance
             {org ? ` · ${org.name}` : ""}
@@ -141,6 +144,40 @@ export default function OverviewPage() {
           </button>
         </div>
       </header>
+
+      {acq && (
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+            gap: 12,
+            margin: "4px 0 18px",
+          }}
+        >
+          {[
+            { k: "Sites analyzed", v: acq.sites_analyzed.toLocaleString() },
+            { k: "Spots found", v: acq.spots_found.toLocaleString() },
+            { k: "Backlinks monitored", v: acq.backlinks_monitored.toLocaleString() },
+            {
+              k: "Spend tracked",
+              v: `${(acq.spend_cents / 100).toLocaleString()} €`,
+            },
+          ].map((m) => (
+            <div
+              key={m.k}
+              style={{
+                background: "var(--surface)",
+                border: "1px solid var(--border)",
+                borderRadius: 12,
+                padding: "14px 16px",
+              }}
+            >
+              <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600 }}>{m.k}</div>
+              <div style={{ fontSize: 24, fontWeight: 700, marginTop: 4 }}>{m.v}</div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {orgId && <GettingStarted org={orgId} onStartTour={() => setTourRun(true)} />}
 
