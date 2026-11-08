@@ -25,6 +25,12 @@ pub struct SiteScan {
     pub pages_scanned: usize,
     /// Headings collected across all scanned HTML pages, in crawl order.
     pub h1s: Vec<ScannedH1>,
+    /// Homepage `<title>` (site analysis, refonte P2).
+    pub title: Option<String>,
+    /// Homepage `<meta name="description">` (site analysis, refonte P2).
+    pub meta_description: Option<String>,
+    /// Homepage `<html lang>` primary language (site analysis, refonte P2).
+    pub lang: Option<String>,
 }
 
 /// A response is parseable HTML when it says so, or doesn't say otherwise — the
@@ -80,6 +86,10 @@ pub async fn scan_site(cfg: &CrawlerConfig, home_url: &str, max_p1: usize) -> Si
     };
 
     let parsed = parse_page(&home.body);
+    // Site-analysis metadata from the homepage (refonte P2).
+    scan.title = parsed.title.clone();
+    scan.meta_description = parsed.meta_description.clone();
+    scan.lang = parsed.lang.clone();
     // Relative links resolve against <base href> when present, else the final URL.
     let doc_base = parsed
         .base_href

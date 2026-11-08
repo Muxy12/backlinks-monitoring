@@ -8812,6 +8812,19 @@ pub mod website_analyses {
         .map_err(DbError::from_insert)
     }
 
+    /// Worker-side: claim a queued analysis (status → running). Returns the
+    /// project's domain to crawl, or None if the row/project is gone.
+    pub async fn mark_running(pool: &PgPool, project_id: Uuid) -> Result<(), DbError> {
+        sqlx::query(
+            "UPDATE website_analyses SET status = 'running', updated_at = now() \
+             WHERE project_id = $1",
+        )
+        .bind(project_id)
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
     /// Worker-side: store a finished analysis result (status → done).
     #[allow(clippy::too_many_arguments)]
     pub async fn set_result(

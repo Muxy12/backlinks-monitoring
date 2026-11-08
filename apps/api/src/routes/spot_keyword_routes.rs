@@ -21,7 +21,7 @@ use axum::http::{HeaderMap, StatusCode};
 use axum_extra::extract::cookie::CookieJar;
 use common::Role;
 use db::authorize_org;
-use db::repositories::{projects, spot_keywords};
+use db::repositories::{projects, spot_keywords, website_analyses};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -265,6 +265,82 @@ pub async fn analyze_url(
             scan: ScanView::from(scan),
         }),
     ))
+}
+
+#[derive(Serialize)]
+pub struct AnalysisView {
+    pub status: String,
+    pub source: Option<String>,
+    pub language: Option<String>,
+    pub theme: Option<String>,
+    pub sub_themes: Vec<String>,
+    pub products: Vec<String>,
+    /// Detected keywords (AI/heuristic) — NOT verified Google positions.
+    pub keywords: Vec<String>,
+    pub summary: Option<String>,
+    pub edited: bool,
+    pub updated_at: String,
+}
+
+impl From<website_analyses::WebsiteAnalysis> for AnalysisView {
+    fn from(a: website_analyses::WebsiteAnalysis) -> Self {
+        AnalysisView {
+            status: a.status,
+            source: a.source,
+            language: a.language,
+            theme: a.theme,
+            sub_themes: a.sub_themes,
+            products: a.products,
+            keywords: a.keywords,
+            summary: a.summary,
+            edited: a.edited,
+            updated_at: a.updated_at.to_rfc3339(),
+        }
+    }
+}
+
+/// `POST …/projects/{project_id}/analyze-site` — (re)build the site's AI/heuristic
+/// semantic profile. Member role; free (crawls the user's own site).
+pub async fn analyze_site(
+    State(state): State<AppState>,
+    Path((org_id, project_id)): Path<(Uuid, Uuid)>,
+    jar: CookieJar,
+    headers: HeaderMap,
+) -> Result<(StatusCode, Json<AnalysisView>), ApiError> {
+    gate(&state)?;
+    let (user, session) = current(&state, &jar).await?;
+    check_csrf(&jar, &headers, &session)?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Member)?;
+    projects::get(&state.pool, &scope, project_id).await?;
+
+    let analysis = website_analyses::upsert_queued(&state.pool, &scope, project_id).await?;
+    let key = format!("analyze_site:{project_id}");
+    db::repositories::jobs::enqueue(
+        &state.pool,
+        Some(scope.organization_id()),
+        jobs::JobKind::AnalyzeSite,
+        serde_json::json!({ "org_id": org_id, "project_id": project_id }),
+        Some(&key),
+    )
+    .await?;
+    Ok((StatusCode::ACCEPTED, Json(AnalysisView::from(analysis))))
+}
+
+/// `GET …/projects/{project_id}/analysis` — the site's current analysis, or null
+/// if never analysed. Any member may read.
+pub async fn get_analysis(
+    State(state): State<AppState>,
+    Path((org_id, project_id)): Path<(Uuid, Uuid)>,
+    jar: CookieJar,
+) -> Result<Json<Option<AnalysisView>>, ApiError> {
+    gate(&state)?;
+    let (user, _s) = current(&state, &jar).await?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Viewer)?;
+    projects::get(&state.pool, &scope, project_id).await?;
+    let a = website_analyses::get_by_project(&state.pool, &scope, project_id).await?;
+    Ok(Json(a.map(AnalysisView::from)))
 }
 
 #[derive(Deserialize)]
