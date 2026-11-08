@@ -318,22 +318,39 @@ export default function SpotsPage() {
         await load(orgId, pid);
       }
 
-      // 3 — discover matching spots across the marketplaces (scored).
-      if (!marketplace) {
-        setErr("No marketplace is configured yet, so we can’t find spots to buy. Your topics are ready below.");
-        return;
-      }
       if (keptCount === 0) {
-        setErr("We couldn’t read any topics from that site. Add a few keywords below, then discover.");
+        setErr("We couldn’t read any topics from that site. Add a few keywords below, then analyze.");
         return;
       }
-      setPilot("Finding matching spots across your marketplaces…");
-      const dres = await orgApi.discoverMarketplaceSpots(orgId, pid, locale);
-      if (dres.ok) {
-        applyRun(dres);
+      // 3 — build the ranking. Prefer SERP (it populates the PTA/PTP thematic
+      // scores from real Google positions), then overlay marketplace prices.
+      // Fall back to marketplace-only discovery when no SERP source is set up.
+      if (dataforseo) {
+        setPilot("Finding the sites that rank on your topics…");
+        const sres = await orgApi.searchSpots(orgId, pid, locale);
+        if (!sres.ok) {
+          setSpotsErr(sres.detail || "Could not start the SERP search.");
+          return;
+        }
+        applyRun(sres);
+        await pollSpotRunDone(orgId, pid);
+        if (marketplace) {
+          setPilot("Comparing marketplace prices…");
+          const mres = await orgApi.matchSpots(orgId, pid);
+          if (mres.ok) setSpotsData((d) => (d ? { ...d, match_run: mres.data } : d));
+        }
         await loadSpots(orgId, pid);
+      } else if (marketplace) {
+        setPilot("Finding matching spots across your marketplaces…");
+        const dres = await orgApi.discoverMarketplaceSpots(orgId, pid, locale);
+        if (dres.ok) {
+          applyRun(dres);
+          await loadSpots(orgId, pid);
+        } else {
+          setSpotsErr(dres.detail || "Could not start marketplace discovery.");
+        }
       } else {
-        setSpotsErr(dres.detail || "Could not start marketplace discovery.");
+        setErr("No SERP (DataForSEO) or marketplace source is configured, so we can’t build a ranking yet. Your topics are ready below.");
       }
     } catch {
       setErr("The analysis didn’t finish in time. You can continue from the detected topics below.");
@@ -341,6 +358,21 @@ export default function SpotsPage() {
       setPilot(null);
       setAnalyzing(false);
     }
+  }
+
+  // Poll the latest SERP spot run until it is done (or errors/times out). Used
+  // by the auto-pilot to wait before overlaying marketplace prices.
+  async function pollSpotRunDone(org: string, project: string) {
+    for (let i = 0; i < 160; i++) {
+      const r = await orgApi.spots(org, project);
+      if (r.ok) {
+        const st = r.data.run?.status;
+        if (st === "done") return;
+        if (st === "error") throw new Error("serp run failed");
+      }
+      await new Promise((resolve) => setTimeout(resolve, 2500));
+    }
+    throw new Error("timeout");
   }
 
   // Poll a project's detection scan until it is done (returns its keywords) or
