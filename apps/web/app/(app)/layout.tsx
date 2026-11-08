@@ -16,7 +16,16 @@ import "./shell.css";
 // desktop, a slide-in drawer on mobile, so pages only render their own title
 // and content, never the nav.
 type Link = { href: string; label: string; icon: string; badge?: string };
+// Sidebar information architecture, marketplace-first: lead with acquisition
+// (find link spots across marketplaces → compare → buy), then monitoring, then
+// workspace admin. Discovery surfaces are flag-gated and spliced in below.
 const SECTIONS: { title: string; links: Link[] }[] = [
+  {
+    title: "Acquire",
+    links: [
+      { href: "/competitors", label: "Competitors", icon: "competitors" },
+    ],
+  },
   {
     title: "Monitor",
     links: [
@@ -24,12 +33,6 @@ const SECTIONS: { title: string; links: Link[] }[] = [
       { href: "/backlinks", label: "Backlinks", icon: "link" },
       { href: "/projects", label: "Domains", icon: "projects" },
       { href: "/graph", label: "Graph", icon: "graph" },
-    ],
-  },
-  {
-    title: "Grow",
-    links: [
-      { href: "/competitors", label: "Competitors", icon: "competitors" },
       { href: "/import", label: "Import", icon: "import" },
     ],
   },
@@ -51,17 +54,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const campaignsBeta = !!me?.features?.campaigns_beta;
   const linkavista = !!me?.features?.linkavista;
   const spotFinder = !!me?.features?.spot_finder;
-  // Surface extra "Grow" tools only when their feature flags are on.
+  // Lead "Acquire" with the discovery funnel when its sources are configured:
+  // Spot Finder (find buyable spots across marketplaces) and the Marketplace
+  // catalogue head the section; Link Building (still beta) trails Competitors.
   const sections = SECTIONS.map((s) => {
-    if (s.title !== "Grow") return s;
-    const links = [...s.links];
-    if (spotFinder)
-      links.push({ href: "/spots", label: "Spot Finder", icon: "competitors", badge: "BETA" });
+    if (s.title !== "Acquire") return s;
+    const lead: Link[] = [];
+    if (spotFinder) lead.push({ href: "/spots", label: "Spot Finder", icon: "signal" });
+    if (linkavista) lead.push({ href: "/linkavista", label: "Marketplace", icon: "tag" });
+    const tail: Link[] = [];
     if (campaignsBeta)
-      links.push({ href: "/campaigns", label: "Link Building", icon: "campaigns", badge: "BETA" });
-    if (linkavista)
-      links.push({ href: "/linkavista", label: "Marketplace", icon: "competitors", badge: "BETA" });
-    return { ...s, links };
+      tail.push({ href: "/campaigns", label: "Link Building", icon: "campaigns", badge: "BETA" });
+    return { ...s, links: [...lead, ...s.links, ...tail] };
   });
   const orgs = me?.organizations ?? [];
   const current = selectedOrg(orgs);
