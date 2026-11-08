@@ -1805,6 +1805,31 @@ export interface AdminAnalytics {
   by_source: { source: string; signups: number }[];
 }
 
+export interface AdminMarketplaceSource {
+  slug: string;
+  display_name: string;
+  offers: number;
+  spots: number;
+}
+export interface AdminMarketplace {
+  window_secs: number;
+  spots_total: number;
+  spots_new: number;
+  orgs_with_spots: number;
+  runs_total: number;
+  runs_window: number;
+  offers_total: number;
+  buyable_spots: number;
+  sources_enabled: number;
+  api_keys_live: number;
+  api_keys_orgs: number;
+  api_keys_used: number;
+  api_keys_active_window: number;
+  geo_queries: number;
+  geo_orgs: number;
+  by_source: AdminMarketplaceSource[];
+}
+
 export interface AdminWaitlist {
   total: number;
   pending: number;
@@ -1844,6 +1869,10 @@ export const adminApi = {
   audit: () => request<AdminAudit[]>("/v1/admin/audit"),
   ops: (windowHours?: number) =>
     request<AdminOps>(`/v1/admin/ops${windowHours ? `?window_hours=${windowHours}` : ""}`),
+  marketplace: (windowHours?: number) =>
+    request<AdminMarketplace>(
+      `/v1/admin/marketplace${windowHours ? `?window_hours=${windowHours}` : ""}`,
+    ),
   billing: () => request<AdminBilling>("/v1/admin/billing"),
   subscriptions: () => request<AdminSubscription[]>("/v1/admin/subscriptions"),
   analytics: (windowHours?: number) =>

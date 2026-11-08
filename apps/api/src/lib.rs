@@ -510,6 +510,10 @@ pub fn app(state: AppState) -> Router {
         // Founder-ops read models (docs/19): queue + monitoring + email, revenue,
         // plan-limit usage. GET-only, gated on is_platform_admin like the rest.
         .route("/v1/admin/ops", get(routes::admin_routes::ops))
+        .route(
+            "/v1/admin/marketplace",
+            get(routes::admin_routes::marketplace),
+        )
         .route("/v1/admin/billing", get(routes::admin_routes::billing))
         .route("/v1/admin/analytics", get(routes::admin_routes::analytics))
         .route("/v1/admin/waitlist", get(routes::admin_routes::waitlist))
