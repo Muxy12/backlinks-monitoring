@@ -1,13 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { orgApi } from "@/lib/api";
+import { api, orgApi } from "@/lib/api";
 
-// First-run "Get started" checklist. Steps auto-check from real workspace state
-// (projects + backlinks counts via billing/usage, alert destinations), so it is
-// always accurate and never needs its own stored progress. Dismissal is a
-// per-browser convenience in localStorage; it hides itself once every step is
-// done. Pairs with the coachmark Tour (the "Take the tour" button re-runs it).
+// First-run "Get started" checklist, marketplace-first: add a domain → find
+// link spots across marketplaces → monitor what you land. Steps auto-check from
+// real workspace state (projects + backlinks counts via billing/usage, alert
+// destinations), so it is always accurate and never needs its own stored
+// progress. The discovery step only appears when a marketplace source is
+// configured; otherwise it falls back to the classic "add your backlinks"
+// on-ramp. Dismissal is a per-browser convenience in localStorage; it hides
+// itself once every step is done. Pairs with the coachmark Tour.
 
 const DISMISS_KEY = "backlio_getting_started_dismissed";
 
@@ -35,31 +38,45 @@ export function GettingStarted({ org, onStartTour }: { org: string; onStartTour:
   useEffect(() => {
     let live = true;
     void (async () => {
-      const [usage, dests] = await Promise.all([
+      const [usage, dests, me] = await Promise.all([
         orgApi.billingUsage(org),
         orgApi.alertDestinations(org),
+        api.me(),
       ]);
       if (!live) return;
       const projects = usage.ok ? usage.data.projects.used : 0;
       const backlinks = usage.ok ? usage.data.backlinks.used : 0;
       const hasAlerts = dests.ok ? dests.data.length > 0 : false;
+      // Lead the second step with discovery when a marketplace source is live;
+      // otherwise keep the direct "add your backlinks" on-ramp.
+      const canDiscover = me.ok && (!!me.data.features?.marketplace || !!me.data.features?.spot_finder);
+      const acquireStep: Step = canDiscover
+        ? {
+            key: "discover",
+            title: "Find link spots to acquire",
+            body: "Discover buyable placements across your marketplaces, relevant to your topics — then monitor the ones you land.",
+            cta: "Find spots",
+            href: "/spots",
+            done: backlinks > 0,
+          }
+        : {
+            key: "backlinks",
+            title: "Add your backlinks",
+            body: "Paste them or upload a CSV, LinkPulz re-checks each one on a schedule.",
+            cta: "Add backlinks",
+            href: "/backlinks",
+            done: backlinks > 0,
+          };
       setSteps([
         {
           key: "project",
-          title: "Create your first project",
-          body: "A project is one website whose backlinks you want to track.",
-          cta: "Create a project",
+          title: "Add your domain",
+          body: "Add the website whose link profile you want to grow and monitor.",
+          cta: "Add a domain",
           href: "/projects",
           done: projects > 0,
         },
-        {
-          key: "backlinks",
-          title: "Add your backlinks",
-          body: "Paste them or upload a CSV, LinkPulz re-checks each one on a schedule.",
-          cta: "Add backlinks",
-          href: "/backlinks",
-          done: backlinks > 0,
-        },
+        acquireStep,
         {
           key: "alerts",
           title: "Set up alerts",
@@ -95,7 +112,7 @@ export function GettingStarted({ org, onStartTour }: { org: string; onStartTour:
           <h2>
             Get started <span className="gs-count">{doneCount}/{steps.length}</span>
           </h2>
-          <p className="muted gs-sub">Three quick steps to start monitoring your backlinks.</p>
+          <p className="muted gs-sub">Three quick steps to find links and start monitoring them.</p>
         </div>
         <div className="gs-head-actions">
           <button className="btn sm ghost" onClick={onStartTour}>
