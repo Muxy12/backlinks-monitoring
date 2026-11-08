@@ -7751,6 +7751,124 @@ pub mod spots {
         .await?)
     }
 
+    // ── Order tracking ("Suivi de commande", migration 0055) ───────────────────
+
+    #[derive(Debug, Clone, sqlx::FromRow)]
+    pub struct SpotOrderRow {
+        pub id: Uuid,
+        pub spot_id: Uuid,
+        pub status: String,
+        pub platform: Option<String>,
+        pub target_url: Option<String>,
+        pub price_cents: Option<i64>,
+        pub currency: Option<String>,
+        pub created_at: DateTime<Utc>,
+        pub updated_at: DateTime<Utc>,
+    }
+
+    pub struct NewSpotOrder<'a> {
+        pub status: &'a str,
+        pub platform: Option<&'a str>,
+        pub target_url: Option<&'a str>,
+        pub price_cents: Option<i64>,
+        pub currency: Option<&'a str>,
+    }
+
+    /// Orders logged against a spot, oldest first, tenant-scoped.
+    pub async fn list_orders_for_spot(
+        pool: &PgPool,
+        scope: &OrgScope,
+        spot_id: Uuid,
+    ) -> Result<Vec<SpotOrderRow>, DbError> {
+        Ok(sqlx::query_as::<_, SpotOrderRow>(
+            "SELECT id, spot_id, status, platform, target_url, price_cents, currency, \
+                    created_at, updated_at \
+             FROM spot_orders WHERE organization_id = $1 AND spot_id = $2 ORDER BY created_at",
+        )
+        .bind(scope.organization_id())
+        .bind(spot_id)
+        .fetch_all(pool)
+        .await?)
+    }
+
+    /// Create an order for a spot, but only if that spot is in the caller's org
+    /// AND project (guards against attaching to another tenant's spot). NotFound
+    /// otherwise.
+    pub async fn create_order(
+        pool: &PgPool,
+        scope: &OrgScope,
+        project_id: Uuid,
+        spot_id: Uuid,
+        o: &NewSpotOrder<'_>,
+    ) -> Result<SpotOrderRow, DbError> {
+        let row: Option<SpotOrderRow> = sqlx::query_as::<_, SpotOrderRow>(
+            "INSERT INTO spot_orders \
+                (id, organization_id, project_id, spot_id, status, platform, target_url, price_cents, currency) \
+             SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9 \
+             WHERE EXISTS (SELECT 1 FROM spots s \
+                 WHERE s.id = $4 AND s.organization_id = $2 AND s.project_id = $3) \
+             RETURNING id, spot_id, status, platform, target_url, price_cents, currency, \
+                       created_at, updated_at",
+        )
+        .bind(Uuid::now_v7())
+        .bind(scope.organization_id())
+        .bind(project_id)
+        .bind(spot_id)
+        .bind(o.status)
+        .bind(o.platform)
+        .bind(o.target_url)
+        .bind(o.price_cents)
+        .bind(o.currency)
+        .fetch_optional(pool)
+        .await
+        .map_err(DbError::from_insert)?;
+        row.ok_or(DbError::NotFound)
+    }
+
+    /// Replace an order's editable fields, tenant-scoped. NotFound if missing.
+    pub async fn update_order(
+        pool: &PgPool,
+        scope: &OrgScope,
+        order_id: Uuid,
+        o: &NewSpotOrder<'_>,
+    ) -> Result<SpotOrderRow, DbError> {
+        let row: Option<SpotOrderRow> = sqlx::query_as::<_, SpotOrderRow>(
+            "UPDATE spot_orders \
+             SET status = $3, platform = $4, target_url = $5, price_cents = $6, currency = $7, \
+                 updated_at = now() \
+             WHERE id = $1 AND organization_id = $2 \
+             RETURNING id, spot_id, status, platform, target_url, price_cents, currency, \
+                       created_at, updated_at",
+        )
+        .bind(order_id)
+        .bind(scope.organization_id())
+        .bind(o.status)
+        .bind(o.platform)
+        .bind(o.target_url)
+        .bind(o.price_cents)
+        .bind(o.currency)
+        .fetch_optional(pool)
+        .await?;
+        row.ok_or(DbError::NotFound)
+    }
+
+    /// Delete an order, tenant-scoped. NotFound if missing.
+    pub async fn delete_order(
+        pool: &PgPool,
+        scope: &OrgScope,
+        order_id: Uuid,
+    ) -> Result<(), DbError> {
+        let r = sqlx::query("DELETE FROM spot_orders WHERE id = $1 AND organization_id = $2")
+            .bind(order_id)
+            .bind(scope.organization_id())
+            .execute(pool)
+            .await?;
+        if r.rows_affected() == 0 {
+            return Err(DbError::NotFound);
+        }
+        Ok(())
+    }
+
     /// Count of the project's kept keywords — the size of the thematic map, i.e.
     /// the denominator for the current-thematic (PTA) score.
     pub async fn kept_keyword_count(

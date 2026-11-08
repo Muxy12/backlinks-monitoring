@@ -93,6 +93,24 @@ export interface OfferView {
   retention_months: number | null;
   url: string | null;
 }
+export interface SpotOrder {
+  id: string;
+  spot_id: string;
+  status: string;
+  platform: string | null;
+  target_url: string | null;
+  price_cents: number | null;
+  currency: string | null;
+  created_at: string;
+  updated_at: string;
+}
+export interface SpotOrderBody {
+  status?: string;
+  platform?: string | null;
+  target_url?: string | null;
+  price_cents?: number | null;
+  currency?: string | null;
+}
 export interface ProjectOverview {
   id: string;
   name: string;
@@ -1058,6 +1076,32 @@ export const orgApi = {
   spotKeywordPositions: (org: string, projectId: string, spotId: string) =>
     request<SpotKeywordPosition[]>(
       `/v1/organizations/${org}/projects/${projectId}/spots/${spotId}/keywords`,
+    ),
+  // Order tracking ("Suivi de commande") per spot.
+  spotOrders: (org: string, projectId: string, spotId: string) =>
+    request<SpotOrder[]>(
+      `/v1/organizations/${org}/projects/${projectId}/spots/${spotId}/orders`,
+    ),
+  createSpotOrder: (org: string, projectId: string, spotId: string, body: SpotOrderBody) =>
+    request<SpotOrder>(
+      `/v1/organizations/${org}/projects/${projectId}/spots/${spotId}/orders`,
+      { method: "POST", headers: csrfHeader(), body: JSON.stringify(body) },
+    ),
+  updateSpotOrder: (
+    org: string,
+    projectId: string,
+    spotId: string,
+    orderId: string,
+    body: SpotOrderBody,
+  ) =>
+    request<SpotOrder>(
+      `/v1/organizations/${org}/projects/${projectId}/spots/${spotId}/orders/${orderId}`,
+      { method: "PATCH", headers: csrfHeader(), body: JSON.stringify(body) },
+    ),
+  deleteSpotOrder: (org: string, projectId: string, spotId: string, orderId: string) =>
+    request<null>(
+      `/v1/organizations/${org}/projects/${projectId}/spots/${spotId}/orders/${orderId}`,
+      { method: "DELETE", headers: csrfHeader() },
     ),
   detectSpotKeywords: (org: string, projectId: string) =>
     request<SpotScanView>(`/v1/organizations/${org}/projects/${projectId}/keywords/detect`, {

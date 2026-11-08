@@ -369,6 +369,16 @@ pub fn app(state: AppState) -> Router {
             get(routes::spot_search_routes::spot_keyword_positions),
         )
         .route(
+            "/v1/organizations/{org_id}/projects/{project_id}/spots/{spot_id}/orders",
+            get(routes::spot_search_routes::list_spot_orders)
+                .post(routes::spot_search_routes::create_spot_order),
+        )
+        .route(
+            "/v1/organizations/{org_id}/projects/{project_id}/spots/{spot_id}/orders/{order_id}",
+            axum::routing::patch(routes::spot_search_routes::update_spot_order)
+                .delete(routes::spot_search_routes::delete_spot_order),
+        )
+        .route(
             "/v1/organizations/{org_id}/projects/{project_id}/spots/enrich",
             post(routes::spot_search_routes::enrich_spots),
         )
