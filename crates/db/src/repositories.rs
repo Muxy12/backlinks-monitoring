@@ -7457,7 +7457,16 @@ pub mod spots {
 
     // ── Spots ────────────────────────────────────────────────────────────────
 
-    /// A spot to persist (from the pure aggregation).
+    /// One keyword a spot ranks for, with its best organic position and the
+    /// ranking page — the ground truth behind the thematic scores (PTA/PTP).
+    pub struct NewSpotPosition {
+        pub keyword: String,
+        pub position: i32,
+        pub page_url: Option<String>,
+    }
+
+    /// A spot to persist (from the pure aggregation), with the per-keyword SERP
+    /// positions it was built from so the thematic scores can be computed.
     pub struct NewSpot<'a> {
         pub domain: &'a str,
         pub keyword_count: i32,
@@ -7465,10 +7474,13 @@ pub mod spots {
         pub avg_position: Option<f64>,
         pub example_url: Option<&'a str>,
         pub example_keyword: Option<&'a str>,
+        pub positions: Vec<NewSpotPosition>,
     }
 
     /// Worker-side: replace a project's spots with a fresh set, atomically. The
     /// latest run is the source of truth, so a re-run reflects the current SERPs.
+    /// Each spot's per-keyword positions are written in the same transaction
+    /// (old ones cascade away with the deleted spots).
     pub async fn replace_spots(
         pool: &PgPool,
         organization_id: Uuid,
@@ -7482,12 +7494,13 @@ pub mod spots {
             .execute(&mut *tx)
             .await?;
         for s in spots {
+            let spot_id = Uuid::now_v7();
             sqlx::query(
                 "INSERT INTO spots (id, organization_id, project_id, domain, keyword_count, \
                     best_position, avg_position, example_url, example_keyword) \
                  VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)",
             )
-            .bind(Uuid::now_v7())
+            .bind(spot_id)
             .bind(organization_id)
             .bind(project_id)
             .bind(s.domain)
@@ -7498,6 +7511,22 @@ pub mod spots {
             .bind(s.example_keyword)
             .execute(&mut *tx)
             .await?;
+            for p in &s.positions {
+                sqlx::query(
+                    "INSERT INTO spot_keyword_positions \
+                        (id, organization_id, project_id, spot_id, keyword, position, page_url) \
+                     VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (spot_id, keyword) DO NOTHING",
+                )
+                .bind(Uuid::now_v7())
+                .bind(organization_id)
+                .bind(project_id)
+                .bind(spot_id)
+                .bind(&p.keyword)
+                .bind(p.position)
+                .bind(p.page_url.as_deref())
+                .execute(&mut *tx)
+                .await?;
+            }
         }
         tx.commit().await?;
         Ok(())
