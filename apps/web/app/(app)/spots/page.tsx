@@ -25,6 +25,45 @@ import "./spots.css";
 
 type Filter = "all" | "candidate" | "kept" | "rejected";
 
+// Price/performance grade (from the API: pepite|a_plus|a|b|c|unrated).
+const GRADE_ORDER = ["pepite", "a_plus", "a", "b", "c"] as const;
+const GRADE_META: Record<string, { label: string; bg: string; fg: string }> = {
+  pepite: { label: "Pépite", bg: "#f4e4b0", fg: "#6b4e00" },
+  a_plus: { label: "A+", bg: "#cdeccf", fg: "#1c5c27" },
+  a: { label: "A", bg: "#d9eecf", fg: "#2e5e23" },
+  b: { label: "B", bg: "#dfe6f2", fg: "#33467a" },
+  c: { label: "C", bg: "#f3dede", fg: "#7a2e2e" },
+  unrated: { label: "—", bg: "var(--border)", fg: "var(--muted)" },
+};
+function GradeBadge({ grade }: { grade?: string }) {
+  const m = GRADE_META[grade ?? "unrated"] ?? GRADE_META.unrated;
+  return (
+    <span
+      style={{
+        display: "inline-block",
+        minWidth: 34,
+        textAlign: "center",
+        padding: "2px 8px",
+        borderRadius: 999,
+        fontSize: 12,
+        fontWeight: 700,
+        background: m.bg,
+        color: m.fg,
+      }}
+    >
+      {m.label}
+    </span>
+  );
+}
+// A 0–100 thematic score as a coloured number (green = strong, red = weak).
+function ScoreNum({ v }: { v?: number }) {
+  if (v == null) return <span className="muted">–</span>;
+  const h = Math.round((v / 100) * 120); // 0 = red, 120 = green
+  return (
+    <span style={{ fontWeight: 700, color: `hsl(${h} 55% 42%)` }}>{Math.round(v)}</span>
+  );
+}
+
 // Spot Finder — Step 1: keyword detection & review (Lot A). We crawl the user's
 // own site (homepage + pages one click away), extract the <h1> headings as
 // keyword candidates, and let them review/edit/prune the list. Only "kept"
@@ -52,6 +91,10 @@ export default function SpotsPage() {
   const [analyzing, setAnalyzing] = useState(false);
   // Auto-pilot progress line shown while the URL→spots chain runs.
   const [pilot, setPilot] = useState<string | null>(null);
+  // Netlinking table: grade filter (all on by default).
+  const [gradeFilter, setGradeFilter] = useState<Set<string>>(
+    () => new Set(GRADE_ORDER),
+  );
   const [spotsBusy, setSpotsBusy] = useState(false);
   const [spotsErr, setSpotsErr] = useState<string | null>(null);
   const dataforseo = !!me?.features?.dataforseo;
@@ -562,6 +605,23 @@ export default function SpotsPage() {
   const shown = keywords.filter((k) => filter === "all" || k.status === filter);
   const candidateIds = keywords.filter((k) => k.status === "candidate").map((k) => k.id);
 
+  // Netlinking ranking: sort spots by current thematic performance (PTA) — this
+  // IS the "Classement" — then apply the grade filter (all-on shows every spot).
+  const rankedSpots = useMemo(() => {
+    const all = spotsData?.spots ?? [];
+    const allGradesOn = gradeFilter.size >= GRADE_ORDER.length;
+    const filtered = allGradesOn
+      ? all
+      : all.filter((s) => gradeFilter.has(s.grade ?? "unrated"));
+    return [...filtered].sort(
+      (a, b) => (b.current_perf ?? 0) - (a.current_perf ?? 0),
+    );
+  }, [spotsData, gradeFilter]);
+  // Does the current spot set carry thematic scores yet? (SERP run populated them.)
+  const hasThematic = (spotsData?.spots ?? []).some(
+    (s) => (s.ranked_keywords ?? 0) > 0,
+  );
+
   function scanStatusLine(): string {
     if (!scan) return "No detection run yet. Detect keywords to scan your site’s headings.";
     switch (scan.status) {
@@ -969,11 +1029,59 @@ export default function SpotsPage() {
                       {pushMsg}
                     </p>
                   )}
+                  {hasThematic && (
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "0 0 10px" }}>
+                      {GRADE_ORDER.map((g) => {
+                        const on = gradeFilter.has(g);
+                        const m = GRADE_META[g];
+                        return (
+                          <button
+                            key={g}
+                            type="button"
+                            aria-pressed={on}
+                            onClick={() =>
+                              setGradeFilter((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(g)) next.delete(g);
+                                else next.add(g);
+                                return next;
+                              })
+                            }
+                            title={`Show ${m.label} spots`}
+                            style={{
+                              padding: "3px 10px",
+                              borderRadius: 999,
+                              border: "1px solid var(--border)",
+                              fontSize: 12,
+                              fontWeight: 700,
+                              cursor: "pointer",
+                              background: on ? m.bg : "transparent",
+                              color: on ? m.fg : "var(--muted)",
+                              opacity: on ? 1 : 0.6,
+                            }}
+                          >
+                            {m.label}
+                          </button>
+                        );
+                      })}
+                      <span className="muted" style={{ alignSelf: "center", fontSize: 12 }}>
+                        {rankedSpots.length} shown
+                      </span>
+                    </div>
+                  )}
                   <div className="bl-scroll">
                   <table className="bl-table sf-spots-table">
                     <thead>
                       <tr>
-                        <th>Score</th>
+                        {hasThematic && <th title="Rank by current thematic performance">#</th>}
+                        {hasThematic && (
+                          <th title="Current thematic performance — how much it already weighs across your whole topic">PTA</th>
+                        )}
+                        {hasThematic && (
+                          <th title="Potential thematic performance — quality of its positions where it ranks">PTP</th>
+                        )}
+                        {hasThematic && <th title="Price ÷ performance grade, relative to this list">Grade</th>}
+                        <th title="LinkPulz quality score (0–100)">Score</th>
                         <th>Domain</th>
                         <th>Keywords</th>
                         <th>Best</th>
@@ -987,8 +1095,12 @@ export default function SpotsPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {spotsData!.spots.map((s) => (
+                      {rankedSpots.map((s, i) => (
                         <tr key={s.id}>
+                          {hasThematic && <td className="mono">{i + 1}</td>}
+                          {hasThematic && <td><ScoreNum v={s.current_perf} /></td>}
+                          {hasThematic && <td><ScoreNum v={s.potential_perf} /></td>}
+                          {hasThematic && <td><GradeBadge grade={s.grade} /></td>}
                           <td>
                             {s.quality_score != null ? (
                               <span className="sf-score">{Math.round(s.quality_score)}</span>
@@ -1037,6 +1149,13 @@ export default function SpotsPage() {
                           )}
                         </tr>
                       ))}
+                      {rankedSpots.length === 0 && (
+                        <tr>
+                          <td colSpan={99} className="muted">
+                            No spots match the selected grades.
+                          </td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                   </div>
