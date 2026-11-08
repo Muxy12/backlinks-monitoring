@@ -50,6 +50,8 @@ export default function SpotsPage() {
   // URL-first front door: type a site URL → resolve/create its project → scan.
   const [analyzeInput, setAnalyzeInput] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
+  // Auto-pilot progress line shown while the URL→spots chain runs.
+  const [pilot, setPilot] = useState<string | null>(null);
   const [spotsBusy, setSpotsBusy] = useState(false);
   const [spotsErr, setSpotsErr] = useState<string | null>(null);
   const dataforseo = !!me?.features?.dataforseo;
@@ -154,30 +156,90 @@ export default function SpotsPage() {
     return () => clearTimeout(t);
   }, [orgId, projectId, scanning, data, load]);
 
-  // The URL-first entry: analyze a site by URL alone. Resolves (or creates) its
-  // project server-side and starts the detection scan, then selects it so the
-  // detected topics + discovery flow below take over.
+  // URL-first auto-pilot: analyze a site by URL alone, then drive the whole
+  // chain — read its topics → auto-keep them → discover matching spots — so the
+  // user goes from a URL to scored, price-compared spots in one action. The
+  // page's own polling effects keep the detected-topics + spots UI in sync as
+  // each phase lands; this just orchestrates the phases.
   async function analyze(e?: FormEvent) {
     e?.preventDefault();
     if (!orgId) return;
     const url = analyzeInput.trim();
     if (!url) return;
     setErr(null);
+    setSpotsErr(null);
     setAnalyzing(true);
+    setPilot("Resolving your site…");
     const res = await orgApi.analyzeUrl(orgId, url);
-    setAnalyzing(false);
     if (!res.ok) {
+      setAnalyzing(false);
+      setPilot(null);
       setErr(res.detail || "Could not analyze that URL.");
       return;
     }
+    const pid = res.data.project_id;
     // Refresh the picker if a new project was created, then select it.
-    if (res.data.created || !projects.some((p) => p.id === res.data.project_id)) {
+    if (res.data.created || !projects.some((p) => p.id === pid)) {
       const pl = await orgApi.projects(orgId);
       if (pl.ok) setProjects(pl.data);
     }
     setData({ scan: res.data.scan, keywords: [] });
-    setProjectId(res.data.project_id);
+    setProjectId(pid);
     setAnalyzeInput("");
+
+    try {
+      // 1 — wait for the detection scan (reads the site's own topics).
+      setPilot("Reading your site’s topics…");
+      const keywords = await pollScanDone(orgId, pid);
+
+      // 2 — auto-keep every detected topic so it feeds discovery.
+      const candidateIds = keywords.filter((k) => k.status === "candidate").map((k) => k.id);
+      let keptCount = keywords.filter((k) => k.status === "kept").length;
+      if (candidateIds.length > 0) {
+        setPilot("Keeping the detected topics…");
+        await orgApi.bulkSpotKeywordStatus(orgId, pid, candidateIds, "kept");
+        keptCount += candidateIds.length;
+        await load(orgId, pid);
+      }
+
+      // 3 — discover matching spots across the marketplaces (scored).
+      if (!marketplace) {
+        setErr("No marketplace is configured yet, so we can’t find spots to buy. Your topics are ready below.");
+        return;
+      }
+      if (keptCount === 0) {
+        setErr("We couldn’t read any topics from that site. Add a few keywords below, then discover.");
+        return;
+      }
+      setPilot("Finding matching spots across your marketplaces…");
+      const dres = await orgApi.discoverMarketplaceSpots(orgId, pid, locale);
+      if (dres.ok) {
+        applyRun(dres);
+        await loadSpots(orgId, pid);
+      } else {
+        setSpotsErr(dres.detail || "Could not start marketplace discovery.");
+      }
+    } catch {
+      setErr("The analysis didn’t finish in time. You can continue from the detected topics below.");
+    } finally {
+      setPilot(null);
+      setAnalyzing(false);
+    }
+  }
+
+  // Poll a project's detection scan until it is done (returns its keywords) or
+  // errors/times out (throws). ~160 × 2.5s ≈ a generous few minutes.
+  async function pollScanDone(org: string, project: string) {
+    for (let i = 0; i < 160; i++) {
+      const r = await orgApi.spotKeywords(org, project);
+      if (r.ok) {
+        const st = r.data.scan?.status;
+        if (st === "done") return r.data.keywords;
+        if (st === "error") throw new Error("detection failed");
+      }
+      await new Promise((resolve) => setTimeout(resolve, 2500));
+    }
+    throw new Error("timeout");
   }
 
   async function detect() {
@@ -570,6 +632,12 @@ export default function SpotsPage() {
                 {analyzing ? "Analyzing…" : "Analyze"}
               </button>
             </form>
+            {pilot && (
+              <div className="sf-status" role="status" style={{ marginTop: 12 }}>
+                <span className="sf-spinner" aria-hidden="true" />
+                {pilot}
+              </div>
+            )}
             {err && (
               <div className="auth-error" role="alert" style={{ marginTop: 12 }}>
                 {err}
