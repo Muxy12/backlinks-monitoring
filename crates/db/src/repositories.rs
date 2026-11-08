@@ -546,6 +546,91 @@ pub mod admin {
         .fetch_all(pool)
         .await?)
     }
+
+    // ─── Marketplace-first adoption (positioning pivot) ──────────────────────
+    // The acquisition funnel's health, platform-wide: discovery runs & spots,
+    // buyable inventory (marketplace offers), the agent interface (API keys /
+    // MCP) and the secondary GEO pillar. All derived from existing tables.
+
+    #[derive(Debug, Clone, sqlx::FromRow)]
+    pub struct MarketplaceOverview {
+        /// Spots discovered across all projects, and how many in the window.
+        pub spots_total: i64,
+        pub spots_new: i64,
+        /// Activation signal for the new funnel: orgs that discovered any spot.
+        pub orgs_with_spots: i64,
+        pub runs_total: i64,
+        pub runs_window: i64,
+        /// Buyable inventory: priced offers and the spots they cover.
+        pub offers_total: i64,
+        pub buyable_spots: i64,
+        pub sources_enabled: i64,
+        /// Agent interface (keyed API / MCP) adoption.
+        pub api_keys_live: i64,
+        pub api_keys_orgs: i64,
+        pub api_keys_used: i64,
+        pub api_keys_active_window: i64,
+        /// Secondary pillar: GEO queries configured and the orgs using them.
+        pub geo_queries: i64,
+        pub geo_orgs: i64,
+    }
+
+    /// One snapshot of marketplace-first adoption. `window_secs` scopes the
+    /// "new"/"active" counts; the totals are all-time.
+    pub async fn marketplace_overview(
+        pool: &PgPool,
+        window_secs: f64,
+    ) -> Result<MarketplaceOverview, DbError> {
+        sqlx::query_as::<_, MarketplaceOverview>(
+            "SELECT \
+               (SELECT count(*) FROM spots)::bigint AS spots_total, \
+               (SELECT count(*) FROM spots WHERE created_at > now() - interval '1 second' * $1::double precision)::bigint AS spots_new, \
+               (SELECT count(DISTINCT organization_id) FROM spots)::bigint AS orgs_with_spots, \
+               (SELECT count(*) FROM spot_search_runs)::bigint AS runs_total, \
+               (SELECT count(*) FROM spot_search_runs WHERE created_at > now() - interval '1 second' * $1::double precision)::bigint AS runs_window, \
+               (SELECT count(*) FROM marketplace_offers)::bigint AS offers_total, \
+               (SELECT count(DISTINCT spot_id) FROM marketplace_offers)::bigint AS buyable_spots, \
+               (SELECT count(*) FROM marketplace_sources WHERE enabled)::bigint AS sources_enabled, \
+               (SELECT count(*) FROM api_keys WHERE revoked_at IS NULL)::bigint AS api_keys_live, \
+               (SELECT count(DISTINCT organization_id) FROM api_keys WHERE revoked_at IS NULL)::bigint AS api_keys_orgs, \
+               (SELECT count(*) FROM api_keys WHERE revoked_at IS NULL AND last_used_at IS NOT NULL)::bigint AS api_keys_used, \
+               (SELECT count(*) FROM api_keys WHERE revoked_at IS NULL AND last_used_at > now() - interval '1 second' * $1::double precision)::bigint AS api_keys_active_window, \
+               (SELECT count(*) FROM geo_queries WHERE enabled)::bigint AS geo_queries, \
+               (SELECT count(DISTINCT organization_id) FROM geo_queries)::bigint AS geo_orgs",
+        )
+        .bind(window_secs)
+        .fetch_one(pool)
+        .await
+        .map_err(DbError::from_fetch)
+    }
+
+    #[derive(Debug, Clone, sqlx::FromRow)]
+    pub struct MarketplaceSourceRow {
+        pub slug: String,
+        pub display_name: String,
+        pub offers: i64,
+        pub spots: i64,
+    }
+
+    /// Imported offers grouped by marketplace source (richest first), so the
+    /// operator sees which catalogues actually feed the funnel.
+    pub async fn marketplace_by_source(
+        pool: &PgPool,
+    ) -> Result<Vec<MarketplaceSourceRow>, DbError> {
+        Ok(sqlx::query_as::<_, MarketplaceSourceRow>(
+            "SELECT mo.source_slug AS slug, \
+               COALESCE(s.display_name, mo.source_slug) AS display_name, \
+               count(*)::bigint AS offers, \
+               count(DISTINCT mo.spot_id)::bigint AS spots \
+             FROM marketplace_offers mo \
+             LEFT JOIN marketplace_sources s ON s.slug = mo.source_slug \
+             GROUP BY mo.source_slug, s.display_name \
+             ORDER BY offers DESC \
+             LIMIT 50",
+        )
+        .fetch_all(pool)
+        .await?)
+    }
 }
 
 // ─── Audit log (docs/03 §3.8, §45) — append-only trail of privileged actions ───

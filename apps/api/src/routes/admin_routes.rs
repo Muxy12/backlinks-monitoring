@@ -448,6 +448,79 @@ pub async fn billing(
 }
 
 #[derive(Serialize)]
+pub struct MarketplaceSourceView {
+    pub slug: String,
+    pub display_name: String,
+    pub offers: i64,
+    pub spots: i64,
+}
+
+#[derive(Serialize)]
+pub struct MarketplaceView {
+    pub window_secs: i64,
+    // Discovery funnel.
+    pub spots_total: i64,
+    pub spots_new: i64,
+    pub orgs_with_spots: i64,
+    pub runs_total: i64,
+    pub runs_window: i64,
+    // Buyable inventory.
+    pub offers_total: i64,
+    pub buyable_spots: i64,
+    pub sources_enabled: i64,
+    // Agent interface (keyed API / MCP).
+    pub api_keys_live: i64,
+    pub api_keys_orgs: i64,
+    pub api_keys_used: i64,
+    pub api_keys_active_window: i64,
+    // Secondary pillar.
+    pub geo_queries: i64,
+    pub geo_orgs: i64,
+    pub by_source: Vec<MarketplaceSourceView>,
+}
+
+/// GET /v1/admin/marketplace — marketplace-first adoption: discovery runs &
+/// spots, buyable inventory (offers), the agent interface (API keys / MCP) and
+/// the GEO pillar. `?window_hours` (default 24) scopes the new/active counts.
+pub async fn marketplace(
+    State(state): State<AppState>,
+    jar: CookieJar,
+    Query(q): Query<OpsQuery>,
+) -> Result<Json<MarketplaceView>, ApiError> {
+    require_admin(&state, &jar).await?;
+    let hours = q.window_hours.unwrap_or(24).clamp(1, 24 * 30);
+    let secs = hours * 3600;
+    let o = admin::marketplace_overview(&state.pool, secs as f64).await?;
+    let by = admin::marketplace_by_source(&state.pool).await?;
+    Ok(Json(MarketplaceView {
+        window_secs: secs,
+        spots_total: o.spots_total,
+        spots_new: o.spots_new,
+        orgs_with_spots: o.orgs_with_spots,
+        runs_total: o.runs_total,
+        runs_window: o.runs_window,
+        offers_total: o.offers_total,
+        buyable_spots: o.buyable_spots,
+        sources_enabled: o.sources_enabled,
+        api_keys_live: o.api_keys_live,
+        api_keys_orgs: o.api_keys_orgs,
+        api_keys_used: o.api_keys_used,
+        api_keys_active_window: o.api_keys_active_window,
+        geo_queries: o.geo_queries,
+        geo_orgs: o.geo_orgs,
+        by_source: by
+            .into_iter()
+            .map(|s| MarketplaceSourceView {
+                slug: s.slug,
+                display_name: s.display_name,
+                offers: s.offers,
+                spots: s.spots,
+            })
+            .collect(),
+    }))
+}
+
+#[derive(Serialize)]
 pub struct SubscriptionView {
     pub id: Uuid,
     pub name: String,

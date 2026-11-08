@@ -13,6 +13,7 @@ import {
   type AdminAudit,
   type AdminOps,
   type AdminBilling,
+  type AdminMarketplace,
   type AdminSubscription,
   type AdminAnalytics,
   type AdminWaitlist,
@@ -94,6 +95,7 @@ export default function AdminPage() {
   const [audit, setAudit] = useState<AdminAudit[]>([]);
   const [ops, setOps] = useState<AdminOps | null>(null);
   const [billing, setBilling] = useState<AdminBilling | null>(null);
+  const [mkt, setMkt] = useState<AdminMarketplace | null>(null);
   const [subs, setSubs] = useState<AdminSubscription[]>([]);
   const [analytics, setAnalytics] = useState<AdminAnalytics | null>(null);
   const [waitlist, setWaitlist] = useState<AdminWaitlist | null>(null);
@@ -121,12 +123,13 @@ export default function AdminPage() {
   }, [detail]);
 
   const loadAll = useCallback(async () => {
-    const [s, o, u, a, op, bl, sb, an, ug, wl, fb] = await Promise.all([
+    const [s, o, u, a, op, mk, bl, sb, an, ug, wl, fb] = await Promise.all([
       adminApi.stats(),
       adminApi.organizations(),
       adminApi.users(),
       adminApi.audit(),
       adminApi.ops(),
+      adminApi.marketplace(),
       adminApi.billing(),
       adminApi.subscriptions(),
       adminApi.analytics(),
@@ -141,6 +144,7 @@ export default function AdminPage() {
     // Ops endpoints (docs/19) may 404 until the backend ships them; the panels
     // fall back to the "data ready" description when absent.
     if (op.ok) setOps(op.data);
+    if (mk.ok) setMkt(mk.data);
     if (bl.ok) setBilling(bl.data);
     if (sb.ok) setSubs(sb.data);
     if (an.ok) setAnalytics(an.data);
@@ -396,7 +400,7 @@ export default function AdminPage() {
         <div className="admin-stats">
           <div className="admin-stat"><div className="k">Workspaces</div><div className="v">{stats.organizations.toLocaleString()}</div><div className={`delta${newOrgs7 ? " up" : ""}`}>{newOrgs7 ? `+${newOrgs7} new Â· 7d` : "none new Â· 7d"}</div></div>
           <div className="admin-stat"><div className="k">Users</div><div className="v">{stats.users.toLocaleString()}</div><div className={`delta${newUsers7 ? " up" : ""}`}>{newUsers7 ? `+${newUsers7} new Â· 7d` : "none new Â· 7d"}</div></div>
-          <div className="admin-stat"><div className="k">Activated</div><div className="v">{activatedPct}%</div><div className="sub">{activatedOrgs} of {orgs.length} have backlinks</div></div>
+          <div className="admin-stat"><div className="k">Activated</div><div className="v">{mkt && orgs.length ? Math.round((mkt.orgs_with_spots / orgs.length) * 100) : activatedPct}%</div><div className="sub">{mkt ? `${mkt.orgs_with_spots} of ${orgs.length} discovered spots` : `${activatedOrgs} of ${orgs.length} have backlinks`}</div></div>
           <div className="admin-stat"><div className="k">Suspended</div><div className="v">{suspendedCount.toLocaleString()}</div><div className={`sub${suspendedCount ? " bad" : ""}`}>{suspendedCount ? "needs review" : "none"}</div></div>
           <div className="admin-stat"><div className="k">Backlinks</div><div className="v">{stats.backlinks.toLocaleString()}</div><div className="sub">monitored platform-wide</div></div>
           <div className="admin-stat"><div className="k">Live</div><div className="v">{livePct != null ? `${livePct}%` : "—"}</div>{lostPct != null && <div className="sub bad">{stats.backlinks_lost.toLocaleString()} lost Â· {lostPct}%</div>}</div>
@@ -419,6 +423,39 @@ export default function AdminPage() {
               <span className="plan-chip danger"><span className="pn">Suspended</span><span className="pc">{suspendedCount}</span></span>
             )}
           </div>
+        </>
+      )}
+
+      {mkt && (
+        <>
+          <div className="ops-section-h">
+            <h2>Marketplace &amp; discovery</h2>
+            <span className="note">acquisition funnel Â· last {Math.round(mkt.window_secs / 3600)}h for new/active</span>
+          </div>
+          <div className="admin-stats">
+            <div className="admin-stat"><div className="k">Spots discovered</div><div className="v">{mkt.spots_total.toLocaleString()}</div><div className={`delta${mkt.spots_new ? " up" : ""}`}>{mkt.spots_new ? `+${mkt.spots_new} new` : "none new"}</div></div>
+            <div className="admin-stat"><div className="k">Discovery runs</div><div className="v">{mkt.runs_total.toLocaleString()}</div><div className="sub">{mkt.runs_window} in window</div></div>
+            <div className="admin-stat"><div className="k">Orgs discovering</div><div className="v">{mkt.orgs_with_spots.toLocaleString()}</div><div className="sub">ran a discovery</div></div>
+            <div className="admin-stat"><div className="k">Buyable spots</div><div className="v">{mkt.buyable_spots.toLocaleString()}</div><div className="sub">{mkt.offers_total.toLocaleString()} offers</div></div>
+            <div className="admin-stat"><div className="k">Sources</div><div className="v">{mkt.sources_enabled.toLocaleString()}</div><div className={`sub${mkt.sources_enabled ? "" : " bad"}`}>{mkt.sources_enabled ? "enabled" : "none configured"}</div></div>
+            <div className="admin-stat"><div className="k">GEO queries</div><div className="v">{mkt.geo_queries.toLocaleString()}</div><div className="sub">{mkt.geo_orgs} orgs</div></div>
+          </div>
+          <div className="ops-section-h"><h2>Agent interface (API &amp; MCP)</h2><span className="note">keyed access Â· active = used in last {Math.round(mkt.window_secs / 3600)}h</span></div>
+          <div className="admin-stats">
+            <div className="admin-stat"><div className="k">API keys live</div><div className="v">{mkt.api_keys_live.toLocaleString()}</div><div className="sub">{mkt.api_keys_orgs} orgs</div></div>
+            <div className="admin-stat"><div className="k">Keys used</div><div className="v">{mkt.api_keys_used.toLocaleString()}</div><div className="sub">ever called</div></div>
+            <div className="admin-stat"><div className="k">Active keys</div><div className="v">{mkt.api_keys_active_window.toLocaleString()}</div><div className="sub">in window</div></div>
+          </div>
+          {mkt.by_source.length > 0 && (
+            <>
+              <div className="ops-section-h"><h2>Offers by source</h2><span className="note">imported placements per marketplace</span></div>
+              <div className="plan-mix">
+                {mkt.by_source.map((s) => (
+                  <span key={s.slug} className="plan-chip"><span className="pn">{s.display_name}</span><span className="pc">{s.offers.toLocaleString()}</span></span>
+                ))}
+              </div>
+            </>
+          )}
         </>
       )}
 
@@ -623,7 +660,7 @@ export default function AdminPage() {
       <div className="ops-section-h"><h2>Not yet instrumented</h2><span className="note">needs backend work, see docs/19</span></div>
       <div className="ops-gap">
         {[
-          { t: "Provider & API usage / cost", d: "No external data provider is integrated; usage_records exists but is never populated (RecomputeUsage job has no handler). Needs metering." },
+          { t: "Provider spend in money terms", d: "DataForSEO (SERP, metrics, AI Overviews) and LinkAvista (marketplace) are integrated, and usage_records meters discoveries + GEO queries per org. Still missing: per-provider cost in currency (cost-per-call × volume) for a true margin view." },
         ].map((o) => (
           <div className="ops-row" key={o.t}>
             <div className="ops-b"><div className="ops-t">{o.t}<span className="ops-pill">needs instrumentation</span></div><div className="ops-d">{o.d}</div></div>
