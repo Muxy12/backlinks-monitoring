@@ -388,6 +388,97 @@ pub async fn sites(
     Ok(Json(entries))
 }
 
+// ─── GET positioned keywords (real Google positions, refonte P2.5) ────────────
+#[derive(Serialize)]
+pub struct PositionedKeyword {
+    pub query: String,
+    pub position: f64,
+    pub impressions: i64,
+    pub clicks: i64,
+}
+
+/// Percent-encode a GSC property for one path segment (so `sc-domain:x` →
+/// `sc-domain%3Ax`). Same rule as the sync path — no injection via site_url.
+fn pct_seg(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for b in s.bytes() {
+        match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'.' | b'_' | b'~' => {
+                out.push(b as char)
+            }
+            _ => out.push_str(&format!("%{b:02X}")),
+        }
+    }
+    out
+}
+
+/// `GET …/projects/{project_id}/positioned-keywords` — the site's REAL query
+/// positions from Google Search Console (dimensions=[query], last 28 days),
+/// strongest first. Empty (not an error) when GSC is not configured, not
+/// connected, or no property is mapped — so the UI can prompt to connect it.
+/// These are verified positions, kept distinct from AI-detected keywords.
+pub async fn positioned_keywords(
+    State(state): State<AppState>,
+    Path((org_id, project_id)): Path<(Uuid, Uuid)>,
+    jar: CookieJar,
+) -> Result<Json<Vec<PositionedKeyword>>, ApiError> {
+    let (Some(env), Some(key)) = (oauth_env(), token_key()) else {
+        return Ok(Json(vec![]));
+    };
+    let (user, _s) = current(&state, &jar).await?;
+    let scope = authorize_org(&state.pool, user.id, org_id).await?;
+    scope.require(Role::Viewer)?;
+    let Some(conn) = gsc::get(&state.pool, &scope, project_id).await? else {
+        return Ok(Json(vec![]));
+    };
+    let Some(site) = conn.site_url.as_deref() else {
+        return Ok(Json(vec![]));
+    };
+
+    let client = http_client()?;
+    let access = fresh_access_token(&client, &env, &key, &conn.refresh_token_enc).await?;
+    let url = format!("{SITES_URL}/{}/searchAnalytics/query", pct_seg(site));
+    let today = chrono::Utc::now().date_naive();
+    let end = today - chrono::Duration::days(2);
+    let start = today - chrono::Duration::days(28);
+    let body = serde_json::json!({
+        "startDate": start.to_string(),
+        "endDate": end.to_string(),
+        "dimensions": ["query"],
+        "rowLimit": 50,
+    });
+    let payload: serde_json::Value = client
+        .post(url)
+        .bearer_auth(access)
+        .json(&body)
+        .send()
+        .await
+        .map_err(|_| ApiError::Internal)?
+        .json()
+        .await
+        .map_err(|_| ApiError::Internal)?;
+
+    let num = |r: &serde_json::Value, k: &str| r.get(k).and_then(|v| v.as_f64()).unwrap_or(0.0);
+    let out = payload
+        .get("rows")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|r| {
+                    let query = r.get("keys")?.as_array()?.first()?.as_str()?.to_string();
+                    Some(PositionedKeyword {
+                        query,
+                        position: (num(r, "position") * 10.0).round() / 10.0,
+                        impressions: num(r, "impressions") as i64,
+                        clicks: num(r, "clicks") as i64,
+                    })
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    Ok(Json(out))
+}
+
 // ─── POST site (map a property) ───────────────────────────────────────────────
 #[derive(Deserialize)]
 pub struct SetSiteBody {
