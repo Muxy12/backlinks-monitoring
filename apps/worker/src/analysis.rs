@@ -50,14 +50,46 @@ pub async fn run_analysis(
         return Ok(());
     }
 
-    let keywords = backlio_core::salient_terms(&texts, MAX_KEYWORDS);
-    let theme = keywords.first().cloned();
+    let heuristic_keywords = backlio_core::salient_terms(&texts, MAX_KEYWORDS);
+
+    // Prefer a real LLM profile when one is configured; fall back to the
+    // heuristic baseline on any failure (so an analysis always completes).
+    if let Some(llm) = crawler::llm::LlmClient::from_env() {
+        let corpus = texts.join("\n");
+        match llm.analyze(domain.trim(), &corpus).await {
+            Ok(a) => {
+                let keywords = if a.keywords.is_empty() {
+                    heuristic_keywords
+                } else {
+                    a.keywords
+                };
+                website_analyses::set_result(
+                    pool,
+                    project,
+                    "ai",
+                    a.language.as_deref().or(scan.lang.as_deref()),
+                    a.theme.as_deref(),
+                    &a.sub_themes,
+                    &a.products,
+                    &keywords,
+                    a.summary.as_deref(),
+                )
+                .await?;
+                return Ok(());
+            }
+            Err(e) => {
+                tracing::warn!(%project, "LLM site analysis failed, using heuristic: {e}");
+            }
+        }
+    }
+
+    // Heuristic baseline (no LLM configured, or the call failed).
+    let theme = heuristic_keywords.first().cloned();
     let summary = format!(
         "Heuristic profile from {} page(s). Configure an LLM for a full semantic analysis \
          (sub-themes, products, summary).",
         scan.pages_scanned
     );
-
     website_analyses::set_result(
         pool,
         project,
@@ -66,7 +98,7 @@ pub async fn run_analysis(
         theme.as_deref(),
         &[],
         &[],
-        &keywords,
+        &heuristic_keywords,
         Some(&summary),
     )
     .await?;

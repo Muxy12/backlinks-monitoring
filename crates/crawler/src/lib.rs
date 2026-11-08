@@ -16,6 +16,7 @@ pub mod discovery;
 pub mod fetch;
 pub mod geo;
 pub mod linkavista;
+pub mod llm;
 pub mod marketplace;
 pub mod matching;
 pub mod metrics;
