@@ -818,30 +818,36 @@ export default function SpotsPage() {
         <p className="muted">Create a workspace first.</p>
       ) : (
         <>
-          <section className="panel">
+          <section className="panel sf-analyze">
             <div className="panel-head">
               <h2>Analyze a site</h2>
             </div>
-            <p className="muted" style={{ marginBottom: 12 }}>
-              Paste any site URL. We resolve it to a project, read its themes, then surface the link
-              spots that rank on those topics — scored, with prices compared across your
-              marketplaces.
+            <p className="muted" style={{ marginBottom: 0 }}>
+              Paste any site URL. We read its topics, then rank the link spots that match — scored
+              (PTA/PTP) with marketplace prices compared. Buy, then monitor.
             </p>
-            <form onSubmit={analyze} style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-              <input
-                type="text"
-                inputMode="url"
-                placeholder="yoursite.com"
-                value={analyzeInput}
-                onChange={(e) => setAnalyzeInput(e.target.value)}
-                aria-label="Site URL to analyze"
-                style={{ flex: "1 1 260px", minWidth: 220, padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--fg)" }}
-              />
-              <select aria-label="Market" value={locale} onChange={(e) => setLocale(e.target.value)}>
+            <form className="sf-analyze-form" onSubmit={analyze}>
+              <div className="sf-analyze-field">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M3 12h18" />
+                  <path d="M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18" />
+                </svg>
+                <input
+                  className="sf-analyze-input"
+                  type="text"
+                  inputMode="url"
+                  placeholder="yoursite.com"
+                  value={analyzeInput}
+                  onChange={(e) => setAnalyzeInput(e.target.value)}
+                  aria-label="Site URL to analyze"
+                />
+              </div>
+              <select className="sf-analyze-market" aria-label="Market" value={locale} onChange={(e) => setLocale(e.target.value)}>
                 <option value="fr">France · Français</option>
                 <option value="en">English</option>
               </select>
-              <button className="btn primary" type="submit" disabled={analyzing || !analyzeInput.trim()}>
+              <button className="btn primary sf-analyze-btn" type="submit" disabled={analyzing || !analyzeInput.trim()}>
                 {analyzing ? "Analyzing…" : "Analyze"}
               </button>
             </form>
