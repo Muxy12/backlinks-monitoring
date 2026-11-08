@@ -3,11 +3,17 @@
 -- crates/core/src/outreach_schedule.rs) and stop the moment a prospect replies.
 -- Additive, backfill-free — safe to hand-apply. The sending/dispatch code lands
 -- in a later PR; this migration only provisions the tables.
+--
+-- IDEMPOTENT: like 0041, this migration was documented "safe to hand-apply" and
+-- its tables were created by hand on an environment where the _sqlx_migrations
+-- row was never recorded. Every object below is guarded with IF NOT EXISTS so
+-- `sqlx migrate run` records version 42 and proceeds to the later migrations
+-- instead of aborting on an "already exists" from the hand-applied state.
 
 -- One row per prospect per cadence step: what is queued/sent, when it is due,
 -- and the provider's id for the send. `status` + `step` are code-validated; a
 -- cheap CHECK guards the status vocabulary.
-CREATE TABLE outreach_messages (
+CREATE TABLE IF NOT EXISTS outreach_messages (
     id                  uuid        PRIMARY KEY,
     organization_id     uuid        NOT NULL REFERENCES organizations ON DELETE CASCADE,
     campaign_id         uuid        NOT NULL,
@@ -35,15 +41,15 @@ CREATE TABLE outreach_messages (
     CONSTRAINT outreach_messages_prospect_step_uq UNIQUE (prospect_id, step)
 );
 -- Dispatch pulls the queued steps that are due, oldest first.
-CREATE INDEX outreach_messages_due_idx
+CREATE INDEX IF NOT EXISTS outreach_messages_due_idx
     ON outreach_messages (scheduled_at)
     WHERE status = 'queued';
-CREATE INDEX outreach_messages_prospect_idx ON outreach_messages (prospect_id);
+CREATE INDEX IF NOT EXISTS outreach_messages_prospect_idx ON outreach_messages (prospect_id);
 
 -- Recipients who must never be emailed again by this org's outreach: an
 -- unsubscribe click, a hard bounce, a complaint, or a manual add. Checked before
 -- every send. Per-org — the suppression belongs to the tenant's relationship.
-CREATE TABLE outreach_suppressions (
+CREATE TABLE IF NOT EXISTS outreach_suppressions (
     organization_id uuid        NOT NULL REFERENCES organizations ON DELETE CASCADE,
     email           citext      NOT NULL,
     reason          text        NOT NULL DEFAULT 'unsubscribe'
