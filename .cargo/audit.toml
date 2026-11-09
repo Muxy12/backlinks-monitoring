@@ -1,0 +1,13 @@
+# cargo-audit configuration, read by the `security-audit` CI job (`cargo audit`).
+#
+# RUSTSEC-2026-0459 — `libsqlite3-sys` via C SQLite CVE-2026-119375.
+# We depend on `sqlx` with `default-features = false` and ONLY the `postgres`
+# feature (see root Cargo.toml). `libsqlite3-sys` / `sqlx-sqlite` are locked as
+# OPTIONAL transitives but are never enabled, so the bundled C SQLite is not
+# compiled, linked, or executed in anything we ship — the vulnerability is not
+# reachable. `cargo update -p libsqlite3-sys` reports 0.37.0 is already the
+# newest version sqlx-sqlite 0.9 allows, so there is no patched release to take.
+# Revisit (and drop this entry) if we ever enable sqlx's `sqlite` feature or
+# sqlx ships a libsqlite3-sys bump.
+[advisories]
+ignore = ["RUSTSEC-2026-0459"]
