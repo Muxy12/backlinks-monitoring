@@ -24,6 +24,7 @@ import "@/app/auth.css";
 import "../dashboard/dashboard.css";
 import "./admin.css";
 import { toast } from "../toast";
+import { confirmDialog } from "../confirm";
 
 const PLAN_LABEL: Record<string, string> = {
   starter: "Starter",
@@ -192,7 +193,12 @@ export default function AdminPage() {
       me &&
       u.id === me.user.id &&
       !next &&
-      !confirm("Revoke your OWN platform-admin access? You may lose access to this page.")
+      !(await confirmDialog({
+        title: "Revoke your admin access",
+        message: "Revoke your OWN platform-admin access? You may lose access to this page.",
+        confirmLabel: "Revoke",
+        danger: true,
+      }))
     ) {
       return;
     }
@@ -211,7 +217,12 @@ export default function AdminPage() {
     const next = !o.suspended;
     if (
       next &&
-      !confirm(`Suspend "${o.name}"? Its members will be locked out until you unsuspend it.`)
+      !(await confirmDialog({
+        title: "Suspend workspace",
+        message: `Suspend "${o.name}"? Its members will be locked out until you unsuspend it.`,
+        confirmLabel: "Suspend",
+        danger: true,
+      }))
     ) {
       return;
     }
@@ -231,9 +242,11 @@ export default function AdminPage() {
     // Plan changes affect billing, so confirm before applying (the <select> is
     // controlled, so a cancel simply snaps it back to the current plan).
     if (
-      !confirm(
-        `Change "${o.name}" from ${PLAN_LABEL[o.plan] ?? o.plan} to ${PLAN_LABEL[plan] ?? plan}? This applies immediately.`,
-      )
+      !(await confirmDialog({
+        title: "Change plan",
+        message: `Change "${o.name}" from ${PLAN_LABEL[o.plan] ?? o.plan} to ${PLAN_LABEL[plan] ?? plan}? This applies immediately.`,
+        confirmLabel: "Change plan",
+      }))
     ) {
       return;
     }
@@ -250,15 +263,16 @@ export default function AdminPage() {
   };
 
   const removeOrg = async (o: AdminOrg) => {
-    const typed = prompt(
-      `PERMANENTLY delete "${o.name}" and ALL its data (projects, backlinks, members)?\n` +
-        `This cannot be undone. Type the workspace slug to confirm:\n\n${o.slug}`,
-    );
-    if (typed === null) return;
-    if (typed.trim() !== o.slug) {
-      toast("Slug did not match â deletion cancelled.", "error");
-      return;
-    }
+    const ok = await confirmDialog({
+      title: "Delete workspace",
+      message:
+        `PERMANENTLY delete "${o.name}" and ALL its data (projects, backlinks, members)? ` +
+        `This cannot be undone.`,
+      requireText: o.slug,
+      confirmLabel: "Delete forever",
+      danger: true,
+    });
+    if (!ok) return;
     setBusyId(o.id);
     const res = await adminApi.deleteOrg(o.id);
     setBusyId(null);
@@ -272,7 +286,13 @@ export default function AdminPage() {
 
   const resendConfirmations = async () => {
     if (!waitlist || waitlist.pending === 0) return;
-    if (!confirm(`Send the confirmation email to ${waitlist.pending} waitlist signup(s) who haven't received one yet?`)) {
+    if (
+      !(await confirmDialog({
+        title: "Resend confirmations",
+        message: `Send the confirmation email to ${waitlist.pending} waitlist signup(s) who haven't received one yet?`,
+        confirmLabel: "Send",
+      }))
+    ) {
       return;
     }
     setBusyId("waitlist-resend");
@@ -292,7 +312,13 @@ export default function AdminPage() {
 
   const syncAudience = async () => {
     if (!waitlist || waitlist.total === 0) return;
-    if (!confirm(`Push all ${waitlist.total} waitlist email(s) into the Resend audience? Existing contacts are skipped.`)) {
+    if (
+      !(await confirmDialog({
+        title: "Sync to Resend audience",
+        message: `Push all ${waitlist.total} waitlist email(s) into the Resend audience? Existing contacts are skipped.`,
+        confirmLabel: "Push",
+      }))
+    ) {
       return;
     }
     setBusyId("waitlist-sync");
