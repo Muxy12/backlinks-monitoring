@@ -17,6 +17,7 @@ import {
   LEVEL_BADGE,
 } from "@/lib/monitoring";
 import { toast } from "../toast";
+import { confirmDialog } from "../confirm";
 import { Icon } from "../icons";
 import { useDrawerFocus } from "@/lib/useDrawerFocus";
 import "@/app/auth.css";
@@ -263,11 +264,12 @@ export default function BacklinksPage() {
   async function runAutoTag() {
     if (!orgId || !projectId) return;
     if (
-      !confirm(
-        "Auto-tag this project's backlinks by footprint?\n\n" +
-          "Adds a category tag to each link: comment (ninja linking), pbn, forum-profile, self-built, or earned. " +
-          "Reversible, you can retag or remove tags afterward.",
-      )
+      !(await confirmDialog({
+        title: "Auto-tag backlinks",
+        message:
+          "Auto-tag this project's backlinks by footprint? Adds a category tag to each link: comment (ninja linking), pbn, forum-profile, self-built, or earned. Reversible — you can retag or remove tags afterward.",
+        confirmLabel: "Auto-tag",
+      }))
     )
       return;
     setAutoTagBusy(true);
@@ -377,10 +379,13 @@ export default function BacklinksPage() {
   async function bulkArchive() {
     if (!orgId || selectedIds.size === 0) return;
     if (
-      !window.confirm(
-        `Archive ${selectedIds.size} backlink${selectedIds.size === 1 ? "" : "s"}? ` +
+      !(await confirmDialog({
+        title: "Archive backlinks",
+        message:
+          `Archive ${selectedIds.size} backlink${selectedIds.size === 1 ? "" : "s"}? ` +
           "They leave your active inventory and stop being checked. You can restore them later.",
-      )
+        confirmLabel: "Archive",
+      }))
     )
       return;
     setBulkBusy(true);

@@ -14,6 +14,7 @@ import {
   type PositionedKeyword,
 } from "@/lib/api";
 import { selectedOrgId } from "@/lib/workspace";
+import { confirmDialog } from "../confirm";
 import "@/app/auth.css";
 import "../dashboard/dashboard.css";
 import "../operations/operations.css";
@@ -188,9 +189,13 @@ export default function ProjectsPage() {
   async function remove(p: ProjectView) {
     if (!orgId) return;
     if (
-      !confirm(
-        `Delete domain "${p.name}" and ALL its data (backlinks, campaigns, competitors, discovery seeds)?\nThis cannot be undone.`,
-      )
+      !(await confirmDialog({
+        title: "Delete domain",
+        message: `Delete domain "${p.name}" and ALL its data (backlinks, campaigns, competitors, discovery seeds)? This cannot be undone.`,
+        confirmLabel: "Delete domain",
+        danger: true,
+        requireText: p.name,
+      }))
     )
       return;
     setRowBusy(p.id);

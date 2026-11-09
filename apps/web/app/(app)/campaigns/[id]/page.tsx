@@ -15,6 +15,8 @@ import {
   type ProspectView,
 } from "@/lib/api";
 import { selectedOrgId } from "@/lib/workspace";
+import { confirmDialog } from "../../confirm";
+import { toast } from "../../toast";
 import {
   PIPELINE_STAGES,
   STAGES,
@@ -53,14 +55,21 @@ export default function CampaignDetailPage() {
 
   async function removeCampaign() {
     if (!orgId || !campaign) return;
-    if (!confirm(`Delete campaign “${campaign.name}”? This removes its targets and prospects. This cannot be undone.`)) {
+    if (
+      !(await confirmDialog({
+        title: "Delete campaign",
+        message: `Delete campaign “${campaign.name}”? This removes its targets and prospects. This cannot be undone.`,
+        confirmLabel: "Delete",
+        danger: true,
+      }))
+    ) {
       return;
     }
     setDeleting(true);
     const res = await orgApi.deleteCampaign(orgId, campaign.id);
     setDeleting(false);
     if (res.ok) router.push("/campaigns");
-    else alert(res.detail);
+    else toast(res.detail, "error");
   }
 
   useEffect(() => {

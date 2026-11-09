@@ -11,6 +11,7 @@ import {
   type ProjectView,
 } from "@/lib/api";
 import { selectedOrgId } from "@/lib/workspace";
+import { confirmDialog } from "../../confirm";
 import "@/app/auth.css";
 import "../../dashboard/dashboard.css";
 import "../../operations/operations.css";
@@ -105,7 +106,15 @@ export default function IntegrationsPage() {
 
   async function disconnect() {
     if (!orgId || !projectId) return;
-    if (!confirm("Disconnect Google Search Console from this project?")) return;
+    if (
+      !(await confirmDialog({
+        title: "Disconnect Search Console",
+        message: "Disconnect Google Search Console from this project?",
+        confirmLabel: "Disconnect",
+        danger: true,
+      }))
+    )
+      return;
     const r = await orgApi.gscDisconnect(orgId, projectId);
     if (r.ok) {
       setMsg("Disconnected.");

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, orgApi, type AlertDestination, type MeResponse, type PreferenceItem } from "@/lib/api";
 import { selectedOrgId } from "@/lib/workspace";
+import { confirmDialog } from "../../confirm";
 import "@/app/auth.css";
 import "../../dashboard/dashboard.css";
 
@@ -129,7 +130,15 @@ export default function NotificationSettingsPage() {
 
   async function delDest(d: AlertDestination) {
     if (!orgId) return;
-    if (!confirm(`Delete alert destination "${d.name || d.target}"?`)) return;
+    if (
+      !(await confirmDialog({
+        title: "Delete destination",
+        message: `Delete alert destination "${d.name || d.target}"?`,
+        confirmLabel: "Delete",
+        danger: true,
+      }))
+    )
+      return;
     const res = await orgApi.deleteAlertDestination(orgId, d.id);
     if (res.ok) void reloadDests(orgId);
   }
