@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, orgApi, type ClientView, type MeResponse, type ProjectView } from "@/lib/api";
 import { selectedOrgId } from "@/lib/workspace";
+import { confirmDialog } from "../confirm";
 import "@/app/auth.css";
 import "../dashboard/dashboard.css";
 import "../operations/operations.css";
@@ -106,7 +107,15 @@ export default function ClientsPage() {
 
   async function remove(c: ClientView) {
     if (!orgId) return;
-    if (!confirm(`Delete client "${c.name}"? Projects linked to it will be unassigned.`)) return;
+    if (
+      !(await confirmDialog({
+        title: "Delete client",
+        message: `Delete client "${c.name}"? Projects linked to it will be unassigned.`,
+        confirmLabel: "Delete",
+        danger: true,
+      }))
+    )
+      return;
     const res = await orgApi.deleteClient(orgId, c.id);
     if (!res.ok) {
       setError(res.detail);
