@@ -15,6 +15,15 @@ ALTER TABLE usage_records
 
 -- Extend the non-negative guard to the new counters (the original
 -- `usage_records_non_negative` covers the monitoring counters).
-ALTER TABLE usage_records
-    ADD CONSTRAINT usage_records_acquisition_non_negative
-        CHECK (discoveries >= 0 AND geo_queries >= 0);
+-- IDEMPOTENT: guarded so a prod where these counters (and the constraint) were
+-- hand-applied before version 50 was recorded does not abort on "already exists".
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'usage_records_acquisition_non_negative'
+    ) THEN
+        ALTER TABLE usage_records
+            ADD CONSTRAINT usage_records_acquisition_non_negative
+                CHECK (discoveries >= 0 AND geo_queries >= 0);
+    END IF;
+END $$;
