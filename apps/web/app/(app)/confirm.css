@@ -1,0 +1,66 @@
+/* Self-contained styling for the imperative confirm dialog (confirm.tsx),
+   mounted globally so it does not depend on any page-scoped modal CSS. Mirrors
+   the look of .dom-modal (projects.css). Uses global theme vars with fallbacks. */
+.confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(13, 24, 44, 0.5);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-drawer, 1000);
+  padding: 20px;
+}
+.confirm-card {
+  width: 440px;
+  max-width: 100%;
+  background: var(--surface, #0f1830);
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
+  border-radius: var(--r-xl, 14px);
+  box-shadow: var(--shadow-pop, 0 20px 50px rgba(0, 0, 0, 0.45));
+  padding: 22px;
+}
+.confirm-card h2 {
+  font-size: 16px;
+  font-weight: 650;
+  margin: 0 0 12px;
+  color: var(--text, #e8eefc);
+}
+.confirm-msg {
+  margin: 0;
+  white-space: pre-wrap;
+  color: var(--text, #e8eefc);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.confirm-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 14px;
+  font-size: 13px;
+}
+.confirm-field span {
+  color: var(--muted, #94a3b8);
+}
+.confirm-field code {
+  color: var(--text, #e8eefc);
+  background: var(--surface-2, rgba(255, 255, 255, 0.06));
+  padding: 1px 5px;
+  border-radius: 5px;
+}
+.confirm-field input {
+  background: var(--surface-2, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
+  border-radius: var(--r-md, 8px);
+  padding: 9px 11px;
+  color: var(--text, #e8eefc);
+  font: inherit;
+}
+.confirm-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 18px;
+}

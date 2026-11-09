@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { api, type MeResponse } from "@/lib/api";
 import { selectedOrg, setSelectedOrg } from "@/lib/workspace";
 import { ToastHost } from "./toast";
+import { ConfirmHost } from "./confirm";
 import { TrialBanner } from "./TrialBanner";
 import { Icon } from "./icons";
 import { NotificationsBell } from "@/components/NotificationsBell";
@@ -201,6 +202,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {children}
       </div>
       <ToastHost />
+      <ConfirmHost />
     </div>
   );
 }

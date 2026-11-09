@@ -1,5 +1,6 @@
 "use client";
 import { PageLoading } from "@/components/PageLoading";
+import { confirmDialog } from "../confirm";
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
@@ -697,7 +698,13 @@ export default function SpotsPage() {
   }
   async function deleteCampaign() {
     if (!orgId || !projectId || !campDetail) return;
-    if (!confirm(`Delete campaign “${campDetail.campaign.name}”?`)) return;
+    const ok = await confirmDialog({
+      title: "Delete campaign",
+      message: `Delete campaign “${campDetail.campaign.name}”? This cannot be undone.`,
+      confirmLabel: "Delete",
+      danger: true,
+    });
+    if (!ok) return;
     const r = await orgApi.deletePurchaseCampaign(orgId, projectId, campDetail.campaign.id);
     if (r.ok) {
       setCampDetail(null);
