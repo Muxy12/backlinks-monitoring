@@ -787,6 +787,17 @@ export default function SpotsPage() {
     return `${amount} ${currency ?? "EUR"}`;
   }
 
+  // Marketplace/offer URLs can come back without a scheme (e.g. a bare domain
+  // like "example.com"). Used raw as an href the browser resolves them relative
+  // to the app, so a "Buy ↗" link 404s on our own domain instead of leaving the
+  // site. Normalize to an absolute external URL; return null for empty input so
+  // the caller renders a plain price instead of a dead link.
+  function extHref(u: string | null | undefined): string | null {
+    const v = (u ?? "").trim();
+    if (!v) return null;
+    return /^https?:\/\//i.test(v) ? v : `https://${v}`;
+  }
+
   // The "Offers" cell: every marketplace that lists this spot, cheapest first
   // (price-compare). Falls back to the embedded single offer for API responses
   // that predate offers[].
@@ -800,11 +811,12 @@ export default function SpotsPage() {
             const follow =
               o.dofollow == null ? "" : o.dofollow ? " · dofollow" : " · nofollow";
             const title = `${o.source}${follow}`;
-            return o.url ? (
+            const href = extHref(o.url);
+            return href ? (
               <a
                 key={i}
                 className="sf-buy"
-                href={o.url}
+                href={href}
                 target="_blank"
                 rel="noopener noreferrer"
                 title={title}
@@ -821,10 +833,11 @@ export default function SpotsPage() {
       );
     }
     if (s.buyable) {
-      return s.marketplace_url ? (
+      const href = extHref(s.marketplace_url);
+      return href ? (
         <a
           className="sf-buy"
-          href={s.marketplace_url}
+          href={href}
           target="_blank"
           rel="noopener noreferrer"
           title={`Buy on ${s.marketplace ?? "marketplace"}`}
@@ -1855,8 +1868,8 @@ export default function SpotsPage() {
             </div>
             <div style={{ marginTop: 8, display: "flex", gap: 10, alignItems: "center" }}>
               <GradeBadge grade={detail.grade} />
-              {detail.marketplace_url && (
-                <a href={detail.marketplace_url} target="_blank" rel="noopener noreferrer">Buy ↗</a>
+              {extHref(detail.marketplace_url) && (
+                <a href={extHref(detail.marketplace_url)!} target="_blank" rel="noopener noreferrer">Buy ↗</a>
               )}
             </div>
 
