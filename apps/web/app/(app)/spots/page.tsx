@@ -149,6 +149,9 @@ export default function SpotsPage() {
   // Phase 3: multi-select spots → selection bar (budget, savings, bulk actions).
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [selBusy, setSelBusy] = useState(false);
+  // Purchase-campaign naming modal (replaces window.prompt, which throws in
+  // embedded/webview browsers where prompt() is unsupported).
+  const [campModal, setCampModal] = useState<{ ids: string[]; name: string } | null>(null);
   // Purchase campaigns (buy baskets).
   const [campList, setCampList] = useState<PurchaseCampaign[]>([]);
   const [campDetail, setCampDetail] = useState<PurchaseCampaignDetail | null>(null);
@@ -577,21 +580,30 @@ export default function SpotsPage() {
     setPushMsg(`Added ${ok} spot${ok === 1 ? "" : "s"} to ${camp?.name ?? "the campaign"}.`);
   }
 
-  async function createCampaignFromSelection(ids: string[]) {
+  function createCampaignFromSelection(ids: string[]) {
     if (!orgId || !projectId || ids.length === 0) return;
-    const name = window.prompt("Name this purchase campaign", "New campaign");
-    if (!name || !name.trim()) return;
+    setSpotsErr(null);
+    setCampModal({ ids, name: "New campaign" });
+  }
+
+  async function confirmCreateCampaign() {
+    if (!orgId || !projectId || !campModal) return;
+    const name = campModal.name.trim();
+    if (!name) return;
     setSelBusy(true);
+    setSpotsErr(null);
     setPushMsg(null);
     const res = await orgApi.createPurchaseCampaign(orgId, projectId, {
-      name: name.trim(),
-      spot_ids: ids,
+      name,
+      spot_ids: campModal.ids,
     });
     setSelBusy(false);
     if (!res.ok) {
+      // Keep the modal open so the user sees the error and can retry.
       setSpotsErr(res.detail || "Could not create the campaign.");
       return;
     }
+    setCampModal(null);
     setSelected(new Set());
     setPushMsg(`Campaign “${res.data.name}” created with ${res.data.item_count} spot(s).`);
     void orgApi
@@ -2018,7 +2030,7 @@ export default function SpotsPage() {
             <button
               className="btn sm primary"
               disabled={selBusy}
-              onClick={() => void createCampaignFromSelection([...selected])}
+              onClick={() => createCampaignFromSelection([...selected])}
             >
               {selBusy ? "Working…" : "Create campaign"}
             </button>
@@ -2032,6 +2044,70 @@ export default function SpotsPage() {
             <button className="btn sm ghost" disabled={selBusy} onClick={() => setSelected(new Set())}>
               Clear
             </button>
+          </div>
+        </div>
+      )}
+
+      {campModal && (
+        <div
+          className="dom-modal-backdrop"
+          onClick={() => {
+            if (!selBusy) setCampModal(null);
+          }}
+        >
+          <div
+            className="dom-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Name this purchase campaign"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2>New purchase campaign</h2>
+            <form
+              className="ops-form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void confirmCreateCampaign();
+              }}
+            >
+              {spotsErr && (
+                <div className="auth-error" role="alert">
+                  {spotsErr}
+                </div>
+              )}
+              <label className="auth-field">
+                <span>Campaign name</span>
+                <input
+                  value={campModal.name}
+                  onChange={(e) =>
+                    setCampModal((m) => (m ? { ...m, name: e.target.value } : m))
+                  }
+                  autoFocus
+                  required
+                  maxLength={120}
+                />
+              </label>
+              <p className="muted" style={{ margin: 0, fontSize: 13 }}>
+                {campModal.ids.length} spot{campModal.ids.length === 1 ? "" : "s"} will be added.
+              </p>
+              <div className="dom-modal-actions">
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={selBusy}
+                  onClick={() => setCampModal(null)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn primary"
+                  disabled={selBusy || !campModal.name.trim()}
+                >
+                  {selBusy ? "Creating…" : "Create campaign"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
