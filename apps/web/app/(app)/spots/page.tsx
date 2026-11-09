@@ -152,6 +152,11 @@ export default function SpotsPage() {
   // Purchase-campaign naming modal (replaces window.prompt, which throws in
   // embedded/webview browsers where prompt() is unsupported).
   const [campModal, setCampModal] = useState<{ ids: string[]; name: string } | null>(null);
+  // Simplified one-click UI: the manual pipeline (keyword review, SERP/forums/
+  // GEO, enrich/compare) is tucked behind an "Advanced" toggle, hidden by default.
+  const [advanced, setAdvanced] = useState(false);
+  // Hero mode: pick an existing site (default) vs. analyze a brand-new URL.
+  const [heroNewUrl, setHeroNewUrl] = useState(false);
   // Purchase campaigns (buy baskets).
   const [campList, setCampList] = useState<PurchaseCampaign[]>([]);
   const [campDetail, setCampDetail] = useState<PurchaseCampaignDetail | null>(null);
@@ -317,23 +322,32 @@ export default function SpotsPage() {
       if (r.ok) setOverview(r.data);
     });
 
+    await runChainFromScan(orgId, pid);
+  }
+
+  // Shared tail of the one-click flow: given a project whose detection scan is
+  // running (or about to), wait for its topics → auto-keep them → build the
+  // ranked spot list (SERP + prices when DataForSEO is set up, else marketplace
+  // discovery). Used by both the URL path (analyze) and the existing-site path
+  // (findSpotsForProject).
+  async function runChainFromScan(org: string, pid: string) {
     try {
       // 1 — wait for the detection scan (reads the site's own topics).
       setPilot("Reading your site’s topics…");
-      const keywords = await pollScanDone(orgId, pid);
+      const keywords = await pollScanDone(org, pid);
 
       // 2 — auto-keep every detected topic so it feeds discovery.
       const candidateIds = keywords.filter((k) => k.status === "candidate").map((k) => k.id);
       let keptCount = keywords.filter((k) => k.status === "kept").length;
       if (candidateIds.length > 0) {
         setPilot("Keeping the detected topics…");
-        await orgApi.bulkSpotKeywordStatus(orgId, pid, candidateIds, "kept");
+        await orgApi.bulkSpotKeywordStatus(org, pid, candidateIds, "kept");
         keptCount += candidateIds.length;
-        await load(orgId, pid);
+        await load(org, pid);
       }
 
       if (keptCount === 0) {
-        setErr("We couldn’t read any topics from that site. Add a few keywords below, then analyze.");
+        setErr("We couldn’t read any topics from that site. Open Advanced options to add a few keywords by hand, then try again.");
         return;
       }
       // 3 — build the ranking. Prefer SERP (it populates the PTA/PTP thematic
@@ -341,37 +355,60 @@ export default function SpotsPage() {
       // Fall back to marketplace-only discovery when no SERP source is set up.
       if (dataforseo) {
         setPilot("Finding the sites that rank on your topics…");
-        const sres = await orgApi.searchSpots(orgId, pid, locale);
+        const sres = await orgApi.searchSpots(org, pid, locale);
         if (!sres.ok) {
           setSpotsErr(sres.detail || "Could not start the SERP search.");
           return;
         }
         applyRun(sres);
-        await pollSpotRunDone(orgId, pid);
+        await pollSpotRunDone(org, pid);
         if (marketplace) {
           setPilot("Comparing marketplace prices…");
-          const mres = await orgApi.matchSpots(orgId, pid);
+          const mres = await orgApi.matchSpots(org, pid);
           if (mres.ok) setSpotsData((d) => (d ? { ...d, match_run: mres.data } : d));
         }
-        await loadSpots(orgId, pid);
+        await loadSpots(org, pid);
       } else if (marketplace) {
         setPilot("Finding matching spots across your marketplaces…");
-        const dres = await orgApi.discoverMarketplaceSpots(orgId, pid, locale);
+        const dres = await orgApi.discoverMarketplaceSpots(org, pid, locale);
         if (dres.ok) {
           applyRun(dres);
-          await loadSpots(orgId, pid);
+          await loadSpots(org, pid);
         } else {
           setSpotsErr(dres.detail || "Could not start marketplace discovery.");
         }
       } else {
-        setErr("No SERP (DataForSEO) or marketplace source is configured, so we can’t build a ranking yet. Your topics are ready below.");
+        setErr("No SERP (DataForSEO) or marketplace source is configured, so we can’t build a ranking yet. Your topics are ready under Advanced options.");
       }
     } catch {
-      setErr("The analysis didn’t finish in time. You can continue from the detected topics below.");
+      setErr("The analysis didn’t finish in time. You can continue from Advanced options below.");
     } finally {
       setPilot(null);
       setAnalyzing(false);
     }
+  }
+
+  // One-click flow for an EXISTING site: enqueue a fresh detection scan (own-site
+  // crawl, no external cost), then run the shared chain to ranked spots. This is
+  // what the hero's "Find spots" button calls when a site is picked.
+  async function findSpotsForProject(pid?: string) {
+    if (!orgId) return;
+    const project = pid ?? projectId;
+    if (!project) return;
+    setErr(null);
+    setSpotsErr(null);
+    setAnalyzing(true);
+    setProjectId(project);
+    setPilot("Reading your site’s topics…");
+    const res = await orgApi.detectSpotKeywords(orgId, project);
+    if (!res.ok) {
+      setAnalyzing(false);
+      setPilot(null);
+      setErr(res.detail || "Could not start detection.");
+      return;
+    }
+    setData((d) => ({ scan: res.data, keywords: d?.keywords ?? [] }));
+    await runChainFromScan(orgId, project);
   }
 
   // Poll the latest SERP spot run until it is done (or errors/times out). Used
@@ -968,37 +1005,88 @@ export default function SpotsPage() {
         <>
           <section className="panel sf-analyze">
             <div className="panel-head">
-              <h2>Analyze a site</h2>
+              <h2>Find link spots for your site</h2>
             </div>
             <p className="muted" style={{ marginBottom: 0 }}>
-              Paste any site URL. We read its topics, then rank the link spots that match — scored
-              (PTA/PTP) with marketplace prices compared. Buy, then monitor.
+              Pick your site and hit <strong>Find spots</strong> — we read your topics, find the
+              buyable sites that match, and compare their marketplace prices. One click; the rest is
+              automatic.
             </p>
-            <form className="sf-analyze-form" onSubmit={analyze}>
-              <div className="sf-analyze-field">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-                  <circle cx="12" cy="12" r="9" />
-                  <path d="M3 12h18" />
-                  <path d="M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18" />
-                </svg>
-                <input
-                  className="sf-analyze-input"
-                  type="text"
-                  inputMode="url"
-                  placeholder="yoursite.com"
-                  value={analyzeInput}
-                  onChange={(e) => setAnalyzeInput(e.target.value)}
-                  aria-label="Site URL to analyze"
-                />
-              </div>
+            <form
+              className="sf-analyze-form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (heroNewUrl || projects.length === 0) void analyze();
+                else void findSpotsForProject(projectId ?? projects[0]?.id);
+              }}
+            >
+              {heroNewUrl || projects.length === 0 ? (
+                <div className="sf-analyze-field">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9" />
+                    <path d="M3 12h18" />
+                    <path d="M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18" />
+                  </svg>
+                  <input
+                    className="sf-analyze-input"
+                    type="text"
+                    inputMode="url"
+                    placeholder="yoursite.com"
+                    value={analyzeInput}
+                    onChange={(e) => setAnalyzeInput(e.target.value)}
+                    aria-label="Site URL to analyze"
+                    autoFocus
+                  />
+                </div>
+              ) : (
+                <div className="sf-analyze-field">
+                  <select
+                    className="sf-analyze-input"
+                    style={{ paddingLeft: 14 }}
+                    aria-label="Your site"
+                    value={projectId ?? projects[0]?.id ?? ""}
+                    onChange={(e) => setProjectId(e.target.value)}
+                  >
+                    {projects.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} · {p.domain}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <select className="sf-analyze-market" aria-label="Market" value={locale} onChange={(e) => setLocale(e.target.value)}>
                 <option value="fr">France · Français</option>
                 <option value="en">English</option>
               </select>
-              <button className="btn primary sf-analyze-btn" type="submit" disabled={analyzing || !analyzeInput.trim()}>
-                {analyzing ? "Analyzing…" : "Analyze"}
+              <button
+                className="btn primary sf-analyze-btn"
+                type="submit"
+                disabled={
+                  analyzing || ((heroNewUrl || projects.length === 0) && !analyzeInput.trim())
+                }
+              >
+                {analyzing ? "Finding…" : "Find spots"}
               </button>
             </form>
+            {projects.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setHeroNewUrl((v) => !v)}
+                style={{
+                  marginTop: 10,
+                  background: "none",
+                  border: "none",
+                  color: "var(--primary)",
+                  cursor: "pointer",
+                  font: "inherit",
+                  padding: 0,
+                  textDecoration: "underline",
+                }}
+              >
+                {heroNewUrl ? "← Pick one of my sites" : "Analyze a new URL instead"}
+              </button>
+            )}
             {pilot && (
               <div className="sf-status" role="status" style={{ marginTop: 12 }}>
                 <span className="sf-spinner" aria-hidden="true" />
@@ -1086,6 +1174,20 @@ export default function SpotsPage() {
             </section>
           )}
 
+          <button
+            type="button"
+            className="btn sm ghost"
+            style={{ alignSelf: "flex-start", marginTop: 4 }}
+            aria-expanded={advanced}
+            onClick={() => setAdvanced((v) => !v)}
+          >
+            {advanced
+              ? "▾ Hide advanced options"
+              : "▸ Advanced options — keywords, SERP, forums, GEO"}
+          </button>
+
+          {advanced && (
+            <>
           <section className="panel">
             <div className="panel-head">
               <h2>Detect from your site</h2>
@@ -1269,11 +1371,14 @@ export default function SpotsPage() {
               )}
             </section>
           )}
+            </>
+          )}
 
-          {projects.length > 0 && (
+          {projects.length > 0 && ((spotsData?.spots.length ?? 0) > 0 || advanced) && (
             <section className="panel sf-spots" style={{ marginTop: 16 }}>
               <div className="panel-head">
-                <h2>Spots — who ranks for your keywords</h2>
+                <h2>Buyable spots</h2>
+                {advanced && (
                 <div className="sf-detect-row">
                   <select
                     aria-label="Search locale"
@@ -1317,8 +1422,11 @@ export default function SpotsPage() {
                     {searching ? "Searching…" : "Find via Google (SERP)"}
                   </button>
                 </div>
+                )}
               </div>
 
+              {advanced && (
+              <>
               <p className="muted" style={{ marginBottom: 10 }}>
                 We browse your configured link marketplaces for sites relevant to your kept
                 keywords — the buyable spots, with their price and metrics. Enrich adds authority and
@@ -1374,6 +1482,8 @@ export default function SpotsPage() {
                       ? "Checking marketplaces…"
                       : `Checked ${matchRun.spots_checked} spot${matchRun.spots_checked === 1 ? "" : "s"} → ${matchRun.matches_found} buyable.`}
                 </p>
+              )}
+              </>
               )}
               {spotsErr && (
                 <div className="auth-error" role="alert" style={{ marginTop: 8 }}>
@@ -1566,7 +1676,7 @@ export default function SpotsPage() {
             </section>
           )}
 
-          {(spotsData?.forums.length ?? 0) > 0 && (
+          {advanced && (spotsData?.forums.length ?? 0) > 0 && (
             <section className="panel" style={{ marginTop: 16 }}>
               <div className="panel-head">
                 <h2>Communities &amp; forums</h2>
@@ -1608,6 +1718,7 @@ export default function SpotsPage() {
             </section>
           )}
 
+          {advanced && (
           <section className="panel sf-geo">
             <h2>
               GEO — cited by AI <span className="sf-beta">BETA</span>
@@ -1718,6 +1829,7 @@ export default function SpotsPage() {
               </p>
             )}
           </section>
+          )}
         </>
       )}
 
